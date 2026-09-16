@@ -15,6 +15,7 @@ from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
+from . import fpga_hold
 from .fpga_program import FLASH_TIMEOUT, program as program_fpga, program_flash
 from .flash_library import library_stage
 from .lint import lint_questa
@@ -410,6 +411,9 @@ def _human_result(args, report, progress):
             label = "Checked bitstream" if status == "PASS" else "Unverified bitstream artifact"
             progress.line(f"{label}: {bitstreams[-1]}")
         flash_images = _artifacts(report, suffix="/output/design.pof")
+        if status == "PASS":
+            for line in fpga_hold.summary_lines(report.get("evidence", {}).get("hold_paths")):
+                progress.line(line)
         if flash_images and status == "PASS":
             pof = report.get("evidence", {}).get("onchip_flash", {}).get("pof", {})
             progress.line(f"Flash image (.pof, library in the user range): {flash_images[-1]}")

@@ -1625,6 +1625,37 @@ clock/input/output setup and hold counts, no ignored SDC assignments, and no
 structural timing problems. Missing/malformed evidence fails rather than passing
 on the tool exit alone. Keep resource totals and all corner slack values.
 
+### Hold path audit
+
+The timing summary keeps one hold slack per clock, and the fitter optimizes
+hold only to a non-negative value, so a shrinking slack has no visible
+endpoint until it fails. For every image that drives the SDRAM (`sdram_proof`
+and any top pinned to `DRAM_CLK`: `v05`, `v05-board`, `v05-controls-board`),
+[`fpga_hold.py`](../../../tools/n2m/fpga_hold.py) appends to the audit script,
+at each of the three corners, one
+`report_timing -to_clock <clock> -hold -npaths 5 -detail full_path` for the
+system clock (`u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]`)
+and for `sdram_clk`, written to `output/hold_<corner>_<system|sdram>.rpt`.
+`-to_clock` selects paths by their latch clock, which is how the summary
+attributes a hold check, so the first row of each report is the path behind
+the summary's hold slack for that clock and corner. The six reports are
+required evidence and part of the cache inventory.
+
+The evidence records them under `hold_paths`: `npaths`, then `clocks.<label>`
+with the `clock` name, `corners.<corner>` (`report`, `found`, `violated`,
+`worst_slack_ns` and the `paths` rows: `slack_ns`, `from`, `to`,
+`launch_clock`, `latch_clock`, `relationship_ns`, `clock_skew_ns`,
+`data_delay_ns`, entity prefixes stripped from the node names) and `worst`,
+the tightest first row across corners with its `corner` and `report`. The
+text output prints one `Worst hold (<label> <clock>)` line per clock. A
+report whose delay model, header, table, latch clock, ordering or violation
+count disagrees fails as malformed evidence; a clock without paths records an
+empty list and no `worst`. Slack signs are recorded, not judged: a negative
+hold still fails through the timing summary as before, and this audit adds
+no threshold.
+[`test_fpga_hold.py`](../../../tools/n2m/tests/test_fpga_hold.py) covers the
+script, parsing, the record shape and the summary lines with synthetic reports.
+
 ### Flash library image
 
 The [flash library contract](../../src/rtl/storage/MAS_flash_library.md#flash-layout)

@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, flash_library, process_tree
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -221,6 +221,9 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target), controls=fpga_v05.control_target(target)) + "project_close")
     if target["top"] == SDRAM_TOP:
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word, chains=SDRAM_CHAINS) + "project_close")
+    # The images that drive SDRAM carry both watched clocks; see fpga_hold.
+    if sdram_target(target):
+        audit = audit.replace("project_close", fpga_hold.audit(tcl_word) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
 
@@ -520,6 +523,8 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_SDRAM_BUILD_ID", instances=1)
     if fpga_flash.flash_target(target):
         evidence["onchip_flash"] = fpga_flash.verify(folder, target["top"])
+    if sdram_target(target):
+        evidence["hold_paths"] = fpga_hold.verify(folder)
     return evidence
 
 
@@ -565,6 +570,7 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.chains(target))]
         if sdram_target(target):
             required += [folder / "output" / name for name in fpga_controls.required_reports(chains=SDRAM_CHAINS)]
+            required += [folder / "output" / name for name in fpga_hold.required_reports()]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
         if identity_target(target) and record.get("build_id") != build_id:
