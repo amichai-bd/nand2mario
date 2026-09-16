@@ -63,7 +63,7 @@ the real CPU executing a menu program from slot 16 and drives the UART wire at
 | `mbc1-bank` | `tb_mbc1` `bank` | `PASS mbc1-bank checks=78 reads=140491` |
 | `mbc1-reset` | `tb_mbc1` `reset` | `PASS mbc1-reset checks=5 reads=98562` |
 | `mbc1-fault` | `tb_mbc1` `fault` | nonzero exit, `MBC1_TB_READ BANK1 sweep` |
-| `loader-exit-mbc1` | `tb_loader` `exit-mbc1` | `PASS loader-exit-mbc1 checks=<n> swaps=<n> fills=0 engine_writes=<n>` |
+| `loader-exit-mbc1` | `tb_loader` `exit-mbc1` | `PASS loader-exit-mbc1 checks=13 swaps=2 fills=0 engine_writes=65536` |
 
 `tb_loader_system` also hosts the boot copier fixtures `flash-copy`,
 `flash-blank` and `flash-precedence`; the
@@ -81,5 +81,7 @@ and `LOADER_FILL_HOST_PORT` in the port arbiter, `LOADER_SWAP_PAUSED`,
 the core control owner. Every fixture runs with them armed.
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
-all of them with `python3 tools/build.py tests run --label cartridge --tag <tag>`;
-the MBC1 fixtures also carry the `mbc1` label.
+all of them with `python3 tools/build.py tests run --label cartridge --tag <tag>`.
+The MBC1 fixtures carry the `mbc1` label instead, so the `cartridge` aggregate
+stays inside the ordinary 300-second budget:
+`python3 tools/build.py tests run --label mbc1 --tag <tag>`.

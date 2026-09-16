@@ -185,7 +185,7 @@ masking rules.
 | `mbc1-bank` | `tb_mbc1` `bank`: BANK1 values 0-63 through both ends of the alias range and `$E3`, each followed by a 129-byte sample of both windows against the contract's effective bank; BANK2 0-3, MODE 1/0, the exit value and RAMG `$0A`/`$00` change nothing; every bank whole; the read on the edge after a commit sees the new bank |
 | `mbc1-reset` | `tb_mbc1` `reset`: bank 3, BANK2 and MODE set, then a core reset: bank 1 at the first read and the store retained; a second image loaded through the host port and a reset: every byte replaced, bank 3 selectable |
 | `mbc1-fault` | `tb_mbc1` `fault`: the reference names the next bank, so the first switched-window sample fails with expected/actual bytes and a nonzero exit |
-| `uart-load-mbc1` | `tb_uart_load` with a 65,536-byte session: clear sweep, writes over the whole image, end sweep and CRC, full readback; a 32,768-byte session still ends at `$7FFF` |
+| `uart-load-mbc1` | `tb_uart_load` with a 65,536-byte session: clear sweep, writes over the whole image, one byte missing above 32 KiB caught by the end sweep and repaired, CRC, full readback; the unchanged `uart-load` run keeps the 32,768-byte session ending at `$7FFF` |
 | `uart-validation` | `LOAD_BEGIN` accepts `MBC1_ID` with 65,536 and refuses it with 32,768; `DIRECT_ID` with 65,536 refused; `LOAD_WRITE`/`READ_ROM` ranges up to 65,536 accepted in an `MBC1_ID` session and refused above 32,768 in a `DIRECT_ID` session |
 | `loader-exit-mbc1` | `tb_loader` `exit-mbc1`: in `MBC1_ID` the exit value at `$6000`/`$7FFF` returns to the menu exactly as in `DIRECT_ID`; `$00`/`$01`/`$11` and the exit value at other addresses change nothing |
 

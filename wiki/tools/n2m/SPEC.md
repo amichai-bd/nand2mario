@@ -1544,8 +1544,8 @@ identity constant, so both packings are legal results of the same RTL. Wider
 logic, longer chains, ambiguous drivers or bypass fanout fail.
 
 The composed memory check accounts for every logical store and physical atom:
-seven direct-profile stores (52 atoms), four 5760-byte snapshot stores (32),
-three dual-clock VGA banks (18), and six UART stores (9). The complete inventory
+seven direct-profile stores (84 atoms), four 5760-byte snapshot stores (32),
+three dual-clock VGA banks (18), and six UART stores (13). The complete inventory
 is 20 logical stores, 147 M9Ks and 1,056,616 bits. Existing store, VGA and UART
 checkers validate their explicit composed hierarchy, clock/reset roles,
 initialization, read shape and bit partitions; the outer inventory rejects

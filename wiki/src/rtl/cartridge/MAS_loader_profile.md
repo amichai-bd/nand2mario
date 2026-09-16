@@ -295,8 +295,9 @@ return, a 0.51 s press must; a 4 ms glitch must not change the debounced level.
 
 ### Game exit register
 
-A direct-profile game may offer its own back-to-menu action. While
-`PROFILE == DIRECT_ID`, a CPU write commit to `$6000`-`$7FFF` with `data ==
+A game may offer its own back-to-menu action. While `PROFILE == DIRECT_ID`
+or `PROFILE == MBC1_ID` (the [MBC1 profile](MAS_mbc1_profile.md#registers)
+honors the same register), a CPU write commit to `$6000`-`$7FFF` with `data ==
 LIBRARY_GAME_EXIT_VALUE` (`$10`, the generated constant beside
 `LIBRARY_MENU_INDEX`) is a return request with exactly the `key1_return`
 rules: it swaps image index 16 in through the select sequence, with the same
