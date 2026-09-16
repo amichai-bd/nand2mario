@@ -4,10 +4,10 @@ Owner: `src/rtl/storage/` and `src/dv/storage/`. Implemented today: the
 flash reader [`n2m_flash_reader`](../../../../src/rtl/storage/n2m_flash_reader.sv)
 with its constants in [`n2m_flash_pkg`](../../../../src/rtl/storage/n2m_flash_pkg.sv),
 the IP double [`n2m_sim_onchip_flash`](../../../../src/rtl/storage/n2m_sim_onchip_flash.sv),
-the [`tb_flash_reader`](../../../../src/dv/storage/tb_flash_reader.sv) fixtures
-and the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit.
-The boot copier and its fixtures ([#675](https://github.com/amichai-bd/nand2mario/issues/675)),
-the builder's `library.hex`/`.pof` path ([#676](https://github.com/amichai-bd/nand2mario/issues/676))
+the [`tb_flash_reader`](../../../../src/dv/storage/tb_flash_reader.sv) fixtures,
+the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit and the
+builder's [library image and `.pof` path](../../../tools/n2m/SPEC.md#flash-library-image).
+The boot copier and its fixtures ([#675](https://github.com/amichai-bd/nand2mario/issues/675))
 and the board check ([#677](https://github.com/amichai-bd/nand2mario/issues/677),
 [#681](https://github.com/amichai-bd/nand2mario/issues/681)) remain open under
 [#658](https://github.com/amichai-bd/nand2mario/issues/658); until they land,
@@ -224,20 +224,23 @@ whether this power-up's library came from flash; the menu may display it.
 
 ### Programming the flash
 
-The builder's image and `.pof` path is not implemented yet
-([#676](https://github.com/amichai-bd/nand2mario/issues/676)); the reader's
-`INIT_FILENAME` parameter is the hook it fills, and an empty name leaves the
-flash uninitialized. The flash is programmed only through JTAG with the
-Quartus Programmer:
+The flash is programmed only through JTAG with the Quartus Programmer:
 
-1. The builder assembles the library image `library.hex` (Intel HEX, byte
-   addressed at `4 * flash_word`) from the 17 images and the catalogue it
-   already knows how to produce for the [host loader](../../../tools/n2m/host/SPEC.md);
-   empty slots are omitted so they read erased.
-2. The flash IP instance names `library.hex` as its initialization file, so
-   the assembler's auto-generated `design.pof` holds the compressed bitstream
-   in CFM0 and the library in the user range. Changing an image changes only
-   the assembler input: a rerun of `quartus_asm` (seconds), not a fit.
+1. The [builder](../../../tools/n2m/SPEC.md#flash-library-image) assembles
+   the library image `library.hex` (Intel HEX, byte addressed at
+   `4 * (flash_word - 0x00800)`, the 0-based Avalon numbering of the Terms
+   above) from the registered images and the catalogue it produces for the
+   [host loader](../../../tools/n2m/host/SPEC.md) with the same code; every
+   word of the user range is written, empty slots and the reserved range as
+   `0xFFFFFFFF`, so the programmed flash reads exactly what the double reads
+   from the sparse `library.dat`.
+2. The flash IP instance names `library.hex` through the reader's
+   `INIT_FILENAME` parameter, so the assembler's `design.pof` holds the
+   compressed bitstream in CFM0 and the library in the user range; the
+   builder checks the user range of the `.pof` word for word against the
+   assembled image and records the CFM0 bytes used. A changed image changes
+   the build fingerprint, so the builder runs a new attempt rather than an
+   assembler-only rerun.
 3. `fpga program` gains a checked `.pof` path with the same attempt-record
    rules as the `.sof` path, running `quartus_pgm -m jtag` with program and
    verify. Programming replaces the CFM0 image and the user range; the

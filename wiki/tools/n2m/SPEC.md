@@ -38,6 +38,7 @@ python3 tools/build.py tests run --level 0 --tag level0 --json
 python3 tools/build.py tests run --label springtrail --tag springtrail --budget 600 --broader --json
 python3 tools/build.py regress pre-merge --tag pre-merge --json
 python3 tools/build.py regress builder-fault --tag deliberate-aggregate --json
+python3 tools/build.py sw library --tag flash-library --json
 python3 tools/build.py clean --tag deliberate-aggregate --json
 ```
 
@@ -1507,7 +1508,9 @@ reader instantiates `altera_onchip_flash` with the derived parameters itself.
 The record keeps the IP identity under `tools.onchip_flash`, the cache
 requires the staged copies, and the evidence checks `UFM blocks : 1 / 1` and
 the configuration mode assignment under `onchip_flash`. `flash-proof` is the
-bounded fit of that path.
+bounded fit of that path. The same image also carries the
+[flash library](#flash-library-image): the builder assembles `library.hex`
+before the cache check, names it on the reader instance and checks the `.pof`.
 
 The `v05-board` target uses the existing composed system with the physical pins
 in the [system contract](../../src/rtl/system/MAS_system.md). It requires a
@@ -1618,6 +1621,74 @@ nonnegative with zero TNS. The audit requires zero illegal/unconstrained
 clock/input/output setup and hold counts, no ignored SDC assignments, and no
 structural timing problems. Missing/malformed evidence fails rather than passing
 on the tool exit alone. Keep resource totals and all corner slack values.
+
+### Flash library image
+
+The [flash library contract](../../src/rtl/storage/MAS_flash_library.md#flash-layout)
+places slot `i` at flash word `0x00800 + i * 0x2000` and the catalogue at
+`0x22800`, mirroring the SDRAM layout: `flash_word(a) = 0x00800 + (a >> 2)`.
+Its Terms fix the file convention: the IP's Avalon data slave, the Intel HEX
+the assembler reads and the double's `$readmemh` image all number the same
+words from 0, so `avalon_word(a) = flash_word(a) - 0x00800 = a >> 2`, and
+the Intel HEX byte address of slot byte `b` of slot `i` is
+`4 * avalon_word = i * 32768 + b`, the SDRAM device byte address itself.
+[`flash_library.py`](../../../tools/n2m/flash_library.py) owns the assembly;
+[`test_flash_library.py`](../../../tools/n2m/tests/test_flash_library.py)
+checks the first and last word of every slot, the catalogue words, the erased
+fill, the record format and the registry rules.
+
+The registry [`src/fpga/de10_lite/library.json`](../../../src/fpga/de10_lite/library.json)
+has exactly `schema_version: 1`, a nonempty `slots` object mapping decimal
+slot indices `0`-`15` to `src/sw/targets.json` package names, and `menu`, the
+package at index 16. Every package must carry a packaged runtime profile, the
+menu package must run in `dmg-loader-v1` (the contract's `profile == LOADER_ID`
+validity rule), a package may occupy one index only, and each built image must
+be exactly one 32 KiB slot. Today it lists `springtrail`, `stackdrop` and `v05`
+in slots 0-2 and `menu` at 16.
+
+`python tools/build.py sw library --tag <tag> --json` builds every registered
+package through the same `sw build` stages under that tag (cached as usual;
+`--rebuild` forces them), assembles the words with the host loader's own
+catalogue code ([`host/library.py`](../../../tools/n2m/host/library.py)
+`image_entry` and `build_catalogue`, so the flash catalogue and a UART load
+carry identical entry bytes), and writes under
+`workdir/builds/<tag>/sw/library/runs/<attempt>/`:
+
+| File | Content |
+|---|---|
+| `library.hex` | Intel HEX of the whole 736 KiB user range: 16-byte type 00 records, a type 04 extended linear address record at each 64 KiB boundary, one type 01 end record, every record checksummed. Words no image defines are written as `FFFFFFFF`: the assembler fills words a hex leaves undefined between its first and last record with zeros, so the explicit image is what makes the programmed flash read what the double reads. |
+| `library.dat` | The Verilator double's `$readmemh` image: one `@<avalon word> <word>` line (5 and 8 upper-case hex digits) per defined word; undefined words read erased. |
+| `catalogue.bin` | The 1 KiB catalogue bytes at flash word `0x22800` (17 entries, then zero words). |
+| `result.json` | Status, the registry hash, one row per image (index, title, profile ID, CRC-32, flash word, package attempt and image hash) and the three file hashes; mirrored at `sw/library/result.json`. |
+
+No Quartus is needed, so WSL fixtures load the real library through
+`library.dat`. `fpga build` of an image that lists the flash reader runs the
+same assembly as its `Assemble flash library` stage, writes the three files
+into the attempt, adds the registry to the inputs and the file hashes to the
+fingerprint (a changed game image is a new attempt), records the same summary
+under `library`, and generates
+`set_parameter -name INIT_FILENAME "library.hex" -to "<reader instance>"`
+(`fpga_flash.reader_path`, the instance the diagnostic classification already
+names per top) beside the configuration mode. Quartus reports the file as an
+auto-found memory initialization file in `design.map.rpt`. The assembler then
+emits `output/design.pof` beside the `.sof`; both are required evidence of a
+flash image and both are retained with their hashes. `fpga program` still
+writes the `.sof` only; programming the `.pof` is the board check under the
+contract's [programming rules](../../src/rtl/storage/MAS_flash_library.md#programming-the-flash).
+
+The evidence under `onchip_flash` records `init_filename`, the `reader`
+instance and `pof`: the `.pof` holds, after its header, the 736 KiB user range
+then the 672 KiB CFM0, each 32-bit word stored with its bit order reversed
+(`flash_library.pof_words`, observed on Quartus Prime 25.1std). The check
+transforms the whole assembled user range, requires it to occur exactly once
+in the `.pof` (`user_range_match`, `user_range_offset`), and measures CFM0
+from the byte after it: `cfm0_used_bytes` is the last programmed byte,
+`cfm0_programmed_bytes` the count of non-erased bytes and `cfm0_spare_bytes`
+the remainder of 688,128. A `.pof` that ends before CFM0, holds a shifted or
+altered library, or lacks the parameter assignment fails the build; the
+contract states no numeric margin beyond fitting CFM0, so the numbers are
+recorded, not thresholded. The text output names the `.pof` and the CFM0
+usage after the bitstream.
 
 ### Quartus allocator override
 
@@ -1913,6 +1984,8 @@ workdir/builds/<tag>/
 │           ├── design.qsf
 │           ├── audit.tcl
 │           ├── db/
+│           ├── library.hex
+│           ├── library.dat
 │           └── output/
 ├── lint/
 │   └── questa/<attempt>/
@@ -1921,6 +1994,12 @@ workdir/builds/<tag>/
 │       ├── compile.log
 │       └── elaborate-<top>.log
 └── sw/
+    ├── library/
+    │   ├── result.json
+    │   └── runs/<attempt>/
+    │       ├── library.hex
+    │       ├── library.dat
+    │       └── catalogue.bin
     └── <image-name>/
         ├── obj/
         ├── image.gb
@@ -2159,6 +2238,11 @@ including deliberate relocation/checksum mutations. The
 output schemas, placement, entry eligibility, complete cache inventory and
 failure publication. These software commands share the existing tag lock and
 manifest handling and do not claim physical or CPU verification.
+
+`python tools/build.py sw library --tag <tag> --json` builds the packages the
+[flash library registry](#flash-library-image) names and writes the flash
+image files the FPGA build and the Verilator double read; see that section
+for the files, the word convention and the record.
 
 Version-two software targets declare original shade sources and authorship.
 `sw assemble` and `sw build` convert them into immutable ASSET inputs with the

@@ -77,6 +77,9 @@ files into the attempt and sets `INTERNAL_FLASH_UPDATE_MODE "Single Comp
 Image"`; the fit must place `UFM blocks : 1 / 1`. KEY0/B8 is the reset and
 LEDR9-0 show clocking ready, reader ready, a toggle per pass over the user
 range, the pixel-clock heartbeat and the low six bits of a running checksum
-of every line read. The flash is not initialized by this image; reading its
-contents on the board is the later flash boot check under the
+of every line read. The builder also assembles the
+[flash library](../../../wiki/tools/n2m/SPEC.md#flash-library-image) from
+[`library.json`](library.json), names it on `u_reader` and retains the
+`design.pof` holding it; reading the flash contents on the board is the later
+flash boot check under the
 [flash library contract](../../../wiki/src/rtl/storage/MAS_flash_library.md#verification).
