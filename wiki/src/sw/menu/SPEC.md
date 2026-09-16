@@ -60,6 +60,11 @@ paused with no valid image; the menu code cannot run, so the `BAD CRC` word
 is reachable only through the status bytes if the hardware ever reports it
 to a running menu. KEY1 or the host recover as the loader contract states.
 
+A game may offer its own back-to-menu action: a direct-profile write of
+`LIBRARY_GAME_EXIT_VALUE` (`$10`) to `$6000`-`$7FFF` returns to this menu
+exactly like KEY1 ([game exit register](../../rtl/cartridge/MAS_loader_profile.md#game-exit-register)).
+The menu itself is unchanged by it.
+
 ## Memory map usage
 
 | Range | Use |

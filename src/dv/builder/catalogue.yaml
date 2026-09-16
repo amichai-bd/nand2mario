@@ -237,6 +237,7 @@ units:
   joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.42}
   joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.43}
   library-peer: {kind: sim, level: 1, labels: [python-tb, storage], duration_seconds: 59.06}
+  loader-exit: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-host: {kind: sim, level: 1, labels: [cartridge, system], duration_seconds: null}
   loader-key1: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-key1-queue: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}

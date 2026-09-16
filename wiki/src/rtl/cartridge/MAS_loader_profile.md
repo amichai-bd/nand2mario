@@ -21,8 +21,10 @@ The loader profile is our own cartridge behavior for the on-board menu. It
 governs: what the Game Boy CPU sees at `$0000`-`$7FFF` and `$A000`-`$BFFF`
 while the menu runs; the bank and select registers; the copy engine that moves
 a 32 KiB image between [SDRAM](../storage/MAS_sdram.md) and the ROM store; the
-core reset sequence around a swap; image validity; KEY1 return; and the rules
-between this hardware and the [UART endpoint](../uart/MAS_uart.md). It is not
+core reset sequence around a swap; image validity; KEY1 return; the
+[game exit register](#game-exit-register), the one write a direct-profile game
+can make into cartridge space; and the rules between this hardware and the
+[UART endpoint](../uart/MAS_uart.md). It is not
 an MBC and does not run any cartridge not built here. The menu program itself
 is software with its [own specification](../../sw/menu/SPEC.md); this page
 fixes only what hardware gives it.
@@ -184,16 +186,16 @@ The arbiter presents them to the controller as one requester:
 | 7 | `copy_busy` | A window fill or swap is in progress |
 | 6 | `window_ready` | The upper half holds bank `bank` completely; cleared by a bank commit, set when its fill completes |
 | 5 | `sdram_ready` | The SDRAM controller's `initialized` and the [boot copier](../storage/MAS_flash_library.md#boot-copier) past `COPY` (`BOOT` or `DONE`; with erased flash from clock 5070 after reset release) |
-| 4 | `key1_pending` | KEY1 has been held past the debounce threshold and the return is waiting for `copy_busy` to fall (see [KEY1](#key1-return)) |
+| 4 | `key1_pending` | A return (KEY1 held past the threshold, host `LIBRARY_CONTROL` or the [game exit register](#game-exit-register)) is waiting for `copy_busy` to fall (see [KEY1](#key1-return)) |
 | 3 | `flash_boot` | This power-up's library was copied from flash: set on the edge the [boot copier](../storage/MAS_flash_library.md#boot-copier) leaves `COPY`, cleared only by `reset_sys` |
 | 2:0 | 0 | Reserved |
 
 `$A002` result codes: `0` `NONE` (no swap since global reset), `1` `OK`,
-`2` `INVALID_SLOT`, `3` `CRC_MISMATCH`, `4` `NOT_READY` (select or bank commit
-while `sdram_ready` was 0). The code changes on exactly these events: a swap
-ends (`OK` or `CRC_MISMATCH`), a select is refused in step 1
-(`INVALID_SLOT`), or a select or bank commit is refused because
-`sdram_ready` was 0 (`NOT_READY`). A completed fill and an ignored commit
+`2` `INVALID_SLOT`, `3` `CRC_MISMATCH`, `4` `NOT_READY` (select, bank or
+[game exit](#game-exit-register) commit while `sdram_ready` was 0). The code
+changes on exactly these events: a swap ends (`OK` or `CRC_MISMATCH`), a
+select is refused in step 1 (`INVALID_SLOT`), or a select, bank or game exit
+commit is refused because `sdram_ready` was 0 (`NOT_READY`). A completed fill and an ignored commit
 during `copy_busy` leave it unchanged. `$A003` is written with `data` on
 every select commit with `data` in 0-16, including refused ones, so the menu
 can pair a result with the index that produced it.
@@ -256,9 +258,10 @@ still starts with its own presence sweep.
 After a swap into a game, `PROFILE == DIRECT_ID` and the console is
 indistinguishable from a host `LOAD_BEGIN`/`LOAD_END`/`RESET`/`RUN` of the same
 32768 bytes: the direct profile's ROM reads, ignored ROM writes, `$FF`
-absent-cartridge reads and disabled boot mapping apply, and none of the
-loader registers are decoded. The [game specification](../../sw/springtrail/SPEC.md)
-and every existing game fixture remain valid without change. The endpoint's
+absent-cartridge reads and disabled boot mapping apply, and no loader register
+is decoded except the [game exit register](#game-exit-register). The
+[game specification](../../sw/springtrail/SPEC.md) and every existing game
+fixture remain valid without change: none writes `$10` into `$6000`-`$7FFF`. The endpoint's
 `RETIRE`, `DOT`, epoch and snapshot behavior are those of a normal reset.
 
 ### KEY1 return
@@ -285,6 +288,36 @@ cooperation is required and the game sees nothing until it is reset.
 
 Testbenches use the model-independent timing above: a 0.49 s press must not
 return, a 0.51 s press must; a 4 ms glitch must not change the debounced level.
+
+### Game exit register
+
+A direct-profile game may offer its own back-to-menu action. While
+`PROFILE == DIRECT_ID`, a CPU write commit to `$6000`-`$7FFF` with `data ==
+LIBRARY_GAME_EXIT_VALUE` (`$10`, the generated constant beside
+`LIBRARY_MENU_INDEX`) is a return request with exactly the `key1_return`
+rules: it swaps image index 16 in through the select sequence, with the same
+bounds and results; if `copy_busy` is set it sets `key1_pending` and the swap
+starts when `copy_busy` falls, a second request while pending is dropped; in
+a host load session it is dropped. It is refused with result `NOT_READY`
+while `sdram_ready` is 0, like a select commit, and `$A003` is never written
+by it: the return is not a select. The write is the same commit the memory
+owner already resolves and ignores as a direct-profile ROM write, so:
+
+- The register has no read side; `$6000`-`$7FFF` keep reading the ROM store
+  and `$A000`-`$BFFF` keep reading `$FF`.
+- Every other value written to `$6000`-`$7FFF`, and every value written to
+  every other cartridge address, keeps the direct profile's behavior: ignored,
+  with no effect on the game's memory map or on this owner. An MBC1-style mode
+  write of `$00` or `$01` is therefore still harmless.
+- In the loader profile the same bytes are a select of index 16, a legal menu
+  restart ([edge case 3](#edge-cases)); the value is chosen so both profiles
+  share one decode of the select register's address and value.
+
+The address and value are the pinned homebrew images' least likely write: all
+nine are `ROM ONLY` (`$0147 == $00`) and a static scan of their bytes finds
+no store of `$10` into `$6000`-`$7FFF`; a game with an MBC1 mode write uses
+`$00`/`$01`. A game that does write `$10` there returns to the menu, which is
+the register's defined behavior.
 
 ### Host interaction
 
@@ -354,6 +387,9 @@ In priority order:
 7. Host `LOAD_BEGIN` with `profile == LOADER_ID` and a 32768-byte image: the
    loader profile registers become live after `LOAD_END`; the upper half holds
    the image's own bytes until the first bank commit.
+8. [Game exit](#game-exit-register) write committed in the edges between a
+   return event and the core pausing for its swap: `key1_pending`, then a
+   second menu swap follows the first, exactly as a KEY1 event would.
 
 ## Verification
 
@@ -364,7 +400,7 @@ and a CPU bus driver or the real CPU. Fixtures, each within the
 
 Implemented by [`tb_loader`](../../../../src/dv/cartridge/tb_loader.sv) with
 a bus driver in place of the CPU (`loader-map`, `loader-window`,
-`loader-swap`, `loader-swap-host`, `loader-swap-fault`, `loader-key1` at the real thresholds and
+`loader-swap`, `loader-swap-host`, `loader-swap-fault`, `loader-exit`, `loader-key1` at the real thresholds and
 `loader-key1-queue` for the ordering cases at shortened thresholds) and by
 [`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv) with the
 real CPU running a menu program from SDRAM (`loader-host`, `loader-menu`),
@@ -373,13 +409,15 @@ all under the `cartridge` label; the
 
 | Fixture | Checks |
 |---|---|
-| `loader-map` | All 65,536 addresses in `LOADER_ID`: reads and writes route per the [address map](#address-map-in-the-loader-profile); `$FF` window reads while busy; in `DIRECT_ID` the loader registers are absent and the direct rules hold byte for byte |
+| `loader-map` | All 65,536 addresses in `LOADER_ID`: reads and writes route per the [address map](#address-map-in-the-loader-profile); `$FF` window reads while busy; in `DIRECT_ID` the bank and select registers are absent and the direct rules hold byte for byte |
 | `loader-window` | Bank commits 0, 1, 33, 34, 63; upper half equals the SDRAM bank after `window_busy` falls; 40,000-edge bound; ignored commit during busy; `window_ready` and `$A001` |
 | `loader-swap` | Select 0, 15 and 16 with a valid catalogue: pause, `image_valid` low before the first ROM write, CRC, `PROFILE`, epoch + 1, running without host `RUN`; 80,000-edge bound; the ROM store equals the image byte for byte |
 | `loader-swap-host` | A select committed by the menu while a host `RUN_DOTS` runs, and a return requested during a host `STEP`: the host command completes (`STOPPED`, `STEP_LIMIT`), the swap completes within the bound with the expected `PROFILE` and epoch + 1, the console stays paused for the host afterwards and resumes on host `RUN`; the ROM store equals the image |
-| `loader-swap-fault` | Invalid entry, wrong length, bad profile, CRC mismatch: exact result codes, no ROM byte changed and `window_ready` unchanged for refused selects, `window_ready` cleared once the accepted swap pauses the core, paused with `image_valid` 0 for the mismatch |
+| `loader-swap-fault` | Invalid entry, wrong length, bad profile, CRC mismatch: exact result codes, no ROM byte changed and `window_ready` unchanged for refused selects, `window_ready` cleared once the accepted swap pauses the core, paused with `image_valid` 0 for the mismatch; bank, select and game exit commits before `sdram_ready`: `NOT_READY` |
+| `loader-exit` | From a running direct-profile game: writes of other values to `$6000`-`$7FFF` and of `$10` to other cartridge addresses change nothing; the [game exit](#game-exit-register) write returns to the menu (`PROFILE` `LOADER_ID`, epoch + 1, result `OK`, `$A003` unchanged, running without host `RUN`, the ROM store equal to the menu image); the write between a return event and the pause sets `key1_pending` and a second menu swap follows |
 | `loader-key1` | 4 ms glitch, 0.49 s and 0.51 s presses, hold through the swap, press during a swap (`key1_pending`), press in a host session (dropped), release and re-press |
 | `loader-host` | `LOAD_BEGIN` during swap returns `BAD_STATE`; during fill it waits; `SDRAM_WRITE`/`SDRAM_READ` round trips; `LIBRARY_STATUS`; `WRITE_HOST(LIBRARY_CONTROL)` return; a direct host load of a game after a swap behaves as today |
+| `loader-menu` | The real CPU: the menu selects games from the joypad, each boots in `DIRECT_ID` and KEY1 returns; one game exits through the [game exit register](#game-exit-register) by itself, back to the running menu with epoch + 1 |
 
 Named assertions the owner carries:
 
@@ -392,6 +430,7 @@ Named assertions the owner carries:
 | `LOADER_FILL_UPPER_ONLY` | Engine writes during a fill have offset bit 14 set |
 | `LOADER_FILL_HOST_PORT` | Every engine write reaches the ROM store through its host port (port A) and never coincides with a UART load owner write |
 | `LOADER_REGS_ONLY_IN_PROFILE` | A bank or select register effect implies `PROFILE == LOADER_ID` |
+| `LOADER_EXIT_ONLY_IN_DIRECT` | A game exit register effect implies `PROFILE == DIRECT_ID` |
 | `LOADER_SWAP_BOUND` | `copy_busy` for a swap falls within 80,000 edges of rising |
 | `LOADER_FILL_BOUND` | `copy_busy` for a fill falls within 40,000 edges of rising |
 | `LOADER_KEY1_THRESHOLD` | `key1_return` implies the debounced press has lasted exactly 12,500,000 edges |
@@ -413,6 +452,9 @@ The `v05-board` and `v05-controls-board` images carry the SDRAM pins and KEY1
 ([session 3](../../board-bring-up.md#session-3-physical-key1-return-with-the-owner-at-the-board))
 returned from a running game to the menu with the epoch change, result `OK`
 and a pixel-exact menu frame.
+Board proof of the [game exit register](#game-exit-register) (a game returns
+to the menu through the write) is pending a later authorized board session
+([#694](https://github.com/amichai-bd/nand2mario/issues/694)).
 
 ## References
 

@@ -1583,6 +1583,12 @@
         "description": "WRITE_HOST(LIBRARY_CONTROL) value that requests the menu return"
       },
       {
+        "name": "GAME_EXIT_VALUE",
+        "bits": 8,
+        "value": 16,
+        "description": "Direct-profile CPU write value to $6000-$7FFF that requests the menu return; equals MENU_INDEX so both profiles share one select decode"
+      },
+      {
         "name": "KEY1_DEBOUNCE_EDGES",
         "bits": 32,
         "value": 125000,

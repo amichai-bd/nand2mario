@@ -30936,7 +30936,7 @@
       "+fixture=swap-fault"
     ],
     "expected_exit": "zero",
-    "signature": "PASS loader-swap-fault checks=30 swaps=1 fills=1 engine_writes=81920",
+    "signature": "PASS loader-swap-fault checks=31 swaps=1 fills=1 engine_writes=81920",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   },
@@ -31196,7 +31196,7 @@
       "+fixture=menu"
     ],
     "expected_exit": "zero",
-    "signature": "PASS loader-system-menu checks=19 swaps=4 returns=4 commands=18",
+    "signature": "PASS loader-system-menu checks=23 swaps=5 returns=5 commands=21",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   },
@@ -31232,6 +31232,41 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS loader-swap-host checks=5 swaps=2 fills=0 engine_writes=65536",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 300
+  },
+  "loader-exit": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/cartridge/n2m_loader_key1.sv",
+      "src/rtl/cartridge/n2m_storage_arbiter.sv",
+      "src/rtl/cartridge/n2m_rom_port_arbiter.sv",
+      "src/rtl/cartridge/n2m_loader_engine.sv",
+      "src/rtl/cartridge/n2m_loader.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/cartridge/tb_loader.sv"
+    ],
+    "top": "tb_loader",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=exit"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS loader-exit checks=20 swaps=6 fills=0 engine_writes=196608",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   },

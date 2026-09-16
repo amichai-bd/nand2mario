@@ -7,7 +7,8 @@
 // issue #667 goal. Fixtures: `host` (LOAD_BEGIN during a swap and a fill,
 // SDRAM line round trips, LIBRARY_STATUS, the LIBRARY_CONTROL return, a
 // direct host load after a swap, CRC-mismatch recovery), `menu` (the menu
-// selects slots through the joypad, each game boots, KEY1 returns) and the
+// selects slots through the joypad, each game boots, KEY1 returns, and slot
+// 4 exits through the game exit register by itself) and the
 // boot copier fixtures of wiki/src/rtl/storage/MAS_flash_library.md:
 // `flash-copy` (a populated flash double: every SDRAM line equals the flash
 // line, ascending, within the bound, flash_boot, the menu running without a
@@ -140,7 +141,8 @@ module tb_loader_system #(
     end
 
     // The library. Games hold an endless loop at the entry point and their
-    // slot number at $0150; the menu polls the action buttons and selects
+    // slot number at $0150, except slot 4, which writes the game exit value
+    // into $6000 and then loops; the menu polls the action buttons and selects
     // the pressed nibble, refilling window bank 33 while nothing is pressed.
     function automatic logic [7:0] menu_byte(input int offset);
         case (offset)
@@ -160,8 +162,17 @@ module tb_loader_system #(
             default: return 8'h00;
         endcase
     endfunction
+    function automatic logic [7:0] exit_game_byte(input int offset);
+        case (offset)
+            16'h0100: return 8'h3E; 16'h0101: return LIBRARY_GAME_EXIT_VALUE;   // ld a,LIBRARY_GAME_EXIT_VALUE
+            16'h0102: return 8'hEA; 16'h0103: return 8'h00; 16'h0104: return 8'h60; // ld ($6000),a
+            16'h0105: return 8'h18; 16'h0106: return 8'hFE;                        // jr $0105
+            default: return 8'h00;
+        endcase
+    endfunction
     function automatic logic [7:0] image_byte(input int index, input int offset);
         if (index == MENU) return menu_byte(offset);
+        if (index == 4 && offset < 16'h0107) return exit_game_byte(offset);
         if (offset == 16'h0100) return 8'h18;
         if (offset == 16'h0101) return 8'hFE;
         if (offset == 16'h0150) return 8'(index);
@@ -581,6 +592,21 @@ module tb_loader_system #(
             read_host(HOST_REG_PROFILE, PROFILE_LOADER_ID, "menu after return");
             returns = returns + 1;
         end
+        checks = checks + 1;
+        // Slot 4 returns by itself: the real CPU writes the game exit value
+        // into $6000 and the menu is back, running, with no KEY1 and no host.
+        epoch_before = epoch;
+        write_host(HOST_REG_INPUT_SOURCE, INPUT_SOURCE_PHYSICAL, STATUS_OK);
+        press_buttons(8'h40);
+        wait_profile(PROFILE_DIRECT_ID, 600000, "exit game");
+        if (epoch != epoch_before + 1) $fatal(1, "LOADER_SYS_EXIT_GAME_EPOCH epoch=%0d", epoch);
+        wait_profile(PROFILE_LOADER_ID, SWAP_BOUND + 2000, "game exit");
+        if (epoch != epoch_before + 2) $fatal(1, "LOADER_SYS_EXIT_EPOCH epoch=%0d", epoch);
+        press_buttons(8'h00);
+        read_status({2'b0, 6'd33, 8'd4, LIBRARY_RESULT_OK, 8'h20}, 32'h3FFFFF3F, "exit status");
+        read_host(HOST_REG_STATE, STATE_RUN, "menu after exit");
+        swaps = swaps + 1;
+        returns = returns + 1;
         checks = checks + 1;
     endtask
 

@@ -7,7 +7,9 @@
 // CPU ROM writes, serves the status bytes and the $FF window mask to the CPU
 // read path, runs the copy engine, owns the ROM host-port and storage
 // arbiters, detects the KEY1 return and publishes the host LIBRARY_* views.
-// Register effects exist only while PROFILE == LOADER_ID.
+// Register effects exist only while PROFILE == LOADER_ID, except the game
+// exit register: the direct profile's one decoded cartridge write, a return
+// request with the KEY1 rules.
 module n2m_loader #(
     parameter int unsigned KEY1_DEBOUNCE_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_DEBOUNCE_EDGES),
     parameter int unsigned KEY1_HOLD_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_HOLD_EDGES)
@@ -93,7 +95,9 @@ module n2m_loader #(
     output logic [31:0] library_key1
 );
     localparam logic [7:0] LOADER_ID = n2m_interfaces_pkg::PROFILE_LOADER_ID;
+    localparam logic [7:0] DIRECT_ID = n2m_interfaces_pkg::PROFILE_DIRECT_ID;
     logic loader_active, bank_commit, select_commit, select_in_range, commit_accept;
+    logic direct_active, exit_commit, exit_return;
     logic engine_start, engine_busy, engine_done, engine_swap, engine_result_write;
     logic [7:0] engine_result;
     logic engine_sdram_valid, engine_sdram_ready, engine_sdram_response_valid;
@@ -119,10 +123,17 @@ module n2m_loader #(
     assign bank_commit = rom_commit && loader_active && commit_offset[14:13] == 2'b01;
     assign select_in_range = commit_data <= n2m_interfaces_pkg::LIBRARY_MENU_INDEX;
     assign select_commit = rom_commit && loader_active && commit_offset[14:13] == 2'b11 && select_in_range;
+    // Game exit register (MAS_loader_profile.md#game-exit-register): in the
+    // direct profile a write of LIBRARY_GAME_EXIT_VALUE to $6000-$7FFF is a
+    // return request; refused NOT_READY like a select while SDRAM is not ready.
+    assign direct_active = profile == DIRECT_ID;
+    assign exit_commit = rom_commit && direct_active && commit_offset[14:13] == 2'b11 &&
+        commit_data == n2m_interfaces_pkg::LIBRARY_GAME_EXIT_VALUE;
+    assign exit_return = exit_commit && sdram_ready;
     // A host load session excludes the engine; the pending session and an
     // in-flight ROM readback are the endpoint's claim on the port.
     assign commit_accept = !engine_copy_busy && !host_session;
-    assign return_request = key1_event || host_return || boot_return;
+    assign return_request = key1_event || host_return || boot_return || exit_return;
     assign engine_copy_busy = job_valid || engine_busy;
     assign engine_swap_busy = (job_valid && job_swap) || (engine_busy && engine_swap);
     assign copy_busy = engine_copy_busy || copier_busy;
@@ -176,6 +187,8 @@ module n2m_loader #(
                 job_index_next = commit_data[6:0];
             end
         end
+        if (exit_commit && !engine_copy_busy && !sdram_ready)
+            result_next = n2m_interfaces_pkg::LIBRARY_RESULT_NOT_READY;
         // The return is dropped in a host session, queued behind a copy and
         // otherwise starts the menu swap; a second event while queued is dropped.
         if (return_request && !host_session) begin
@@ -269,6 +282,7 @@ module n2m_loader #(
     );
     `N2M_ASSERT(LOADER_REGS_ONLY_IN_PROFILE, clk_sys, reset_sys,
         (bank_commit || select_commit || read_override) |-> profile == LOADER_ID)
+    `N2M_ASSERT(LOADER_EXIT_ONLY_IN_DIRECT, clk_sys, reset_sys, exit_commit |-> profile == DIRECT_ID)
     `N2M_ASSERT(LOADER_SWAP_BOUND, clk_sys, reset_sys,
         engine_copy_busy && engine_swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_EDGES))
     `N2M_ASSERT(LOADER_FILL_BOUND, clk_sys, reset_sys,
