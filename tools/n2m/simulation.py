@@ -1,6 +1,7 @@
 """One self-checking simulation stage with immutable attempt artifacts."""
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import platform
 import re
@@ -10,9 +11,9 @@ import uuid
 
 from .hdl import dependencies
 from .simulator import ToolError
-from .verilator import commands as verilator_commands, diagnostic as verilator_diagnostic, WAVES as VERILATOR_WAVES
-from .questa import commands as questa_commands, diagnostic as questa_diagnostic
-from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
+from .verilator import commands as verilator_commands, diagnostic as verilator_diagnostic, WAVES as VERILATOR_WAVES, prepare_attempt as verilator_prepare
+from .questa import commands as questa_commands, diagnostic as questa_diagnostic, prepare_attempt as questa_prepare
+from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json, release_held_lock, take_lock
 from .progress import Progress, display_path
 from . import intel_adc, intel_memory, python_tb
 from .simulation_peer import Peer
@@ -134,8 +135,8 @@ def publish_mirror(root, mirror, record, log=None):
     atomic_json(mirror / "result.json", mirrored)
 
 
-def simulate(root, build, args, simulator, provenance=None, progress=None):
-    progress = progress or Progress(False)
+def plan(root, args, simulator):
+    """Resolve one request to its target, inputs and fingerprint; no launch."""
     backend = simulator.backend
     target, registry = load_target(root, args.target, backend)
     driver = target.get("driver")
@@ -183,6 +184,117 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
         fixture_tools = tool_identity(root, installation)
         options["fixture_tools"] = fixture_tools
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
+    return {"target": target, "driver": driver, "python_runtime": python_runtime, "peer_config": peer_config,
+            "vendor_model": vendor_model, "hashes": hashes, "options": options,
+            "fixture_tools": fixture_tools, "fingerprint": fingerprint}
+
+
+def prepare_files(backend, root, target, attempt, *, python_runtime=None, fixture_tools=None):
+    """The host-only preparation of one attempt directory: fixtures, images,
+    preload files and macros. No simulator tool runs and no tag lock is held."""
+    if backend == "verilator":
+        verilator_prepare(root, target, attempt, python_runtime=python_runtime, fixture_tools=fixture_tools)
+    else:
+        questa_prepare(root, target, attempt, python_runtime=python_runtime, fixture_tools=fixture_tools)
+
+
+PREPARED_RECORD = "prepared.json"
+ADOPTED_RECORD = "adopted.json"
+
+
+def prepared_files(attempt):
+    """Hash every prepared file; the two records and the prepare lock are not inputs."""
+    excluded = {PREPARED_RECORD, ADOPTED_RECORD, ".lock"}
+    return {p.relative_to(attempt).as_posix(): file_hash(p)
+            for p in sorted(attempt.rglob("*")) if p.is_file() and p.name not in excluded}
+
+
+def prepare(root, build, args, simulator, provenance=None):
+    """Prepare one immutable attempt without the tag lock and publish its receipt.
+
+    The attempt directory holds a pid `.lock` while preparation runs so `clean`
+    does not remove it underneath; the tag `.lock` is never taken, so another
+    command may hold the tag for its licensed or board phase meanwhile.
+    """
+    backend = simulator.backend
+    planned = plan(root, args, simulator)
+    stage = stage_paths(root, build, args.target, backend)[0]
+    attempt_id = uuid.uuid4().hex
+    attempt = stage / "attempts" / attempt_id
+    attempt.mkdir(parents=True)
+    fd = take_lock(attempt / ".lock")
+    started = time.monotonic()
+    record = {"status": "PREPARING", "prepared": attempt_id, "target": args.target, "simulator": backend,
+              "seed": args.seed, "os": platform.system(), "fingerprint": planned["fingerprint"],
+              "inputs": planned["hashes"], "tools": simulator.info, "options": planned["options"],
+              "pid": os.getpid(), "started": datetime.now(timezone.utc).isoformat(),
+              "prepared_record": (attempt / PREPARED_RECORD).relative_to(root).as_posix(),
+              "provenance": provenance or {}}
+    try:
+        os.write(fd, f"pid={os.getpid()}\n".encode())
+        atomic_json(attempt / PREPARED_RECORD, record)
+        try:
+            prepare_files(backend, root, planned["target"], attempt,
+                          python_runtime=planned["python_runtime"], fixture_tools=planned["fixture_tools"])
+            record["status"] = "PREPARED"
+        except Exception as error:
+            record.update(status="FAIL", error=str(error))
+        record["prepare_seconds"] = time.monotonic() - started
+        record["finished"] = datetime.now(timezone.utc).isoformat()
+        record["files"] = prepared_files(attempt)
+        atomic_json(attempt / PREPARED_RECORD, record)
+    finally:
+        release_held_lock(fd, attempt / ".lock")
+    return record
+
+
+def adopt(root, stage, prepared_id, planned, args, simulator):
+    """Admit a prepared attempt under the tag lock, or refuse it by name.
+
+    Every input hash, the fingerprint (tools, options, seed) and every
+    prepared file are compared against the receipt written at preparation.
+    """
+    name = f"prepared attempt {prepared_id}"
+    if not re.fullmatch(r"[0-9a-f]{32}", str(prepared_id)):
+        raise ValueError(f"{name}: not a prepared attempt id")
+    attempt = stage / "attempts" / prepared_id
+    record = read_json(attempt / PREPARED_RECORD)
+    if record.get("status") != "PREPARED":
+        raise ValueError(f"{name}: no complete preparation receipt (status {record.get('status', 'missing')})")
+    if (attempt / ADOPTED_RECORD).exists():
+        raise ValueError(f"{name}: already adopted by an earlier run; prepare again")
+    if (record.get("target"), record.get("simulator"), record.get("seed")) != (args.target, simulator.backend, args.seed):
+        raise ValueError(f"{name}: prepared for {record.get('target')}/{record.get('simulator')} seed {record.get('seed')}")
+    changed = changed_inputs(root, record)
+    if changed:
+        raise ValueError(f"{name} inputs changed: " + ", ".join(changed))
+    if record.get("fingerprint") != planned["fingerprint"]:
+        raise ValueError(f"{name}: tools or options changed since preparation")
+    return attempt, record
+
+
+def changed_inputs(root, record):
+    """Paths whose current hash differs from the preparation receipt: declared
+    inputs first, then prepared files (a missing or extra file counts)."""
+    changed = [path for path, expected in record.get("inputs", {}).items()
+               if not (root / path).is_file() or file_hash(root / path) != expected]
+    attempt = root / Path(record["prepared_record"]).parent
+    current = prepared_files(attempt)
+    expected = record.get("files", {})
+    changed += [f"{attempt.relative_to(root).as_posix()}/{path}"
+                for path in sorted(set(current) | set(expected)) if current.get(path) != expected.get(path)]
+    return changed
+
+
+def simulate(root, build, args, simulator, provenance=None, progress=None, locked_at=None):
+    progress = progress or Progress(False)
+    locked_at = time.monotonic() if locked_at is None else locked_at
+    backend = simulator.backend
+    planned = plan(root, args, simulator)
+    target, driver, python_runtime, peer_config, vendor_model, hashes, options, fixture_tools, fingerprint = (
+        planned[key] for key in ("target", "driver", "python_runtime", "peer_config", "vendor_model",
+                                 "hashes", "options", "fixture_tools", "fingerprint"))
+    prepared_id = getattr(args, "prepared", None)
     stage, mirror, authoritative = stage_paths(root, build, args.target, backend)
     current = stage / "result.json"
     old = read_json(current)
@@ -193,8 +305,15 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
         progress.cached("Run simulation")
         progress.cached("Check simulation result")
         return cached
-    attempt_id = uuid.uuid4().hex
-    attempt = stage / "attempts" / attempt_id
+    prepared = None
+    if prepared_id is not None:
+        # Refused by name before RUNNING is published: a refused adoption
+        # runs nothing and leaves the earlier success invalidated by tagged().
+        attempt, prepared = adopt(root, stage, prepared_id, planned, args, simulator)
+        attempt_id = prepared_id
+    else:
+        attempt_id = uuid.uuid4().hex
+        attempt = stage / "attempts" / attempt_id
     compile_dir = build / "compile" / backend / args.target / attempt_id
     for path in (attempt / "waves", attempt / "coverage", compile_dir):
         path.mkdir(parents=True, exist_ok=True)
@@ -205,7 +324,12 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
               "waves": {"format": "fst" if backend == "verilator" else "wlf",
                         "path": (attempt / (VERILATOR_WAVES if backend == "verilator"
                                              else "waves/simulation.wlf")).relative_to(root).as_posix()},
-              "timing": {"build_seconds": 0.0, "run_seconds": 0.0},
+              "timing": {"prepare_seconds": prepared["prepare_seconds"] if prepared else 0.0,
+                         "build_seconds": 0.0, "run_seconds": 0.0, "locked_seconds": 0.0},
+              "prepared": ({"id": attempt_id, "mode": "adopted", "prepared_started": prepared["started"],
+                            "prepared_finished": prepared["finished"]} if prepared else
+                           {"id": attempt_id, "mode": "inline"}),
+              "lock_acquired": datetime.now(timezone.utc).isoformat(),
               "options": options, "commands": [], "artifacts": {},
               "authoritative_result": authoritative,
               "started": datetime.now(timezone.utc).isoformat(),
@@ -216,10 +340,18 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
     log = compile_dir / "prepare.log"
     active_stage = None
     try:
-        commands = (verilator_commands(simulator, root, target, args.seed, compile_dir, attempt,
+        if prepared:
+            # Single use: a second run must prepare again rather than reuse
+            # files an earlier run already executed beside.
+            atomic_json(attempt / ADOPTED_RECORD, {"adopted": record["started"], "pid": os.getpid()})
+        else:
+            started = time.monotonic()
+            prepare_files(backend, root, target, attempt, python_runtime=python_runtime, fixture_tools=fixture_tools)
+            record["timing"]["prepare_seconds"] = time.monotonic() - started
+        commands = (verilator_commands(simulator, root, target, args.seed, compile_dir, attempt, prepare=False,
                                        python_runtime=python_runtime, fixture_tools=fixture_tools)
                     if backend == "verilator" else
-                    questa_commands(simulator, root, target, args.seed, compile_dir, attempt,
+                    questa_commands(simulator, root, target, args.seed, compile_dir, attempt, prepare=False,
                                     vendor_model=vendor_model, python_runtime=python_runtime,
                                     fixture_tools=fixture_tools))
         for argv, cwd, log, expected in commands:
@@ -360,6 +492,7 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
         if not (attempt / "sim.log").exists():
             (attempt / "sim.log").write_text(str(error) + "\n", encoding="utf-8")
     record["finished"] = datetime.now(timezone.utc).isoformat()
+    record["timing"]["locked_seconds"] = time.monotonic() - locked_at
     artifacts = [p for base in (compile_dir, attempt) for p in base.rglob("*") if p.is_file()]
     record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p) for p in artifacts}
     atomic_json(attempt / "result.json", record)

@@ -204,7 +204,7 @@ def main():
     if argv in (["-tui"], ["--tui"]):
         from n2m.tui import run
         return run()
-    if argv[:2] not in (["sim", "test"], ["sim", "preflight"]):
+    if argv[:2] not in (["sim", "test"], ["sim", "preflight"], ["sim", "prepare"]):
         return worker(argv)
     args = parser().parse_args(argv)
     tag = args.tag
@@ -214,7 +214,9 @@ def main():
     root = Path(__file__).resolve().parents[2]
     command = [sys.executable, str(Path(__file__).resolve()), *argv]
     try:
-        options = {"ceiling": 300} if args.action == "preflight" else {"target": args.target}
+        # Host preparation is not a DUT run: it keeps the ordinary 300 s ceiling
+        # whatever the target's own allowance says.
+        options = {"ceiling": 300} if args.action in ("preflight", "prepare") else {"target": args.target}
         code, output = supervise(command, root, tag, **options)
     except (OSError, ValueError) as error:
         code, output = 1, json.dumps({"status": "FAIL", "error": str(error)}) + "\n"

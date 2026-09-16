@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
 from n2m.records import atomic_json, read_json, valid_tag, workspace
 from n2m.progress import Progress, powershell_command
-from n2m.simulation import simulate
+from n2m.simulation import prepare, simulate
 from n2m.simulator import Simulator, ToolError
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -408,6 +408,118 @@ class BuilderTests(unittest.TestCase):
         text = output.getvalue()
         self.assertIn("[FAIL] Check simulation result", text)
         self.assertNotIn("[PASS] Check simulation result", text)
+
+    def fake_prepare_files(self, backend, root, target, attempt, **_):
+        (attempt / "fixture.bin").write_bytes(b"prepared fixture")
+
+    def test_prepared_attempt_is_adopted_once_under_the_lock_with_split_walls(self):
+        with patch("n2m.simulation.prepare_files", side_effect=self.fake_prepare_files):
+            receipt = prepare(self.root, self.build, self.args, self.sim)
+        self.assertEqual(receipt["status"], "PREPARED")
+        attempt = self.build / "sim/test/builder-smoke/verilator/attempts" / receipt["prepared"]
+        self.assertEqual(receipt["files"], {"fixture.bin": __import__("hashlib").sha256(b"prepared fixture").hexdigest()})
+        self.assertIn("src/dv/builder/builder_smoke.sv", receipt["inputs"])
+        self.assertGreaterEqual(receipt["prepare_seconds"], 0)
+        # No tag lock, no stage record, no prepare lock left behind.
+        self.assertFalse((self.build / ".lock").exists())
+        self.assertFalse((attempt / ".lock").exists())
+        self.assertFalse((self.build / "sim/test/builder-smoke/verilator/result.json").exists())
+        self.assertEqual(json.loads((attempt / "prepared.json").read_text())["status"], "PREPARED")
+
+        self.args.prepared = receipt["prepared"]
+        with patch("n2m.simulation.prepare_files", side_effect=AssertionError("must not prepare again")):
+            record = self.run_stage()
+        self.assertEqual((record["status"], record["cache"]), ("PASS", "BUILT"))
+        self.assertEqual(record["prepared"], {"id": receipt["prepared"], "mode": "adopted",
+                                              "prepared_started": receipt["started"], "prepared_finished": receipt["finished"]})
+        self.assertEqual(record["timing"]["prepare_seconds"], receipt["prepare_seconds"])
+        self.assertEqual(set(record["timing"]), {"prepare_seconds", "build_seconds", "run_seconds", "locked_seconds"})
+        self.assertGreater(record["timing"]["locked_seconds"], 0)
+        self.assertIn("lock_acquired", record)
+        self.assertIn((attempt / "fixture.bin").relative_to(self.root).as_posix(), record["artifacts"])
+        self.assertTrue((attempt / "adopted.json").is_file())
+        self.assertEqual(len(self.sim.calls), 2)
+        # Single use: the same prepared attempt is refused by name afterwards.
+        self.args.rebuild = True
+        with self.assertRaisesRegex(ValueError, f"prepared attempt {receipt['prepared']}: already adopted"):
+            self.run_stage()
+        self.assertEqual(len(self.sim.calls), 2)
+
+    def test_changed_inputs_files_or_request_refuse_the_prepared_attempt(self):
+        with patch("n2m.simulation.prepare_files", side_effect=self.fake_prepare_files):
+            receipt = prepare(self.root, self.build, self.args, self.sim)
+        attempt = self.build / "sim/test/builder-smoke/verilator/attempts" / receipt["prepared"]
+        self.args.prepared = receipt["prepared"]
+        source = self.root / "src/dv/builder/builder_smoke.sv"
+        original = source.read_bytes()
+        source.write_bytes(original + b"\n// edited after preparation\n")
+        with self.assertRaisesRegex(ValueError, "inputs changed: src/dv/builder/builder_smoke.sv"):
+            self.run_stage()
+        source.write_bytes(original)
+        (attempt / "fixture.bin").write_bytes(b"tampered")
+        with self.assertRaisesRegex(ValueError, "inputs changed: .*attempts/.*/fixture.bin"):
+            self.run_stage()
+        (attempt / "fixture.bin").write_bytes(b"prepared fixture")
+        (attempt / "extra.bin").write_bytes(b"added")
+        with self.assertRaisesRegex(ValueError, "inputs changed: .*/extra.bin"):
+            self.run_stage()
+        (attempt / "extra.bin").unlink()
+        self.args.seed = 2
+        with self.assertRaisesRegex(ValueError, "prepared for builder-smoke/verilator seed 1"):
+            self.run_stage()
+        self.args.seed = 1
+        self.sim.info = {**self.sim.info, "tools": {"verilator": {"path": "/other", "version": "Verilator 5.999"}}}
+        with self.assertRaisesRegex(ValueError, "tools or options changed since preparation"):
+            self.run_stage()
+        self.sim.info = FakeSimulator().info
+        incomplete = json.loads((attempt / "prepared.json").read_text())
+        atomic_json(attempt / "prepared.json", {**incomplete, "status": "PREPARING"})
+        with self.assertRaisesRegex(ValueError, "no complete preparation receipt \\(status PREPARING\\)"):
+            self.run_stage()
+        self.args.prepared = "not-an-id"
+        with self.assertRaisesRegex(ValueError, "not a prepared attempt id"):
+            self.run_stage()
+        # Nothing ran and no stage record was published by any refusal.
+        self.assertEqual(self.sim.calls, [])
+        self.assertFalse((self.build / "sim/test/builder-smoke/verilator/result.json").exists())
+        # A failed preparation leaves a FAIL receipt no run can adopt.
+        with patch("n2m.simulation.prepare_files", side_effect=ValueError("fixture build failed")):
+            failed = prepare(self.root, self.build, self.args, self.sim)
+        self.assertEqual((failed["status"], failed["error"]), ("FAIL", "fixture build failed"))
+        self.args.prepared = failed["prepared"]
+        with self.assertRaisesRegex(ValueError, "no complete preparation receipt \\(status FAIL\\)"):
+            self.run_stage()
+
+    def test_cli_prepare_takes_no_tag_lock_and_writes_no_tag_records(self):
+        latest = self.root / "workdir/latest.txt"
+        latest.write_text("elsewhere\n")
+        with patch("n2m.cli.Simulator", return_value=self.sim), patch("n2m.cli.git_state", return_value={}), \
+                patch("n2m.simulation.prepare_files", side_effect=self.fake_prepare_files), \
+                workspace(self.root, "prep") as held, \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            # Another command holds the tag for its whole run; preparation
+            # still completes beside it.
+            self.assertEqual(main(["sim", "prepare", "builder-smoke", "--tag", "prep", "--json"], self.root), 0)
+            self.assertEqual(sorted(p.name for p in held.iterdir()), [".lock", "sim"])
+        report = json.loads(output.getvalue())
+        self.assertEqual((report["status"], report["tag"]), ("PASS", "prep"))
+        self.assertTrue((self.root / report["prepared_record"]).is_file())
+        self.assertEqual(sorted(p.name for p in held.iterdir()), ["sim"])
+        self.assertEqual(latest.read_text(), "elsewhere\n")
+        self.assertEqual(self.sim.calls, [])
+        with patch("n2m.cli.Simulator", return_value=self.sim), patch("n2m.cli.git_state", return_value={}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["sim", "test", "builder-smoke", "--tag", "prep", "--prepared", report["prepared"], "--json"], self.root), 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual((result["status"], result["prepared"]["mode"]), ("PASS", "adopted"))
+        self.assertEqual(read_json(held / "manifest.json")["prepared"]["id"], report["prepared"])
+        with patch("n2m.cli.Simulator", return_value=self.sim), patch("n2m.cli.git_state", return_value={}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["sim", "test", "builder-smoke", "--tag", "prep", "--prepared", report["prepared"], "--rebuild", "--json"], self.root), 1)
+        refused = json.loads(output.getvalue())
+        self.assertIn("already adopted", refused["error"])
+        # The refusal is a stage failure like any preparation failure.
+        self.assertEqual(read_json(held / "sim/test/builder-smoke/verilator/result.json")["status"], "FAIL")
 
     def test_cli_json_has_no_human_progress_and_powershell_quotes_paths(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \

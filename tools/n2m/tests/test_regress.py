@@ -324,6 +324,20 @@ class RegressTests(unittest.TestCase):
         self.assertEqual(outside.read_text(), "keep six")
         self.assertEqual((builds / "sibling/s.txt").read_text(), "s")
 
+    def test_clean_waits_for_a_live_preparation_and_ignores_a_dead_one(self):
+        builds = self.root / "workdir/builds"
+        attempt = builds / "preparing/sim/test/t/verilator/attempts" / ("c" * 32)
+        attempt.mkdir(parents=True)
+        (attempt / ".lock").write_text(f"pid={os.getpid()}\n")
+        with self.assertRaisesRegex(ValueError, "tag preparing has a preparation in progress"):
+            module.clean(self.root, "preparing")
+        self.assertTrue(attempt.is_dir())
+        dead = subprocess.Popen([sys.executable, "-c", "pass"])
+        dead.wait()
+        (attempt / ".lock").write_text(f"pid={dead.pid}\n")
+        self.assertEqual(module.clean(self.root, "preparing")["status"], "PASS")
+        self.assertFalse((builds / "preparing").exists())
+
     def test_clean_refuses_paths_outside_the_tag_and_locked_tags(self):
         outside = self.root / "outside/keep.txt"
         outside.parent.mkdir()

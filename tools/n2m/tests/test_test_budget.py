@@ -303,6 +303,41 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs, {'target': 'mooneye-corrupt'})
         self.assertIn('mooneye-corrupt', run.call_args.args[0])
 
+    def test_public_supervisor_gives_preparation_the_ordinary_ceiling(self):
+        from n2m.test_budget import main
+        with patch('sys.argv', ['tools/build.py', 'sim', 'prepare', 'mooneye-corrupt', '--tag', 'prep']), \
+             patch('n2m.test_budget.supervise', return_value=(0, '{}')) as run, \
+             patch('sys.stdout', new_callable=io.StringIO):
+            self.assertEqual(main(), 0)
+        # A milestone target's 1500 s applies to its run, never to host preparation.
+        self.assertEqual(run.call_args.kwargs, {'ceiling': 300})
+        self.assertIn('prepare', run.call_args.args[0])
+
+    def test_expiry_of_a_preparation_leaves_the_tag_free_and_its_receipt_incomplete(self):
+        # The worker holds exactly what `sim prepare` holds: its attempt's own
+        # pid lock and a PREPARING receipt, never the tag lock. Expiry must
+        # leave the tag free, the attempt lock stale and the receipt unadoptable.
+        tools = str(Path(__file__).resolve().parents[2])
+        attempt = self.root / 'workdir/builds/prep/sim/test/t/verilator/attempts' / ('d' * 32)
+        worker = (f"import os, sys, time, json; sys.path.insert(0, {tools!r}); from pathlib import Path\n"
+                  f"from n2m.records import take_lock, atomic_json\n"
+                  f"attempt = Path({str(attempt)!r}); attempt.mkdir(parents=True)\n"
+                  f"fd = take_lock(attempt / '.lock'); os.write(fd, f'pid={{os.getpid()}}\\n'.encode())\n"
+                  f"atomic_json(attempt / 'prepared.json', {{'status': 'PREPARING'}}); print('preparing', flush=True); time.sleep(30)\n")
+        code, text = supervise([sys.executable, '-c', worker], self.root, 'prep', ceiling=13)
+        self.assertEqual(code, 1)
+        result = json.loads(text)
+        self.assertEqual(result['status'], 'FAIL')
+        self.assertTrue(result['cleanup_complete'])
+        self.assertNotIn('lock_left', result)
+        self.assertNotIn('stale_lock_removed', result)
+        self.assertFalse((self.root / 'workdir/builds/prep/.lock').exists())
+        from n2m.records import stale_lock
+        self.assertTrue(stale_lock(attempt / '.lock'))
+        self.assertEqual(json.loads((attempt / 'prepared.json').read_text())['status'], 'PREPARING')
+        from n2m.regress import clean
+        self.assertEqual(clean(self.root, 'prep')['status'], 'PASS')
+
     def test_registry_and_validator_share_exact_budget(self):
         from n2m.simulation import load_target
         root = Path(__file__).resolve().parents[3]

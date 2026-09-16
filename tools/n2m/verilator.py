@@ -117,19 +117,12 @@ def access_config(top, access=None):
     return "\n".join(lines) + "\n"
 
 
-def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime=None, fixture_tools=None):
-    """Return [(argv, cwd, log, expected_exit)]: one build, one run.
+def prepare_attempt(root, target, attempt, *, python_runtime=None, fixture_tools=None):
+    """Write the host-prepared inputs the run reads from its attempt directory.
 
-    The build verilates and compiles under compiler/obj_dir; the run executes
-    from the attempt so waves, Python traces and the prepared preload files
-    ($readmemh and SIM_INIT_FILE paths are relative to it) land beside the record.
+    This is the host-only phase `sim prepare` performs without the tag lock;
+    it launches no simulator tool.
     """
-    tool = simulator.tools["verilator"]
-    # Source-listed Verilator configuration files (.vlt) carry the target's
-    # lint waivers. They precede the generated access list so both apply.
-    configs = [simulator.path(root / source) for source in target["sources"] if is_verilator_config(source)]
-    sources = [simulator.path(root / source) for source in target["sources"] if not is_verilator_config(source)]
-    driver = "driver" in target
     if python_runtime or target.get("preload") is not None:
         from .python_tb import prepare as prepare_fixture
         prepare_fixture(target, attempt, root, fixture_tools)
@@ -139,6 +132,24 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
         # carries the same ADC.
         from .intel_adc import write_stimulus
         write_stimulus(attempt)
+
+
+def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, python_runtime=None, fixture_tools=None):
+    """Return [(argv, cwd, log, expected_exit)]: one build, one run.
+
+    The build verilates and compiles under compiler/obj_dir; the run executes
+    from the attempt so waves, Python traces and the prepared preload files
+    ($readmemh and SIM_INIT_FILE paths are relative to it) land beside the record.
+    With prepare=False the attempt was already prepared and is left untouched.
+    """
+    tool = simulator.tools["verilator"]
+    # Source-listed Verilator configuration files (.vlt) carry the target's
+    # lint waivers. They precede the generated access list so both apply.
+    configs = [simulator.path(root / source) for source in target["sources"] if is_verilator_config(source)]
+    sources = [simulator.path(root / source) for source in target["sources"] if not is_verilator_config(source)]
+    driver = "driver" in target
+    if prepare:
+        prepare_attempt(root, target, attempt, python_runtime=python_runtime, fixture_tools=fixture_tools)
     if python_runtime:
         # cocotb's own main drives the design and advances to the testbench's
         # next time slot; --timing stays because the Python wrappers and every

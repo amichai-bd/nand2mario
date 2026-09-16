@@ -379,6 +379,7 @@ class TuiTests(unittest.TestCase):
             ("regress",): ["regress", "pre-merge", "--sim", "verilator"],
             ("clean",): ["clean", "--tag", "old-build"],
             ("sim", "test"): ["sim", "test", "builder-smoke", "--sim", "verilator"],
+            ("sim", "prepare"): ["sim", "prepare", "builder-smoke", "--sim", "verilator"],
             ("sim", "preflight"): ["sim", "preflight", "python-joypad"],
             ("fpga", "build"): ["fpga", "build", "v05-board", "--quartus-bin", "tools"],
             ("fpga", "program"): ["fpga", "program", "--sof", "checked.sof", "--quartus-bin", "tools"],

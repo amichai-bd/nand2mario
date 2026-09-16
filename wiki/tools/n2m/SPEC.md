@@ -32,6 +32,8 @@ python3 tools/build.py sim test builder-smoke --tag smoke --seed 1 --json
 python3 tools/build.py sim test builder-smoke --tag smoke --json
 python3 tools/build.py sim test builder-smoke-fail --tag deliberate-failure --json
 python3 tools/build.py sim test builder-smoke --verilator-bin <prefix>/bin --tag smoke --json
+python3 tools/build.py sim prepare preload-fixture --tag smoke --json
+python3 tools/build.py sim test preload-fixture --tag smoke --prepared <attempt-id> --json
 python3 tools/build.py tests validate --json
 python3 tools/build.py tests list --level 0 --json
 python3 tools/build.py tests run --level 0 --tag level0 --json
@@ -742,8 +744,9 @@ with `preload_inputs` now does on the stage.
 
 Beyond the shared fields, a Verilator record carries `simulator`
 (`verilator`), `os`, `seed`, `waves` (`format: fst` and the retained path),
-`timing` with `build_seconds` and `run_seconds` measured separately so the
-compile cost against the wall budget is visible, `elapsed_seconds`,
+`timing` with the four separately measured walls listed under
+[prepared attempts](#prepared-attempts), so the preparation and compile cost
+against the wall budget are visible, `elapsed_seconds`,
 `exit_code` and `timeout_seconds` on each command, `preload` when the
 target declares a fixture, and `peer` plus `python_results` when it declares
 a driver. Measured on WSL: the
@@ -1211,6 +1214,66 @@ Do not kill another author's simulator or change license settings to bypass it.
 
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
 the verification baseline this integration established.
+
+### Prepared attempts
+
+Host preparation of a target (fixture and image build, preload MIF and CRC
+files, the Mooneye fixture build, ADC stimulus, the Questa macro) needs no
+simulator tool and no license. `sim prepare TARGET --tag TAG [--sim B]
+[--seed N]` performs exactly that preparation
+([`simulation.prepare`](../../../tools/n2m/simulation.py)) without taking the
+tag `.lock`, so it runs while another command holds the tag for its compile,
+licensed run or board phase. `sim test TARGET --tag TAG --prepared ID` then
+takes the tag lock and runs compile, simulation and checking from that attempt.
+The default `sim test` without `--prepared` is unchanged: it prepares inline
+under its own lock hold.
+
+This is a split of one target's work, not a queue. The licensed-simulator slot
+and board access remain orchestrator-coordinated as [above](#test-wall-budget);
+nothing waits for a held tag lock, and a second holder is impossible exactly as
+before: the [tag lock rules](#cache-rules) are untouched, and the
+[lock racer](../../../tools/n2m/tests/lock_racer.py) `--adopt` mode proves in
+real processes that two prepared runs on one tag yield one holder and that the
+other is refused by the live-pid rule, not admitted because it was prepared.
+
+Preparation writes only a fresh immutable attempt
+`sim/test/<target>/<backend>/attempts/<id>/` and its receipt `prepared.json`
+there. It never writes the stage `result.json`, `manifest.json`, `status.json`
+or `workdir/latest.txt`; those belong to the tag lock's holder. The attempt
+holds its own `pid=<n>` `.lock` while preparation runs, and `clean --tag`
+refuses a tag whose attempt lock records a live writer (`tag <tag> has a
+preparation in progress`); a dead preparer's lock does not hold the tag. The
+receipt records `PREPARING` first, then `PREPARED` or `FAIL` with the error,
+the target, backend, seed, the same input hash map and fingerprint the
+simulation stage computes (sources, registry, runner modules, fixture inputs,
+tool identity, options), the hash of every prepared file, the preparer pid,
+`started`, `finished` and `prepare_seconds`. `sim prepare` is supervised like
+`sim preflight` under the ordinary 300-second ceiling regardless of the
+target's own allowance; an expired preparation leaves no tag lock, a stale
+attempt lock and an unadoptable `PREPARING` receipt.
+
+The stage cache check precedes adoption: with a valid cached `PASS` of the
+same fingerprint, `sim test --prepared ID` returns `CACHED` and the attempt is
+neither adopted nor refused, so it stays adoptable; `--rebuild` then adopts or
+refuses it. Otherwise adoption happens under the tag lock, before `RUNNING` is
+published and before any tool runs. The stage recomputes every input hash and the fingerprint with
+the tools it discovered and hashes every file now in the attempt; it refuses
+by name a receipt that is not `PREPARED`, an attempt already adopted, a
+different target, backend or seed, any changed, missing or added input or
+prepared file (`prepared attempt <id> inputs changed: <paths>`) and any tool or
+option change (`tools or options changed since preparation`). A refusal runs
+nothing and is published as a stage `FAIL` like any preparation failure. An
+adopted attempt is single use: `adopted.json` marks it and a later `--prepared`
+of the same id is refused; prepare again instead. The existing preload recheck
+immediately before launch still applies.
+
+Every simulation record splits the walls: `timing.prepare_seconds` (inline
+preparation under the lock, or the receipt's value for an adopted attempt),
+`build_seconds`, `run_seconds` and `locked_seconds` from tag lock acquisition
+to record completion; `lock_acquired` and, for an adopted attempt,
+`prepared.prepared_started`/`prepared_finished` place the preparation against
+another run's lock window, so the overlap is measured from receipts rather
+than claimed. `prepared.mode` is `inline` or `adopted`.
 
 ### Regression subsets
 
@@ -2272,6 +2335,8 @@ It is never a cache input. Backend-specific consumers, including regression and
 baseline readers, use the qualified path. Corrupting the generic mirror cannot
 invalidate or impersonate a backend cache; the next cache hit repairs it.
 
+A [prepared attempt](#prepared-attempts) is created under the same attempts
+directory before the run that adopts it, with its `prepared.json` receipt.
 Before execution, the published record becomes `RUNNING`, preventing reuse after
 interruption. Completion publishes `PASS` or `FAIL`; a failed forced rebuild
 invalidates the earlier success for that backend stage and preserves both attempts.
@@ -2313,8 +2378,9 @@ source files. The tag must satisfy the [tag rule](#build-tags), so a path,
 `..` or an absolute name fails validation. The command then resolves
 the directory and refuses a link, a directory whose resolved parent is not
 `workdir/builds/`, a missing tag (`no build tag <tag>`), a tag holding a
-`sim/regress/.lock`, and a tag whose `.lock` records a live or unreadable
-writer; a dead writer's `.lock` does not hold the tag. Links inside the tag
+`sim/regress/.lock`, a tag whose `.lock` records a live or unreadable
+writer, and a tag with a [preparation in progress](#prepared-attempts); a dead
+writer's `.lock` does not hold the tag. Links inside the tag
 are removed as links; their targets are untouched and never counted, so the
 file count and byte total are the tag's own files. When `workdir/latest.txt`
 names the removed tag it is deleted and the result records `latest_cleared`.
