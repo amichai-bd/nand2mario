@@ -80,17 +80,19 @@ the game's own reference frames:
 ## Play from a phone
 
 The live viewer streams actual FPGA pixels over UART to a password-protected
-phone page through a temporary HTTPS tunnel. Tap Game Boy buttons and see queued,
-executing and completed commands below the image. It uses the game already loaded
-on the board and keeps one UART owner for both input and capture.
+phone page through a temporary HTTPS tunnel. It can instead show a no-audio
+Windows camera view of the physical monitor without opening the FPGA or UART.
+Camera controls are a separate explicit opt-in that retains the protected UART
+session. Tap Game Boy buttons and see queued, executing and completed commands
+below the image when controls are enabled.
 
 See [live viewer setup and use](wiki/tools/n2m/host/LIVE_VIEWER.md) for the bounded
 session, controls, freshness indicators and safe shutdown.
 
 <a href="wiki/tools/n2m/host/LIVE_VIEWER.md"><img src="wiki/tools/n2m/host/assets/live-viewer-phone.jpg" width="300" alt="Owner-provided phone screenshot of live FPGA pixels, Game Boy tap buttons and retired command history"></a>
 
-Owner-provided phone capture of the actual FPGA viewer, not a camera view of a
-physical monitor.
+Owner-provided phone capture of the UART-framebuffer viewer, not a camera view
+of a physical monitor.
 
 ## Current system
 
