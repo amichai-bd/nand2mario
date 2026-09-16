@@ -49,5 +49,5 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label menu --tag <tag>`.
-Verilator evidence is preliminary; the board criterion belongs to
-[#681](https://github.com/amichai-bd/nand2mario/issues/681).
+Verilator evidence is preliminary; the board evidence is the
+[game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions).

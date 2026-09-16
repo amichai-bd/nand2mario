@@ -126,11 +126,15 @@ the checkerboard is the review tool's transparency convention, not menu pixels.
 
 ## Verification
 
-Preliminary evidence is the Verilator matrix below; the board criterion
-(menu frame after a host library load, game start from the joypad, KEY1
-return and `SNAPSHOT`/`READ_FRAME` pixel comparison against the reference)
-is proven in [#681](https://github.com/amichai-bd/nand2mario/issues/681),
-which must close before the menu is called complete.
+The Verilator matrix below is the preliminary evidence. The board criterion
+is proven by the [game library sessions](../../board-bring-up.md#game-library-sessions):
+after a host library load the menu frame, the cursor frames after a
+host-injected joypad Down (`host input`), and the menu frame after the return
+from a started game were read back with `SNAPSHOT`/`READ_FRAME` and matched
+`reference.py` pixel for pixel, and a host-injected A started the selected
+slot; the board has no physical joypad. The owner's physical KEY1 hold returned
+from a running game to a pixel-exact menu frame; the host return exercised the
+same swap.
 
 `python tools/build.py sw build menu --tag <tag> --json` builds the image;
 its result records `profile: dmg-loader-v1` and `profile_id: 2`.

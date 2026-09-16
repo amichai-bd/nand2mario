@@ -223,6 +223,174 @@ rejection silent then recovered with unchanged public state and counters. Total
 wall time was 15.3 s, inside the 120 s budget. See the PR for the retained
 run evidence.
 
+## Game library sessions
+
+Three owner-authorized sessions proved the merged game-library slices on the
+board: the host loads the library into SDRAM, the loader profile swaps images
+and resets the core, the menu runs from the fitted volatile bitstream, and every
+frame named below was read back with `SNAPSHOT`/`READ_FRAME` and compared pixel
+for pixel against an independent reference. As everywhere on this page, the
+pixel-exact UART readback is the display proxy; no monitor was attached. The
+[acceptance table](#game-library-acceptance) maps each criterion to its record.
+
+Authorization. On 2026-09-16 the owner pre-authorized the sessions with the
+same scope: the COM7 UART adapter and the onboard USB-Blaster, a volatile
+`.sof` only, no flash programming, readback through `SNAPSHOT`/`READ_FRAME`,
+and pixel comparison against the independent references. On the same day the
+owner accepted Springtrail as the independent reference game for the started
+title frame: the other loaded games start and their frames are retained, but
+no independent title reference exists for them yet. The physical KEY1 press
+was performed by the owner at the board (session 3).
+
+References. Menu frames are compared with
+[`reference.py`](../../src/dv/menu/reference.py), composed from the
+[menu layout rules](sw/menu/SPEC.md#frame-layout) and the catalogue bytes
+that `host library status` retains, never from the ROM or the board. The game
+title is compared with `endurance.expected('title')` from
+[`endurance.py`](../../src/dv/springtrail/endurance.py), the reference the
+[test-card proxy](#heartbeat-and-vga-test-card-proxies) already uses. Each
+comparison was recomputed a second time on a different machine from the copied
+`frame.2bpp` with the same result. Record identifiers below are the host tool's
+record ids under the session build tags; the retained set, its provenance and
+the rendered frames are linked from the closing PR.
+
+### Session 1: direct-profile swaps
+
+The commit had no loader-profile menu image yet, so Springtrail was loaded as
+the index-16 image with the direct profile and the host return
+(`WRITE_HOST(LIBRARY_CONTROL)`, defined by the
+[loader contract](rtl/cartridge/MAS_loader_profile.md#host-interaction) as the
+same swap `key1_return` performs) exercised the SDRAM-to-ROM swap path.
+
+- Git commit: `main` `f84fd1563d3461e63a2972c04784da7dede21465`; the three game
+  packages were built at the same commit (tag `681-sw`).
+- Fit: `v05-board` attempt `cc1736dd1eee` (tag `681-fit`), status `PASS`,
+  build id `772057b833b602fe73cf3ecb9b8892f5`, wire build id
+  `f592889bcb3ecf73fe02b633b8572077` reported by every host record;
+  `design.sof` SHA-256 `786d068e716c24151a008cbd4344b1d84612278c86ec4ef44938fc14304c1a95`;
+  unconstrained paths none, ignored constraints none, worst slack 0.118 ns
+  (fast-corner hold on the system PLL clock).
+- Quartus version: Prime 25.1std.0 Build 1129 SC Lite Edition, for fit and
+  programmer.
+- Programming: `fpga-program/24b1709d76e2`, `quartus_pgm -c 1 -m jtag -o p;<sof>`
+  against `10M50DAF484@1`, "Quartus Prime Programmer was successful. 0 errors,
+  0 warnings", 3 s. An earlier attempt `70d1f09ec525` had programmed the same
+  bitstream successfully, but its record step rejected a relative `.sof` path,
+  so programming was repeated with an absolute path. Board state changed twice.
+- Wiring: the documented UART and JTAG connections above; nothing was rewired.
+
+| Step | Record (tag `681-board`) | Result |
+|---|---|---|
+| `host library load` stackdrop, v05, springtrail, `--menu` springtrail | `library-load/b6823421513b488ea8478ef5093e7713` | 4 images, catalogue `PASS`, `mismatch_count` 0; CRC32 `619fa99f`, `718b0dcb`, `8b564649`, `8b564649` equal the readback |
+| `host library status` | `library-status/a813b74161c242ffb49605ba0b1166d1` | catalogue identical; `LIBRARY_STATUS` `$A000` 0x20 (`sdram_ready`), result `NONE` |
+| Host return from a host-paused console | `write/1c691f97b1064c4d813ecd4db7f3d824` | swap completed: `IMAGE_VALID` 1, `PROFILE` 1, result `OK`; the console stayed `PAUSED` and `host snapshot` reported `NO_FRAME` |
+| `host run`, `host snapshot` | `snapshot/0ee64e6bbc224b8f95246ee565b6b211` | epoch 1; 23040 pixels, 0 mismatches against `expected('title')`, CRC32 `4a3bad02`; frame SHA-256 `2fceba2fa96842903b90bd2bf906235549bf25a556cc3765110b2243a651d605` |
+| Host return while `RUNNING` | `write/6a4cbfff9a01442ba27baf02eb42cb14` | swap completed, result `OK`; the console resumed `RUNNING` without a host `RUN` |
+| `host snapshot` | `snapshot/531ea02744564c7b8fd98bf1a1b3c555` | epoch 2; pixel-exact title frame again, same CRC32 and SHA-256 |
+
+Board state after the session: programmed with the session bitstream, console
+running Springtrail.
+
+### Session 2: menu, host-injected joypad selection and return
+
+- Git commit: `main` `5a79bd91fb80f151583487c79391a3ac7a2c9de0`; packages
+  `menu` (`dmg-loader-v1`, profile id 2, ROM SHA-256
+  `88a2206f209c3e4955098fc0654646270a1c6d12a23f66af339345cb78a33ed2`),
+  `stackdrop`, `springtrail` and `v05` built at the same commit (tag `681b-sw`).
+- Fit: `v05-board` attempt `e315fd07a215` (tag `681b-fit`), status `PASS`,
+  build id `90f7b82be13496042dfabf43106558ee`, wire build id
+  `ee58651043bffa2d049634e12bb8f790` reported by every host record;
+  `design.sof` SHA-256 `957c37062a21cf9c570dbdda86a1c0e369cf9f89943fea09169035e1783aadd6`;
+  unconstrained paths none, ignored constraints none, worst slack 0.152 ns
+  (fast-corner hold on `clk_reference`).
+- Quartus version: Prime 25.1std.0 Build 1129 SC Lite Edition.
+- Programming: `fpga-program/6838f769940a`, the same command against
+  `10M50DAF484@1`, "Quartus Prime Programmer was successful. 0 errors,
+  0 warnings", 4 s. Board state changed once.
+- Wiring: unchanged.
+
+The host records under tag `681b-board` are timestamped 2026-09-15 23:47 to
+23:54 UTC. `host status` right after programming read `IMAGE_VALID` 0,
+`PROFILE` 0 (`status/1f7978ad…`).
+
+| Step | Record (tag `681b-board`) | Result |
+|---|---|---|
+| `host library load` stackdrop, springtrail, v05, `--menu` menu | `library-load/53678d3c561c4d50a7243e870ce3c913` | 4 images, catalogue (1024 bytes at 557056) `PASS`, `mismatch_count` 0; slots 0 `STACKDROP` `619fa99f`, 1 `SPRINGTRAIL` `8b564649`, 2 `V05 BUTTONS` `718b0dcb`, 16 `GAME MENU` profile 2 `ec9c63fe`, each equal to its readback CRC32 |
+| Host return (`WRITE_HOST(LIBRARY_CONTROL)` 1) from the paused console | `write/aaf2124c…`, `status/1b2ac5d1…` | menu swapped in: `IMAGE_VALID` 1, `PROFILE` 2, `STATE` paused |
+| `host run`, `host status`, `host library status` | `run/15846d6f…`, `status/39350634…`, `library-status/db747176d248471494b68699369fbe78` | `STATE` running; `$A000` 0x60 (`window_ready`, `sdram_ready`), result `OK`; catalogue SHA-256 `15fe956cb3b7fa66be36f766873de6f620ceb4c3c42341fcc6f1a4e8887649a3` |
+| Menu frame | `snapshot/ba40d05617a44d5bb05ecff7b94678bc` | epoch 1; pixel-exact `expected('menu')`: 23040 pixels, 0 mismatches, CRC32 `c3753fdc`, frame SHA-256 `373f18d5d978be4762330a11a5f02d36f12ee06f23045dfc0e1fe7b3959b022d`; header, slots 00-15 with the three titles, cursor on 00 |
+| Host-injected joypad Down (`host input --mask 8`, then release) | `input/7b01ef7d…`, `input/d64d6fa2…`, `snapshot/55c55e6b2cd14c7fa1af6b389a3920eb` | pixel-exact `expected('cursor-1')`, CRC32 `b56eb400` |
+| Host-injected joypad A on slot 1 | `input/df5e447e…`, `input/7c8e9359…`, `status/6f375a01…`, `library-status/c05069ef…` | the menu wrote the select register; the loader swapped slot 1: `PROFILE` 1, running, result `OK` index 1 |
+| Started game frame | `snapshot/721995456db14e32a32c57514aa409eb` | epoch 2; pixel-exact Springtrail title, CRC32 `4a3bad02`, frame SHA-256 `2fceba2f…` (the session 1 frame) |
+| Host return | `write/9ab81d26…`, `status/f5cfc9cd…`, `library-status/fd1d2c71bce346e89f867ea0fc4b32dd`, `snapshot/58a8f84a682e4ac29aee4fdd4d90af6b` | menu back: `PROFILE` 2, running without a host `RUN`, epoch 3; pixel-exact menu frame, CRC32 `c3753fdc` |
+| A on slot 0 (stackdrop) | `input/6efdeea9…`, `input/09f60588…`, `status/a5407164…`, `library-status/11477654…`, `snapshot/039c49df10794a58a880cb17ed06cca1` | swap `OK` index 0, epoch 4, running; frame retained (SHA-256 `29fba9b0e546dd5cc1112a8c880a496f94c77bd789b4582b3ec4a0cd077a54ae`), no independent reference |
+| Return, Down, Down | `write/9eeeb1a4…`, four `input/…`, `snapshot/192bfb6a455a4e22bdbfb64404a8b523` | epoch 5; pixel-exact `expected('cursor-2')`, CRC32 `5cdbf106` |
+| A on slot 2 (v05) | `input/70ab916f…`, `input/cefca414…`, `status/455e2da4…`, `library-status/6e21cf8e…`, `snapshot/4f2179d926594923ae19daef8bee40bf` | swap `OK` index 2, epoch 6, running; frame retained (SHA-256 `bc51aaa8ca4c10ff75b9845766eb05094866a150a9707fc0aaf3ae966d041d3f`), no independent reference |
+| Final host return | `write/233e81cb…`, `status/4b90436c…`, `snapshot/6770ea0663564f589be22674ed13a4da` | `PROFILE` 2, epoch 7; pixel-exact menu frame, cursor 0, CRC32 `c3753fdc` |
+
+Board state after the session: programmed with the session bitstream, menu
+running from SDRAM.
+
+Rendered frames, native 160x144 PNGs encoded from the retained `frame.2bpp`
+bytes and published as durable PR attachments (PNG SHA-256 in parentheses):
+[menu after load](https://github.com/user-attachments/assets/97251a2c-9b0c-477e-878a-0cdaa8886399)
+(`2dee0801…`),
+[cursor 1](https://github.com/user-attachments/assets/d1c56c91-5c5f-4b9a-94d3-7256f1e03bd6)
+(`def28b6c…`),
+[Springtrail title](https://github.com/user-attachments/assets/0e462b04-19ad-4d59-8a2b-02289cce1129)
+(`505b95f0…`),
+[menu after return](https://github.com/user-attachments/assets/293026f8-7f83-4e59-a858-4c8f69da60a1)
+(`2dee0801…`, the same bytes as the menu after load),
+[cursor 2](https://github.com/user-attachments/assets/42fb889a-c336-408a-b2c7-75301b4d0a4c)
+(`d3673cd1…`) and
+[final menu](https://github.com/user-attachments/assets/e8f8daaa-90a0-41ca-80f2-a39d7f2b8a82)
+(`2dee0801…`). The diff renders are byte-identical to their frames because no
+pixel differs.
+
+Observation from both sessions: a swap requested while the console is
+host-paused completes (`IMAGE_VALID`, `PROFILE`, epoch and `LIBRARY_STATUS`
+update) but leaves the console paused until the host sends `RUN`; a swap
+requested while running resumes on its own. Both match the
+[core reset sequencing](rtl/cartridge/MAS_loader_profile.md#core-reset-sequencing-and-image-validity)
+of the contract.
+
+### Session 3: physical KEY1 return with the owner at the board
+
+Same bitstream and board state as session 2: `v05-board` from `main`
+`5a79bd91fb80f151583487c79391a3ac7a2c9de0`, build id
+`90f7b82be13496042dfabf43106558ee`, wire build id
+`ee58651043bffa2d049634e12bb8f790` reported by every record; no reprogramming,
+so board state did not change. The owner was present and pressed KEY1
+(`PIN_A7`) by hand; records under tag `681c-key1`, timestamped 2026-09-16
+05:07 to 05:25 UTC. Menu frames are compared as in session 2, with the
+catalogue bytes from the `host library status` record taken beside each
+snapshot; the same catalogue SHA-256 `15fe956c…` as session 2.
+
+| Step | Record (tag `681c-key1`) | Result |
+|---|---|---|
+| Earlier KEY1 presses from the menu | `status/8658981a…`, `library-status/7564086d…`, `snapshot/15d571db01b54b99abc376de4ed3802c` | `PROFILE` 2, running, result `OK`; epoch 12 where session 2 ended at 7, so each press restarted the menu through the return path; pixel-exact menu frame, CRC32 `c3753fdc`, frame SHA-256 `373f18d5…` |
+| Stackdrop running at 05:21 UTC, started from the menu by the owner through the display viewer's own UART session | `status/13de9b2e…`, `library-status/47048d1e…`, `snapshot/357c2afe30b04a06888671796bcfa12e` | `PROFILE` 1, running, result `OK` index 0, `$A000` 0x20; epoch 21 (12 after the earlier presses); no host record of the selection exists under this tag; game frame retained (SHA-256 `c54654fbfe502e02a37434f475b96d9b372847e024bb30d0270dc617fffe3da9`) |
+| Owner held KEY1 about 0.5 s | `status/50713275…`, `library-status/a4b92a33…`, `snapshot/b37001933af141a6abb3c8e68c125b0d` | back in the menu: `PROFILE` 2, `IMAGE_VALID` 1, running, epoch 22, result `OK`, `$A000` 0x60 (`window_ready`, `sdram_ready`); pixel-exact menu frame, 23040 pixels, 0 mismatches, CRC32 `c3753fdc`, frame SHA-256 `373f18d5…`, byte-identical to the session 2 menu frame and its published render |
+
+Between the first two rows the owner's display viewer held the UART port
+(05:09 to 05:21 UTC) and issued the selection that started Stackdrop; it keeps
+no host record under this tag. The four `host input` attempts made in that
+window failed to open the port, changed nothing on the board and are retained
+as failures. The owner also watched the game start and the long press return
+to the menu on the viewer; that observation carries the same limits as the
+[display observation](#display-observation) below.
+
+### Game library acceptance
+
+| Criterion | Evidence | State |
+|---|---|---|
+| Library load with zero mismatches for every slot and the catalogue; `host library status` matches | session 2 `library-load/53678d3c…`, `library-status/db747176…` (and session 1 `library-load/b6823421…`) | proven |
+| Menu frame pixel-exact after a host library load | `snapshot/ba40d056…`, CRC32 `c3753fdc` | proven |
+| Selection of a loaded slot through the host-injected joypad path (`host input`) starts that game | `snapshot/55c55e6b…` (cursor), `library-status/c05069ef…` (swap `OK` index 1), and the slot 0 and slot 2 swaps | proven |
+| Started game title frame pixel-exact | `snapshot/72199545…`, CRC32 `4a3bad02` (Springtrail, the accepted reference game; stackdrop and v05 frames retained without a reference) | proven |
+| Return to the menu with a pixel-exact menu frame | host return `write/9ab81d26…` then `snapshot/58a8f84a…`, and the final return `snapshot/6770ea06…` | proven through the host return |
+| Physical KEY1 hold returns to the menu with a pixel-exact menu frame | session 3 `snapshot/357c2afe…` (Stackdrop running, epoch 21) then the owner's 0.5 s hold and `snapshot/b3700193…` (menu, epoch 22, result `OK`, CRC32 `c3753fdc`); earlier presses `snapshot/15d571db…` | proven, owner present |
+
 ## Display observation
 
 On 2026-09-13 the board owner connected a monitor to the DE10-Lite VGA output,

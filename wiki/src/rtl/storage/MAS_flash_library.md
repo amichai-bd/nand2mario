@@ -12,8 +12,8 @@ and [`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv)
 fixtures, the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit,
 the copier in the `v05-board` image and the builder's
 [library image and `.pof` path](../../../tools/n2m/SPEC.md#flash-library-image).
-The board sessions ([#694](https://github.com/amichai-bd/nand2mario/issues/694),
-[#681](https://github.com/amichai-bd/nand2mario/issues/681)) remain open under
+The flash board session ([#694](https://github.com/amichai-bd/nand2mario/issues/694))
+remains open under
 [#658](https://github.com/amichai-bd/nand2mario/issues/658); the programming
 section below is the contract those slices derive from.
 
@@ -347,8 +347,7 @@ builder feeds the reader's `INIT_FILENAME` and checks the `.pof` for them as
 for `flash-proof`; their audit reports the IP's strobe clock once per timing
 netlist update (seven, against one for `flash-proof`), which the builder
 counts from the audit script. A board check, authorized per slice
-([#694](https://github.com/amichai-bd/nand2mario/issues/694),
-[#681](https://github.com/amichai-bd/nand2mario/issues/681)): program the
+([#694](https://github.com/amichai-bd/nand2mario/issues/694)): program the
 `.pof`, power-cycle without a host, observe the menu; then a host load, then a
 power cycle restoring the flash menu. Until it runs, the copier's and reader's
 evidence is simulation against the double plus the fit; the flash contents
