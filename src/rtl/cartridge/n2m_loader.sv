@@ -274,7 +274,10 @@ module n2m_loader #(
     `N2M_ASSERT(LOADER_FILL_BOUND, clk_sys, reset_sys,
         engine_copy_busy && !engine_swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_FILL_BOUND_EDGES))
     // The copier never overlaps an engine job: the core is paused with an
-    // invalid image until the boot select it requests.
+    // invalid image until the boot select it requests, and the only other
+    // return sources cannot fire first: a KEY1 return needs a 0.5 s hold
+    // against a 32 ms boot, and a host packet cannot complete before
+    // initialized at 115200 baud.
     `N2M_ASSERT(LOADER_COPIER_EXCLUSIVE, clk_sys, reset_sys, !(copier_busy && engine_copy_busy))
     `N2M_ASSERT(LOADER_ENGINE_NOT_IN_SESSION, clk_sys, reset_sys, !(engine_busy && host_loading))
     `N2M_ASSERT(LOADER_ENGINE_START_FREE, clk_sys, reset_sys, engine_start |-> !host_session && !host_port_busy)
