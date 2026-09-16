@@ -116,16 +116,27 @@ def main():
                 if raw != expected:
                     transport.send('FAIL LIBRARY_STATUS_CATALOGUE')
                     raise RuntimeError('host library status read a catalogue differing from the one written')
+                # `host library return`: the whitelisted LIBRARY_CONTROL write on the
+                # wire. This fixture has no loader, so LIBRARY_STATUS reads as the
+                # driven zero word; the testbench counts the endpoint's return pulse.
+                try:
+                    returned = library.return_to_menu(client)
+                except Exception:
+                    transport.send('FAIL LIBRARY_RETURN_REFUSED')
+                    raise
+                if returned['library_status']['word'] != 0 or returned['endpoint']['state_name'] == 'LOADING':
+                    transport.send('FAIL LIBRARY_RETURN_STATUS')
+                    raise RuntimeError('host library return read an unexpected status or endpoint state')
             finally:
                 (args.attempt / 'client.json').write_text(json.dumps({'requests': records}, indent=2) + '\n')
                 (args.attempt / 'library-progress.json').write_text(json.dumps(progress) + '\n')
             (args.attempt / 'library.json').write_text(json.dumps(
-                {'identity': identity, 'load': result, 'status': rows,
+                {'identity': identity, 'load': result, 'status': rows, 'return': returned,
                  'packages': {library.slot_name(i): m for i, (_img, m) in enumerate(slots)} | {'menu': menu[1]}},
                 indent=2) + '\n')
             transport.send('DONE')
     print(f"PASS library peer live Client images={len(slots) + 1} slots={len(slots)} "
-          f"verified={result['images']} status_rows={len(rows)}", flush=True)
+          f"verified={result['images']} status_rows={len(rows)} return={returned['endpoint']['state_name']}", flush=True)
 
 
 if __name__ == '__main__':

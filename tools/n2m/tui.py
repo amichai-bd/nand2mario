@@ -383,8 +383,9 @@ def _host_steps(menu, root, action):
         steps.append(("build", lambda _: _reviewed_build_id(menu, root)))
     if action == "library":
         steps.append(("verb", lambda _: menu.choose("Library action", [
-            Choice("load", "Load one checked package into slot 0 and verify"), Choice("status", "Read the catalogue")])))
-        steps.append(("image", lambda a: "" if a["verb"] == "status" else menu.choose(
+            Choice("load", "Load one checked package into slot 0 and verify"), Choice("status", "Read the catalogue"),
+            Choice("return", "Return to the menu (the host-triggered KEY1 return)")])))
+        steps.append(("image", lambda a: "" if a["verb"] != "load" else menu.choose(
             "Select checked package for slot 0", _named(checked_packages(root)))))
     return steps
 

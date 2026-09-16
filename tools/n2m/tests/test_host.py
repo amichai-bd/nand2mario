@@ -52,6 +52,14 @@ class Endpoint:
         # SDRAM: a sparse line store behind the storage owner's initialized flag.
         self.sdram = {}
         self.sdram_ready = True
+        self.host_writes = []
+
+    def library_status(self):
+        """The loader profile's read-only view: SDRAM ready, no swap yet, index $FF, bank 0."""
+        return 0x00FF0020
+
+    def host_write(self, address, value):
+        """Hook for endpoints that model a writable register; the base fake only records the write."""
 
     def write(self, packet):
         header, payload = decode_packet(packet)
@@ -60,6 +68,15 @@ class Endpoint:
         status, response = abi.STATUS_OK, b''
         if name == 'PING':
             response = pack_record('word', {'value': abi.WIRE_ABI})
+        elif name == 'WRITE_HOST':
+            # WRITE_HOST keeps its `not LOADING` precondition; the whitelist is the client's.
+            if self.state == abi.STATE_LOADING:
+                status = abi.STATUS_BAD_STATE
+            else:
+                fields = unpack_record('write_host', payload)
+                self.host_writes.append((fields['address'], fields['value']))
+                self.host_write(fields['address'], fields['value'])
+                response = pack_record('dot', {'dot': self.dot})
         elif name == 'READ_HOST':
             address = unpack_record('read_host', payload)['address']
             values = {abi.HOST_REG_ABI: abi.WIRE_ABI, abi.HOST_REG_STATE: self.state,
@@ -77,7 +94,7 @@ class Endpoint:
             values[abi.HOST_REG_DOT_LO] = self.dot
             # The loader profile's read-only views: SDRAM ready, no swap yet,
             # index $FF, bank 0; the hold counter idle.
-            values[abi.HOST_REG_LIBRARY_STATUS] = 0x00FF0020
+            values[abi.HOST_REG_LIBRARY_STATUS] = self.library_status()
             values[abi.HOST_REG_LIBRARY_KEY1] = 0
             if address in (abi.HOST_REG_IO_LCD_STATUS, abi.HOST_REG_IO_LY):
                 self.line = (self.line + 7) % 154

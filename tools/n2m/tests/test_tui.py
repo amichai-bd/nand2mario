@@ -399,8 +399,9 @@ class TuiTests(unittest.TestCase):
         for action in tui.command_actions(("host",)):
             argv = [*host_base, action, "--uart-port", "COM7"]
             if action == "library":
-                # Both leaves; the plan path names the leaf so advanced options come from it.
-                for verb, extra in (("status", []), ("load", ["workdir/builds/x/sw/build/t/runs/0123456789ab/result.json"])):
+                # Every leaf; the plan path names the leaf so advanced options come from it.
+                for verb, extra in (("status", []), ("return", []),
+                                    ("load", ["workdir/builds/x/sw/build/t/runs/0123456789ab/result.json"])):
                     argv = [*host_base, action, verb, *extra, "--uart-port", "COM7"]
                     samples[("host", action, verb)] = argv
                 continue
@@ -423,7 +424,7 @@ class TuiTests(unittest.TestCase):
             samples[("host", action)] = argv
         expected = {(family, action) for family in ("sim", "fpga", "lint", "tests", "sw", "host")
                     for action in tui.command_actions((family,)) if (family, action) != ("host", "library")}
-        expected |= {("host", "library", "load"), ("host", "library", "status")}
+        expected |= {("host", "library", "load"), ("host", "library", "status"), ("host", "library", "return")}
         expected |= {("doctor",), ("check",), ("regress",), ("clean",)}
         self.assertEqual(set(samples), expected)
         from n2m.cli import parser
@@ -451,6 +452,31 @@ class TuiTests(unittest.TestCase):
         self.assertEqual((argv, path), (["host", "library", "status", "--uart-port", "COM7"], ("host", "library", "status")))
         tui.validate_plan(tui.Plan(argv, path, "Windows PowerShell", "test"))
         self.assertNotIn("menu", {action.dest for action in tui._leaf_parser(tui.Plan(argv, path, "x", "y"))._actions})
+        # The return verb takes no image; its leaf offers --wait beside the session options.
+        argv, path = tui._host_argv("library", {"uart": "COM7", "verb": "return", "image": ""})
+        self.assertEqual((argv, path), (["host", "library", "return", "--uart-port", "COM7"], ("host", "library", "return")))
+        tui.validate_plan(tui.Plan(argv, path, "Windows PowerShell", "test"))
+        options = {action.dest for action in tui._leaf_parser(tui.Plan(argv, path, "x", "y"))._actions}
+        self.assertIn("wait", options)
+        self.assertIn("endpoint_restarted", options)
+        self.assertNotIn("menu", options)
+
+    def test_library_verb_step_asks_for_an_image_only_for_load(self):
+        class Menu:
+            def __init__(self, verb):
+                self.verb = verb
+            def choose(self, title, choices):
+                if title == "Library action":
+                    self.assertion = [choice.value for choice in choices]
+                    return self.verb
+                return "chosen-package"
+        for verb, image in (("return", ""), ("status", ""), ("load", "chosen-package")):
+            with self.subTest(verb=verb):
+                menu = Menu(verb)
+                steps = dict(tui._host_steps(menu, ROOT, "library"))
+                answers = {"verb": steps["verb"](None)}
+                self.assertEqual(menu.assertion, ["load", "status", "return"])
+                self.assertEqual(steps["image"](answers), image)
 
     def test_launcher_uses_its_parser_and_contract_before_review(self):
         from gb_launcher import parse_args

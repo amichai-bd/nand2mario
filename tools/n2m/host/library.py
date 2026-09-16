@@ -199,6 +199,66 @@ def decode_library_status(word):
             'result': RESULT_NAMES.get(a002, 'UNKNOWN')}
 
 
+# Endpoint STATE and response status names, from the generated table.
+STATE_NAMES = {abi.STATE_PAUSED: 'PAUSED', abi.STATE_RUNNING: 'RUNNING', abi.STATE_LOADING: 'LOADING'}
+STATUS_NAMES = {getattr(abi, key): key[len('STATUS_'):] for key in vars(abi) if key.startswith('STATUS_')}
+# The menu swap lasts at most 3.2 ms (MAS_loader_profile.md#host-interaction);
+# one READ_HOST round trip at 115200 baud already takes longer, so this many
+# status reads bound `--wait` far beyond a healthy swap without a wall clock.
+RETURN_STATUS_READS = 64
+
+
+def read_endpoint(client):
+    """STATE by name with its number, PROFILE and IMAGE_VALID: the host `status` view after a swap."""
+    state = client.read_host(abi.HOST_REG_STATE)
+    return {'STATE': state, 'state_name': STATE_NAMES.get(state, 'UNKNOWN'),
+            'PROFILE': client.read_host(abi.HOST_REG_PROFILE), 'IMAGE_VALID': client.read_host(abi.HOST_REG_IMAGE_VALID)}
+
+
+def return_to_menu(client, *, wait=False):
+    """The host-triggered menu return: WRITE_HOST(LIBRARY_CONTROL) = LIBRARY_CONTROL_RETURN.
+
+    The write behaves exactly like `key1_return` and is accepted in PAUSED and
+    RUNNING only, so a LOADING endpoint is refused by name before anything is
+    sent; a BAD_STATE reply is reported by name too. LIBRARY_STATUS is read once
+    after the write, or with ``wait`` until `copy_busy` and `key1_pending` clear
+    within RETURN_STATUS_READS reads. The record carries the decoded status and
+    the endpoint STATE/PROFILE/IMAGE_VALID after the return; the caller decides
+    what the result code means.
+    """
+    from .client import RejectedCommand
+    before = read_endpoint(client)
+    if before['STATE'] != abi.STATE_PAUSED and before['STATE'] != abi.STATE_RUNNING:
+        raise ValueError(f"library return refused: endpoint is {before['state_name']}, not PAUSED or RUNNING")
+    try:
+        control = client.write_host(abi.HOST_REG_LIBRARY_CONTROL, abi.LIBRARY_CONTROL_RETURN)
+    except RejectedCommand as error:
+        raise ValueError(f'library return rejected by the endpoint: {STATUS_NAMES.get(error.status, error.status)}') from error
+    reads = 0
+    while True:
+        status = decode_library_status(client.read_host(abi.HOST_REG_LIBRARY_STATUS))
+        reads += 1
+        settled = not ({'copy_busy', 'key1_pending'} & set(status['flags']))
+        if settled or not wait or reads >= RETURN_STATUS_READS:
+            break
+    after = read_endpoint(client)
+    result = {'control': control, 'library_status': status, 'endpoint': after, 'before': before,
+              'status_reads': reads, 'settled': settled}
+    if wait and not settled:
+        raise ValueError(f'library return did not settle within {reads} status reads: '
+                         f"flags {status['flags']}, result {status['result']}")
+    return result
+
+
+def format_return(result):
+    """One text summary of a return record."""
+    status = result['library_status']
+    flags = ','.join(status['flags']) or '-'
+    return (f"library return: result {status['result']} flags {flags} bank {status['bank']}; "
+            f"endpoint {result['endpoint']['state_name']} profile {result['endpoint']['PROFILE']} "
+            f"image_valid {result['endpoint']['IMAGE_VALID']} after {result['status_reads']} status read(s)")
+
+
 def format_table(rows, verified=False):
     """Fixed-column text of the library table."""
     header = ['index', 'name', 'valid', 'profile', 'length', 'crc32', 'title']
