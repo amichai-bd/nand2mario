@@ -8,8 +8,10 @@
 // preload writes menu-library.hex (the SDRAM bytes) and menu-frames.hex
 // (the scripted reference frames) into the attempt directory.
 // Fixtures: `frame` (boot frame, Down, Down, Up), `select` (Down, A: the
-// select register receives 1 and the game boots) and `refused` (A on the
-// empty slot 3 shows SLOT 03 INVALID, Up, A starts slot 2).
+// select register receives 1 and the game boots), `refused` (A on the
+// empty slot 3 shows SLOT 03 INVALID, Up, A starts slot 2) and `select-mbc1`
+// (five Downs to the 64 KiB MBC1 entry in slots 5-6, A: the game boots in
+// MBC1_ID, runs from its banked half and returns to the menu by itself).
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
 /* verilator lint_off WIDTHTRUNC */
@@ -17,8 +19,10 @@ module tb_menu_system;
     import n2m_interfaces_pkg::*;
     localparam int LIBRARY_BYTES = 32'h8C000;
     localparam int FRAME_PIXELS = 23040;
-    localparam int FRAMES = 6;
+    localparam int FRAMES = 7;
     localparam int SWAP_BOUND = 80000;
+    localparam int SWAP_BOUND_MBC1 = 120000;
+    localparam int MBC1_SLOT = 5;
     localparam logic [7:0] STATE_PAUSE = STATE_PAUSED;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
@@ -307,17 +311,17 @@ module tb_menu_system;
         press_buttons(8'h00);
         check_frame(index);
     endtask
-    // A on the cursor: the select register receives `slot` and the game boots.
-    task automatic select_game(input logic [7:0] slot);
+    // A on the cursor: the select register receives `slot` and the game boots in `game_profile`.
+    task automatic select_game(input logic [7:0] slot, input logic [7:0] game_profile);
         logic [31:0] epoch_before;
         epoch_before = epoch;
         select_seen = 0;
         frame_start(1200000);
         press_buttons(BUTTON_A);
-        wait_profile(PROFILE_DIRECT_ID, 1200000, "game");
+        wait_profile(game_profile, 1200000, "game");
         if (!select_seen || select_data != slot) $fatal(1, "MENU_SYS_SELECT expected=%0d seen=%b data=%0d", slot, select_seen, select_data);
         if (epoch != epoch_before + 1) $fatal(1, "MENU_SYS_GAME_EPOCH slot=%0d", slot);
-        read_host(HOST_REG_PROFILE, PROFILE_DIRECT_ID);
+        read_host(HOST_REG_PROFILE, game_profile);
         // The swap cleared window_ready; the bank register keeps 34.
         read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd34, 8'(slot), LIBRARY_RESULT_OK, 8'h20});
         press_buttons(8'h00);
@@ -357,7 +361,44 @@ module tb_menu_system;
     task automatic fixture_select;
         boot_menu();
         step(BUTTON_DOWN, 1);
-        select_game(8'd1);
+        select_game(8'd1, PROFILE_DIRECT_ID);
+    endtask
+
+    // The 64 KiB MBC1 entry: listed once at slot 5 (slot 6 blank), it boots
+    // in MBC1_ID and its bank 2 code returns to the menu through the exit
+    // register; the restarted menu runs in LOADER_ID with the index kept.
+    task automatic fixture_select_mbc1;
+        int edges;
+        logic [31:0] epoch_before;
+        boot_menu();
+        for (edges = 1; edges < MBC1_SLOT; edges = edges + 1) begin
+            frame_start(1200000);
+            press_buttons(BUTTON_DOWN);
+            frame_start(1200000);
+            press_buttons(8'h00);
+        end
+        step(BUTTON_DOWN, 6);
+        // A: the select carries 5 and the game boots in MBC1_ID. Its bank 2
+        // exits within a few instructions, so the host reads wait for the
+        // menu to be back instead of racing the return.
+        epoch_before = epoch;
+        select_seen = 0;
+        frame_start(1200000);
+        press_buttons(BUTTON_A);
+        wait_profile(PROFILE_MBC1_ID, 1200000, "mbc1 game");
+        if (!select_seen || select_data != MBC1_SLOT) $fatal(1, "MENU_SYS_SELECT expected=%0d seen=%b data=%0d", MBC1_SLOT, select_seen, select_data);
+        if (epoch != epoch_before + 1) $fatal(1, "MENU_SYS_GAME_EPOCH slot=%0d", MBC1_SLOT);
+        press_buttons(8'h00);
+        selects = selects + 1;
+        checks = checks + 1;
+        $display("MENU_SYS select=%0d booted time_ns=%0t", MBC1_SLOT, $time);
+        wait_profile(PROFILE_LOADER_ID, SWAP_BOUND + 20000, "mbc1 exit");
+        if (epoch != epoch_before + 2) $fatal(1, "MENU_SYS_MBC1_EXIT_EPOCH epoch=%0d", epoch);
+        // The exit is not a select commit, so $A003 keeps 5; the restarted
+        // menu refills bank 34, so the two window bits are masked.
+        read_status({2'b0, 6'd34, 8'(MBC1_SLOT), LIBRARY_RESULT_OK, 8'h20}, 32'h3FFFFF3F);
+        read_host(HOST_REG_STATE, STATE_RUNNING);
+        checks = checks + 1;
     endtask
 
     task automatic fixture_refused;
@@ -370,7 +411,7 @@ module tb_menu_system;
         step(BUTTON_A, 4);
         read_status({2'b0, 6'd34, 8'd3, LIBRARY_RESULT_INVALID_SLOT, 8'h60}, 32'h3FFFFFFF);
         step(BUTTON_UP, 5);
-        select_game(8'd2);
+        select_game(8'd2, PROFILE_DIRECT_ID);
     endtask
 
     initial begin
@@ -395,6 +436,7 @@ module tb_menu_system;
             "frame": fixture_frame();
             "select": fixture_select();
             "refused": fixture_refused();
+            "select-mbc1": fixture_select_mbc1();
             default: $fatal(1, "MENU_SYS_FIXTURE %s", fixture);
         endcase
         $display("PASS menu-%s checks=%0d frames=%0d selects=%0d commands=%0d", fixture, checks, frames_checked, selects, command_count);

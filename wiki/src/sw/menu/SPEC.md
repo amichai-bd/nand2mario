@@ -53,7 +53,10 @@ any other entry is drawn as its slot number with a blank title. The cursor
 visits every slot, so selecting an empty one is how the player sees
 `INVALID_SLOT`. Length and profile are the engine's checks: a `valid` entry
 with a wrong length is listed and its selection is refused with the same
-result. The menu does not look at the `crc32` or `length` fields.
+result. The menu does not look at the `crc32` or `length` fields. A 64 KiB
+MBC1 image has one entry at the first of its two slots and an empty entry at
+the second, so the menu lists it once and shows the second slot's number with
+a blank title.
 
 Selecting a slot whose image copies but fails the CRC leaves the console
 paused with no valid image; the menu code cannot run, so the `BAD CRC` word
@@ -162,9 +165,11 @@ with `host library status` and passes its rows.
 
 [`fixture.py`](../../../../src/dv/menu/fixture.py) is the registered `menu`
 preload builder: it builds the image, lays out a library with stub games in
-slots 0, 1, 2, 5, 6, 7, 8 and 15 (slot 6 carries the CGB flag `$80` and
-slot 8 the CGB-only flag `$C0` in header `$0143`), an empty slot 3, a valid
-entry with a foreign length in slot 4 and the menu at 16, and writes
+slots 0, 1, 2, 7, 8, 9, 10 and 15 (slot 10 carries the CGB flag `$80` and
+slot 8 the CGB-only flag `$C0` in header `$0143`), a 64 KiB MBC1 stub game
+in slots 5-6 whose bank 2 returns through the game exit register, an empty
+slot 3, a valid entry with a foreign length in slot 4 and the menu at 16,
+and writes
 `menu-library.hex` and the scripted
 `menu-frames.hex` for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 runs the real `n2m_v05_system` with the SDRAM controller and device model,
@@ -176,6 +181,7 @@ compares every captured display-eligible frame; the
 |---|---|
 | `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a repeated Up at slot 0 change nothing (each step is one sampled press; a hold across frames is not simulated) |
 | `menu-select` | Down then A commits 1 to the select register; the game boots in `DIRECT_ID` with epoch + 1 and `LIBRARY_STATUS` result `OK` index 1 |
+| `menu-select-mbc1` | Five Downs reach the 64 KiB entry listed once at slot 5 (pixel-exact frame, slot 6 blank); A commits 5 and the game boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; its bank 2 code returns to the menu through the game exit register (epoch + 2, index still 5, the menu running in `LOADER_ID`) |
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |

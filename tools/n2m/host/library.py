@@ -1,16 +1,19 @@
 """The sixteen-slot SDRAM game library: slots, menu image, catalogue and verification.
 
 Layout owner: wiki/src/rtl/storage/MAS_sdram.md#address-space-layout. Slot i
-is one complete image at i * SLOT_BYTES; MENU_INDEX is the menu image; the
-catalogue is CATALOGUE_ENTRIES records of ENTRY_BYTES at CATALOGUE_ADDRESS,
-little-endian, and the remainder of its 1 KiB region is zero. The copy engine
-compares CRC-32/ISO-HDLC over the whole image with the catalogue crc32, so the
-host verifies the same quantity after writing.
+starts at i * SLOT_BYTES; a 32 KiB image fills one slot and a 64 KiB MBC1
+image fills slots i and i + 1 with one catalogue entry at i and an empty entry
+at i + 1. MENU_INDEX is the menu image; the catalogue is CATALOGUE_ENTRIES
+records of ENTRY_BYTES at CATALOGUE_ADDRESS, little-endian, and the remainder
+of its 1 KiB region is zero. An entry's length is 24 bits, the 16-bit
+``length`` word plus ``length_high``, and equals its profile's image length.
+The copy engine compares CRC-32/ISO-HDLC over the whole image with the
+catalogue crc32, so the host verifies the same quantity after writing.
 """
 import zlib
 
 from .. import generated_interfaces as abi
-from ..profiles import PROFILE_IDS as PACKAGE_PROFILE_IDS, IMAGE_BYTES, LOADER_PROFILE_NAME
+from ..profiles import PROFILE_IDS as PACKAGE_PROFILE_IDS, PROFILE_IMAGE_BYTES, LOADER_PROFILE_NAME
 from ..interface_codec import SDRAM_LINE, pack_record, unpack_record
 
 # Every number below comes from cfg/interfaces.json through the generated
@@ -22,10 +25,15 @@ IMAGE_COUNT = abi.LIBRARY_CATALOGUE_ENTRIES
 CATALOGUE_ADDRESS = abi.LIBRARY_CATALOGUE_ADDRESS
 ENTRY_BYTES = abi.LIBRARY_ENTRY_BYTES
 VALID = abi.LIBRARY_CATALOGUE_VALID
+# Exact image length of each profile ID the library carries, from the one
+# profile table: the direct and loader images are one slot, the MBC1 image
+# two. The copy engine accepts an entry only when its length is this value.
+PROFILE_BYTES = dict(PROFILE_IMAGE_BYTES)
 # The catalogue_entry record: valid 0 is an empty slot; the title fields carry
 # header bytes 0x0134-0x0143 verbatim, split into two little-endian words.
 EMPTY = 0
 ENTRY_FIELDS = {field['name']: field['bits'] // 8 for field in abi.RECORDS['catalogue_entry']}
+LENGTH_LOW_BITS = ENTRY_FIELDS['length'] * 8
 TITLE_START = 0x134
 TITLE_BYTES = ENTRY_FIELDS['title_low'] + ENTRY_FIELDS['title_high']
 # The layout reserves one 1 KiB region for the catalogue (entries then zero
@@ -36,10 +44,9 @@ CATALOGUE_BYTES = 1024
 # Package profile name to the generated profile ID the image runs in: the
 # packager's own table, so the catalogue never carries a name it did not
 # build. The menu image names LOADER_PROFILE_NAME and its entry carries
-# LOADER_ID; the contract accepts either ID at MENU_INDEX.
-# Only the profiles whose image is one slot: the 64 KiB MBC1 profile is refused
-# by name until the library carries it (#712).
-PROFILE_IDS = {name: value for name, value in PACKAGE_PROFILE_IDS.items() if IMAGE_BYTES[name] == SLOT_BYTES}
+# LOADER_ID; the contract accepts either ID at MENU_INDEX. Every profile of
+# the table is carried: one slot for the 32 KiB profiles, two for MBC1.
+PROFILE_IDS = dict(PACKAGE_PROFILE_IDS)
 
 # LIBRARY_STATUS word fields and names; layout per the loader profile's host
 # interaction rule: $A000 in bits 7:0, $A002 in 15:8, $A003 in 23:16, bank in 29:24.
@@ -61,41 +68,74 @@ def slot_address(index):
     return index * SLOT_BYTES
 
 
+def image_slots(length):
+    """Slots an image of ``length`` bytes occupies: one per SLOT_BYTES."""
+    return -(-length // SLOT_BYTES)
+
+
+def slot_range(index, length):
+    """The slot indices an image of ``length`` bytes at ``index`` fills; it must stay inside the game slots or be the menu."""
+    last = index + image_slots(length) - 1
+    if index == MENU_INDEX:
+        limit = MENU_INDEX
+    else:
+        limit = GAME_SLOTS - 1
+    if last > limit:
+        raise ValueError(f'a {length}-byte image at {slot_name(index)} would spill past {slot_name(limit)}')
+    return range(index, last + 1)
+
+
 def profile_id(name):
     if name not in PROFILE_IDS:
         raise ValueError(f'library refuses images of profile {name!r}')
     return PROFILE_IDS[name]
 
 
-def image_entry(image, profile, fallback_title=None):
-    """The catalogue entry describing one complete slot image.
+def profile_bytes(profile):
+    """The exact image length of a profile ID the library carries."""
+    if profile not in PROFILE_BYTES:
+        raise ValueError(f'library refuses images of profile ID {profile}')
+    return PROFILE_BYTES[profile]
 
-    The title is header bytes 0x134-0x143 verbatim. Only when every one of them
-    is zero does ``fallback_title`` (a pinned display title, at most 16 ASCII
-    bytes) stand in; a non-blank header is never overridden. Every catalogue
-    writer goes through here, so a flash image and a UART load agree.
+
+def image_entry(image, profile, fallback_title=None):
+    """The catalogue entry describing one complete image of ``profile``.
+
+    The image is exactly its profile's length: one slot for DIRECT_ID and
+    LOADER_ID, MBC1_ROM_BYTES (two slots) for MBC1_ID. The title is header bytes 0x134-0x143
+    verbatim. Only when every one of them is zero does ``fallback_title`` (a
+    pinned display title, at most 16 ASCII bytes) stand in; a non-blank header
+    is never overridden. Every catalogue writer goes through here, so a flash
+    image and a UART load agree.
     """
     image = bytes(image)
-    if len(image) != SLOT_BYTES:
-        raise ValueError(f'library image must be exactly one {SLOT_BYTES}-byte slot')
+    expected = profile_bytes(profile)
+    if len(image) != expected:
+        raise ValueError(f'a profile {profile} library image must be exactly {expected} bytes')
     title = image[TITLE_START:TITLE_START + TITLE_BYTES]
     if fallback_title is not None and not any(title):
         fallback_title = bytes(fallback_title)
         if not 0 < len(fallback_title) <= TITLE_BYTES:
             raise ValueError(f'fallback title must be 1..{TITLE_BYTES} bytes')
         title = fallback_title.ljust(TITLE_BYTES, b'\0')
-    return {'valid': VALID, 'profile': profile, 'length': SLOT_BYTES, 'crc32': zlib.crc32(image), 'title': title}
+    return {'valid': VALID, 'profile': profile, 'length': len(image), 'crc32': zlib.crc32(image), 'title': title}
 
 
 EMPTY_ENTRY = {'valid': EMPTY, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(TITLE_BYTES)}
 
 
 def pack_entry(entry):
-    """One generated catalogue_entry record; the title is padded or cut to its field width."""
+    """One generated catalogue_entry record; the title is padded or cut to its field width.
+
+    The length splits into the 16-bit ``length`` word and ``length_high``
+    (bits 23:16), so a 32 KiB entry packs exactly as it always did and a
+    64 KiB entry carries 0 and 1.
+    """
     title = bytes(entry['title'])[:TITLE_BYTES].ljust(TITLE_BYTES, b'\0')
     low = ENTRY_FIELDS['title_low']
     return pack_record('catalogue_entry', {
-        'valid': entry['valid'], 'profile': entry['profile'], 'length': entry['length'], 'crc32': entry['crc32'],
+        'valid': entry['valid'], 'profile': entry['profile'], 'length': entry['length'] & ((1 << LENGTH_LOW_BITS) - 1),
+        'length_high': entry['length'] >> LENGTH_LOW_BITS, 'crc32': entry['crc32'],
         'title_low': int.from_bytes(title[:low], 'little'), 'title_high': int.from_bytes(title[low:], 'little'),
         'reserved': 0})
 
@@ -106,7 +146,8 @@ def unpack_entry(raw):
     fields = unpack_record('catalogue_entry', raw)
     title = (fields['title_low'].to_bytes(ENTRY_FIELDS['title_low'], 'little')
              + fields['title_high'].to_bytes(ENTRY_FIELDS['title_high'], 'little'))
-    return {'valid': fields['valid'], 'profile': fields['profile'], 'length': fields['length'],
+    return {'valid': fields['valid'], 'profile': fields['profile'],
+            'length': fields['length'] | (fields['length_high'] << LENGTH_LOW_BITS),
             'crc32': fields['crc32'], 'title': title, 'reserved_zero': fields['reserved'] == 0}
 
 
@@ -164,20 +205,39 @@ def compare(expected, actual):
     return {'status': 'FAIL', 'first_mismatch': offset}
 
 
+def plan_slots(images):
+    """{index: (image, entry)} for images placed in order from slot 0.
+
+    A 32 KiB image takes one slot and a 64 KiB image two adjacent ones, so
+    the next image starts after the slots the previous one fills; the images
+    must fit the GAME_SLOTS together.
+    """
+    planned = {}
+    index = 0
+    for image, profile in images:
+        image = bytes(image)
+        entry = image_entry(image, profile_id(profile))
+        if index >= GAME_SLOTS:
+            raise ValueError(f'library load takes at most {GAME_SLOTS} slots; a 64 KiB image takes two')
+        planned[index] = (image, entry)
+        index = slot_range(index, len(image)).stop
+    return planned
+
+
 def load_library(client, images, menu=None, *, progress=None):
     """Write every image, the menu and the catalogue, then read all back and verify.
 
-    ``images`` is a list of (image, profile_name) for slots 0..N-1, at most
-    GAME_SLOTS; ``menu`` is one (image, profile_name) for MENU_INDEX or None. Every
-    write completes before the first read so an aliased slot cannot pass.
-    Returns the library table with a per-slot verdict; the caller decides the
-    exit status from ``mismatch_count``.
+    ``images`` is a list of (image, profile_name) placed from slot 0 in order,
+    each 32 KiB image in one slot and each 64 KiB image in two, together at
+    most GAME_SLOTS; ``menu`` is one (image, profile_name) for MENU_INDEX or
+    None. Every write completes before the first read so an aliased slot
+    cannot pass. Returns the library table with a per-slot verdict; the caller
+    decides the exit status from ``mismatch_count``.
     """
     if not 1 <= len(images) <= GAME_SLOTS:
         raise ValueError(f'library load takes 1..{GAME_SLOTS} images')
     notify = progress or (lambda _event: None)
-    planned = {index: (bytes(image), image_entry(image, profile_id(profile)))
-               for index, (image, profile) in enumerate(images)}
+    planned = plan_slots(images)
     if menu is not None:
         planned[MENU_INDEX] = (bytes(menu[0]), image_entry(menu[0], profile_id(menu[1])))
     catalogue = build_catalogue({index: entry for index, (_image, entry) in planned.items()})
@@ -187,7 +247,7 @@ def load_library(client, images, menu=None, *, progress=None):
     slots = []
     mismatches = []
     for index, (image, entry) in planned.items():
-        actual = read_region(client, slot_address(index), SLOT_BYTES, notify, slot_name(index))
+        actual = read_region(client, slot_address(index), entry['length'], notify, slot_name(index))
         row = describe(index, entry)
         row.update(compare(image, actual), readback_crc32=f'{zlib.crc32(actual):08x}')
         row['crc32_match'] = row['readback_crc32'] == row['crc32']

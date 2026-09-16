@@ -284,31 +284,43 @@ records it as a source-synchronous I/O relationship, not as a CDC.
 
 | Device byte address | Size | Content |
 |---|---|---|
-| `0x0000000 + i * 0x8000`, i = 0..15 | 32 KiB each | Game slot `i`: one complete 32 KiB `dmg-direct-v1` image |
+| `0x0000000 + i * 0x8000`, i = 0..15 | 32 KiB each | Game slot `i`: one complete 32 KiB `dmg-direct-v1` image, or half of a 64 KiB `dmg-mbc1-v1` image that fills slots `i` and `i + 1` (`i` at most 14) |
 | `0x0080000` | 32 KiB | Slot 16: the menu image, a 32 KiB image in the loader profile |
 | `0x0088000` | 1 KiB | Catalogue table: 17 entries x 32 bytes at `0x0088000 + 32 * i`, i = 0..16; bytes `0x0088220`-`0x00883FF` zero |
 | `0x0088400` - `0x3FFFFFF` | rest | Reserved; the controller accepts requests here, no owner uses them |
 
-Slot `i` byte `b` is at device address `i * 32768 + b`. Slot 16 is the menu
-image so that the copy engine has one rule for every image. Catalogue entry
-`i` describes slot `i`:
+Slot `i` byte `b` is at device address `i * 32768 + b`. An image is 32 KiB
+(`DIRECT_ID`, `LOADER_ID`) or 64 KiB (`MBC1_ID`); a 64 KiB image at slot `i`
+fills slots `i` and `i + 1`, byte `b` at `i * 32768 + b` for `b` in
+0..65535, so the sixteen game slots hold any mix with `2 * n64 + n32 <= 16`.
+Slot 16 is the menu image so that the copy engine has one rule for every
+image. Catalogue entry `i` describes the image that starts in slot `i`; the
+slot a 64 KiB image spills into has an empty entry:
 
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 1 | `valid`: `0x01` valid image, `0x00` empty slot; any other value is invalid |
-| 1 | 1 | `profile`: the [profile ID](../interfaces/MAS_interfaces.md) the image runs in; games use `DIRECT_ID`, the menu uses `LOADER_ID` |
-| 2-3 | 2 | `length`, little-endian; must equal 32768 for a valid entry |
-| 4-7 | 4 | `crc32`, little-endian CRC-32/ISO-HDLC of the 32768 image bytes, the same polynomial and reflection as `LOAD_BEGIN` |
+| 1 | 1 | `profile`: the [profile ID](../interfaces/MAS_interfaces.md) the image runs in; games use `DIRECT_ID` or `MBC1_ID`, the menu uses `LOADER_ID` |
+| 2-3 | 2 | `length`, little-endian, bits 15:0 of the image length. With `length_high` a valid entry's length is its profile's image size: 32768 for `DIRECT_ID` and `LOADER_ID`, 65536 (`MBC1_ROM_BYTES`) for `MBC1_ID` |
+| 4-7 | 4 | `crc32`, little-endian CRC-32/ISO-HDLC of the whole image (`length` bytes), the same polynomial and reflection as `LOAD_BEGIN` |
 | 8-23 | 16 | `title`: bytes `0x0134`-`0x0143` of the image header, copied verbatim. One clarification: when all sixteen header bytes are zero, the writer stores the image's pinned display title (upper-case ASCII letters, digits, spaces and dashes, zero-padded to 16) instead; a header with any non-zero title byte is never overridden. Every writer takes the entry from one code path ([`image_entry`](../../../../tools/n2m/host/library.py)), so a flash image and a UART load agree byte for byte; today only the flash library writes external entries |
-| 24-31 | 8 | Reserved, zero |
+| 24 | 1 | `length_high`: bits 23:16 of the image length, 0 for a 32 KiB image and 1 for 64 KiB. This byte was reserved zero before, so a 32 KiB entry is byte for byte the entry written then |
+| 25-31 | 7 | Reserved, zero |
+
+Length encoding: an entry's image length is the 24-bit value
+`length_high << 16 | length`. Bytes 2-3 alone described every image while
+all were 32 KiB; byte 24 was reserved zero and now carries bits 23:16, so
+every 32 KiB entry keeps its bytes and only a 64 KiB entry sets it to 1. No
+other field of the entry changed for the two-slot images.
 
 The host writes the catalogue in phase 1 ([boot source](../cartridge/MAS_loader_profile.md#boot-source))
 and the [boot copier](MAS_flash_library.md#boot-copier) writes it from the
 flash mirror of this layout at power-up; the CPU-side hardware reads it and
 never writes it. The menu reads it through the
 banked window as bank 34 (`0x0088000 / 16384`). The copy engine treats a
-slot as selectable only when `valid == 0x01`, `length == 32768` and `profile`
-is a known ID. Every layout constant is one generated table in
+slot as selectable only when `valid == 0x01`, `profile` is a known ID,
+`length` is that profile's image size and a 64 KiB image starts at index 14
+or below. Every layout constant is one generated table in
 `cfg/interfaces.json` once the slot loader slice adds it; this page is the
 owner of the values, the generator is the owner of their encoding.
 
