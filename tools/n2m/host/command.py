@@ -127,7 +127,7 @@ def run(root, build, args, provenance):
                 report['result'] = client.write_host(args.address, args.value)
             elif args.action == 'sdram-write':
                 client.sdram_write(args.address, sdram_line)
-                report['result'] = {'address': args.address, 'line': summary(sdram_line)}
+                report['result'] = {'address': args.address, 'lines': len(sdram_line) // abi.SDRAM_LINE_BYTES, 'data': summary(sdram_line)}
             elif args.action == 'sdram-read':
                 contents = client.sdram_read(args.address, args.lines)
                 (folder / 'sdram.bin').write_bytes(contents)

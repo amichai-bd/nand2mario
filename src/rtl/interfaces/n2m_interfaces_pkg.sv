@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: 61baa1343688abb0beeceb051ddd5f1459db24b156e1f09ba823b7ce03dc5955
+// Source SHA-256: f4d8484c5aaf75bc26b7702d4bf1f1f4d68bb7c1433e135335c9d46683ba2864
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -236,6 +236,7 @@ package n2m_interfaces_pkg;
   localparam logic [31:0] SDRAM_BYTES = 32'h4000000;
   localparam logic [7:0] SDRAM_LINE_BYTES = 8'h10;
   localparam logic [7:0] SDRAM_READ_MAX_LINES = 8'hF;
+  localparam logic [7:0] SDRAM_WRITE_MAX_LINES = 8'hF;
   localparam logic [31:0] LIBRARY_SLOT_BYTES = 32'h8000;
   localparam logic [7:0] LIBRARY_SLOTS = 8'h10;
   localparam logic [7:0] LIBRARY_MENU_INDEX = 8'h10;
@@ -407,17 +408,9 @@ package n2m_interfaces_pkg;
     logic [31:0] executed;
     logic [63:0] dot;
   } run_dots_t;
-  localparam integer SDRAM_WRITE_BYTES = 20;
+  localparam integer SDRAM_WRITE_BYTES = 4;
   localparam integer SDRAM_WRITE_ADDRESS_OFFSET = 0;
-  localparam integer SDRAM_WRITE_DATA0_OFFSET = 4;
-  localparam integer SDRAM_WRITE_DATA1_OFFSET = 8;
-  localparam integer SDRAM_WRITE_DATA2_OFFSET = 12;
-  localparam integer SDRAM_WRITE_DATA3_OFFSET = 16;
   typedef struct packed {
-    logic [31:0] data3;
-    logic [31:0] data2;
-    logic [31:0] data1;
-    logic [31:0] data0;
     logic [31:0] address;
   } sdram_write_t;
   localparam integer SDRAM_READ_BYTES = 5;

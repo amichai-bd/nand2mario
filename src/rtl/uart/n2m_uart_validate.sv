@@ -26,6 +26,8 @@ module n2m_uart_validate (
     logic [32:0] peek_end;
     n2m_interfaces_pkg::sdram_write_t sdram_write_fields;
     n2m_interfaces_pkg::sdram_read_t sdram_read_fields;
+    logic [15:0] sdram_write_bytes;
+    logic [7:0] sdram_write_lines;
     logic [32:0] sdram_end;
     assign write_fields = arguments[n2m_interfaces_pkg::WRITE_HOST_BYTES*8-1:0];
     assign begin_fields = arguments[n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0];
@@ -42,7 +44,12 @@ module n2m_uart_validate (
         response_length = 0;
         range_end = {1'b0, range_fields.offset} + {17'b0, range_fields.count};
         peek_end = {1'b0, peek_fields.offset} + {17'b0, peek_fields.count};
-        sdram_end = {1'b0, sdram_read_fields.address} + ({25'b0, sdram_read_fields.count} << 4);
+        // SDRAM_WRITE carries its line count in the payload length: 4 + 16 n.
+        sdram_write_bytes = header.length - 16'(n2m_interfaces_pkg::SDRAM_WRITE_BYTES);
+        sdram_write_lines = sdram_write_bytes[11:4];
+        sdram_end = header.command == n2m_interfaces_pkg::COMMAND_SDRAM_WRITE
+            ? {1'b0, sdram_write_fields.address} + ({25'b0, sdram_write_lines} << 4)
+            : {1'b0, sdram_read_fields.address} + ({25'b0, sdram_read_fields.count} << 4);
         case (header.command)
             n2m_interfaces_pkg::COMMAND_PING: response_length = 16'(n2m_interfaces_pkg::WORD_BYTES);
             n2m_interfaces_pkg::COMMAND_READ_HOST: begin
@@ -126,11 +133,15 @@ module n2m_uart_validate (
                 response_length = 16'(n2m_interfaces_pkg::SNAPSHOT_BYTES);
             end
             // SDRAM lines are accepted in every endpoint state; a misaligned or
-            // out-of-device address, or an uninitialized SDRAM, is BAD_VALUE.
+            // out-of-device range, or an uninitialized SDRAM, is BAD_VALUE. A
+            // write payload that is not the address plus 1-15 whole lines is
+            // BAD_LENGTH; sixteen lines already exceed the payload limit.
             n2m_interfaces_pkg::COMMAND_SDRAM_WRITE: begin
-                length_valid = 32'(header.length) == n2m_interfaces_pkg::SDRAM_WRITE_BYTES;
+                length_valid = 32'(header.length) > n2m_interfaces_pkg::SDRAM_WRITE_BYTES &&
+                    sdram_write_bytes[3:0] == 4'd0 &&
+                    sdram_write_lines <= n2m_interfaces_pkg::SDRAM_WRITE_MAX_LINES;
                 value_valid = sdram_ready && sdram_write_fields.address[3:0] == 4'd0 &&
-                    sdram_write_fields.address < n2m_interfaces_pkg::SDRAM_BYTES;
+                    sdram_end <= {1'b0, n2m_interfaces_pkg::SDRAM_BYTES};
             end
             n2m_interfaces_pkg::COMMAND_SDRAM_READ: begin
                 length_valid = 32'(header.length) == n2m_interfaces_pkg::SDRAM_READ_BYTES;

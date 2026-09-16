@@ -371,7 +371,7 @@ under the `storage` label ([test plan](../../../../src/dv/storage/README.md)):
 | `sdram-refresh` | 40,000 clocks of back-to-back requests; age never exceeds 178; every refresh costs exactly 5 clocks; the throughput bound above holds |
 | `sdram-fault` | Deliberate misaligned request, request before `initialized`, and a mutated refresh deadline of 196 each fail with the named diagnostic; three registry targets (`sdram-fault-misaligned`, `sdram-fault-before-init`, `sdram-fault-deadline`) because each fault ends its run, the last through the controller's `REFRESH_INTERVAL` parameter set to 178 |
 | `sdram-fault-read-early`, `sdram-fault-read-late` | The `line` fixture against a model launching read data one edge early (`MODEL_READ_LAUNCH_EDGES=0`, the board's relative misalignment) or one edge late (`=2`, the assumption the port arrived with); each fails `SDRAM_TB_READBACK` naming the one-word shift (`+1`, `-1`) |
-| `uart-sdram` | The host line commands over the real UART wire into the controller and model: `BAD_VALUE` before `initialized`, boundary lines and a fifteen-line run written and read back byte for byte, misaligned, out-of-device, zero or sixteen-line and wrong-length refusals; `uart-sdram-fault` corrupts one expected byte |
+| `uart-sdram` | The host line commands over the real UART wire into the controller and model: `BAD_VALUE` before `initialized`; boundary lines written singly and fifteen-, seven- (across a row boundary) and two-line runs written in one `SDRAM_WRITE` each, all read back byte for byte; misaligned, out-of-device and range-crossing (`BAD_VALUE`), zero-line, partial-line and wrong-length (`BAD_LENGTH`) write refusals; a sixteen-line write frame discarded as oversize with the next command answered; zero or sixteen-line and wrong-length read refusals; `uart-sdram-fault` corrupts one expected byte |
 | `library-peer` | The product host Client drives `host library load` and `host library status` through the simulation peer against the endpoint, controller and model: two `sw build` images plus a menu image are written to their slots and the catalogue, read back and verified by CRC32 and bytes; the catalogue read by the status verb equals the one written ([`tb_library_peer`](../../../../src/dv/storage/tb_library_peer.sv), [`library_peer.py`](../../../../src/dv/storage/library_peer.py)) |
 
 Assertions the controller carries (names are the contract; a testbench may
@@ -398,9 +398,13 @@ A board memory test, driven over UART through the host line commands in the
 [loader profile](../cartridge/MAS_loader_profile.md#host-interaction) by
 [`host sdram-test`](../../../tools/n2m/host/SPEC.md#commands), writes a seeded
 address-dependent line pattern over a range (one slot by default, the whole
-device with `--full`) or over the boundary set above (`--boundary`) and reads
-it back with every mismatch listed by address; it is authorized per session and
-does not replace the simulation bounds.
+device with `--full`) or over the boundary set above (`--boundary`), fifteen
+lines per `SDRAM_WRITE` and per `SDRAM_READ`, and reads it back with every
+mismatch listed by address; it is authorized per session and does not replace
+the simulation bounds. At 115200 baud the full sweep needs about 1.9 hours
+per direction (4,194,304 lines, 279,621 commands of about 273 wire bytes
+each way), about 4 hours in all; the full-device board result belongs to the
+[board sessions issue](https://github.com/amichai-bd/nand2mario/issues/694).
 Simulation results, including the reproduction fixtures above, are
 preliminary evidence only: the storage contract counts as met on the board
 only when the corrected volatile bitstream has run on the DE10-Lite and the

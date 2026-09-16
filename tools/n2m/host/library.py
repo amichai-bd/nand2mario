@@ -122,12 +122,7 @@ def describe(index, entry):
 
 
 def write_region(client, address, data, notify, name):
-    lines = len(data) // SDRAM_LINE
-    notify({'stage': 'write', 'name': name, 'completed': 0, 'total': lines})
-    for index in range(lines):
-        client.sdram_write(address + index * SDRAM_LINE, data[index * SDRAM_LINE:(index + 1) * SDRAM_LINE])
-        if index % 256 == 255 or index == lines - 1:
-            notify({'stage': 'write', 'name': name, 'completed': index + 1, 'total': lines})
+    client.sdram_write_region(address, data, notify, name=name)
 
 
 def read_region(client, address, size, notify, name):

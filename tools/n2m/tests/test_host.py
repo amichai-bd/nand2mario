@@ -144,14 +144,26 @@ class Endpoint:
             else:
                 response = bytes(self.stores[selector][offset:offset + count])
         elif name in ('SDRAM_WRITE', 'SDRAM_READ'):
-            request = unpack_record('sdram_write' if name == 'SDRAM_WRITE' else 'sdram_read', payload)
-            address = request['address']
-            lines = 1 if name == 'SDRAM_WRITE' else request['count']
-            if (not self.sdram_ready or address % abi.SDRAM_LINE_BYTES or not 1 <= lines <= abi.SDRAM_READ_MAX_LINES
+            # SDRAM_WRITE: address record then whole lines; the count is the
+            # payload length. A ragged or empty line set is BAD_LENGTH first.
+            if name == 'SDRAM_WRITE' and (len(payload) <= abi.SDRAM_WRITE_BYTES
+                                          or (len(payload) - abi.SDRAM_WRITE_BYTES) % abi.SDRAM_LINE_BYTES):
+                status = abi.STATUS_BAD_LENGTH
+                lines, address = 0, 0
+            elif name == 'SDRAM_WRITE':
+                address = unpack_record('sdram_write', payload[:abi.SDRAM_WRITE_BYTES])['address']
+                lines = (len(payload) - abi.SDRAM_WRITE_BYTES) // abi.SDRAM_LINE_BYTES
+            else:
+                request = unpack_record('sdram_read', payload)
+                address, lines = request['address'], request['count']
+            if status != abi.STATUS_OK:
+                pass
+            elif (not self.sdram_ready or address % abi.SDRAM_LINE_BYTES or not 1 <= lines <= abi.SDRAM_READ_MAX_LINES
                     or address + lines * abi.SDRAM_LINE_BYTES > abi.SDRAM_BYTES):
                 status = abi.STATUS_BAD_VALUE
             elif name == 'SDRAM_WRITE':
-                self.sdram[address] = payload[4:]
+                for i in range(lines):
+                    self.sdram[address + i * 16] = payload[4 + i * 16:4 + (i + 1) * 16]
             else:
                 response = b''.join(self.sdram.get(address + i * abi.SDRAM_LINE_BYTES, bytes(16)) for i in range(lines))
                 if self.defect == 'sdram-corrupt' and address <= 0x30 < address + lines * abi.SDRAM_LINE_BYTES:
@@ -231,9 +243,13 @@ class HostTests(unittest.TestCase):
     def test_sdram_commands_validate_before_transport(self):
         endpoint = Endpoint()
         client = Client(endpoint)
-        for address, line in ((8, bytes(16)), (0x4000000, bytes(16)), (0, bytes(15)), (0, bytes(17))):
+        for address, line in ((8, bytes(16)), (0x4000000, bytes(16)), (0, bytes(15)), (0, bytes(17)), (0, b''),
+                              (0, bytes(16 * 16)), (0x3fffff0, bytes(32)), (0, bytes(15 * 16 + 8))):
             with self.assertRaises(ValueError):
                 client.sdram_write(address, line)
+        # Fifteen lines is the largest write; sixteen is refused by name above.
+        self.assertEqual(len(client.sdram_write(0x3ffff10, bytes(15 * 16)) or b''), 0)
+        endpoint.requests.clear()
         for address, lines in ((8, 1), (0, 0), (0, 16), (0x3fffff0, 2), (0x4000000, 1)):
             with self.assertRaises(ValueError):
                 client.sdram_read(address, lines)
@@ -241,10 +257,14 @@ class HostTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 client.sdram_test(start, length)
         self.assertEqual(endpoint.requests, [])
-        # Wire shape: 32-bit address then the sixteen line bytes, byte 0 first.
+        # Wire shape: 32-bit address then the line bytes, byte 0 first; the
+        # single-line form is the original 20-byte payload, unchanged.
         with patch.object(client, 'request', return_value=None) as request:
             client.sdram_write(0x3fffff0, bytes(range(16)))
             request.assert_called_once_with('SDRAM_WRITE', bytes.fromhex('f0ffff03') + bytes(range(16)))
+        with patch.object(client, 'request', return_value=None) as request:
+            client.sdram_write(0x88000, bytes(range(240)))
+            request.assert_called_once_with('SDRAM_WRITE', bytes.fromhex('00800800') + bytes(range(240)))
         with patch.object(client, 'request', return_value=bytes(240)) as request:
             client.sdram_read(0x88000, 15)
             request.assert_called_once_with('SDRAM_READ', bytes.fromhex('008008000f'), count=240)
@@ -256,6 +276,16 @@ class HostTests(unittest.TestCase):
         self.assertIsNone(client.sdram_write(0x7ff0, line))
         self.assertEqual(client.sdram_read(0x7ff0), line)
         self.assertEqual(client.sdram_read(0x7fe0, 2), bytes(16) + line)
+        # A multi-line write lands on consecutive lines; fifteen is the boundary.
+        block = bytes(range(256)) * 15
+        self.assertIsNone(client.sdram_write(0x9000, block[:15 * 16]))
+        self.assertEqual(client.sdram_read(0x9000, 15), block[:15 * 16])
+        self.assertEqual(client.sdram_read(0x9000 + 14 * 16, 1), block[14 * 16:15 * 16])
+        # The fake endpoint refuses a ragged payload as the validator does.
+        with patch('n2m.host.client.sdram_write', return_value=bytes.fromhex('00900000') + bytes(24)):
+            with self.assertRaises(RejectedCommand) as rejected:
+                client.sdram_write(0x9000, bytes(24))
+        self.assertEqual(rejected.exception.status, abi.STATUS_BAD_LENGTH)
         endpoint.sdram_ready = False
         with self.assertRaises(RejectedCommand) as rejected:
             client.sdram_write(0, line)
@@ -267,7 +297,9 @@ class HostTests(unittest.TestCase):
         self.assertEqual((result['status'], result['mismatch_count'], result['lines'], result['mismatches']), ('PASS', 0, 31, []))
         writes = [payload for name, payload, seq in endpoint.requests if name == 'SDRAM_WRITE']
         reads = [unpack_record('sdram_read', payload) for name, payload, seq in endpoint.requests if name == 'SDRAM_READ']
-        self.assertEqual(len(writes), 31)
+        # Writes are batched fifteen lines per command: 15 + 15 + 1 lines.
+        self.assertEqual([(unpack_record('sdram_write', p[:4])['address'], (len(p) - 4) // 16) for p in writes],
+                         [(0x10000, 15), (0x10000 + 240, 15), (0x10000 + 480, 1)])
         self.assertEqual(reads, [{'address': 0x10000, 'count': 15}, {'address': 0x10000 + 240, 'count': 15}, {'address': 0x10000 + 480, 'count': 1}])
         self.assertEqual(events[0], {'stage': 'write', 'completed': 0, 'total': 31})
         self.assertEqual(events[-1], {'stage': 'read', 'completed': 31, 'total': 31})
@@ -294,7 +326,9 @@ class HostTests(unittest.TestCase):
         def dropping_write(packet):
             outcome = original(packet)
             if endpoint.requests[-1][0] == 'SDRAM_WRITE':
-                endpoint.sdram.pop(unpack_record('sdram_write', endpoint.requests[-1][1])['address'], None)
+                payload = endpoint.requests[-1][1]
+                for i in range((len(payload) - 4) // 16):
+                    endpoint.sdram.pop(unpack_record('sdram_write', payload[:4])['address'] + i * 16, None)
             return outcome
         endpoint.write = dropping_write
         result = client.sdram_test(0, 16 * 100, mismatch_limit=8)
@@ -310,7 +344,7 @@ class HostTests(unittest.TestCase):
         self.assertEqual({a >> 24 for a in addresses}, {0, 1, 2, 3})
         self.assertIn(0x3FFFFF0, addresses)
         self.assertTrue(all(a % 16 == 0 for a in addresses))
-        writes = [unpack_record('sdram_write', p)['address'] for n, p, s in endpoint.requests if n == 'SDRAM_WRITE']
+        writes = [unpack_record('sdram_write', p[:4])['address'] for n, p, s in endpoint.requests if n == 'SDRAM_WRITE']
         reads = [unpack_record('sdram_read', p) for n, p, s in endpoint.requests if n == 'SDRAM_READ']
         self.assertEqual(writes, addresses)
         self.assertEqual(reads, [{'address': a, 'count': 1} for a in addresses])
@@ -323,7 +357,7 @@ class HostTests(unittest.TestCase):
         original = endpoint.write
         def dropping(packet):
             outcome = original(packet)
-            if endpoint.requests[-1][0] == 'SDRAM_WRITE' and unpack_record('sdram_write', endpoint.requests[-1][1])['address'] == 0x3FFFFF0:
+            if endpoint.requests[-1][0] == 'SDRAM_WRITE' and unpack_record('sdram_write', endpoint.requests[-1][1][:4])['address'] == 0x3FFFFF0:
                 endpoint.sdram.pop(0x3FFFFF0, None)
             return outcome
         endpoint.write = dropping

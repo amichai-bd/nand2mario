@@ -86,7 +86,7 @@ def validate(data):
     if type(data['commands']) is not list or type(data['references']) is not list:
         raise ValueError('commands/references must be lists')
     command_names = []
-    layouts = set(data['records']) | {'empty', 'bytes', 'offset+bytes'}
+    layouts = set(data['records']) | {'empty', 'bytes', 'offset+bytes', 'sdram_write+lines'}
     for command in data['commands']:
         keys(command, 'name request response state', 'command')
         if command['request'] not in layouts or command['response'] not in layouts:
