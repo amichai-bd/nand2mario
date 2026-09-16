@@ -69,6 +69,42 @@ the file against the device it finds on the chain. `quartus_pgm` is invoked in
 JTAG mode with `-o "p;<sof>"`; a nonzero exit, or output without its explicit
 success line, fails the run before any host traffic is attempted.
 
+### Flash programming procedure
+
+The [flash library](rtl/storage/MAS_flash_library.md#programming-the-flash)
+is written into the MAX 10 internal flash with `fpga program --pof`, under the
+same identity check and the [flash record rules](../tools/n2m/SPEC.md#flash-programming).
+The procedure for a board session, which needs its own authorization and the
+exclusive board lock:
+
+1. Build the flash image on Windows:
+   `python tools/build.py fpga build flash-proof --quartus-bin <Quartus-bin> --tag <tag>`.
+   The result names `output/design.pof`; the record shows `configuration_mode`
+   `Single Comp Image` and a passing `.pof` check.
+2. Prove the record and the command without touching the board:
+   `python tools/build.py fpga program --pof <pof> --dry-run --quartus-bin <Quartus-bin> --tag <tag>`.
+   The line written to `dry-run.log` is
+   `quartus_pgm -c <cable> -m jtag -o pvb;<pof>` (the argument list without
+   shell quoting).
+3. With the UART adapter disconnected and only the USB-Blaster attached, run
+   the same command without `--dry-run`. `jtagconfig` must report one
+   USB-Blaster chain with a `10M50DA`; `quartus_pgm` programs, verifies and
+   blank-checks CFM0 and the user range. The result records `isp_seconds`,
+   `pof_sha256`, the chain and `program.log` under `fpga-program/<id>/`.
+4. Power-cycle the board with no host attached and observe the monitor. A
+   bitstream that carries the boot copier
+   ([#675](https://github.com/amichai-bd/nand2mario/issues/675)) shows the
+   menu from flash; the `flash-proof` image itself holds the library and the
+   reader only.
+5. Record the session under [Run record](#run-record): the attempt commit,
+   the `.pof` hash, `isp_seconds`, the observed picture and whether the
+   flash content changed. No session has run yet
+   ([#694](https://github.com/amichai-bd/nand2mario/issues/694)).
+
+Programming the flash changes the board's power-up configuration: the next
+`fpga program --sof` still configures the device volatile for that power
+cycle, and the flash image returns at the next power-up.
+
 ## Heartbeat and VGA test-card proxies
 
 [`board_bringup.py`](../../src/dv/springtrail/board_bringup.py) proves both.

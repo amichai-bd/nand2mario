@@ -194,7 +194,10 @@ the checked FPGA attempt's `build_id`. A checked `v05-board` attempt carries its
 producing target into the program result, and only that playable target places
 the identity in a copyable [`gb_launcher.py`](host/LAUNCHER.md) command with an
 explicit `<UART-port>` placeholder. Other proof targets never advertise the
-game launcher.
+game launcher. [Flash programming](#flash-programming) reports the record
+check, the chain, the flash program and its success check the same way, then
+the measured time, the `.pof` hash and the power-cycle step; its dry run
+reports the record check and the written command only.
 
 These handoffs never execute their next command. WSL remains the Verilator host;
 Windows PowerShell remains the Questa, Quartus, JTAG, UART and launcher host.
@@ -1672,9 +1675,10 @@ under `library`, and generates
 names per top) beside the configuration mode. Quartus reports the file as an
 auto-found memory initialization file in `design.map.rpt`. The assembler then
 emits `output/design.pof` beside the `.sof`; both are required evidence of a
-flash image and both are retained with their hashes. `fpga program` still
-writes the `.sof` only; programming the `.pof` is the board check under the
-contract's [programming rules](../../src/rtl/storage/MAS_flash_library.md#programming-the-flash).
+flash image and both are retained with their hashes. `fpga program --sof`
+writes the `.sof`; [`fpga program --pof`](#flash-programming) writes the
+`.pof` under the contract's
+[programming rules](../../src/rtl/storage/MAS_flash_library.md#programming-the-flash).
 
 The evidence under `onchip_flash` records `init_filename`, the `reader`
 instance and `pof`: the `.pof` holds, after its header, the 736 KiB user range
@@ -1691,6 +1695,57 @@ not fit, so the required `.pof` is the overflow evidence; the contract states
 no numeric margin beyond fitting CFM0, so the numbers are recorded, not
 thresholded. The text output names the `.pof` and the CFM0
 usage after the bitstream.
+
+### Flash programming
+
+`fpga program` takes exactly one image: `--sof <path>` configures the device
+volatile as above; `--pof <path>` writes the flash image into the MAX 10
+internal flash. [`fpga_program.py`](../../../tools/n2m/fpga_program.py)
+`program_flash` applies the `.sof` rules to the `.pof`: the file must exist in
+place, carry the `.pof` suffix, not be a link, sit under the repository and be
+listed with its current hash in the `artifacts` of the readable `result.json`
+two directories up; a `build_id_override` record is refused. The flash rules
+follow: the record's `status` is `PASS`, `evidence.onchip_flash` exists, its
+`configuration_mode` is `Single Comp Image`, and its `pof` evidence has
+`user_range_match` true with a `sha256` equal to the file's current hash. Any
+refusal writes `failure.log` before JTAG discovery and names it, as for the
+`.sof`.
+
+`--dry-run`, valid only with `--pof`, stops after those checks: it writes
+the exact programmer command to `dry-run.log` with `<cable>` in place of the
+chain index (or the given `--jtag-cable`), records `dry_run: true`, and never
+runs `jtagconfig` or `quartus_pgm`. It proves the record rules and the command
+without a board.
+
+Without `--dry-run`, `jtagconfig` is re-read and must report exactly one
+USB-Blaster chain with a `10M50DA`, then
+`quartus_pgm -c <cable> -m jtag -o "pvb;<pof>"` runs: program, verify and
+blank-check. `quartus_pgm --help=o` of Quartus Prime 25.1std Lite lists `BPV`
+among the valid operation combinations and gives `-o pvb;file.pof` as its
+JTAG programming example, so the letters are used in that documented order.
+`--timeout` defaults to 600 s for `--pof` (60 s for `--sof`): the MAX 10
+configuration guide gives 52.9 s for CFM0, 22.7 s for CFM1 and 30.2 s for
+CFM2 on the 10M50 before verify and system overhead. The explicit success
+line `Quartus Prime Programmer was successful. 0 errors, 0 warnings` is
+required. The result records `pof`, `pof_sha256`, `operation`,
+`configuration_mode`, `cfm0_used_bytes`, `attempt_result`, the selected
+`cable`, `devices` and `chain`, the exact `command`, `isp_seconds` measured
+around the `quartus_pgm` call, `build_id` and `wire_build_id` when the
+attempt carries an identity, `program_log` and `next_step`. The text summary
+gives the JTAG chain, the program log, the measured time with the `.pof`
+hash, and the next step: power-cycle the board with no host attached; a
+bitstream with the boot copier shows the menu from flash. It never offers the
+game launcher for a flash image.
+
+Both paths write `result.json` into their operation directory
+`fpga-program/<id>/` beside `chain.log`, `program.log` or `dry-run.log`, and
+the tag's `manifest.json` lists every file there with its hash.
+[`test_fpga_program.py`](../../../tools/n2m/tests/test_fpga_program.py)
+covers each refusal, the dry run, the command line, the measured time, the
+chain and programmer failures and the CLI text with doubled tools; no test
+touches hardware. The board session that programs the flash and observes the
+menu at power-up is separate work under the
+[bring-up procedure](../../src/board-bring-up.md#flash-programming-procedure).
 
 ### Quartus allocator override
 
@@ -1989,6 +2044,11 @@ workdir/builds/<tag>/
 │           ├── library.hex
 │           ├── library.dat
 │           └── output/
+├── fpga-program/
+│   └── <id>/
+│       ├── result.json
+│       ├── chain.log
+│       └── program.log or dry-run.log
 ├── lint/
 │   └── questa/<attempt>/
 │       ├── result.json

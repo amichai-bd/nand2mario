@@ -8,7 +8,7 @@ the [`tb_flash_reader`](../../../../src/dv/storage/tb_flash_reader.sv) fixtures,
 the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit and the
 builder's [library image and `.pof` path](../../../tools/n2m/SPEC.md#flash-library-image).
 The boot copier and its fixtures ([#675](https://github.com/amichai-bd/nand2mario/issues/675))
-and the board check ([#677](https://github.com/amichai-bd/nand2mario/issues/677),
+and the board sessions ([#694](https://github.com/amichai-bd/nand2mario/issues/694),
 [#681](https://github.com/amichai-bd/nand2mario/issues/681)) remain open under
 [#658](https://github.com/amichai-bd/nand2mario/issues/658); until they land,
 the sections below that describe them are the contract those slices derive from.
@@ -241,12 +241,16 @@ The flash is programmed only through JTAG with the Quartus Programmer:
    assembled image and records the CFM0 bytes used. A changed image changes
    the build fingerprint, so the builder runs a new attempt rather than an
    assembler-only rerun.
-3. `fpga program` gains a checked `.pof` path with the same attempt-record
-   rules as the `.sof` path, running `quartus_pgm -m jtag` with program and
-   verify. Programming replaces the CFM0 image and the user range; the
-   in-system programming time from the MAX 10 configuration guide is 52.9 s
-   for CFM0, 22.7 s for CFM1 and 30.2 s for CFM2 on the 10M50 before system
-   overhead; the slice records the measured time.
+3. [`fpga program --pof`](../../../tools/n2m/SPEC.md#flash-programming)
+   writes that `.pof` over JTAG with the same attempt-record rules as the
+   `.sof` path plus the flash evidence rules, running
+   `quartus_pgm -m jtag -o "pvb;<pof>"`: program, verify and blank-check.
+   Programming replaces the CFM0 image and the user range; the in-system
+   programming time from the MAX 10 configuration guide is 52.9 s for CFM0,
+   22.7 s for CFM1 and 30.2 s for CFM2 on the 10M50 before verify and system
+   overhead. The tool records the measured time; the board session
+   ([#694](https://github.com/amichai-bd/nand2mario/issues/694)) has not
+   run yet, so no measured value exists.
 4. A host command that writes flash through the IP's program path is
    deferred: the IP is instantiated read-only, and every sector keeps its
    write protection. Reopening this needs an owner decision.
@@ -304,7 +308,7 @@ user range continuously; the builder checks `UFM blocks : 1 / 1`, the
 configuration mode assignment and the unchanged PLL, pin and slack evidence.
 The `flash-copy`, `flash-blank` and `flash-precedence` fixtures land with the
 copier ([#675](https://github.com/amichai-bd/nand2mario/issues/675)). A board
-check, authorized per slice ([#677](https://github.com/amichai-bd/nand2mario/issues/677),
+check, authorized per slice ([#694](https://github.com/amichai-bd/nand2mario/issues/694),
 [#681](https://github.com/amichai-bd/nand2mario/issues/681)): program the
 `.pof`, power-cycle without a host, observe the menu; then a host load, then a
 power cycle restoring the flash menu. Until it runs, the reader's evidence is
