@@ -143,7 +143,14 @@ file in one step, so an interrupted run leaves no truncated cache. Everything
 after that point, including readback and the valid, paused and profile checks,
 is identical for both sources. Each pinned image is a reviewed freely licensed
 release recorded under the [provenance policy](../../provenance.md); the
-manifest names the title, author, release and licence text beside the pin.
+manifest names the title, author, release and licence text beside the pin. A
+pin may carry `title`, 1-16 upper-case letters, digits, spaces or dashes: the
+catalogue title an image with an all-zero header title receives wherever a
+catalogue entry is written for it (`library.image_entry`, shared by the
+[flash library](../SPEC.md#external-images) and this tool); a named header is
+never overridden. `read_external` returns it as `title` (None when absent) and
+refuses any other form, and `offline=True` reads only the cache, failing by
+name instead of fetching.
 The [Libbet play record](../../../../src/dv/libbet/README.md) drives the pinned
 image through these commands on the board and retains its frames.
 

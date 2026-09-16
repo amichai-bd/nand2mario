@@ -1680,16 +1680,22 @@ fill, the record format and the registry rules.
 
 The registry [`src/fpga/de10_lite/library.json`](../../../src/fpga/de10_lite/library.json)
 has exactly `schema_version: 1`, a nonempty `slots` object mapping decimal
-slot indices `0`-`15` to `src/sw/targets.json` package names, and `menu`, the
-package at index 16. Every package must carry a packaged runtime profile, the
-menu package must run in `dmg-loader-v1` (the contract's `profile == LOADER_ID`
-validity rule), a package may occupy one index only, and each built image must
-be exactly one 32 KiB slot. Today it lists `springtrail`, `stackdrop` and `v05`
-in slots 0-2 and `menu` at 16.
+slot indices `0`-`15` to slot values, and `menu`, the package at index 16. A
+slot value is either a `src/sw/targets.json` package name or
+`external:<name>`, a pin of the [dependency manifest](../../../tools/n2m/dependencies.json)
+`external_roms.images`. Every package must carry a packaged runtime profile,
+the menu must be a package that runs in `dmg-loader-v1` (the contract's
+`profile == LOADER_ID` validity rule), a value may occupy one index only across
+both kinds, and each image must be exactly one 32 KiB slot. An external value
+is resolved at registry load: an unknown pin, a pin missing `url`, `sha256`,
+`size` or `license`, or a pin whose `size` is not 32768 is refused by name.
+Today it lists `springtrail`, `stackdrop` and `v05` in slots 0-2, the seven
+playing homebrew images in slots 3-9 and `menu` at 16.
 
-A package is registrable when its image turns the LCD on and is an original
-game or interactive demo: today Springtrail, Stackdrop and the v05 button
-demo, which is every playable image the repository builds. The other
+A slot is registrable when its image turns the LCD on and is an original game
+or interactive demo, or a pinned freely licensed third-party game that has run
+on this hardware. Our own registrable images are Springtrail, Stackdrop and the
+v05 button demo, every playable image the repository builds. The other
 `src/sw/targets.json` packages are verification inputs, not games, and stay
 out of the registry: `flow`, `flow-s`, `render`, `render-s` and
 `springtrail-unit` are Springtrail CPU unit fixtures whose builds
@@ -1704,9 +1710,64 @@ fixtures. The registry grows only with new game content, which arrives through
 its own issues such as the Stackdrop title screen
 ([#553](https://github.com/amichai-bd/nand2mario/issues/553)).
 
+#### External images
+
+The external slots hold the [homebrew games that run on this hardware](../../showcase/homebrew-library.md).
+Their bytes follow the pin file's redistribution rule: fetched at build time
+into the ignored `workdir/private/external-roms/<name>/`, verified by size and
+SHA-256 on write and on every read, never committed; the `library.hex`,
+`library.dat` and `.pof` that contain them are build artifacts under
+`workdir/`. Each image is validated as a direct-profile image before packing:
+32768 bytes, header byte `0x147` = `0x00` (ROM ONLY) and `0x148` = `0x00`
+(32 KiB), and title bytes `0x134`-`0x143` each zero or printable ASCII, with
+`0x80` (the CGB-compatible flag) also accepted at `0x143`. Its catalogue
+`profile` is `DIRECT_ID`. Wyrmhole and Rex Run are pinned but not registered:
+neither [ever enables the LCD](../../showcase/homebrew-library.md#wyrmhole-and-rex-run-never-turn-the-lcd-on)
+under the `dmg-direct-v1` entry state, so a slot for them would only ever show a
+blank screen.
+
+| Slot | Pin | Header title | Author | Licence | Pinned artifact |
+|---|---|---|---|---|---|
+| 3 | `libbet` | `LIBBET` | Damian Yerrick | Zlib | [libbet.gb v0.08](https://github.com/pinobatch/libbet/releases/download/v0.08/libbet.gb) |
+| 4 | `airaki` | `AIRAKI1` | furrtek | GPL-3.0-or-later | [airaki.gb, gbdev/database @ 434b8d3](https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/airaki/airaki.gb) |
+| 5 | `gb-wordyl` | `GB-WORDYL` | bbbbbr | GPL-3.0-only | [GBWORDYL_0.85_en.gb, gbdev/database @ 434b8d3](https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/gb-wordyl/GBWORDYL_0.85_en.gb) |
+| 6 | `max-pirate` | `MAXPIRATE` | Marcel Wehrstedt | MIT | [maxpirate.gb v1.0](https://github.com/MWehrstedt/MaxPirate/releases/download/v1.0/maxpirate.gb) |
+| 7 | `alien-invasion` | blank; pinned `ALIEN INVASION` | NiliusJulius | GPL-3.0-only | [Alien-Invasion.gb v1.0.0](https://github.com/NiliusJulius/Alien-Invasion/releases/download/v1.0.0/Alien-Invasion.gb) |
+| 8 | `square-fall` | blank; pinned `SQUARE FALL` | bjorn_nah | MIT | [square_fall_v03.gb v0.3](https://github.com/bjorn-nah/square_fall/releases/download/v0.3/square_fall_v03.gb) |
+| 9 | `unstoppable-knight` | `KNIGHT` | Rafagars | MIT | [knight.gb 2.2.2](https://github.com/Rafagars/Unstoppable-Knight-GB/releases/download/2.2.2/knight.gb) |
+
+The SHA-256 of every artifact and its licence text are the pin file's; the
+library record repeats the licence, the pinned URL and the image hash per row
+(`library.images[].licence`, `source`, `image_sha256`, `pin`, `notices`), so
+the provenance travels with the flash image it describes.
+
+The catalogue title is header bytes `0x134`-`0x143` verbatim, through the host
+loader's own [`image_entry`](../../../tools/n2m/host/library.py). Two pinned
+images carry an all-zero header title; for them the pin's `title` (upper-case
+letters, digits, spaces and dashes, at most 16) stands in, under the
+[catalogue entry rule](../../src/rtl/cartridge/MAS_loader_profile.md#boot-source)
+that only an all-zero header takes the fallback and a named header is never
+overridden. Four of the images (Libbet, Airaki, GB Wordyl, Unstoppable Knight)
+set the CGB-compatible flag `0x80` at `0x143`, the last title byte, which the
+[menu](../../src/sw/menu/SPEC.md) draws as a dash in the last title column;
+that rendering limit is tracked in
+[#708](https://github.com/amichai-bd/nand2mario/issues/708). Every other title
+byte of the seven images is a letter, digit, dash, space or zero, so the
+[menu reference](../../../src/dv/menu/reference.py) draws them as written.
+
+Capacity: the ten registered images and the catalogue define 90,368 words of
+the 188,416-word user range, so six more 32 KiB slots (indices 10-15) remain
+addressable, and the user range holds all sixteen slots and the catalogue by
+construction (`16 * 8192 + 256 < 0x2E000` words). The compressed bitstream
+lives in the separate 672 KiB CFM0, so the slot count does not compete with
+the design: the practical slot capacity is the contract's sixteen, and the
+`.pof` evidence of the current ten-image build records the CFM0 usage below.
+
 `python tools/build.py sw library --tag <tag> --json` builds every registered
 package through the same `sw build` stages under that tag (cached as usual;
-`--rebuild` forces them), assembles the words with the host loader's own
+`--rebuild` forces them), fetches every external image that is not yet cached
+(`--offline` refuses to fetch and fails by name instead), assembles the words
+with the host loader's own
 catalogue code ([`host/library.py`](../../../tools/n2m/host/library.py)
 `image_entry` and `build_catalogue`, so the flash catalogue and a UART load
 carry identical entry bytes), and writes under
@@ -1717,11 +1778,14 @@ carry identical entry bytes), and writes under
 | `library.hex` | Intel HEX of the whole 736 KiB user range: 16-byte type 00 records, a type 04 extended linear address record at each 64 KiB boundary, one type 01 end record, every record checksummed. Words no image defines are written as `FFFFFFFF`: the assembler fills words a hex leaves undefined between its first and last record with zeros, so the explicit image is what makes the programmed flash read what the double reads. |
 | `library.dat` | The Verilator double's `$readmemh` image: one `@<avalon word> <word>` line (5 and 8 upper-case hex digits) per defined word; undefined words read erased. |
 | `catalogue.bin` | The 1 KiB catalogue bytes at flash word `0x22800` (17 entries, then zero words). |
-| `result.json` | Status, the registry hash, one row per image (index, title, profile ID, CRC-32, flash word, package attempt and image hash) and the three file hashes; mirrored at `sw/library/result.json`. |
+| `result.json` | Status, the registry hash, one row per image (index, title, profile ID, CRC-32, flash word, `kind`; a package row adds its attempt, result path, fingerprint and image hash, an external row its pin, licence, pinned URL, notices and image hash) and the three file hashes; mirrored at `sw/library/result.json`. |
 
 No Quartus is needed, so WSL fixtures load the real library through
 `library.dat`. `fpga build` of an image that lists the flash reader runs the
-same assembly as its `Assemble flash library` stage, writes the three files
+same assembly as its `Assemble flash library` stage, offline: an external image
+is read from its verified cache and a missing cache fails the build naming the
+pin, so a Quartus run never waits on the network (`sw library` fetches). It
+writes the three files
 into the attempt, adds the registry to the inputs and the file hashes to the
 fingerprint (a changed game image is a new attempt), records the same summary
 under `library`, and generates
