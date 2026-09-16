@@ -281,6 +281,8 @@ class ButtonQueueTests(unittest.TestCase):
                 row=history(out)[0]
                 self.assertEqual(row['state'],'RETIRED')
                 self.assertTrue(row['released']);self.assertEqual(client.mask,0)
+                # Free-run: the milliseconds applied, and no step report is attached.
+                self.assertEqual(row['milliseconds'],1);self.assertNotIn('step',row)
                 self.assertLessEqual(row['queued_at'],row['started_at'])
                 self.assertLessEqual(row['started_at'],row['completed_at'])
             pending=[enqueue(out,2,134) for _ in range(16)]
@@ -629,9 +631,34 @@ class SteppedModeTests(unittest.TestCase):
             self.assertEqual(receipt['step']['executed_dots'],FRAME_DOTS)
             self.assertTrue(receipt['released'])
             self.assertEqual(history(out)[0]['state'],'RETIRED')
+            # History (served as /status.json commands) carries the receipt's step
+            # report, and the page renders that step instead of the ignored ms.
+            self.assertEqual(history(out)[0]['step'],receipt['step'])
+            self.assertEqual(history(out)[0]['step']['short_by_dots'],0)
+            self.assertIn(b"const held=r.step?'1 step, '+r.step.executed_dots+(r.step.short_by_dots?' of '+r.step.requested_dots:'')+' dots':r.milliseconds+' ms'",PAGE)
             self.assertEqual(client.mask,0)
             self.assertFalse(client.uncertain)
             self.assertEqual(result['captures'][-2]['step']['steps'],1)
+
+    def test_short_stepped_press_history_reports_the_shortfall(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            clock=Clock();clock.value=0;client=Fake(clock,'short');buttons=Buttons(out);queued=False
+            def wait(seconds):
+                nonlocal queued
+                if not queued and buttons.mode=='stepped':
+                    enqueue(out,abi.BUTTON_A,134);queued=True
+                clock.wait(seconds)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                                stop=clock,seconds=6,interval=2,clock=clock,wait=wait,buttons=buttons)
+            receipt=result['inputs'][-1]
+            rows={row['id']:row for row in history(out)}
+            row=rows[receipt['id']]
+            self.assertEqual(row['state'],'RETIRED')
+            self.assertEqual(row['step'],receipt['step'])
+            self.assertEqual((row['step']['executed_dots'],row['step']['requested_dots']),(FRAME_DOTS//2,FRAME_DOTS))
+            self.assertEqual(row['step']['short_by_dots'],FRAME_DOTS//2)
+            self.assertEqual(row['step']['reason'],abi.WIRE_RUN_DOTS_STOPPED)
 
     def test_every_press_in_a_stepped_batch_gets_its_own_step(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -107,8 +107,13 @@ UART acknowledgements before the next capture. During that time the page shows
 PROCESSING INPUTS and the real age of the previous image, not false freshness.
 
 History is newest first. Each record includes its assigned ID, the button or mask
-and requested milliseconds of a press or the selected mode, its queued timestamp
-and its observed start/completion timestamps.
+of a press or the selected mode, its queued timestamp and its observed
+start/completion timestamps. A press record keeps its requested `milliseconds`.
+A press retired in free-run shows that duration, `Right 134 ms`. A press retired
+in stepped mode carries the same `step` report as its receipt in the run result,
+and the page shows the step instead of the ignored milliseconds: `Right 1 step,
+70224 dots`, or `Right 1 step, 35112 of 70224 dots` after a short step. The
+page, `/status.json` and `result.json` read the same record.
 Labels accompany all colors:
 
 | State | Color | Meaning |
@@ -145,7 +150,8 @@ nothing and the game would never see the press. Each press instead holds its mas
 across its own step, and is released and verified afterwards exactly as in
 free-run. A batch of three presses therefore advances three steps, one per press,
 each observed by the core; a cycle with no press advances one step of its own.
-The requested 134 ms, and any local `--press-ms`, are ignored while stepped.
+The requested 134 ms, and any local `--press-ms`, are ignored while stepped, and
+the [history](#phone-controls-and-command-history) reports the step instead.
 
 **A stepped session is not a real-time proof.** Emulated time advances only when
 the viewer chooses to advance it, so a stepped capture shows correct pixels for

@@ -212,4 +212,7 @@ class Buttons:
                 state = 'UNCERTAIN' if client.uncertain else ('RETIRED' if receipt['status']=='APPLIED' and receipt.get('released') else receipt['status'])
                 atomic_json(self.out/'input-latest.json',receipt)
                 claimed.unlink()
-                self.update(record['id'],state,completed_at=timestamp(),released=receipt.get('released',False))
+                # A stepped press lasted its step, not its milliseconds; history
+                # carries the same step report as the receipt so every surface agrees.
+                effect = {'step':receipt['step']} if 'step' in receipt else {}
+                self.update(record['id'],state,completed_at=timestamp(),released=receipt.get('released',False),**effect)
