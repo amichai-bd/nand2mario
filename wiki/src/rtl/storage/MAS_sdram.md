@@ -299,7 +299,7 @@ image so that the copy engine has one rule for every image. Catalogue entry
 | 1 | 1 | `profile`: the [profile ID](../interfaces/MAS_interfaces.md) the image runs in; games use `DIRECT_ID`, the menu uses `LOADER_ID` |
 | 2-3 | 2 | `length`, little-endian; must equal 32768 for a valid entry |
 | 4-7 | 4 | `crc32`, little-endian CRC-32/ISO-HDLC of the 32768 image bytes, the same polynomial and reflection as `LOAD_BEGIN` |
-| 8-23 | 16 | `title`: bytes `0x0134`-`0x0143` of the image header, copied verbatim. One clarification: when all sixteen header bytes are zero, the writer stores the image's pinned display title (upper-case ASCII letters, digits, spaces and dashes, zero-padded to 16) instead; a header with any non-zero title byte is never overridden. Every writer takes the entry from one code path ([`image_entry`](../../../../tools/n2m/host/library.py)), so a flash image and a UART load agree byte for byte |
+| 8-23 | 16 | `title`: bytes `0x0134`-`0x0143` of the image header, copied verbatim. One clarification: when all sixteen header bytes are zero, the writer stores the image's pinned display title (upper-case ASCII letters, digits, spaces and dashes, zero-padded to 16) instead; a header with any non-zero title byte is never overridden. Every writer takes the entry from one code path ([`image_entry`](../../../../tools/n2m/host/library.py)), so a flash image and a UART load agree byte for byte; today only the flash library writes external entries |
 | 24-31 | 8 | Reserved, zero |
 
 The host writes the catalogue in phase 1 ([boot source](../cartridge/MAS_loader_profile.md#boot-source))

@@ -1676,7 +1676,11 @@ the Intel HEX byte address of slot byte `b` of slot `i` is
 [`flash_library.py`](../../../tools/n2m/flash_library.py) owns the assembly;
 [`test_flash_library.py`](../../../tools/n2m/tests/test_flash_library.py)
 checks the first and last word of every slot, the catalogue words, the erased
-fill, the record format and the registry rules.
+fill, the record format, the registry rules and the external resolution against
+a fake pin table and fake cached files. Its `sw library` stage test reads the
+real registry offline and skips, naming the missing pins, when the private
+cache under `workdir/private/external-roms/` has not been filled by one online
+`sw library` run.
 
 The registry [`src/fpga/de10_lite/library.json`](../../../src/fpga/de10_lite/library.json)
 has exactly `schema_version: 1`, a nonempty `slots` object mapping decimal
@@ -1760,8 +1764,8 @@ the 188,416-word user range, so six more 32 KiB slots (indices 10-15) remain
 addressable, and the user range holds all sixteen slots and the catalogue by
 construction (`16 * 8192 + 256 < 0x2E000` words). The compressed bitstream
 lives in the separate 672 KiB CFM0, so the slot count does not compete with
-the design: the practical slot capacity is the contract's sixteen, and the
-`.pof` evidence of the current ten-image build records the CFM0 usage below.
+the design: the practical slot capacity is the contract's sixteen. The CFM0
+usage of a build is measured in its `.pof` evidence, described below.
 
 `python tools/build.py sw library --tag <tag> --json` builds every registered
 package through the same `sw build` stages under that tag (cached as usual;

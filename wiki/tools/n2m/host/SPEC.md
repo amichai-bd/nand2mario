@@ -148,7 +148,10 @@ pin may carry `title`, 1-16 upper-case letters, digits, spaces or dashes: the
 catalogue title an image with an all-zero header title receives wherever a
 catalogue entry is written for it (`library.image_entry`, shared by the
 [flash library](../SPEC.md#external-images) and this tool); a named header is
-never overridden. `read_external` returns it as `title` (None when absent) and
+never overridden. Today no host command writes a catalogue entry for an
+external image (`host library load` takes packages only), so the fallback is
+exercised by `sw library` and the flash image; a later `--external` option of
+`host library load` must pass the pin title through the same argument. `read_external` returns it as `title` (None when absent) and
 refuses any other form, and `offline=True` reads only the cache, failing by
 name instead of fetching.
 The [Libbet play record](../../../../src/dv/libbet/README.md) drives the pinned
