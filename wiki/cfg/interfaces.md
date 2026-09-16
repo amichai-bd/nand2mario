@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `f4d8484c5aaf75bc26b7702d4bf1f1f4d68bb7c1433e135335c9d46683ba2864`.
+Source SHA-256: `80358961f267d56d1b1ae0b33aa68687e0284aaa4601c9b986e1d7d76f244869`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -357,6 +357,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `LIBRARY_STATUS_KEY1_PENDING` | 8 | `0x10` | $A000 bit 4: a KEY1 return waits for the current copy to finish |
 | `LIBRARY_STATUS_FLASH_BOOT` | 8 | `0x8` | $A000 bit 3: this power-up's library was copied from flash |
 | `LIBRARY_CONTROL_RETURN` | 32 | `0x1` | WRITE_HOST(LIBRARY_CONTROL) value that requests the menu return |
+| `LIBRARY_GAME_EXIT_VALUE` | 8 | `0x10` | Direct-profile CPU write value to $6000-$7FFF that requests the menu return; equals MENU_INDEX so both profiles share one select decode |
 | `LIBRARY_KEY1_DEBOUNCE_EDGES` | 32 | `0x1E848` | KEY1 level must be stable this many edges (5 ms) before the debounced level changes |
 | `LIBRARY_KEY1_HOLD_EDGES` | 32 | `0xBEBC20` | Debounced KEY1 press length (0.5 s) that raises one menu return |
 

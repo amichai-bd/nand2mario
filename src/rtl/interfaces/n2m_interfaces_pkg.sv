@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: f4d8484c5aaf75bc26b7702d4bf1f1f4d68bb7c1433e135335c9d46683ba2864
+// Source SHA-256: 80358961f267d56d1b1ae0b33aa68687e0284aaa4601c9b986e1d7d76f244869
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -259,6 +259,7 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] LIBRARY_STATUS_KEY1_PENDING = 8'h10;
   localparam logic [7:0] LIBRARY_STATUS_FLASH_BOOT = 8'h8;
   localparam logic [31:0] LIBRARY_CONTROL_RETURN = 32'h1;
+  localparam logic [7:0] LIBRARY_GAME_EXIT_VALUE = 8'h10;
   localparam logic [31:0] LIBRARY_KEY1_DEBOUNCE_EDGES = 32'h1E848;
   localparam logic [31:0] LIBRARY_KEY1_HOLD_EDGES = 32'hBEBC20;
   localparam integer PACKET_HEADER_BYTES = 10;

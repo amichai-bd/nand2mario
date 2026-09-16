@@ -4,7 +4,8 @@
 // SDRAM controller and device model, with a bus driver in place of the CPU.
 // Contract: wiki/src/rtl/cartridge/MAS_loader_profile.md#verification.
 // Test plan: README.md. One fixture per run, selected with +fixture=<name>:
-// map, window, swap, swap-fault, key1. Expectations come from the contract
+// map, window, swap, swap-fault, swap-host, exit, key1, key1-queue.
+// Expectations come from the contract
 // and the fixture's own library image, never from DUT state.
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
@@ -428,7 +429,7 @@ module tb_loader #(
         while (paused) edge_cycle();
         // In DIRECT_ID the registers are absent: no fill, no status bytes, no mask.
         if (profile != PROFILE_DIRECT_ID) $fatal(1, "LOADER_TB_MAP_DIRECT profile=%02h", profile);
-        cpu_write(16'h2000, 8'd5); cpu_write(16'h6000, 8'd16);
+        cpu_write(16'h2000, 8'd5); cpu_write(16'h6000, 8'd0); cpu_write(16'h7FFF, 8'd15);
         #1;
         if (copy_busy || library_status[29:24] != 6'd3) $fatal(1, "LOADER_TB_MAP_DIRECT_EFFECT");
         for (a = 16'hA000; a < 16'hC000; a = a + 1) begin
@@ -584,6 +585,16 @@ module tb_loader #(
         // Before the controller initializes, both commits are refused NOT_READY.
         int edges;
         if (sdram_initialized) $fatal(1, "LOADER_TB_EARLY_INIT");
+        // The game exit register is refused the same way: NOT_READY recorded,
+        // nothing queued, $A003 untouched.
+        profile = PROFILE_DIRECT_ID;
+        cpu_write(16'h7000, LIBRARY_GAME_EXIT_VALUE);
+        #1;
+        if (copy_busy || library_status[4]) $fatal(1, "LOADER_TB_NOT_READY_EXIT");
+        if (library_status[15:8] != LIBRARY_RESULT_NOT_READY || library_status[23:16] != 8'hFF)
+            $fatal(1, "LOADER_TB_NOT_READY_EXIT_RESULT status=%08h", library_status);
+        profile = PROFILE_LOADER_ID;
+        checks = checks + 1;
         cpu_write(16'h2000, 8'd1);
         #1;
         if (copy_busy) $fatal(1, "LOADER_TB_NOT_READY_FILL");
@@ -593,6 +604,78 @@ module tb_loader #(
         if (copy_busy) $fatal(1, "LOADER_TB_NOT_READY_SWAP");
         expect_status(8'h00, LIBRARY_RESULT_NOT_READY, 8'd4, "select not ready");
         expect_read(16'hA001, 8'd0, "bank unchanged");
+    endtask
+
+    // The game exit register from a running direct-profile game: ignored
+    // values and addresses, the return itself, the loader-profile alias and
+    // the queued case behind a return in progress.
+    task automatic fixture_exit;
+        int edges;
+        logic [31:0] epoch_before, status_before;
+        select_swap(0, PROFILE_DIRECT_ID);
+        status_before = library_status;
+        // Other values in the register range (including the MBC1 mode values)
+        // and the exit value at other addresses change nothing.
+        cpu_write(16'h6000, 8'h11);
+        cpu_write(16'h7FFF, 8'h00);
+        cpu_write(16'h7000, 8'h01);
+        cpu_write(16'h6ABC, 8'hFF);
+        cpu_write(16'h6000, 8'h90);
+        cpu_write(16'h0000, LIBRARY_GAME_EXIT_VALUE);
+        cpu_write(16'h2000, LIBRARY_GAME_EXIT_VALUE);
+        cpu_write(16'h5FFF, LIBRARY_GAME_EXIT_VALUE);
+        cpu_write(16'hA000, LIBRARY_GAME_EXIT_VALUE);
+        #1;
+        if (copy_busy || library_status != status_before || profile != PROFILE_DIRECT_ID)
+            $fatal(1, "LOADER_TB_EXIT_IGNORED status=%08h profile=%02h", library_status, profile);
+        check_rom_image(0);
+        checks = checks + 1;
+        // The exit write returns exactly like KEY1: busy at once, no ROM write
+        // before the pause, the menu image, epoch + 1, result OK, $A003
+        // unchanged, running without a host RUN.
+        epoch_before = epoch;
+        saw_invalid_write = 0;
+        cpu_write(16'h6ABC, LIBRARY_GAME_EXIT_VALUE);
+        #1;
+        if (!copy_busy || !swap_busy || library_status[4]) $fatal(1, "LOADER_TB_EXIT_BUSY");
+        while (!paused) begin edge_cycle(); if (rom_host_write) $fatal(1, "LOADER_TB_EXIT_WRITE_BEFORE_PAUSE"); end
+        wait_copy(edges, SWAP_BOUND, "game exit");
+        if (saw_invalid_write) $fatal(1, "LOADER_TB_EXIT_VALID_DURING_WRITE");
+        if (profile != PROFILE_LOADER_ID || !image_valid || epoch != epoch_before + 1)
+            $fatal(1, "LOADER_TB_EXIT_SWAP profile=%02h valid=%b epoch=%0d", profile, image_valid, epoch);
+        edges = 0;
+        while (paused) begin edge_cycle(); edges = edges + 1; if (edges > 100) $fatal(1, "LOADER_TB_EXIT_STILL_PAUSED"); end
+        expect_status(8'h20, LIBRARY_RESULT_OK, 8'd0, "after exit");
+        check_rom_image(MENU);
+        swaps = swaps + 1;
+        checks = checks + 1;
+        // In the loader profile the same write is select 16: a menu restart.
+        select_swap(MENU, PROFILE_LOADER_ID);
+        expect_status(8'h20, LIBRARY_RESULT_OK, 8'd16, "menu restart");
+        // Queued: a return event, then the exit write committed before the
+        // core pauses: key1_pending, and a second menu swap follows the first.
+        select_swap(1, PROFILE_DIRECT_ID);
+        epoch_before = epoch;
+        edge_cycle();
+        host_return = 1; edge_cycle(); host_return = 0;
+        cpu_write(16'h7FFF, LIBRARY_GAME_EXIT_VALUE);
+        #1;
+        if (paused) $fatal(1, "LOADER_TB_EXIT_QUEUE_PREMISE");
+        if (!copy_busy || !library_status[4]) $fatal(1, "LOADER_TB_EXIT_NOT_QUEUED status=%08h", library_status);
+        edges = 0;
+        while (epoch != epoch_before + 1) begin
+            edge_cycle(); edges = edges + 1;
+            if (edges > SWAP_BOUND) $fatal(1, "LOADER_TB_EXIT_FIRST_RETURN");
+        end
+        repeat (2) edge_cycle();
+        if (!copy_busy) $fatal(1, "LOADER_TB_EXIT_QUEUE_NOT_HELD");
+        wait_copy(edges, 2 * SWAP_BOUND, "queued exit");
+        if (profile != PROFILE_LOADER_ID || epoch != epoch_before + 2 || library_status[4])
+            $fatal(1, "LOADER_TB_EXIT_QUEUED_SWAP epoch=%0d status=%08h", epoch, library_status);
+        while (paused) edge_cycle();
+        check_rom_image(MENU);
+        swaps = swaps + 2;
+        checks = checks + 1;
     endtask
 
     task automatic fixture_key1;
@@ -730,6 +813,7 @@ module tb_loader #(
             "key1": fixture_key1();
             "key1-queue": fixture_key1_queue();
             "swap-host": fixture_swap_host();
+            "exit": fixture_exit();
             default: $fatal(1, "LOADER_TB_FIXTURE %s", fixture);
         endcase
         if (contract_fault) $fatal(1, "LOADER_TB_CPU_PORT_FAULT");

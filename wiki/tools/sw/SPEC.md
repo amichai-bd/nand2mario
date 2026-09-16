@@ -145,7 +145,11 @@ exports: `dmg-direct-v1` runs in `PROFILE_DIRECT_ID` and `dmg-loader-v1`, the
 share the image format below; the loader profile additionally refuses `ROM1`
 layout sections with `LAYOUT_REGION`, because the
 [loader hardware](../../src/rtl/cartridge/MAS_loader_profile.md#address-map-in-the-loader-profile)
-maps its banked window over the upper half. The build result records the
+maps its banked window over the upper half. A `dmg-direct-v1` program may
+return to the on-board menu by writing `LIBRARY_GAME_EXIT_VALUE` from the
+generated `interfaces.inc` to any address in `$6000`-`$7FFF`
+([game exit register](../../src/rtl/cartridge/MAS_loader_profile.md#game-exit-register));
+every other cartridge-space write stays ignored. The build result records the
 profile name and its generated `profile_id`, which the
 [host package reader](../n2m/host/SPEC.md#commands) uses for `LOAD_BEGIN` and
 the library catalogue. The builder compares the generated
