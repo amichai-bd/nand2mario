@@ -7,6 +7,7 @@ import struct
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import zlib
 
@@ -73,6 +74,22 @@ class Fake:
         return {'size':5760,'epoch':3,'seq':seq,'dot':seq*70224},bytes([0xe4])*5760
 
 
+class FakeCamera:
+    def __init__(self, clock, fault=None):
+        self.clock,self.fault = clock,fault
+        self.count = 0
+        self.started = self.closed = False
+    def start(self):
+        self.started=True
+        if self.fault=='start':raise RuntimeError('camera failed to start')
+    def read(self):
+        if self.fault=='read':raise TimeoutError('camera frame stalled')
+        self.count+=1;self.clock.value+=.1
+        seq = 1 if self.fault=='duplicate' else self.count
+        return {'kind':'camera','seq':seq},b'camera-jpeg-'+bytes([seq])
+    def close(self):self.closed=True
+
+
 class ViewerTests(unittest.TestCase):
     def run_loop(self,fault=None,seconds=4):
         clock=Clock();clock.value=0
@@ -111,6 +128,52 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(client.events,['identify'])
         self.assertEqual(result['status'],'FAIL')
 
+    def test_camera_only_advances_without_a_uart_client_or_controls(self):
+        clock=Clock();clock.value=0;camera=FakeCamera(clock);latest=Latest(clock=clock)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder)
+            result=capture_loop(None,latest,out,png_writer,expected_build=None,stop=clock,
+                                clock=clock,wait=clock.wait,seconds=4,interval=2,camera=camera)
+            self.assertFalse((out/'capture-1.2bpp').exists())
+            self.assertEqual((out/'capture-1.jpg').read_bytes(),b'camera-jpeg-\1')
+            self.assertFalse((out/'capture-1.png').exists())
+        self.assertEqual(result['status'],'PASS')
+        self.assertGreaterEqual(result['capture_count'],39)
+        self.assertEqual((result['image_source'],result['controls_enabled']),('camera',False))
+        self.assertEqual(result['cleanup'],{'verified':True,'reason':'camera stopped; UART not opened'})
+        self.assertTrue(result['released'])
+        self.assertTrue(camera.started and camera.closed)
+        status=latest.read()[0]
+        self.assertEqual((status['image_source'],status['controls_enabled'],status['source']['kind']),
+                         ('camera',False,'camera'))
+        self.assertIn(b'Camera view only | UART controls disabled',PAGE)
+        self.assertIn(b'physical camera MJPEG frame',PAGE)
+        self.assertIn(b"frame.src='/camera.mjpg'",PAGE)
+
+    def test_camera_display_with_uart_controls_keeps_preflight_and_release(self):
+        clock=Clock();clock.value=0;camera=FakeCamera(clock);client=Fake(clock);latest=Latest(clock=clock)
+        with tempfile.TemporaryDirectory() as folder:
+            result=capture_loop(client,latest,Path(folder),png_writer,expected_build=BUILD,stop=clock,
+                                clock=clock,wait=clock.wait,seconds=4,interval=2,camera=camera)
+        self.assertEqual(result['status'],'PASS')
+        self.assertTrue(result['controls_enabled'])
+        self.assertEqual(client.events.count('snapshot'),0)
+        self.assertIn('identify',client.events)
+        self.assertEqual(result['cleanup'],{'verified':True,'state':abi.STATE_PAUSED,'input_effective':0})
+        self.assertEqual([event for event in client.events if event == 'HALT' or
+                          isinstance(event,tuple) and event[:2] == ('write',abi.HOST_REG_INPUT)],
+                         ['HALT',('write',abi.HOST_REG_INPUT,0)])
+
+    def test_camera_failure_is_retained_and_closes_source(self):
+        for fault,stage,error in (('start','camera-start','RuntimeError'),('read','capture','TimeoutError'),
+                                  ('duplicate','capture','SourceStale')):
+            clock=Clock();clock.value=0;camera=FakeCamera(clock,fault);latest=Latest(clock=clock)
+            with tempfile.TemporaryDirectory() as folder:
+                result=capture_loop(None,latest,Path(folder),png_writer,expected_build=None,stop=clock,
+                                    clock=clock,wait=clock.wait,seconds=4,interval=2,camera=camera)
+            self.assertEqual((result['status'],result['stage'],result['error_class']),('FAIL',stage,error))
+            self.assertTrue(camera.closed)
+
     def test_rejections_bounded_duplicate_never_refreshes(self):
         result,client,latest,_=self.run_loop('rejected',10)
         self.assertEqual(client.count,2)
@@ -147,7 +210,7 @@ class ViewerTests(unittest.TestCase):
             return code,data,headers
         try:
             self.assertEqual(http.server_address[0],'127.0.0.1')
-            for path in ('/','/status.json','/frame.png','/file','/control'):
+            for path in ('/','/status.json','/frame.png','/camera.mjpg','/file','/control'):
                 self.assertEqual(request(path)[0],401)
             self.assertEqual(request('/frame.png',auth)[:2],(200,b'actualpng'))
             old=json.loads(request('/status.json',auth)[1])
@@ -158,6 +221,68 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(request('/control',auth,'POST')[0],405)
             self.assertEqual(request('/frame.png',auth)[2]['Cache-Control'],'no-store, max-age=0')
         finally:
+            http.shutdown();http.server_close();thread.join()
+
+    def test_camera_mjpeg_is_authenticated_and_delivers_without_status_polling(self):
+        latest=Latest()
+        http=server(latest,'testuser','x'*40,camera_stream=True)
+        thread=threading.Thread(target=http.serve_forever);thread.start()
+        auth={'Authorization':'Basic '+base64.b64encode(b'testuser:'+b'x'*40).decode()}
+        unauth=HTTPConnection('127.0.0.1',http.server_port,timeout=2)
+        unauth.request('GET','/camera.mjpg')
+        denied=unauth.getresponse();self.assertEqual(denied.status,401);denied.read();unauth.close()
+        client=HTTPConnection('127.0.0.1',http.server_port,timeout=2)
+        client.request('GET','/camera.mjpg',headers=auth)
+        response=client.getresponse()
+        try:
+            self.assertEqual(response.status,200)
+            self.assertEqual(response.getheader('Content-Type'),
+                             'multipart/x-mixed-replace; boundary=n2m-camera-frame')
+            for sequence,image in ((1,b'jpeg-one'),(2,b'jpeg-two')):
+                latest.publish(image,{'kind':'camera','seq':sequence},.01)
+                self.assertEqual(response.readline(),b'--n2m-camera-frame\r\n')
+                self.assertEqual(response.readline(),b'Content-Type: image/jpeg\r\n')
+                self.assertEqual(response.readline(),f'Content-Length: {len(image)}\r\n'.encode())
+                self.assertEqual(response.readline(),b'\r\n')
+                self.assertEqual(response.read(len(image)),image)
+                self.assertEqual(response.read(2),b'\r\n')
+            latest.mark('STOPPED')
+            self.assertEqual(response.readline(),b'--n2m-camera-frame--\r\n')
+        finally:
+            response.close();client.close()
+            latest.mark('STOPPED')
+            http.shutdown();http.server_close();thread.join()
+
+    def test_camera_client_disconnect_does_not_stop_producer_or_leak_handler(self):
+        latest=Latest()
+        http=server(latest,'testuser','x'*40,camera_stream=True)
+        thread=threading.Thread(target=http.serve_forever);thread.start()
+        auth={'Authorization':'Basic '+base64.b64encode(b'testuser:'+b'x'*40).decode()}
+        client=HTTPConnection('127.0.0.1',http.server_port,timeout=2)
+        client.request('GET','/camera.mjpg',headers=auth)
+        response=client.getresponse()
+        latest.publish(b'first',{'kind':'camera','seq':1},.01)
+        self.assertEqual(response.readline(),b'--n2m-camera-frame\r\n')
+        response.close();client.close()
+        recovered = False
+        try:
+            for sequence in range(2,30):
+                latest.publish(f'frame-{sequence}'.encode(),
+                               {'kind':'camera','seq':sequence},.01)
+                acquired=[]
+                for _ in range(8):
+                    if http.slots.acquire(blocking=False):
+                        acquired.append(True)
+                recovered = len(acquired)==8
+                for _ in acquired:
+                    http.slots.release()
+                if recovered:
+                    break
+                time.sleep(.01)
+            self.assertTrue(recovered)
+            self.assertGreaterEqual(latest.read()[0]['source']['seq'],2)
+        finally:
+            latest.mark('STOPPED')
             http.shutdown();http.server_close();thread.join()
 
     def test_phone_input_auth_origin_body_and_queue(self):
@@ -395,6 +520,59 @@ class ButtonQueueTests(unittest.TestCase):
                 (root/'workdir/builds/used/live-viewer').mkdir(parents=True)
                 with patch.object(viewer,'ROOT',root),self.assertRaises(SystemExit):
                     viewer.main(['--tag','used','--credentials','private.json','--expected-build-id',BUILD])
+
+    def test_camera_cli_is_view_only_unless_uart_controls_are_explicit(self):
+        from unittest.mock import MagicMock,patch
+        from contextlib import redirect_stderr
+        import fpga_viewer as viewer
+        from n2m.fixture_preflight import fixture_imports
+        import io
+        invalid = [
+            ['--credentials','private.json','--camera-source','windows-directshow','--expected-build-id',BUILD],
+            ['--credentials','private.json','--camera-source','windows-directshow','--uart-port','COM92'],
+            ['--credentials','private.json','--camera-source','windows-directshow','--step-frames','1'],
+            ['--credentials','private.json','--camera-source','windows-directshow','--camera-uart-controls'],
+            ['--credentials','private.json','--camera-uart-controls','--expected-build-id',BUILD],
+        ]
+        for command in invalid:
+            with redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):viewer.main(command)
+        private='PRIVATE_CAMERA_SELECTOR'
+        tree=MagicMock();tree.__enter__.return_value=tree;tree.process.returncode=0
+        with fixture_imports(viewer.ROOT):
+            sys.path.insert(0,str(viewer.ROOT/'src/dv/springtrail'))
+            import endurance  # noqa: F401
+            with tempfile.TemporaryDirectory() as folder,patch.object(viewer,'ROOT',Path(folder)),\
+                 patch.dict('os.environ',{'N2M_VIEWER_CAMERA_DEVICE':private},clear=False),\
+                 patch('n2m.process_tree.Tree',return_value=tree) as launch:
+                self.assertEqual(viewer.main(['--credentials','private.json','--camera-source',
+                                              'windows-directshow','--seconds','30']),0)
+        command=launch.call_args.args[0]
+        self.assertIn('windows-directshow',command)
+        self.assertNotIn(private,str(command))
+
+    def test_camera_only_runtime_refuses_local_queue_without_an_inbox_item(self):
+        from contextlib import redirect_stderr,redirect_stdout
+        from unittest.mock import patch
+        import fpga_viewer as viewer
+        import io
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            runtime=root/'workdir/builds/cameraonly/live-viewer'
+            runtime.mkdir(parents=True)
+            (runtime/'service.json').write_text(json.dumps({
+                'image_source':'camera','controls_enabled':False}))
+            with patch.object(viewer,'ROOT',root),redirect_stderr(io.StringIO()),\
+                 self.assertRaises(SystemExit):
+                viewer.main(['--tag','cameraonly','--queue-mask','1'])
+            self.assertFalse((runtime/'inbox').exists())
+
+            controlled=root/'workdir/builds/cameracontrol/live-viewer'
+            controlled.mkdir(parents=True)
+            (controlled/'service.json').write_text(json.dumps({
+                'image_source':'camera','controls_enabled':True}))
+            with patch.object(viewer,'ROOT',root),redirect_stdout(io.StringIO()):
+                self.assertEqual(viewer.main(['--tag','cameracontrol','--queue-mask','1']),0)
+            self.assertEqual(len(list((controlled/'inbox').glob('*.json'))),1)
 
     def test_lease_deadline_interrupts_batch_wait(self):
         from unittest.mock import patch
@@ -736,6 +914,42 @@ class PreflightDiagnosticTests(unittest.TestCase):
         self.assertEqual(record['message'],'cannot read here')
         self.assertEqual(describe_failure('capture',RuntimeError('x'*300))['message'],'x'*200)
         self.assertEqual(describe_failure('preflight',OSError())['message'],'')
+
+    def test_camera_only_worker_opens_no_machine_or_uart_lock(self):
+        import fpga_viewer as viewer
+        from contextlib import redirect_stderr,redirect_stdout
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import io
+        class Camera:
+            process=None
+            def validate(self):self.validated=True
+        camera=Camera()
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);private=root/'private.json'
+            private.write_text(json.dumps({'username':'viewuser','password':PASSWORD}))
+            args=SimpleNamespace(tag='cameraonly',credentials=str(private),seconds=1,port=0,input_origin=None,
+                                 interval=1,step_frames=1,expected_build_id=None,uart_port=None,uart_vid=None,
+                                 uart_pid=None,uart_identity=None,camera_source='windows-directshow',
+                                 camera_uart_controls=False)
+            def loop(client,latest,out,png_writer,**kwargs):
+                self.assertIsNone(client)
+                self.assertIs(kwargs['camera'],camera)
+                return {'status':'PASS','stage':'capture','capture_count':2,'seconds':1,
+                        'released':True,'cleanup':{'verified':True,'reason':'camera stopped; UART not opened'}}
+            fail=lambda *_a,**_k:(_ for _ in ()).throw(AssertionError('UART resource touched'))
+            with patch.object(viewer,'ROOT',root),patch.object(viewer,'DirectShowCamera',return_value=camera),\
+                 patch.object(viewer,'machine_lock',fail),patch.object(viewer,'session',fail),\
+                 patch.object(viewer,'capture_loop',side_effect=loop),patch.object(viewer.signal,'signal'),\
+                 patch.dict('os.environ',{'N2M_VIEWER_CAMERA_DEVICE':'PRIVATE_CAMERA_SELECTOR'},clear=False),\
+                 redirect_stdout(io.StringIO()) as stdout,redirect_stderr(io.StringIO()) as stderr:
+                code=viewer.worker(args)
+            result=json.loads((root/'workdir/builds/cameraonly/live-viewer/result.json').read_text())
+            service=json.loads((root/'workdir/builds/cameraonly/live-viewer/service.json').read_text())
+        self.assertEqual((code,result['status'],result['capture_count']),(0,'PASS',2))
+        self.assertTrue(camera.validated)
+        self.assertEqual((service['image_source'],service['controls_enabled']),('camera',False))
+        self.assertNotIn('PRIVATE_CAMERA_SELECTOR',json.dumps(result)+json.dumps(service)+stdout.getvalue()+stderr.getvalue())
 
     def test_held_lock_before_client_reports_stage_class_and_no_traffic(self):
         from contextlib import contextmanager

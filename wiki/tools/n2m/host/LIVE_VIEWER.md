@@ -1,9 +1,14 @@
 # Live FPGA viewer
 
-View and control the image already loaded on the FPGA from a phone browser.
-The host reads actual 160×144 packed pixels over UART and publishes native PNGs;
-it does not render a host-side game or reload, reset or program the board.
-This is framebuffer evidence, not a camera view or physical-monitor proof.
+View a UART framebuffer or a Windows camera from a protected browser page.
+The default source reads actual 160×144 packed pixels over UART and publishes
+native PNGs. An explicit camera source instead shows the physical monitor through
+one exact Windows DirectShow device and captures no audio. It does not render a
+host-side game or reload, reset or program the board.
+
+The sources prove different things. UART pixels are framebuffer evidence, not a
+physical-monitor proof. Camera frames are physical observation, not evidence
+that the UART framebuffer or individual VGA signal timings are correct.
 The [host contract](SPEC.md) owns UART, session and snapshot semantics.
 
 <img src="assets/live-viewer-phone.jpg" width="300" alt="Owner-provided phone screenshot showing live FPGA pixels, tap controls and retired command history">
@@ -44,6 +49,58 @@ python tools/fpga_viewer.py --credentials workdir/private/viewer.json `
   --seconds 3600 --port 8765 --input-origin $ViewerOrigin
 ```
 
+That command is the default UART-framebuffer mode. It requires the reviewed
+build and exclusive UART session because the same owner captures pixels and
+operates the controls.
+
+### Windows camera view
+
+Camera-only mode needs no FPGA, UART selector, board lock, or reviewed build ID.
+It is view-only: the page exposes no Game Boy buttons and the process sends no
+UART traffic. Set the exact private DirectShow friendly name through the process
+environment so the supervisor record and child command do not retain it. The
+optional capture-tool variable is needed only when `ffmpeg.exe` is not on PATH:
+
+```powershell
+$env:N2M_VIEWER_CAMERA_DEVICE = Read-Host 'Exact DirectShow video device'
+$env:N2M_VIEWER_FFMPEG = '<qualified ffmpeg.exe path>'
+python tools/fpga_viewer.py --credentials workdir/private/viewer.json `
+  --camera-source windows-directshow --seconds 300 --port 8765
+```
+
+Open `http://127.0.0.1:8765` and enter the private viewer credentials. The
+camera name must match exactly one enumerated video device. A missing or duplicate
+name is refused. The worker invokes DirectShow with an explicit video input and
+`-an`; it starts no microphone or audio stream. The browser receives an
+authenticated multipart MJPEG stream as complete frames arrive from the
+fixed 640×360, 10-frame-per-second capture profile. JPEG quality 7 limits local
+and tunnel bandwidth while keeping monitor text and large pixels readable. The
+single-frame host queue drops an older complete frame when capture outruns a
+consumer, so it bounds latency instead of building a backlog. The one-second
+status poll only updates labels; it does not pace or fetch the displayed camera
+frames. The profile is a request, not a latency or throughput guarantee; the
+short physical smoke records observed frame size, delivered rate, and local and
+tunnel latency.
+
+To show camera frames and also operate the loaded FPGA, opt in to the UART
+session explicitly. All reviewed-build, selected-endpoint, exclusive-lock,
+neutral-input, ordered-command, and verified shutdown checks then apply exactly
+as they do in UART-framebuffer mode:
+
+```powershell
+$ViewerOrigin = 'https://<current tunnel hostname>'
+python tools/fpga_viewer.py --credentials workdir/private/viewer.json `
+  --camera-source windows-directshow --camera-uart-controls `
+  --expected-build-id $ViewerBuild --uart-port $ViewerPort `
+  --uart-vid $ViewerVid --uart-pid $ViewerPid --uart-identity $ViewerIdentity `
+  --seconds 300 --port 8765 --input-origin $ViewerOrigin
+```
+
+The authenticated camera page may be viewed directly over loopback, but input
+POSTs retain the existing safety boundary: controls require the separately
+managed exact HTTPS `--input-origin`. An HTTP loopback origin is not accepted
+for Game Boy input.
+
 Omitting `--tag` creates one unique tag in the parent and passes it unchanged to
 the worker. The startup line reports it. An existing explicit runtime tag is
 refused; rerun without `--tag` rather than deleting prior artifacts.
@@ -66,11 +123,19 @@ intended users. Every image, status and input request requires authentication.
 
 ## Phone controls and command history
 
-The page shows actual pixels at a sharp integer scale, capture age, source frame,
-core state and measured capture latency. Measured captures take about 1.1 seconds;
+UART-framebuffer mode shows actual pixels at a sharp integer scale, capture age,
+source frame, core state and measured capture latency. Measured captures take about 1.1 seconds;
 the normal capture interval is about 2 seconds. These are observed timings, not a
 frame-rate guarantee. A static game image can still be fresh when its source
 sequence and completion dot advance.
+
+Camera mode labels the image as a physical camera MJPEG frame and advances its source
+sequence for each complete JPEG read from the capture process. A static scene may
+therefore remain fresh while its camera sequence advances. A stalled, malformed,
+or exited camera stream reports ERROR and never refreshes the last successful
+frame. Camera-only mode hides the controls and command history. Camera with the
+explicit UART control option keeps the behavior below while replacing only the
+displayed image.
 
 To play the board locally with held buttons instead of taps, and a monitor
 instead of captured frames, use the [on-screen pad](GAMEPAD.md); it takes the
@@ -99,6 +164,10 @@ with a duration from 1 to 1000 ms, without opening a second UART connection:
 $ViewerTag = '<reported-running-tag>'
 python tools/fpga_viewer.py --tag $ViewerTag --queue-mask 1 --press-ms 134
 ```
+
+The running service record must say that UART controls are enabled. A camera-only
+tag refuses this command before it creates an inbox item. Camera plus the explicit
+UART-control option accepts it under the same bounded queue as browser taps.
 
 In free-run, durations are approximate monotonic host time after the input
 acknowledgement, not exact emulated frame counts. Stepped mode ignores the
@@ -178,8 +247,11 @@ a press.
 
 ## Access and freshness boundaries
 
-Authenticated GET routes are `/`, `/status.json` and `/frame.png`. The sole write
-route is POST `/input`: one named button or one mode name in at most 64 bytes of
+Authenticated GET routes are `/`, `/status.json`, the UART-only atomic
+`/frame.png`, and the camera-only continuous `/camera.mjpg`. The camera route is
+`multipart/x-mixed-replace` with complete `image/jpeg` parts; it is authenticated
+once when that bounded stream is opened and does not depend on status polling.
+The sole write route is POST `/input`: one named button or one mode name in at most 64 bytes of
 JSON, exact equality with the configured HTTPS Origin, and `X-Viewer-Input: tap`
 are required in addition to Basic authentication. Mode selection carries exactly
 that authentication; an unknown mode, a body naming both a button and a mode, and
@@ -233,7 +305,9 @@ the same verdict on the operator's terminal after the supervisor returns, with
 the cleanup outcome, and the worker's own stdout JSON carries `stage` and
 `error_class`. Stages in order: `credentials`, `http-server`, `machine-lock`,
 `session-open`, then `preflight` (identity, image, input authority and core
-state checks) and `capture`. A held or dead-owner session lock reports
+state checks), `camera-config`, `camera-start`, then `capture`. Camera-only mode
+uses only the camera stages and never enters the machine-lock or session-open
+stages. A held or dead-owner session lock reports
 `session-open` / `FileExistsError`; an uncertain durable session reports
 `session-open` / `RuntimeError`; a build mismatch reports `preflight` /
 `ValueError`. A known conflict adds the same `conflict` explanation the

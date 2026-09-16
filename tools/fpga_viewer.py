@@ -1,13 +1,16 @@
-"""Temporarily view or play the already-loaded FPGA image; no load, reset or gameplay.
+"""Temporarily view UART pixels or a Windows camera; no load or programming.
 
 Use a private credential JSON and explicit reviewed build/device selectors.
 Only the local operator can stop the worker; HTTP exposes image/status reads.
+Camera-only mode is view-only and opens no UART session. Camera UART controls
+are an explicit opt-in and keep the reviewed-build and neutral-release checks.
 `--gui` instead opens a local on-screen Game Boy pad: it sends buttons only,
 reads no frames and serves no HTTP, because the player watches the board's VGA
 output directly.
 """
 import argparse
 import json
+import os
 import secrets
 import signal
 import sys
@@ -26,6 +29,7 @@ from n2m.gui_pad import explain_conflict, pad_loop
 from n2m.live_viewer import MAX_STEP_FRAMES, Latest, capture_loop, describe_failure, server
 from n2m.records import atomic_json
 from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
+from n2m.windows_camera import DirectShowCamera
 
 
 def png_writer(packed, path):
@@ -94,35 +98,56 @@ def worker(args):
     out = ROOT/'workdir/builds'/args.tag/'live-viewer'
     out.mkdir(parents=True,exist_ok=False)
     # Until a client exists no session was opened, so cleanup is truthfully "none".
+    camera_source = getattr(args,'camera_source',None)
+    camera_uart_controls = getattr(args,'camera_uart_controls',False)
+    controls = camera_source is None or camera_uart_controls
     result = {'status':'FAIL','stage':'credentials','reason':'preflight not completed',
-              'cleanup':{'verified':False,'reason':'session not opened; no control sent'}}
-    http = buttons = None
+              'cleanup':{'verified':False,'reason':('session not opened; no control sent'
+                         if controls else 'camera not started; UART not opened')}}
+    http = buttons = camera = None
     try:
         credentials = load_credentials(args.credentials)
+        if camera_source is not None:
+            result['stage'] = 'camera-config'
+            camera = DirectShowCamera(os.environ.get('N2M_VIEWER_CAMERA_DEVICE',''),
+                                      os.environ.get('N2M_VIEWER_FFMPEG') or None)
+            camera.validate()
         result['stage'] = 'http-server'
         latest = Latest()
         stop = Stop(out/'STOP',args.seconds)
         signal.signal(signal.SIGINT,lambda *_:stop.event.set())
         signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
+        submit = (lambda mask,ms:enqueue(out,mask,ms)) if controls else None
+        submit_mode = (lambda mode:enqueue_mode(out,mode)) if controls else None
+        command_history = (lambda:history(out)) if controls else None
         http = server(latest,credentials['username'],credentials['password'],args.port,
-                      input_origin=args.input_origin,submit=lambda mask,ms:enqueue(out,mask,ms),
-                      submit_mode=lambda mode:enqueue_mode(out,mode),command_history=lambda:history(out))
+                      input_origin=args.input_origin,submit=submit,
+                      submit_mode=submit_mode,command_history=command_history,
+                      camera_stream=camera_source is not None)
         thread = threading.Thread(target=http.serve_forever,daemon=True)
         thread.start()
-        atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})
-        selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
-                                    uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
-        buttons = Buttons(out)
-        result['stage'] = 'machine-lock'
-        with machine_lock(1357311510), (out/'packets.jsonl').open('w',encoding='utf-8') as packets:
-            def record(row):
-                packets.write(json.dumps(row)+'\n');packets.flush()
-            result['stage'] = 'session-open'
-            with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
-                client = Client(wire,sequence=sequence,persist=persist,record=record)
-                result = capture_loop(client,latest,out,png_writer,expected_build=args.expected_build_id,
-                                      stop=stop,seconds=args.seconds,interval=args.interval,buttons=buttons,
-                                      step_frames=args.step_frames)
+        atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1',
+                    'stop_file':str(stop.path),'seconds':args.seconds,
+                    'image_source':'camera' if camera_source is not None else 'uart',
+                    'controls_enabled':controls})
+        if controls:
+            selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
+                                        uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
+            buttons = Buttons(out)
+            result['stage'] = 'machine-lock'
+            with machine_lock(1357311510), (out/'packets.jsonl').open('w',encoding='utf-8') as packets:
+                def record(row):
+                    packets.write(json.dumps(row)+'\n');packets.flush()
+                result['stage'] = 'session-open'
+                with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
+                    client = Client(wire,sequence=sequence,persist=persist,record=record)
+                    result = capture_loop(client,latest,out,png_writer,expected_build=args.expected_build_id,
+                                          stop=stop,seconds=args.seconds,interval=args.interval,buttons=buttons,
+                                          step_frames=args.step_frames,camera=camera)
+        else:
+            result = capture_loop(None,latest,out,png_writer,expected_build=None,
+                                  stop=stop,seconds=args.seconds,interval=args.interval,
+                                  step_frames=args.step_frames,camera=camera)
     except Exception as error:
         # A refusal before capture keeps its decisive cause: the stage, the error
         # class and a message with no path, device fact or credential in it.
@@ -136,6 +161,11 @@ def worker(args):
                 result['cancelled_inputs'] = buttons.close()
             except Exception as error:
                 result.update(status='FAIL',queue_close_error=str(error))
+        if camera is not None and camera.process is not None:
+            try:
+                camera.close()
+            except Exception as error:
+                result.update(status='FAIL',camera_cleanup_error=type(error).__name__)
         atomic_json(out/'result.json',result)
         if http is not None:
             http.shutdown();http.server_close();thread.join(timeout=2)
@@ -199,12 +229,19 @@ def main(argv=None):
     parser.add_argument('--seconds',type=int,help='session lease; default30 for the viewer and900 for --gui')
     parser.add_argument('--interval',type=float,help='viewer capture interval; default2')
     parser.add_argument('--step-frames',type=int,help='whole 70224-dot frames advanced per capture in stepped mode; default1')
+    parser.add_argument('--camera-source',choices=('windows-directshow',),
+                        help='show a private Windows camera instead of UART pixels')
+    parser.add_argument('--camera-uart-controls',action='store_true',
+                        help='with camera display, explicitly open the protected UART control session')
     parser.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
     arguments = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(arguments)
+    step_frames_selected = args.step_frames is not None
     viewer_only = {'--interval':args.interval,'--step-frames':args.step_frames,
                    '--credentials':args.credentials,'--init-credentials':args.init_credentials or None,
-                   '--input-origin':args.input_origin,'--port':args.port,'--queue-mask':args.queue_mask}
+                   '--input-origin':args.input_origin,'--port':args.port,'--queue-mask':args.queue_mask,
+                   '--camera-source':args.camera_source,
+                   '--camera-uart-controls':args.camera_uart_controls or None}
     if args.seconds is None:
         args.seconds = 900 if args.gui else 30
     if args.interval is None:
@@ -221,7 +258,14 @@ def main(argv=None):
     if not args.tag.isalnum():
         parser.error('tag must be alphanumeric')
     if args.queue_mask is not None and not args.gui:
-        index = enqueue(ROOT/'workdir/builds'/args.tag/'live-viewer',args.queue_mask,args.press_ms)
+        runtime = ROOT/'workdir/builds'/args.tag/'live-viewer'
+        try:
+            service = json.loads((runtime/'service.json').read_text(encoding='utf-8'))
+        except (OSError,ValueError):
+            parser.error('running viewer service required for queue submission')
+        if service.get('controls_enabled') is not True:
+            parser.error('running viewer has no UART controls')
+        index = enqueue(runtime,args.queue_mask,args.press_ms)
         print(json.dumps({'status':'QUEUED','id':index}))
         return 0
     if args.gui:
@@ -244,7 +288,18 @@ def main(argv=None):
             json.dump({'username':secrets.token_urlsafe(12),'password':secrets.token_urlsafe(32)},stream)
         print('Private credentials initialized; contents not displayed.')
         return 0
-    require_build_id(parser,args)
+    if args.camera_source is None:
+        if args.camera_uart_controls:
+            parser.error('--camera-uart-controls requires --camera-source')
+        require_build_id(parser,args)
+    elif args.camera_uart_controls:
+        require_build_id(parser,args)
+    else:
+        private_uart = args.expected_build_id or any((args.uart_port,args.uart_vid,args.uart_pid,args.uart_identity))
+        if private_uart:
+            parser.error('camera-only mode refuses UART options; add --camera-uart-controls to open UART')
+        if step_frames_selected:
+            parser.error('camera-only mode has no stepped UART control')
     if not 1 <= args.seconds <= 3600 or not 1 <= args.interval <= 10 or not 1024 <= args.port <= 65535:
         parser.error('seconds1..3600, interval1..10 and unprivileged port required')
     if not 1 <= args.step_frames <= MAX_STEP_FRAMES:

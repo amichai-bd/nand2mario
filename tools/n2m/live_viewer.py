@@ -1,4 +1,4 @@
-"""Read-only HTTP view of serialized actual UART snapshots."""
+"""Authenticated HTTP view of UART snapshots or a bounded camera stream."""
 import base64
 import hashlib
 import hmac
@@ -18,18 +18,17 @@ FRAME_DOTS = 70224  # One whole DMG frame; the step unit in stepped mode.
 MAX_STEP_FRAMES = 60
 
 PAGE = b'''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{image-rendering:pixelated;display:block;margin:20px auto;background:#333}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}#commands{text-align:left;font:14px system-ui;padding-left:20px}#commands li{padding:6px}.QUEUED{color:#77baff}.EXECUTING{color:#ffd166}.RETIRED{color:#84df9b}.FAILED,.UNCERTAIN{color:#ff9393}.CANCELLED{color:#aaa}</style>
-<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Actual FPGA pixels"><small id="detail"></small><p id="buttons"></p><p id="modes"></p><p id="mode-status"></p><p id="input-status"></p><h2>Commands (newest first)</h2><ol id="commands"></ol>
+<title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{display:block;margin:20px auto;background:#333;max-width:100%;height:auto}.uart{image-rendering:pixelated}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}#commands{text-align:left;font:14px system-ui;padding-left:20px}#commands li{padding:6px}.QUEUED{color:#77baff}.EXECUTING{color:#ffd166}.RETIRED{color:#84df9b}.FAILED,.UNCERTAIN{color:#ff9393}.CANCELLED{color:#aaa}</style>
+<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Live source image"><small id="detail"></small><p id="buttons"></p><p id="modes"></p><p id="mode-status"></p><p id="input-status"></p><h2 id="commands-title" hidden>Commands (newest first)</h2><ol id="commands"></ol>
 <script>
-let last=0,sequence=0;const state=document.querySelector('#state'),frame=document.querySelector('#frame'),detail=document.querySelector('#detail');
+let last=0,sequence=0,controlsBuilt=false,cameraStarted=false;const state=document.querySelector('#state'),frame=document.querySelector('#frame'),detail=document.querySelector('#detail');
 async function send(payload,name){const label=document.querySelector('#input-status');try{const r=await fetch('/input',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer-Input':'tap'},body:JSON.stringify(payload)});if(!r.ok)throw Error('Queue full, busy, stopped or refused');const result=await r.json();label.textContent='Queued '+name+' #'+result.id}catch(e){label.textContent=e.message}}
 function control(target,text,payload){const b=document.createElement('button');b.textContent=text;b.style.cssText='font:20px system-ui;padding:12px;margin:4px';b.onclick=()=>send(payload,text);document.querySelector(target).appendChild(b)}
-for(const button of ['Up','Left','Right','Down','A','B','Start','Select'])control('#buttons',button,{button});
-for(const mode of ['free-run','stepped'])control('#modes','Mode: '+mode,{mode});
-function modeStatus(s){const step=s.step?' | advanced '+s.step.steps+' step(s), '+s.step.executed_dots+' of '+s.step.requested_dots+' dots to dot '+s.step.completed_dot+(s.step.short_by_dots?' | SHORT by '+s.step.short_by_dots+' dots (reason '+s.step.reason+')':''):'';document.querySelector('#mode-status').textContent='Mode '+(s.mode||'unknown')+(s.mode==='stepped'?' | step '+s.step_frames+' frame(s) of 70224 dots'+step+' | not a real-time proof':'')}
-function scale(){let n=Math.max(1,Math.floor((innerWidth-40)/160));frame.style.width=(160*n)+'px';frame.style.height=(144*n)+'px'}scale();addEventListener('resize',scale);
+function buildControls(s){if(!s.controls_enabled||controlsBuilt)return;controlsBuilt=true;for(const button of ['Up','Left','Right','Down','A','B','Start','Select'])control('#buttons',button,{button});for(const mode of ['free-run','stepped'])control('#modes','Mode: '+mode,{mode});document.querySelector('#commands-title').hidden=false}
+function modeStatus(s){if(!s.controls_enabled){document.querySelector('#mode-status').textContent='Camera view only | UART controls disabled';return}const step=s.step?' | advanced '+s.step.steps+' step(s), '+s.step.executed_dots+' of '+s.step.requested_dots+' dots to dot '+s.step.completed_dot+(s.step.short_by_dots?' | SHORT by '+s.step.short_by_dots+' dots (reason '+s.step.reason+')':''):'';document.querySelector('#mode-status').textContent='Mode '+(s.mode||'unknown')+(s.mode==='stepped'?' | step '+s.step_frames+' frame(s) of 70224 dots'+step+' | not a real-time proof':'')}
+function scale(s){if(s&&s.image_source==='uart'){let n=Math.max(1,Math.floor((innerWidth-40)/160));frame.className='uart';frame.style.width=(160*n)+'px';frame.style.height=(144*n)+'px'}else{frame.className='camera';frame.style.width='auto';frame.style.height='auto'}}addEventListener('resize',()=>scale({image_source:frame.className}));
 function commands(s){const list=document.querySelector('#commands');list.replaceChildren();if(s.commands_error){list.textContent=s.commands_error;return}for(const r of s.commands||[]){const li=document.createElement('li');li.className=r.state;const names=['Right','Left','Up','Down','A','B','Select','Start'].filter((n,i)=>r.mask&(1<<i)).join('+');const held=r.step?'1 step, '+r.step.executed_dots+(r.step.short_by_dots?' of '+r.step.requested_dots:'')+' dots':r.milliseconds+' ms';const what=r.mode?'mode '+r.mode:(names||'mask '+r.mask)+' '+held;li.textContent='#'+r.id+' '+what+' | '+r.state+' | queued '+(r.queued_at||'-')+' | started '+(r.started_at||'-')+' | completed '+(r.completed_at||'-');list.appendChild(li)}}
-async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();commands(s);modeStatus(s);if(s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s capture | '+s.core_state+' | source '+s.source.seq:'Waiting for actual pixels'}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
+async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();buildControls(s);commands(s);modeStatus(s);scale(s);if(s.image_source==='camera'&&!cameraStarted){frame.src='/camera.mjpg';cameraStarted=true}else if(s.image_source==='uart'&&s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s | '+(s.image_source==='camera'?'physical camera MJPEG frame ':'UART framebuffer ')+s.source.seq+(s.controls_enabled?' | '+s.core_state:''):'Waiting for '+(s.image_source==='camera'?'camera frames':'actual FPGA pixels')}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
 </script>'''
 
 
@@ -54,51 +53,71 @@ class Latest:
     def __init__(self, *, clock=time.monotonic, stale_after=5):
         self.clock, self.stale_after = clock, stale_after
         self.lock = threading.Lock()
-        self.png = None
+        self.changed = threading.Condition(self.lock)
+        self.frame = None
         self.when = None
         self.data = {'state':'STARTING','sequence':0}
         self.notes = {'mode':DEFAULT_MODE}
 
     def describe(self, **fields):
         """Sticky status fields, such as the active mode, kept across captures."""
-        with self.lock:
+        with self.changed:
             self.notes.update(fields)
+            self.changed.notify_all()
 
-    def publish(self, png, metadata, latency, extra=None):
-        with self.lock:
+    def publish(self, image, metadata, latency, extra=None):
+        with self.changed:
             prior = self.data.get('source')
+            metadata = dict(metadata)
+            metadata.setdefault('kind','uart')
             if prior is not None:
-                if metadata['epoch'] != prior['epoch']:
+                if metadata['kind'] != prior.get('kind','uart'):
+                    raise ValueError('source kind changed')
+                if metadata['kind'] == 'uart' and metadata['epoch'] != prior['epoch']:
                     raise ValueError('source epoch changed')
-                if metadata['seq'] <= prior['seq'] or metadata['dot'] <= prior['dot']:
+                if metadata['seq'] <= prior['seq'] or (metadata['kind'] == 'uart' and metadata['dot'] <= prior['dot']):
                     raise SourceStale('source frame did not advance')
-            self.png, self.when = bytes(png), self.clock()
+            self.frame, self.when = bytes(image), self.clock()
             self.data = {'state':'LIVE','sequence':self.data['sequence']+1,
                          'captured_at':datetime.now(timezone.utc).isoformat(),
                          'source':dict(metadata),'latency_seconds':latency,'core_state':'RUNNING',
-                         'sha256':hashlib.sha256(png).hexdigest()}
+                         'sha256':hashlib.sha256(image).hexdigest()}
             self.data.update(extra or {})
+            self.changed.notify_all()
 
     def mark(self, state, reason=None, core_state=None):
-        with self.lock:
+        with self.changed:
             self.data['state'] = state
             if core_state is not None:
                 self.data['core_state'] = core_state
             if reason:
                 self.data['reason'] = reason
+            self.changed.notify_all()
+
+    def _read_locked(self):
+        status = dict(self.data,**self.notes)
+        age = None if self.when is None else max(0,self.clock()-self.when)
+        status['age_seconds'] = age
+        if status['state'] == 'LIVE' and age > self.stale_after:
+            status['state'] = 'STALE'
+        return status,self.frame
 
     def read(self):
         with self.lock:
-            status = dict(self.data,**self.notes)
-            age = None if self.when is None else max(0,self.clock()-self.when)
-            status['age_seconds'] = age
-            if status['state'] == 'LIVE' and age > self.stale_after:
-                status['state'] = 'STALE'
-            return status, self.png
+            return self._read_locked()
+
+    def wait_after(self, sequence, timeout=1):
+        """Wait for a newer atomic image generation or a terminal state."""
+        terminal = ('STOPPED','STALE','ERROR')
+        with self.changed:
+            self.changed.wait_for(
+                lambda:self.data.get('sequence',0) > sequence or self.data.get('state') in terminal,
+                timeout)
+            return self._read_locked()
 
 
 def server(latest, username, password, port=0, *, input_origin=None, submit=None,
-           submit_mode=None, command_history=None):
+           submit_mode=None, command_history=None, camera_stream=False):
     if input_origin is not None:
         origin = urlsplit(input_origin)
         if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.path or origin.query or origin.fragment:
@@ -127,6 +146,33 @@ def server(latest, username, password, port=0, *, input_origin=None, submit=None
             if self.command != 'HEAD':
                 self.wfile.write(data)
 
+        def stream_camera(self):
+            self.send_response(200)
+            self.send_header('Cache-Control','no-store, max-age=0')
+            self.send_header('Content-Type','multipart/x-mixed-replace; boundary=n2m-camera-frame')
+            self.send_header('X-Content-Type-Options','nosniff')
+            self.send_header('X-Frame-Options','DENY')
+            self.send_header('Referrer-Policy','no-referrer')
+            self.end_headers()
+            sequence = 0
+            try:
+                while True:
+                    status,frame = latest.wait_after(sequence)
+                    current = status.get('sequence',0)
+                    if current > sequence and frame is not None:
+                        part = (b'--n2m-camera-frame\r\nContent-Type: image/jpeg\r\n'
+                                +f'Content-Length: {len(frame)}\r\n\r\n'.encode()
+                                +frame+b'\r\n')
+                        self.wfile.write(part)
+                        self.wfile.flush()
+                        sequence = current
+                    if status.get('state') in ('STOPPED','STALE','ERROR') and current <= sequence:
+                        self.wfile.write(b'--n2m-camera-frame--\r\n')
+                        self.wfile.flush()
+                        return
+            except (BrokenPipeError,ConnectionResetError,TimeoutError,OSError):
+                return
+
         def do_GET(self):
             supplied = self.headers.get('Authorization','').encode('utf-8')
             if not hmac.compare_digest(supplied,expected):
@@ -145,7 +191,11 @@ def server(latest, username, password, port=0, *, input_origin=None, submit=None
                     except (OSError,ValueError):
                         status['commands_error'] = 'Command history unavailable'
                 return self.respond(200,json.dumps(status).encode(),'application/json')
+            if path == '/camera.mjpg':
+                return self.stream_camera() if camera_stream else self.respond(404)
             if path == '/frame.png':
+                if camera_stream:
+                    return self.respond(404)
                 query = parse_qs(parsed.query)
                 if query and query.get('v') != [str(status['sequence'])]:
                     return self.respond(409)
@@ -256,46 +306,62 @@ def combine(reports, step_frames):
 
 def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                  seconds=30, interval=2, clock=time.monotonic, wait=None, buttons=None,
-                 step_frames=1):
-    """No load/reset/gameplay; one capture/readback at a time.
+                 step_frames=1, camera=None):
+    """Publish one source while optional UART controls retain their contract.
 
-    Free-run is the default and lets the board run between captures. Stepped
-    mode pauses the core and advances exactly `step_frames` whole frames per
-    capture, so it is not evidence of sustained native-rate behavior.
+    UART framebuffer mode remains the default. A camera may instead provide the
+    displayed MJPEG frames. With no client it is view-only and sends no UART traffic.
+    With a client, free-run and stepped controls keep their existing behavior.
     """
     if type(step_frames) is not int or not 1 <= step_frames <= MAX_STEP_FRAMES:
         raise ValueError('step must be 1..%d whole frames' % MAX_STEP_FRAMES)
+    if camera is None and client is None:
+        raise ValueError('one image source required')
+    controls = client is not None
+    if buttons is not None and not controls:
+        raise ValueError('buttons require a UART control session')
     wait = wait or stop.wait
     # `stage` names where a failure happened: identity/preconditions, or capture.
-    result = {'status':'FAIL','stage':'preflight','captures':[],'capture_count':0}
+    result = {'status':'FAIL','stage':'preflight' if controls else 'camera-start',
+              'captures':[],'capture_count':0,
+              'image_source':'camera' if camera is not None else 'uart',
+              'controls_enabled':controls}
     started = clock()
     try:
-        identity = client.identify()
-        if identity['build_id'] != expected_build:
-            raise ValueError('build mismatch')
-        result['identity'] = identity
-        if client.read_host(abi.HOST_REG_IMAGE_VALID) != 1:
-            raise ValueError('no valid existing image')
-        if client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
-            raise ValueError('UART input authority required')
-        if client.read_host(abi.HOST_REG_INPUT_EFFECTIVE) != 0:
-            raise ValueError('neutral effective input required')
-        state = client.read_host(abi.HOST_REG_STATE)
-        if state not in (abi.STATE_PAUSED,abi.STATE_RUNNING):
-            raise ValueError('existing image must be paused or running')
-        if state == abi.STATE_PAUSED:
-            client.control('RUN')
-        if client.read_host(abi.HOST_REG_STATE) != abi.STATE_RUNNING:
-            raise ValueError('core did not resume')
+        if controls:
+            identity = client.identify()
+            if identity['build_id'] != expected_build:
+                raise ValueError('build mismatch')
+            result['identity'] = identity
+            if client.read_host(abi.HOST_REG_IMAGE_VALID) != 1:
+                raise ValueError('no valid existing image')
+            if client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
+                raise ValueError('UART input authority required')
+            if client.read_host(abi.HOST_REG_INPUT_EFFECTIVE) != 0:
+                raise ValueError('neutral effective input required')
+            state = client.read_host(abi.HOST_REG_STATE)
+            if state not in (abi.STATE_PAUSED,abi.STATE_RUNNING):
+                raise ValueError('existing image must be paused or running')
+            if state == abi.STATE_PAUSED:
+                client.control('RUN')
+            if client.read_host(abi.HOST_REG_STATE) != abi.STATE_RUNNING:
+                raise ValueError('core did not resume')
+        if camera is not None:
+            result['stage'] = 'camera-start'
+            camera.start()
         failures = 0
-        active = DEFAULT_MODE
-        latest.describe(mode=active,step_frames=step_frames)
-        result['mode'] = active
+        active = DEFAULT_MODE if controls else None
+        latest.describe(mode=active,step_frames=step_frames if controls else None,
+                        image_source=result['image_source'],controls_enabled=controls)
+        if controls:
+            result['mode'] = active
         steps = []
 
         def sync_mode():
             """Enter the selected mode; RUN_DOTS needs a paused core."""
             nonlocal active
+            if not controls:
+                return
             requested = buttons.mode if buttons is not None else DEFAULT_MODE
             if requested == active:
                 return
@@ -343,37 +409,49 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                     step = combine(steps,step_frames)
                     result['step'] = step
                 tick = clock()
-                meta,packed = client.snapshot()
-                if meta['size'] != abi.FRAME_BYTES or len(packed) != abi.FRAME_BYTES:
-                    raise ValueError('frame size mismatch')
-                if client.read_host(abi.HOST_REG_STATE) != expected_state:
+                packed = None
+                if camera is not None:
+                    meta,image = camera.read()
+                else:
+                    meta,packed = client.snapshot()
+                    if meta['size'] != abi.FRAME_BYTES or len(packed) != abi.FRAME_BYTES:
+                        raise ValueError('frame size mismatch')
+                    png_writer(packed,out/'latest.png')
+                    image = (out/'latest.png').read_bytes()
+                if controls and client.read_host(abi.HOST_REG_STATE) != expected_state:
                     raise ValueError('core stopped during capture')
-                png_writer(packed,out/'latest.png')
-                png = (out/'latest.png').read_bytes()
                 latency = clock()-tick
-                extra = {'core_state':'PAUSED' if active=='stepped' else 'RUNNING'}
-                latest.publish(png,meta,latency,extra=dict(extra,step=step) if step else extra)
+                extra = {'core_state':('PAUSED' if active=='stepped' else 'RUNNING')
+                         if controls else 'NOT OPENED'}
+                latest.publish(image,meta,latency,extra=dict(extra,step=step) if step else extra)
                 if step and step['short_by_dots']:
                     # Surfaced with the image it belongs to; never quietly dropped.
                     latest.mark('LIVE','step executed %d of %d dots' % (step['executed_dots'],step['requested_dots']))
-                row = dict(latest.read()[0],packed_sha256=hashlib.sha256(packed).hexdigest())
+                row = latest.read()[0]
+                if packed is not None:
+                    row = dict(row,packed_sha256=hashlib.sha256(packed).hexdigest())
                 result['capture_count'] += 1
                 result['captures'].append(row)
                 result['captures'] = result['captures'][-32:]
                 from .records import atomic_json
                 atomic_json(out/'latest.json',row)
                 if result['capture_count'] <= 2:
-                    (out/f"capture-{result['capture_count']}.png").write_bytes(png)
-                    (out/f"capture-{result['capture_count']}.2bpp").write_bytes(packed)
+                    suffix = 'jpg' if camera is not None else 'png'
+                    (out/f"capture-{result['capture_count']}.{suffix}").write_bytes(image)
+                    if packed is not None:
+                        (out/f"capture-{result['capture_count']}.2bpp").write_bytes(packed)
                 failures = 0
             except RejectedCommand:
                 failures += 1
                 latest.mark('ERROR','capture rejected')
                 if failures >= 2:
                     raise
-            if client.uncertain:
+            if controls and client.uncertain:
                 raise RuntimeError('uncertain session')
-            wait(max(0,interval-(clock()-tick)))
+            # DirectShow already paces the MJPEG pipe. Do not reduce it to the
+            # UART snapshot interval; every complete camera frame is published.
+            if camera is None:
+                wait(max(0,interval-(clock()-tick)))
         if not result['captures'] or failures:
             raise ValueError('capture did not end successfully')
         result['status'] = 'PASS'
@@ -383,12 +461,28 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         # The page learns only the class name; the message stays in the result.
         latest.mark('STALE' if isinstance(error,SourceStale) else 'ERROR',type(error).__name__)
     finally:
-        # No cleanup/control traffic after failed identity/preconditions.
-        if result.get('identity',{}).get('build_id') == expected_build and 'state' in locals() and state in (abi.STATE_PAUSED,abi.STATE_RUNNING):
+        camera_cleanup_error = None
+        if camera is not None:
+            try:
+                camera.close()
+            except Exception as error:
+                camera_cleanup_error = type(error).__name__
+                result.update(status='FAIL',camera_cleanup_error=camera_cleanup_error)
+        # No cleanup/control traffic after failed identity/preconditions. A
+        # view-only camera run never opens UART and therefore needs no release.
+        if not controls:
+            verified = camera_cleanup_error is None
+            result['cleanup'] = {'verified':verified,
+                                 'reason':('camera stopped; UART not opened' if verified
+                                           else 'camera cleanup failed; UART not opened')}
+            result['released'] = verified
+        elif result.get('identity',{}).get('build_id') == expected_build and 'state' in locals() and state in (abi.STATE_PAUSED,abi.STATE_RUNNING):
             finish(client,result)
         else:
             result['cleanup'] = {'verified':False,'reason':'preconditions failed; no control sent'}
         result['seconds'] = clock()-started
         terminal = 'STOPPED' if result['status']=='PASS' and result.get('released') else ('STALE' if result.get('reason')=='SourceStale' else 'ERROR')
-        latest.mark(terminal,core_state='PAUSED' if result.get('released') else 'UNKNOWN')
+        core_state = ('NOT OPENED' if not controls else
+                      ('PAUSED' if result.get('released') else 'UNKNOWN'))
+        latest.mark(terminal,core_state=core_state)
     return result
