@@ -2074,6 +2074,16 @@ bounded build flow; different text under the same number fails:
 | 332060, exactly the IP's `flash_se_neg_reg` strobe under the registered reader instance, four lines in `compile.log` and one in `audit.log`, flash images only | The IP's sense-enable strobe register clocks one register inside the UFM atom (`ufm_block~XE_YE_TO_SE_FF`) without a clock assignment; the vendor's own generated project suppresses this message with `MESSAGE_DISABLE 332060`. Here it is classified by exact node and count and never suppressed. The same strobe is the one accepted `Unconstrained Clocks` row (setup and hold both 1) when `report_ucp` names it as the only unconstrained target, and it and the atom register are two accepted `no_clock` rows named exactly beside the PLL lock events. |
 | `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
 
+The checked Quartus 25.1 `v05-board` 12125 set is
+`n2m_system_pll_altpll.v`, `n2m_pixel_pll_altpll.v`,
+`altsyncram_dam2.tdf`, `altsyncram_ram2.tdf`, `altsyncram_jll2.tdf`,
+`decode_h7a.tdf`, `mux_l1b.tdf`, `altsyncram_9km2.tdf`, `mux_q1b.tdf`,
+`altsyncram_pgm2.tdf`, `altsyncram_bam2.tdf`, `altsyncram_77m2.tdf`,
+`altsyncram_v6m2.tdf`, `altsyncram_cbm2.tdf`, `decode_b7a.tdf`,
+`mux_12b.tdf`, and `altsyncram_lgm2.tdf`. The classifier requires this
+complete set when any 12125 line appears; the order of Quartus diagnostics is
+not significant.
+
 The installed Quartus messages and `report_ucp`, `check_timing`, `report_sdc`
 reports own the diagnostic text and timing observations. Independent review
 checks these narrow classifications against the actual retained reports. The
@@ -2764,4 +2774,3 @@ recorded as failing under that one mutation, not under every defect in the
 file; the tracer sees the interpreter's file events, not those of native
 tools such as Verilator or Git, whose inputs the registry lists; and none of
 this changes which checks are required or lets a review candidate skip them.
-
