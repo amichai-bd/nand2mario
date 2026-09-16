@@ -11,7 +11,7 @@ module n2m_memory_stores (
     input var logic access_read,
     input var logic access_write,
     input var n2m_memory_pkg::memory_store_t access_store,
-    input var logic [14:0] access_address,
+    input var logic [15:0] access_address,
     input var logic [7:0] access_wdata,
     output logic [7:0] access_rdata,
     output logic access_valid,
@@ -60,7 +60,7 @@ module n2m_memory_stores (
     localparam integer WAVE_BYTES = int'(n2m_interfaces_pkg::GB_VIEW_WAVE_END) - int'(n2m_interfaces_pkg::GB_VIEW_WAVE_START) + 1;
     logic reset, clearing, clearing_next;
     logic [12:0] clear_address, clear_next;
-    logic [14:0] ram_address;
+    logic [15:0] ram_address;
     logic [7:0] ram_wdata;
     logic access_range, access_read_enable, access_write_enable, host_range;
     n2m_memory_pkg::memory_store_t response_store;
@@ -105,12 +105,12 @@ module n2m_memory_stores (
     end
     `DFF_ARST_VAL(clearing, clearing_next, clk_sys, reset_sys, 1'b1)
     `DFF_ARST_VAL(clear_address, clear_next, clk_sys, reset_sys, 13'd0)
-    assign ram_address = clearing ? {2'b0, clear_address} : access_address;
+    assign ram_address = clearing ? {3'b0, clear_address} : access_address;
     assign ram_wdata = clearing ? n2m_interfaces_pkg::PROFILE_RAM_FILL : access_wdata;
     always_comb begin
         access_range = 0;
         case (access_store)
-            n2m_memory_pkg::STORE_ROM: access_range = int'(access_address) < int'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
+            n2m_memory_pkg::STORE_ROM: access_range = int'(access_address) < int'(n2m_interfaces_pkg::PROFILE_STORE_BYTES);
             n2m_memory_pkg::STORE_WRAM: access_range = int'(access_address) < WRAM_BYTES;
             n2m_memory_pkg::STORE_HRAM: access_range = int'(access_address) < HRAM_BYTES;
             n2m_memory_pkg::STORE_VRAM: access_range = int'(access_address) < VRAM_BYTES;
@@ -121,7 +121,7 @@ module n2m_memory_stores (
     end
     assign access_read_enable = access_read && init_done && access_range;
     assign access_write_enable = access_write && init_done && access_range;
-    assign host_range = host_offset < 32'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
+    assign host_range = host_offset < 32'(n2m_interfaces_pkg::PROFILE_STORE_BYTES);
     assign peek_target = n2m_memory_pkg::peek_store(peek_select);
     assign peek_range = n2m_memory_pkg::peek_known(peek_select) &&
         32'(peek_offset) < n2m_memory_pkg::peek_bytes(peek_select);
@@ -161,9 +161,12 @@ module n2m_memory_stores (
 
     // ROM writes exist only on the explicit host offset port. CPU/arbitrator
     // write attempts selecting ROM are ignored and cannot reach that port.
-    n2m_intel_ram #(.DEPTH(n2m_interfaces_pkg::PROFILE_ROM_BYTES), .ADDRESS_BITS(15)) rom (
+    // The store holds the largest profile image; the MBC1 owner translates
+    // switched-window reads into the upper half of this offset space
+    // (wiki/src/rtl/cartridge/MAS_mbc1_profile.md#store-and-loader-interplay).
+    n2m_intel_ram #(.DEPTH(n2m_interfaces_pkg::PROFILE_STORE_BYTES), .ADDRESS_BITS(16)) rom (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(host_read && host_range), .a_write(host_write && host_range),
-        .a_address(host_offset[14:0]), .a_wdata(host_wdata), .a_rdata(rom_a_data), .a_valid(rom_a_valid),
+        .a_address(host_offset[15:0]), .a_wdata(host_wdata), .a_rdata(rom_a_data), .a_valid(rom_a_valid),
         .b_read(access_read_enable && access_store == ROM_STORE), .b_address(access_address),
         .b_rdata(data_a[ROM_STORE]), .b_valid(valid_a[ROM_STORE])
     );

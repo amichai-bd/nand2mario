@@ -295,8 +295,9 @@ return, a 0.51 s press must; a 4 ms glitch must not change the debounced level.
 
 ### Game exit register
 
-A direct-profile game may offer its own back-to-menu action. While
-`PROFILE == DIRECT_ID`, a CPU write commit to `$6000`-`$7FFF` with `data ==
+A game may offer its own back-to-menu action. While `PROFILE == DIRECT_ID`
+or `PROFILE == MBC1_ID` (the [MBC1 profile](MAS_mbc1_profile.md#registers)
+honors the same register), a CPU write commit to `$6000`-`$7FFF` with `data ==
 LIBRARY_GAME_EXIT_VALUE` (`$10`, the generated constant beside
 `LIBRARY_MENU_INDEX`) is a return request with exactly the `key1_return`
 rules: it swaps image index 16 in through the select sequence, with the same
@@ -435,7 +436,7 @@ Named assertions the owner carries:
 | `LOADER_FILL_UPPER_ONLY` | Engine writes during a fill have offset bit 14 set |
 | `LOADER_FILL_HOST_PORT` | Every engine write reaches the ROM store through its host port (port A) and never coincides with a UART load owner write |
 | `LOADER_REGS_ONLY_IN_PROFILE` | A bank or select register effect implies `PROFILE == LOADER_ID` |
-| `LOADER_EXIT_ONLY_IN_DIRECT` | A game exit register effect implies `PROFILE == DIRECT_ID` |
+| `LOADER_EXIT_ONLY_IN_GAME_PROFILE` | A game exit register effect implies `PROFILE == DIRECT_ID` or `PROFILE == MBC1_ID`; the [MBC1 profile](MAS_mbc1_profile.md#registers) honors the same register |
 | `LOADER_SWAP_BOUND` | `copy_busy` for a swap falls within 80,000 edges of rising |
 | `LOADER_FILL_BOUND` | `copy_busy` for a fill falls within 40,000 edges of rising |
 | `LOADER_KEY1_THRESHOLD` | `key1_return` implies the debounced press has lasted exactly 12,500,000 edges |

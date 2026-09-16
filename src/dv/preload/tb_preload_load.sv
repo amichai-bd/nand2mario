@@ -4,12 +4,12 @@
 module tb_preload_load;
     logic clk_sys, reset_sys, start, busy, done;
     n2m_uart_pkg::uart_load_operation_t operation;
-    logic [31:0] offset, expected_crc;
+    logic [31:0] offset, expected_crc, image_bytes;
     logic [15:0] count;
     logic [7:0] status, input_data, output_data;
     logic input_valid, input_ready, output_valid, output_ready;
     logic rom_write, rom_read, rom_read_valid;
-    logic [14:0] rom_address;
+    logic [15:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic unused_valid;
     logic [7:0] unused_data;
@@ -21,11 +21,12 @@ module tb_preload_load;
     bit crc_fault;
     n2m_uart_load #(.SIM_PRELOAD(1)) dut (.*);
     defparam dut.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
-    n2m_intel_ram #(.DEPTH(32768),.ADDRESS_BITS(15),.SIM_INIT_FILE("preload-rom.mif")) rom (
+    // The store depth, as the memory owner's ROM store; the image fills its low half.
+    n2m_intel_ram #(.DEPTH(65536),.ADDRESS_BITS(16),.SIM_INIT_FILE("preload-rom.mif")) rom (
         .clk_a(clk_sys),.clk_b(clk_sys),.reset_a(reset_sys),.reset_b(reset_sys),
         .a_read(rom_read),.a_write(rom_write),.a_address(rom_address),
         .a_wdata(rom_write_data),.a_byte_enable(1'b1),.a_rdata(rom_read_data),.a_valid(rom_read_valid),
-        .b_read(1'b0),.b_address(15'd0),.b_rdata(unused_data),.b_valid(unused_valid)
+        .b_read(1'b0),.b_address(16'd0),.b_rdata(unused_data),.b_valid(unused_valid)
     );
     always #10 clk_sys=!clk_sys;
     always @(posedge clk_sys) begin
@@ -50,7 +51,7 @@ module tb_preload_load;
     initial begin
         integer block_index, byte_index;
         clk_sys=0; reset_sys=1; start=0; operation=n2m_uart_pkg::UART_LOAD_BEGIN;
-        offset=0; count=0; expected_crc=0; input_valid=0; input_data=0; output_ready=1;
+        offset=0; count=0; expected_crc=0; image_bytes=32768; input_valid=0; input_data=0; output_ready=1;
         clear_writes=0; rom_reads=0; cycles=0; crc_fault=$test$plusargs("crc_fault");
         $readmemh("preload-crc.hex",crc_word);
         // The expected bytes are rebuilt from the prepared ROM MIF, the same

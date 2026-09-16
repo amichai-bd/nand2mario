@@ -28,7 +28,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic [7:0] buttons, profile, endpoint_state;
     logic [63:0] retirement_count;
     logic image_valid, rom_write, rom_read, rom_read_valid;
-    logic [14:0] rom_address;
+    logic [15:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, frame_read;
     logic peek_read, peek_valid, peek_ready, oam_sequence_active;
@@ -166,9 +166,9 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     n2m_memory_stores u_stores (.oam_request(late_request), .oam_response(late_response),
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
-        .access_address(raw_offset), .access_wdata(write_data),
+        .access_address({1'b0, raw_offset}), .access_wdata(write_data),
         .access_rdata(storage_rdata), .access_valid(storage_valid),
-        .host_read(rom_read), .host_write(rom_write), .host_offset({17'd0,rom_address}),
+        .host_read(rom_read), .host_write(rom_write), .host_offset({16'd0,rom_address}),
         .host_wdata(rom_write_data), .host_rdata(rom_read_data), .host_valid(rom_read_valid),
         .ppu_vram_read(vram_request), .ppu_vram_address(vram_address),
         .ppu_vram_rdata(vram_data), .ppu_vram_valid(vram_valid),

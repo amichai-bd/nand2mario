@@ -102,7 +102,9 @@ observations; they do not create an alternative timebase.
 
 ROM load/readback uses a bounded offset interface to the memory owner. The
 endpoint owns image validity, expected CRC32 and per-byte presence. LOAD_BEGIN
-pauses, invalidates the image, restarts presence tracking and resets the core.
+names the session's profile, whose image length bounds the size check, the
+presence sweeps and every `LOAD_WRITE`/`READ_ROM` range; it then pauses,
+invalidates the image, restarts presence tracking and resets the core.
 LOAD_END checks complete presence and reads the actual ROM bytes to compute
 CRC32 before reinitializing and publishing valid PAUSED state. A presence bitmap
 alone cannot prove data integrity. Running ROM writes are rejected before the
@@ -187,8 +189,10 @@ Global reset cancels this construction; core reset does not reset transport.
 
 ## ROM presence storage
 
-`n2m_uart_presence_store` holds one bit per generated `PROFILE_ROM_BYTES` byte,
-32768 bits for the direct profile. It uses the same explicit Intel primitive
+`n2m_uart_presence_store` holds one bit per byte of the generated
+`PROFILE_STORE_BYTES` store, 65536 bits; a session sweeps and checks only the
+bytes of its profile's image length (`PROFILE_ROM_BYTES` for the direct and
+loader profiles, `MBC1_ROM_BYTES` for the [MBC1 profile](../cartridge/MAS_mbc1_profile.md#host-load-and-readback)). It uses the same explicit Intel primitive
 in simulation and FPGA, one system clock, A bit writes and one-edge B reads.
 Reset cancels service/validity; it does not initialize the array. LOAD_BEGIN's
 load owner must explicitly sweep every bit to zero before accepting writes.

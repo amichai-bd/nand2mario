@@ -49,7 +49,7 @@ module n2m_uart #(
     output logic [7:0] endpoint_state,
     output logic rom_write,
     output logic rom_read,
-    output logic [14:0] rom_address,
+    output logic [15:0] rom_address,
     output logic [7:0] rom_write_data,
     input var logic [7:0] rom_read_data,
     input var logic rom_read_valid,

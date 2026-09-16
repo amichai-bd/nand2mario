@@ -22,7 +22,7 @@ module tb_memory_cpu_port;
     n2m_memory_stores stores (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .init_done(init_done),
         .access_read(storage_read), .access_write(storage_write), .access_store(storage_store),
-        .access_address(storage_offset), .access_wdata(storage_wdata),
+        .access_address({1'b0, storage_offset}), .access_wdata(storage_wdata),
         .access_rdata(storage_rdata), .access_valid(storage_valid),
         .host_read(host_read), .host_write(host_write), .host_offset(host_offset), .host_wdata(host_wdata),
         .host_rdata(host_rdata), .host_valid(host_valid),

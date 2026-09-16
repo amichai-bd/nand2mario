@@ -13,6 +13,8 @@ module tb_uart_validation;
     logic [31:0] expected_data;
     logic expected_valid;
     logic corrupt, host_loading;
+    // Session profile the command owner would hold; the direct profile by default.
+    logic [7:0] profile;
     integer checks;
     integer byte_index;
     integer bit_index;
@@ -34,7 +36,7 @@ module tb_uart_validation;
         .header(header), .packet_bytes(packet_bytes), .arguments(arguments), .forced_status(8'h00),
         .endpoint_state(endpoint_state), .image_valid(1'b1), .snapshot_valid(1'b1),
         .host_address_valid(address_valid), .sdram_ready(1'b1), .swap_busy(1'b0), .host_loading(host_loading),
-        .status(status), .response_length(response_length)
+        .profile(profile), .status(status), .response_length(response_length)
     );
     task automatic check_address(input logic [31:0] value, input logic valid_value, input logic [31:0] word_value);
         address = value; expected_valid = valid_value; expected_data = word_value;
@@ -62,6 +64,7 @@ module tb_uart_validation;
         check_reply(8'h03, 16'd0);
     endtask
     initial begin
+        profile = n2m_interfaces_pkg::PROFILE_DIRECT_ID;
         words = '{32'h1,32'h2,32'h1,32'hA6,32'h55667788,32'h11223344,32'hDDEEFF00,32'h99AABBCC,
                   32'h5A,32'h1,32'hABCDEF01,32'h23456789,32'h2468ACE0,32'h13579BDF,32'h89ABCDEF,
                   32'h01234567,32'hA5A6A7A8,32'h1,32'hA5,32'h3C,
@@ -114,7 +117,12 @@ module tb_uart_validation;
         arguments = '0; arguments[7:0] = 8'h01; arguments[39:8] = 32'd32768; arguments[71:40] = 32'h12345678;
         command_case(8'h07,16'd9,16'd0);
         packet_bytes = 9'd21; arguments[7:0] = 8'h02; check_reply(8'h00,16'd0);
+        // MBC1_ID needs its own 65,536-byte length; the 32 KiB profiles refuse it.
         arguments[7:0] = 8'h03; check_reply(8'h04,16'd0);
+        arguments[39:8] = 32'd65536; check_reply(8'h00,16'd0);
+        arguments[7:0] = 8'h01; check_reply(8'h04,16'd0);
+        arguments[7:0] = 8'h02; check_reply(8'h04,16'd0);
+        arguments[7:0] = 8'h04; check_reply(8'h04,16'd0);
         // LOAD_END and LOAD_WRITE need the open host session: LOADING from a
         // swap or an invalidated image alone is BAD_STATE.
         endpoint_state = 8'h02; header.command = 8'h09; header.length = 16'd0; packet_bytes = 9'd12;
@@ -122,6 +130,18 @@ module tb_uart_validation;
         host_loading = 1; check_reply(8'h00,16'd0);
         header.command = 8'h08; header.length = 16'd5; packet_bytes = 9'd17; arguments = '0;
         check_reply(8'h00,16'd0);
+        // LOAD_WRITE and READ_ROM ranges end at the session profile's image length.
+        arguments[31:0] = 32'd32767; check_reply(8'h00,16'd0);
+        arguments[31:0] = 32'd32768; check_reply(8'h04,16'd0);
+        profile = n2m_interfaces_pkg::PROFILE_MBC1_ID; check_reply(8'h00,16'd0);
+        arguments[31:0] = 32'd65535; check_reply(8'h00,16'd0);
+        arguments[31:0] = 32'd65536; check_reply(8'h04,16'd0);
+        header.command = 8'h0A; header.length = 16'd6; packet_bytes = 9'd18; arguments = '0;
+        arguments[31:0] = 32'd65535; arguments[47:32] = 16'd1; check_reply(8'h00,16'd1);
+        arguments[47:32] = 16'd2; check_reply(8'h04,16'd0);
+        profile = n2m_interfaces_pkg::PROFILE_DIRECT_ID; arguments[31:0] = 32'd32767; arguments[47:32] = 16'd1; check_reply(8'h00,16'd1);
+        arguments[47:32] = 16'd2; check_reply(8'h04,16'd0);
+        header.command = 8'h08; header.length = 16'd5; packet_bytes = 9'd17; arguments = '0;
         host_loading = 0; check_reply(8'h05,16'd0);
         endpoint_state = 8'h00;
         address = 32'hDEADBEEF; header.command = 8'h02; header.length = 16'd4; packet_bytes = 9'd16;
@@ -142,7 +162,7 @@ module tb_uart_validation;
         header.length = 16'd36; packet_bytes = 9'd48; arguments[31:0] = 32'h3fffff0; check_reply(8'h04,16'd0);
         header.length = 16'd20; packet_bytes = 9'd32; check_reply(8'h00,16'd0);
         arguments[31:0] = 32'h0000008; check_reply(8'h04,16'd0);
-        if (checks != 237) $fatal(1, "UART_VALIDATE_COVERAGE");
+        if (checks != 250) $fatal(1, "UART_VALIDATE_COVERAGE");
         $display("PASS UART validation checks=%0d", checks); $finish;
     end
 endmodule

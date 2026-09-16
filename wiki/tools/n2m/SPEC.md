@@ -593,7 +593,9 @@ peer is ready and before the run launches.
 
 `preload-fixture` ([`tb_preload_fixture.sv`](../../../src/dv/preload/tb_preload_fixture.sv))
 proves the pipeline without product RTL: it reads the ROM MIF, presence MIF and
-CRC hex from its run directory, rebuilds the 32768 bytes, requires the CRC-32
+CRC hex from its run directory (both MIFs declare the `PROFILE_STORE_BYTES`
+store depth; the image fills the first 32768 addresses and the presence bitmap
+is zero above them), rebuilds the 32768 bytes, requires the CRC-32
 of the rebuilt image to equal the hex the loader reads, and checks the
 integration image's entry stub and title. Measured on WSL: build 4.5 s, run
 under 0.1 s, `CACHED` on rerun. `preload-lifecycle` and `preload-crc-fault`
@@ -982,7 +984,7 @@ a virtual pin with a 0-2 ns input budget; a port added to the store without a
 registry entry fails the fitter's pin-assignment check, and
 [`test_fpga_memory_stores.py`](../../../tools/n2m/tests/test_fpga_memory_stores.py)
 compares the registry with the module header. Its checker requires the exact
-seven logical depths, 395,640 bits and 52 fitted M9Ks. It checks both port
+seven logical depths, 657,784 bits and 84 fitted M9Ks. It checks both port
 register stages, the common clock, disabled B writes, whole-byte enables,
 physical bit inventory, and absent primitive reset/initialization. The ordinary
 timing and diagnostic gates still apply. This proves the raw storage slice;
@@ -1542,9 +1544,9 @@ identity constant, so both packings are legal results of the same RTL. Wider
 logic, longer chains, ambiguous drivers or bypass fanout fail.
 
 The composed memory check accounts for every logical store and physical atom:
-seven direct-profile stores (52 atoms), four 5760-byte snapshot stores (32),
-three dual-clock VGA banks (18), and six UART stores (9). The complete inventory
-is 20 logical stores, 111 M9Ks and 761,704 bits. Existing store, VGA and UART
+seven direct-profile stores (84 atoms), four 5760-byte snapshot stores (32),
+three dual-clock VGA banks (18), and six UART stores (13). The complete inventory
+is 20 logical stores, 147 M9Ks and 1,056,616 bits. Existing store, VGA and UART
 checkers validate their explicit composed hierarchy, clock/reset roles,
 initialization, read shape and bit partitions; the outer inventory rejects
 missing or extra atoms and inconsistent fitted capacity. Diagnostic placement

@@ -55,8 +55,14 @@ A second BEGIN leaves one byte unmarked while retained ROM data already matches
 the full CRC, independently sensitizing the presence check. Global resets cancel
 a partial sweep and a partial write; committed ROM data survives, and new END
 cannot reuse old presence. Actual ROM-response corruption and an actual presence
-bit force must fail opposite literal success/error expectations. Loader tests do
-not substitute for the endpoint's later state validation and reset acknowledgement.
+bit force must fail opposite literal success/error expectations. `uart-load-mbc1`
+runs the same fixture with `+mbc1`: a 65,536-byte session (`image_bytes`), every
+byte written with one missing above 32 KiB, the end sweep refusal and repair,
+and full readback; its CRC is zlib over the 64 KiB sequence. `uart-validation`
+also covers `LOAD_BEGIN` with `MBC1_ID` (65,536 accepted, 32,768 refused; the
+32 KiB profiles refuse 65,536) and the per-profile `LOAD_WRITE`/`READ_ROM` range
+ends. Loader tests do not substitute for the endpoint's later state validation
+and reset acknowledgement.
 
 
 ### Full wire command composition

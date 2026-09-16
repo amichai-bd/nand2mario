@@ -26,7 +26,7 @@ module tb_oam_late_write;
     n2m_memory_stores stores (
         .clk_sys, .reset_sys, .core_reset, .init_done,
         .access_read, .access_write, .access_store(n2m_memory_pkg::STORE_OAM),
-        .access_address(raw_address), .access_wdata(raw_data), .access_rdata, .access_valid,
+        .access_address({1'b0, raw_address}), .access_wdata(raw_data), .access_rdata, .access_valid,
         .oam_request(request), .oam_response(response),
         .host_read(1'b0), .host_write(1'b0), .host_offset(32'd0), .host_wdata(8'd0),
         .host_rdata(), .host_valid(),

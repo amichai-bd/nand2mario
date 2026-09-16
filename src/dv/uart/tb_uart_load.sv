@@ -6,23 +6,24 @@
 module tb_uart_load;
     logic clk_sys, reset_sys, start, busy, done;
     n2m_uart_pkg::uart_load_operation_t operation;
-    logic [31:0] offset, expected_crc;
+    logic [31:0] offset, expected_crc, image_bytes;
     logic [15:0] count;
     logic [7:0] status, input_data, output_data, rom_write_data, rom_read_data;
     logic input_valid, input_ready, output_valid, output_ready, rom_write, rom_read, rom_read_valid;
-    logic [14:0] rom_address;
+    logic [15:0] rom_address;
     logic init_done;
     logic [7:0] unused_access, unused_vram, unused_wave;
     logic [15:0] unused_oam;
     logic unused_access_valid, unused_vram_valid, unused_wave_valid, unused_oam_valid;
     integer writes, reads, endings, trace;
-    bit crc_fault, presence_fault, checking_crc, checking_presence;
+    bit crc_fault, presence_fault, checking_crc, checking_presence, mbc1_session;
+    integer image_size, sweep_cycles;
     n2m_uart_load dut (.*);
     n2m_memory_stores u_memory (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(1'b0), .init_done(init_done),
         .access_read(1'b0), .access_write(1'b0), .access_store(n2m_memory_pkg::STORE_ROM),
-        .access_address(15'd0), .access_wdata(8'd0), .access_rdata(unused_access), .access_valid(unused_access_valid),
-        .host_read(rom_read), .host_write(rom_write), .host_offset({17'b0,rom_address}),
+        .access_address(16'd0), .access_wdata(8'd0), .access_rdata(unused_access), .access_valid(unused_access_valid),
+        .host_read(rom_read), .host_write(rom_write), .host_offset({16'b0,rom_address}),
         .host_wdata(rom_write_data), .host_rdata(rom_read_data), .host_valid(rom_read_valid),
         .ppu_vram_read(1'b0), .ppu_vram_address(13'd0), .ppu_vram_rdata(unused_vram), .ppu_vram_valid(unused_vram_valid),
         .ppu_oam_read(1'b0), .ppu_oam_pair(7'd0), .ppu_oam_rdata(unused_oam), .ppu_oam_valid(unused_oam_valid),
@@ -47,7 +48,7 @@ module tb_uart_load;
     task automatic complete(input logic [7:0] expected_status);
         integer cycles;
         cycles = 0;
-        while (!done && cycles < 70000) begin
+        while (!done && cycles < sweep_cycles) begin
             @(negedge clk_sys); cycles = cycles + 1;
             if (crc_fault && checking_crc && rom_read_valid && rom_address == 0)
                 force dut.rom_read_data = 8'h00;
@@ -82,6 +83,23 @@ module tb_uart_load;
             end else write_bytes(at,256,0);
         end
     endtask
+    // The 64 KiB session: clear, every byte written, one byte missing above
+    // 32 KiB is caught by the end sweep, repaired, then full readback. The
+    // expected CRC is zlib.crc32 over the same byte sequence, computed in Python.
+    task automatic mbc1_lifecycle;
+        integer block;
+        expected_crc = 32'h0d874a34;
+        launch(n2m_uart_pkg::UART_LOAD_BEGIN,0,0); complete(0);
+        for (block = 0; block < 256; block = block + 1) begin
+            if (block == 156) begin write_bytes(block*256,100,0); write_bytes(block*256+101,155,0); end
+            else write_bytes(block*256,256,0);
+        end
+        launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(6);
+        write_bytes(156*256+100,1,0); launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(0);
+        for (block = 0; block < 256; block = block + 1) read_chunk(block*256,256);
+        if (reads != 65536 || endings != 2 || writes != 65536) $fatal(1,"UART_LOAD_MBC1_COUNTS writes=%0d reads=%0d ends=%0d",writes,reads,endings);
+        $fclose(trace); $display("PASS UART load mbc1 64KiB CRC32 presence readback");
+    endtask
     task automatic read_chunk(input integer at, input integer size);
         integer index, cycles;
         launch(n2m_uart_pkg::UART_LOAD_READ,at,size); index = 0; cycles = 0;
@@ -102,10 +120,13 @@ module tb_uart_load;
     initial begin
         integer block, old_writes;
         clk_sys = 0; reset_sys = 1; start = 0; operation = n2m_uart_pkg::UART_LOAD_BEGIN;
-        offset = 0; count = 0; expected_crc = 32'h2633e694;
+        offset = 0; count = 0; expected_crc = 32'h2633e694; image_bytes = 32'd32768;
         input_valid = 0; input_data = 0; output_ready = 0;
         writes = 0; reads = 0; endings = 0; checking_crc = 0; checking_presence = 0;
         crc_fault = $test$plusargs("crc_fault"); presence_fault = $test$plusargs("presence_fault");
+        // The MBC1 session covers the whole 64 KiB store; its sweeps take twice as long.
+        mbc1_session = $test$plusargs("mbc1"); image_size = mbc1_session ? 65536 : 32768;
+        image_bytes = 32'(image_size); sweep_cycles = mbc1_session ? 140000 : 70000;
         trace = $fopen("load.csv","w"); if (!trace) $fatal(1,"UART_LOAD_TRACE");
         $fdisplay(trace,"kind,address,data");
         $dumpfile("waves.vcd");
@@ -114,6 +135,7 @@ module tb_uart_load;
             rom_write,rom_read,rom_address,rom_write_data,rom_read_data,rom_read_valid,
             writes,reads,endings);
         repeat (3) @(negedge clk_sys); reset_sys = 0;
+        if (mbc1_session) begin mbc1_lifecycle(); $finish; end
         // Expected whole-image CRC is supplied by a Python zlib calculation,
         // independently of the product's reflected bit recurrence.
         expected_crc = 32'h2633e694;
@@ -146,7 +168,7 @@ module tb_uart_load;
         $fclose(trace); $display("PASS UART load full_ROM CRC32 presence repair overlap readback reset"); $finish;
     end
     initial begin
-        #20000000;
+        #60000000;
         $fatal(1,"UART_LOAD_WATCHDOG");
     end
 endmodule

@@ -13,12 +13,16 @@ module n2m_uart_validate (
     input var logic sdram_ready,
     input var logic swap_busy,
     input var logic host_loading,
+    // Session profile the command owner holds: the LOAD_WRITE and READ_ROM
+    // ranges are bounded by that profile's image length.
+    input var logic [7:0] profile,
     output logic [7:0] status,
     output logic [15:0] response_length
 );
     logic command_known, length_valid, value_valid, state_valid;
     logic no_frame;
     logic [32:0] range_end;
+    logic [32:0] session_bytes;
     n2m_interfaces_pkg::write_host_t write_fields;
     n2m_interfaces_pkg::load_begin_t begin_fields;
     n2m_interfaces_pkg::read_range_t range_fields;
@@ -43,6 +47,8 @@ module n2m_uart_validate (
         no_frame = 0;
         response_length = 0;
         range_end = {1'b0, range_fields.offset} + {17'b0, range_fields.count};
+        session_bytes = profile == n2m_interfaces_pkg::PROFILE_MBC1_ID
+            ? 33'(n2m_interfaces_pkg::MBC1_ROM_BYTES) : 33'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
         peek_end = {1'b0, peek_fields.offset} + {17'b0, peek_fields.count};
         // SDRAM_WRITE carries its line count in the payload length: 4 + 16 n.
         sdram_write_bytes = header.length - 16'(n2m_interfaces_pkg::SDRAM_WRITE_BYTES);
@@ -77,16 +83,18 @@ module n2m_uart_validate (
             end
             n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: begin
                 length_valid = 32'(header.length) == n2m_interfaces_pkg::LOAD_BEGIN_BYTES;
-                value_valid = (begin_fields.profile == n2m_interfaces_pkg::PROFILE_DIRECT_ID ||
+                value_valid = ((begin_fields.profile == n2m_interfaces_pkg::PROFILE_DIRECT_ID ||
                     begin_fields.profile == n2m_interfaces_pkg::PROFILE_LOADER_ID) &&
-                    begin_fields.size == n2m_interfaces_pkg::PROFILE_ROM_BYTES;
+                    begin_fields.size == n2m_interfaces_pkg::PROFILE_ROM_BYTES) ||
+                    (begin_fields.profile == n2m_interfaces_pkg::PROFILE_MBC1_ID &&
+                    begin_fields.size == n2m_interfaces_pkg::MBC1_ROM_BYTES);
                 // A swap in progress owns the ROM store; the host retries.
                 state_valid = !swap_busy;
             end
             n2m_interfaces_pkg::COMMAND_LOAD_WRITE: begin
                 length_valid = 32'(header.length) > n2m_interfaces_pkg::OFFSET_BYTES;
                 range_end = {1'b0, arguments[31:0]} + (33'(header.length) - 33'(n2m_interfaces_pkg::OFFSET_BYTES));
-                value_valid = range_end <= 33'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
+                value_valid = range_end <= session_bytes;
                 // LOADING also covers a swap or an engine-invalidated image;
                 // only the open host session may write or end a load.
                 state_valid = host_loading;
@@ -95,7 +103,7 @@ module n2m_uart_validate (
             n2m_interfaces_pkg::COMMAND_READ_ROM, n2m_interfaces_pkg::COMMAND_READ_FRAME: begin
                 length_valid = 32'(header.length) == n2m_interfaces_pkg::READ_RANGE_BYTES;
                 value_valid = range_fields.count != 0 && range_fields.count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD &&
-                    range_end <= (header.command == n2m_interfaces_pkg::COMMAND_READ_ROM ? 33'(n2m_interfaces_pkg::PROFILE_ROM_BYTES) : 33'(n2m_interfaces_pkg::FRAME_BYTES));
+                    range_end <= (header.command == n2m_interfaces_pkg::COMMAND_READ_ROM ? session_bytes : 33'(n2m_interfaces_pkg::FRAME_BYTES));
                 response_length = range_fields.count;
                 if (header.command == n2m_interfaces_pkg::COMMAND_READ_ROM)
                     state_valid = endpoint_state == n2m_interfaces_pkg::STATE_PAUSED || endpoint_state == n2m_interfaces_pkg::STATE_LOADING;

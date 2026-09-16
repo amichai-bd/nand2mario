@@ -199,8 +199,8 @@ unidentified simulation fixtures; it is not a device identity/authentication key
   If retirement and budget end coincide, retirement wins. CPU HALT never freezes
   the PPU/timebase. Stepping a partially executed instruction completes that
   instruction; no rewind. A zero/out-of-range budget fails before execution.
-- LOAD_BEGIN checks profile, exact size and expected whole-image CRC32 before
-  pausing/resetting and invalidating the previous image. It resets a per-byte
+- LOAD_BEGIN checks profile, that profile's exact image size and the expected
+  whole-image CRC32 before pausing/resetting and invalidating the previous image. It resets a per-byte
   presence bitmap. LOAD_WRITE accepts arbitrary in-range order, overlaps and
   rewrites while LOADING; the most recent byte wins. Never accept ROM writes
   while RUNNING. LOAD_END requires every byte present and matching

@@ -215,7 +215,9 @@ module tb_loader #(
             // Fault slots: 3 empty, 5 wrong length, 7 unknown profile, 9 wrong CRC.
             if (index == 3) entry[7:0] = 8'h00;
             if (index == 5) entry[31:16] = 16'h4000;
-            if (index == 7) entry[15:8] = 8'h09;
+            // The exit-mbc1 fixture names the MBC1 profile there instead: the
+            // library carries 32 KiB images only, so the entry is refused.
+            if (index == 7) entry[15:8] = fixture == "exit-mbc1" ? PROFILE_MBC1_ID : 8'h09;
             if (index == 9) entry[63:32] = image_crc[index] ^ 32'h1;
             entries[index] = entry;
         end
@@ -678,6 +680,43 @@ module tb_loader #(
         checks = checks + 1;
     endtask
 
+    // The MBC1 profile honors the exit register with the same decode. The
+    // fixture models the command owner's profile after a host load of a 64 KiB
+    // image; a catalogue entry naming MBC1_ID is an invalid slot.
+    task automatic fixture_exit_mbc1;
+        int edges;
+        logic [31:0] epoch_before, status_before;
+        cpu_write(16'h6000, 8'd7); wait_copy(edges, SWAP_BOUND, "mbc1 catalogue entry");
+        expect_status(8'h20, LIBRARY_RESULT_INVALID_SLOT, 8'd7, "mbc1 catalogue entry");
+        select_swap(0, PROFILE_DIRECT_ID);
+        profile = PROFILE_MBC1_ID;
+        status_before = library_status;
+        cpu_write(16'h6000, 8'h11);
+        cpu_write(16'h7FFF, 8'h00);
+        cpu_write(16'h7000, 8'h01);
+        cpu_write(16'h2000, LIBRARY_GAME_EXIT_VALUE);
+        cpu_write(16'h4000, LIBRARY_GAME_EXIT_VALUE);
+        cpu_write(16'h0000, LIBRARY_GAME_EXIT_VALUE);
+        #1;
+        if (copy_busy || library_status != status_before || profile != PROFILE_MBC1_ID)
+            $fatal(1, "LOADER_TB_EXIT_MBC1_IGNORED status=%08h profile=%02h", library_status, profile);
+        checks = checks + 1;
+        epoch_before = epoch;
+        saw_invalid_write = 0;
+        cpu_write(16'h7FFF, LIBRARY_GAME_EXIT_VALUE);
+        #1;
+        if (!copy_busy || !swap_busy) $fatal(1, "LOADER_TB_EXIT_MBC1_BUSY");
+        while (!paused) begin edge_cycle(); if (rom_host_write) $fatal(1, "LOADER_TB_EXIT_MBC1_WRITE_BEFORE_PAUSE"); end
+        wait_copy(edges, SWAP_BOUND, "mbc1 game exit");
+        if (saw_invalid_write) $fatal(1, "LOADER_TB_EXIT_MBC1_VALID_DURING_WRITE");
+        if (profile != PROFILE_LOADER_ID || !image_valid || epoch != epoch_before + 1)
+            $fatal(1, "LOADER_TB_EXIT_MBC1_SWAP profile=%02h valid=%b epoch=%0d", profile, image_valid, epoch);
+        while (paused) edge_cycle();
+        expect_status(8'h20, LIBRARY_RESULT_OK, 8'd0, "after mbc1 exit");
+        check_rom_image(MENU);
+        swaps = swaps + 1;
+        checks = checks + 1;
+    endtask
     task automatic fixture_key1;
         int edges;
         logic [31:0] epoch_before;
@@ -814,6 +853,7 @@ module tb_loader #(
             "key1-queue": fixture_key1_queue();
             "swap-host": fixture_swap_host();
             "exit": fixture_exit();
+            "exit-mbc1": fixture_exit_mbc1();
             default: $fatal(1, "LOADER_TB_FIXTURE %s", fixture);
         endcase
         if (contract_fault) $fatal(1, "LOADER_TB_CPU_PORT_FAULT");

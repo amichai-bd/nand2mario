@@ -66,7 +66,7 @@ module n2m_v05_system #(
     logic [7:0] buttons, profile, endpoint_state;
     logic [63:0] retirement_count;
     logic image_valid, rom_write, rom_read, rom_read_valid;
-    logic [14:0] rom_address;
+    logic [15:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     // Loader profile owner wiring.
     localparam n2m_memory_pkg::memory_store_t ROM_STORE = n2m_memory_pkg::STORE_ROM;
@@ -103,6 +103,8 @@ module n2m_v05_system #(
     n2m_memory_pkg::memory_store_t raw_store;
     n2m_memory_pkg::memory_destination_t destination;
     logic [14:0] raw_offset;
+    // MBC1 owner: the translated store offset of every CPU/DMA store access.
+    logic [15:0] store_offset;
     logic [7:0] raw_wdata, storage_rdata;
     logic owner_prepare, owner_commit, owner_write;
     logic [15:0] owner_address;
@@ -210,6 +212,14 @@ module n2m_v05_system #(
     // Loader status bytes and the $FF window mask replace the memory owner's
     // byte on the CPU read path; every other read is unchanged.
     assign read_data = loader_read_override ? loader_read_data : dma_read_data;
+    // The MBC1 owner decodes the same resolved ROM write commits as the
+    // loader and translates switched-window reads; other profiles are the
+    // identity mapping (wiki/src/rtl/cartridge/MAS_mbc1_profile.md).
+    n2m_mbc1 u_mbc1 (
+        .clk_sys, .reset_sys, .core_reset, .profile,
+        .rom_commit(raw_write && raw_store == ROM_STORE), .commit_offset(raw_offset), .commit_data(raw_wdata),
+        .access_store(raw_store), .access_offset(raw_offset), .store_offset
+    );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request,
         .gb_tick(emulated_tick), .paused);
     // STOP withholds emulated ticks from every owner, so no dot elapses while
@@ -287,7 +297,7 @@ module n2m_v05_system #(
     n2m_memory_stores u_stores (.oam_request, .oam_response,
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
-        .access_address(raw_offset), .access_wdata(raw_wdata),
+        .access_address(store_offset), .access_wdata(raw_wdata),
         .access_rdata(storage_rdata), .access_valid(storage_valid),
         .host_read(rom_host_read), .host_write(rom_host_write), .host_offset(rom_host_offset),
         .host_wdata(rom_host_wdata), .host_rdata(rom_read_data), .host_valid(rom_read_valid),

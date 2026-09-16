@@ -46,7 +46,7 @@ module tb_memory_service;
     n2m_memory_stores stores (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .init_done(init_done),
         .access_read(storage_read || policy_read), .access_write(storage_write || policy_write),
-        .access_store(resolved_store), .access_address(resolved_offset), .access_wdata(resolved_wdata),
+        .access_store(resolved_store), .access_address({1'b0, resolved_offset}), .access_wdata(resolved_wdata),
         .access_rdata(storage_rdata), .access_valid(storage_valid),
         .host_read(1'b0), .host_write(1'b0), .host_offset(32'd0), .host_wdata(8'd0),
         .host_rdata(unused_host), .host_valid(unused_host_valid),
