@@ -183,7 +183,7 @@ The arbiter presents them to the controller as one requester:
 |---|---|---|
 | 7 | `copy_busy` | A window fill or swap is in progress |
 | 6 | `window_ready` | The upper half holds bank `bank` completely; cleared by a bank commit, set when its fill completes |
-| 5 | `sdram_ready` | The SDRAM controller's `initialized` and the [boot copier](../storage/MAS_flash_library.md#boot-copier) not in `CHECK` or `COPY` |
+| 5 | `sdram_ready` | The SDRAM controller's `initialized` and the [boot copier](../storage/MAS_flash_library.md#boot-copier) past `COPY` (`BOOT` or `DONE`; with erased flash from clock 5070 after reset release) |
 | 4 | `key1_pending` | KEY1 has been held past the debounce threshold and the return is waiting for `copy_busy` to fall (see [KEY1](#key1-return)) |
 | 3 | `flash_boot` | This power-up's library was copied from flash: set on the edge the [boot copier](../storage/MAS_flash_library.md#boot-copier) leaves `COPY`, cleared only by `reset_sys` |
 | 2:0 | 0 | Reserved |
@@ -223,13 +223,19 @@ library is present.
 
 Flash boot (phase 2): the [flash library](../storage/MAS_flash_library.md)
 holds the 17 images and the catalogue in the MAX 10 internal flash. Its boot
-copier fills SDRAM after the controller's `initialized`, then requests a
-select of slot 16 through the [copy engine](#copy-engine-and-rom-store-port-ownership)
-exactly as [KEY1 return](#key1-return) does, so the menu runs without a host.
-While the copier runs, `sdram_ready` is 0 and the endpoint reports `LOADING`;
-the [host interaction](#host-interaction) rules bound the host's wait. A host
-load afterwards overwrites SDRAM only; flash is never written by the console.
-An erased flash skips the copier and leaves phase 1 behaviour.
+copier ([`n2m_boot_copier`](../../../../src/rtl/storage/n2m_boot_copier.sv))
+fills SDRAM after the controller's `initialized` through the arbiter's copier
+client ports of `n2m_loader`, then raises `boot_return` for one clock: the
+loader queues it as a return event, exactly as [KEY1 return](#key1-return)
+does, so the copy engine swaps slot 16 in and resets the core; on the same
+clock the copier clears the core control owner's host pause as the host `RUN`
+does, so the menu runs without a host. The boot select is a return, not a
+select commit: `$A003` stays `$FF`. While the copier runs, `sdram_ready` is 0
+and the loader's exported `copy_busy`/`swap_busy` make the endpoint report
+`LOADING`; the [host interaction](#host-interaction) rules bound the host's
+wait. A host load afterwards overwrites SDRAM only; flash is never written by
+the console. An erased flash skips the copier and leaves phase 1 behaviour: the
+console stays paused with no image until the host loads and runs one.
 
 ### Core reset sequencing and image validity
 
@@ -390,6 +396,7 @@ Named assertions the owner carries:
 | `LOADER_FILL_BOUND` | `copy_busy` for a fill falls within 40,000 edges of rising |
 | `LOADER_KEY1_THRESHOLD` | `key1_return` implies the debounced press has lasted exactly 12,500,000 edges |
 | `LOADER_ONE_CORE_CLIENT` | The core control owner never accepts a host command and an engine request on the same edge |
+| `LOADER_COPIER_EXCLUSIVE` | The boot copier's `CHECK`/`COPY` never overlaps an engine job |
 
 The Questa compile-only gate, the fit and the board sessions follow the
 [charter workflow](../../project-charter.md#game-library). Board proof for

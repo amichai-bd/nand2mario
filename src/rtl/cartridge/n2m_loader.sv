@@ -44,6 +44,20 @@ module n2m_loader #(
     output logic rom_host_read,
     output logic [31:0] rom_host_offset,
     output logic [7:0] rom_host_wdata,
+    // Boot copier client of the storage arbiter and its status
+    // (wiki/src/rtl/storage/MAS_flash_library.md#boot-copier): copier_busy
+    // is CHECK or COPY, copier_pending also WAIT_SDRAM, boot_return the menu
+    // select the copier requests.
+    input var logic copier_busy,
+    input var logic copier_pending,
+    input var logic copier_valid,
+    input var logic copier_write,
+    input var logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] copier_address,
+    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] copier_data,
+    output logic copier_ready,
+    output logic copier_response_valid,
+    input var logic flash_boot,
+    input var logic boot_return,
     // Host SDRAM bridge client of the storage arbiter.
     input var logic host_sdram_valid,
     input var logic host_sdram_write,
@@ -68,7 +82,9 @@ module n2m_loader #(
     output logic image_invalidate,
     output logic image_publish,
     output logic [7:0] image_profile,
-    // Status.
+    // Status. copy_busy and swap_busy include the boot copier's CHECK and
+    // COPY, so the endpoint reports LOADING and refuses LOAD_BEGIN while
+    // SDRAM fills; the engine's own bounds use engine_copy_busy/engine_swap_busy.
     output logic copy_busy,
     output logic swap_busy,
     output logic window_busy,
@@ -95,18 +111,22 @@ module n2m_loader #(
     logic return_request, return_busy;
     logic [7:0] status_byte;
     logic [16:0] busy_edges, busy_edges_next;
+    logic engine_copy_busy, engine_swap_busy;
 
     assign loader_active = profile == LOADER_ID;
-    assign sdram_ready = sdram_initialized;
+    // The controller's initialized and the copier past COPY (BOOT or DONE).
+    assign sdram_ready = sdram_initialized && !copier_pending;
     assign bank_commit = rom_commit && loader_active && commit_offset[14:13] == 2'b01;
     assign select_in_range = commit_data <= n2m_interfaces_pkg::LIBRARY_MENU_INDEX;
     assign select_commit = rom_commit && loader_active && commit_offset[14:13] == 2'b11 && select_in_range;
     // A host load session excludes the engine; the pending session and an
     // in-flight ROM readback are the endpoint's claim on the port.
-    assign commit_accept = !copy_busy && !host_session;
-    assign return_request = key1_event || host_return;
-    assign copy_busy = job_valid || engine_busy;
-    assign swap_busy = (job_valid && job_swap) || (engine_busy && engine_swap);
+    assign commit_accept = !engine_copy_busy && !host_session;
+    assign return_request = key1_event || host_return || boot_return;
+    assign engine_copy_busy = job_valid || engine_busy;
+    assign engine_swap_busy = (job_valid && job_swap) || (engine_busy && engine_swap);
+    assign copy_busy = engine_copy_busy || copier_busy;
+    assign swap_busy = engine_swap_busy || copier_busy;
     assign fill_running = (job_valid && !job_swap) || (engine_busy && !engine_swap);
     assign window_busy = fill_running;
     assign engine_start = job_valid && !engine_busy && !host_port_busy && !host_session;
@@ -138,7 +158,7 @@ module n2m_loader #(
         // check passed and the core paused; a refused select changes nothing.
         if (host_loading || image_invalidate) window_ready_next = 1'b0;
         if (select_commit) last_index_next = commit_data;
-        if (bank_commit && !copy_busy) begin
+        if (bank_commit && !engine_copy_busy) begin
             if (!sdram_ready) result_next = n2m_interfaces_pkg::LIBRARY_RESULT_NOT_READY;
             else if (commit_accept) begin
                 bank_next = commit_data[5:0];
@@ -148,7 +168,7 @@ module n2m_loader #(
                 job_index_next = {1'b0, commit_data[5:0]};
             end
         end
-        if (select_commit && !copy_busy) begin
+        if (select_commit && !engine_copy_busy) begin
             if (!sdram_ready) result_next = n2m_interfaces_pkg::LIBRARY_RESULT_NOT_READY;
             else if (commit_accept) begin
                 job_valid_next = 1'b1;
@@ -173,7 +193,7 @@ module n2m_loader #(
             if (!engine_busy) job_valid_next = 1'b0;
         end
         // The bound counts from each job's accepting edge.
-        busy_edges_next = copy_busy && !engine_done ? busy_edges + 17'd1 : 17'd0;
+        busy_edges_next = engine_copy_busy && !engine_done ? busy_edges + 17'd1 : 17'd0;
     end
     `DFF_ARST_VAL(bank, bank_next, clk_sys, reset_sys, 6'd0)
     `DFF_ARST_VAL(window_ready, window_ready_next, clk_sys, reset_sys, 1'b0)
@@ -186,7 +206,7 @@ module n2m_loader #(
     `DFF_ARST_VAL(busy_edges, busy_edges_next, clk_sys, reset_sys, '0)
 
     // Status bytes and the CPU read override, one registered byte per address.
-    assign status_byte = {copy_busy, window_ready, sdram_ready, key1_pending, 4'b0};
+    assign status_byte = {engine_copy_busy, window_ready, sdram_ready, key1_pending, flash_boot, 3'b0};
     always_comb begin
         read_override = 1'b0;
         read_data = 8'hFF;
@@ -236,12 +256,13 @@ module n2m_loader #(
         .clk_sys(clk_sys), .reset_sys(reset_sys),
         .engine_valid(engine_sdram_valid), .engine_write(1'b0), .engine_address(engine_sdram_address),
         .engine_data('0), .engine_ready(engine_sdram_ready), .engine_response_valid(engine_sdram_response_valid),
-        .swap_busy(swap_busy),
+        .swap_busy(engine_swap_busy),
         .host_valid(host_sdram_valid), .host_write(host_sdram_write), .host_address(host_sdram_address),
         .host_data(host_sdram_data), .host_ready(host_sdram_ready), .host_response_valid(host_sdram_response_valid),
-        // The boot copier is a later client; its hook stays idle.
-        .copier_active(1'b0), .copier_valid(1'b0), .copier_write(1'b0), .copier_address('0), .copier_data('0),
-        .copier_ready(), .copier_response_valid(),
+        // The boot copier has priority while it fills SDRAM after power-up.
+        .copier_active(copier_busy), .copier_valid(copier_valid), .copier_write(copier_write),
+        .copier_address(copier_address), .copier_data(copier_data),
+        .copier_ready(copier_ready), .copier_response_valid(copier_response_valid),
         .request_valid(sdram_request_valid), .request_write(sdram_request_write),
         .request_address(sdram_request_address), .request_data(sdram_request_data),
         .request_ready(sdram_request_ready), .response_valid(sdram_response_valid)
@@ -249,11 +270,14 @@ module n2m_loader #(
     `N2M_ASSERT(LOADER_REGS_ONLY_IN_PROFILE, clk_sys, reset_sys,
         (bank_commit || select_commit || read_override) |-> profile == LOADER_ID)
     `N2M_ASSERT(LOADER_SWAP_BOUND, clk_sys, reset_sys,
-        copy_busy && swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_EDGES))
+        engine_copy_busy && engine_swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_EDGES))
     `N2M_ASSERT(LOADER_FILL_BOUND, clk_sys, reset_sys,
-        copy_busy && !swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_FILL_BOUND_EDGES))
+        engine_copy_busy && !engine_swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_FILL_BOUND_EDGES))
+    // The copier never overlaps an engine job: the core is paused with an
+    // invalid image until the boot select it requests.
+    `N2M_ASSERT(LOADER_COPIER_EXCLUSIVE, clk_sys, reset_sys, !(copier_busy && engine_copy_busy))
     `N2M_ASSERT(LOADER_ENGINE_NOT_IN_SESSION, clk_sys, reset_sys, !(engine_busy && host_loading))
     `N2M_ASSERT(LOADER_ENGINE_START_FREE, clk_sys, reset_sys, engine_start |-> !host_session && !host_port_busy)
-    `N2M_ASSERT(LOADER_KEY1_PENDING_BUSY, clk_sys, reset_sys, key1_pending |-> copy_busy)
+    `N2M_ASSERT(LOADER_KEY1_PENDING_BUSY, clk_sys, reset_sys, key1_pending |-> engine_copy_busy)
 endmodule
 `default_nettype wire

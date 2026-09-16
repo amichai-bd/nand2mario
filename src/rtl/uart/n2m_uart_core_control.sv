@@ -20,6 +20,10 @@ module n2m_uart_core_control (
     // a separate pause bit and a reset request serialized with host commands.
     input var logic engine_pause,
     input var logic engine_reset_request,
+    // Boot copier (wiki/src/rtl/storage/MAS_flash_library.md#boot-copier):
+    // one clock in BOOT clears the host pause exactly as RUN does, so the
+    // flash menu runs without a host.
+    input var logic boot_run,
     output logic engine_reset_accept,
     output logic engine_reset_done,
     output logic pause_request,
@@ -187,6 +191,7 @@ module n2m_uart_core_control (
             COMPLETE: begin engine_owned_next = 0; state_next = IDLE; end
             default: state_next = IDLE;
         endcase
+        if (boot_run) host_pause_next = 0;
     end
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, IDLE)
     `DFF_ARST_VAL(engine_owned, engine_owned_next, clk_sys, reset_sys, 1'b0)

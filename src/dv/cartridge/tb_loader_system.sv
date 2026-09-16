@@ -6,8 +6,17 @@
 // wiki/src/rtl/cartridge/MAS_loader_profile.md#host-interaction and the
 // issue #667 goal. Fixtures: `host` (LOAD_BEGIN during a swap and a fill,
 // SDRAM line round trips, LIBRARY_STATUS, the LIBRARY_CONTROL return, a
-// direct host load after a swap, CRC-mismatch recovery) and `menu` (the menu
-// selects slots through the joypad, each game boots, KEY1 returns). KEY1 uses
+// direct host load after a swap, CRC-mismatch recovery), `menu` (the menu
+// selects slots through the joypad, each game boots, KEY1 returns) and the
+// boot copier fixtures of wiki/src/rtl/storage/MAS_flash_library.md:
+// `flash-copy` (a populated flash double: every SDRAM line equals the flash
+// line, ascending, within the bound, flash_boot, the menu running without a
+// host), `flash-blank` (erased flash: sdram_ready at the contract clock, no
+// request, phase 1 host load unchanged) and `flash-precedence` (LOAD_BEGIN and
+// SDRAM_READ refused during COPY, accepted after; a host load overwrites SDRAM
+// and leaves the flash untouched). The flash image is written by this
+// testbench in the double's word-addressed hex format with slot 3 omitted so
+// erased flash words are copied too. KEY1 uses
 // shortened thresholds here; tb_loader proves the real 5 ms / 0.5 s timing.
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
@@ -23,6 +32,19 @@ module tb_loader_system #(
     localparam int MENU = 16;
     localparam int SWAP_BOUND = 80000;
     localparam int FILL_BOUND = 40000;
+    // Boot copier contract numbers (MAS_flash_library.md#boot-copier): the
+    // library the copier moves, the SDRAM initialization clock, the CHECK
+    // length, the COPY bounds and the whole-boot bound to the menu running.
+    localparam int COPY_BYTES = 32'h88400;
+    localparam int COPY_LINES = COPY_BYTES / 16;
+    localparam int INITIALIZED_CLOCK = 5036;
+    localparam int CHECK_CLOCKS = 33;
+    localparam int COPY_START_CLOCK = INITIALIZED_CLOCK + 1 + CHECK_CLOCKS;
+    localparam int COPY_MIN_CLOCKS = 627840;
+    localparam int COPY_BOUND_CLOCKS = 700000;
+    localparam int BOOT_BOUND_CLOCKS = 800000;
+    localparam int FLASH_ERASED_SLOT = 3;
+    localparam string FLASH_IMAGE = "flash-boot.hex";
     localparam logic [7:0] STATE_RUN = STATE_RUNNING;
     localparam logic [7:0] STATE_PAUSE = STATE_PAUSED;
     localparam logic [7:0] STATE_LOAD = STATE_LOADING;
@@ -59,6 +81,15 @@ module tb_loader_system #(
     logic [255:0] entries [0:IMAGES-1];
     logic [31:0] image_crc [0:IMAGES-1];
     integer checks, swaps, returns;
+    // Boot copier observation: clock 0 is the first clock after reset
+    // release; the scoreboard records every accepted SDRAM write while armed.
+    int clock_index;
+    int initialized_clock;
+    int ready_clock;
+    int flash_boot_clock;
+    bit copy_scoreboard;
+    int copy_lines_seen;
+    logic [25:0] copy_next_address;
 
     n2m_v05_system #(.UART_BAUD(3125000), .KEY1_DEBOUNCE_EDGES(KEY1_DEBOUNCE_EDGES), .KEY1_HOLD_EDGES(KEY1_HOLD_EDGES)) dut (
         .clk_sys, .reset_sys, .clk_pix, .reset_pix, .uart_rx, .uart_tx,
@@ -90,6 +121,23 @@ module tb_loader_system #(
     always #20 clk_sys = !clk_sys;
     always #19.841 clk_pix = !clk_pix;
     always @(posedge clk_sys) if (!reset_sys && fault) $fatal(1, "LOADER_SYS_FAULT");
+    always @(posedge clk_sys) if (!reset_sys) clock_index = clock_index + 1;
+    // Mid-clock monitor of the controller boundary and the loader status.
+    always @(negedge clk_sys) if (!reset_sys) begin
+        if (initialized_clock < 0 && sdram_initialized) initialized_clock = clock_index;
+        if (ready_clock < 0 && dut.loader_sdram_ready) ready_clock = clock_index;
+        if (flash_boot_clock < 0 && dut.flash_boot) flash_boot_clock = clock_index;
+        if (copy_scoreboard && sdram_request_valid && sdram_request_ready) begin
+            if (!sdram_request_write) $fatal(1, "LOADER_SYS_COPY_READ clock=%0d", clock_index);
+            if (sdram_request_address != copy_next_address)
+                $fatal(1, "LOADER_SYS_COPY_ORDER expected=%h actual=%h", copy_next_address, sdram_request_address);
+            if (sdram_request_data != flash_line(sdram_request_address))
+                $fatal(1, "LOADER_SYS_COPY_DATA address=%h expected=%h actual=%h",
+                    sdram_request_address, flash_line(sdram_request_address), sdram_request_data);
+            copy_next_address = copy_next_address + 26'd16;
+            copy_lines_seen = copy_lines_seen + 1;
+        end
+    end
 
     // The library. Games hold an endless loop at the entry point and their
     // slot number at $0150; the menu polls the action buttons and selects
@@ -152,6 +200,66 @@ module tb_loader_system #(
         int address;
         for (address = 0; address < LIBRARY_BYTES; address = address + 2)
             u_device.preload_word(26'(address), {library_byte(address + 1), library_byte(address)});
+    endtask
+
+    // The flash library: the same bytes at flash word 0x800 + a/4, slot 3
+    // left unprogrammed so it reads erased, and nothing past the catalogue.
+    function automatic logic [7:0] flash_byte(input int address);
+        if (address / SLOT == FLASH_ERASED_SLOT) return 8'hFF;
+        if (address >= COPY_BYTES) return 8'hFF;
+        return library_byte(address);
+    endfunction
+    function automatic logic [127:0] flash_line(input logic [25:0] address);
+        logic [127:0] value;
+        int k;
+        for (k = 0; k < 16; k = k + 1) value[k*8 +: 8] = flash_byte(int'(address) + k);
+        return value;
+    endfunction
+    // Word-addressed Verilog hex in the double's 0-based Avalon numbering,
+    // one record per programmed word; erased words are omitted.
+    task automatic write_flash_image;
+        int handle, address;
+        handle = $fopen(FLASH_IMAGE, "w");
+        if (handle == 0) $fatal(1, "LOADER_SYS_FLASH_FILE %s", FLASH_IMAGE);
+        for (address = 0; address < COPY_BYTES; address = address + 4)
+            if (address / SLOT != FLASH_ERASED_SLOT)
+                $fwrite(handle, "@%05X %08X\n", address / 4,
+                    {flash_byte(address + 3), flash_byte(address + 2), flash_byte(address + 1), flash_byte(address)});
+        $fclose(handle);
+    endtask
+    // Every SDRAM word of the library range against the flash bytes.
+    task automatic check_sdram_library;
+        int address;
+        logic [15:0] word;
+        for (address = 0; address < COPY_BYTES; address = address + 2) begin
+            word = u_device.stored(u_device.word_key(address[25:24], address[23:11], address[10:1]));
+            if (word != {flash_byte(address + 1), flash_byte(address)})
+                $fatal(1, "LOADER_SYS_SDRAM_BYTES address=%h expected=%h actual=%h",
+                    address, {flash_byte(address + 1), flash_byte(address)}, word);
+        end
+        checks = checks + 1;
+    endtask
+    // The double still holds the programmed image after the host wrote SDRAM.
+    task automatic check_flash_unchanged;
+        int address;
+        logic [31:0] expected;
+        for (address = 0; address < COPY_BYTES; address = address + 4) begin
+            expected = {flash_byte(address + 3), flash_byte(address + 2), flash_byte(address + 1), flash_byte(address)};
+            if (dut.u_copier.u_reader.u_flash.words[address / 4] != expected)
+                $fatal(1, "LOADER_SYS_FLASH_CHANGED word=%h expected=%h actual=%h",
+                    address / 4, expected, dut.u_copier.u_reader.u_flash.words[address / 4]);
+        end
+        checks = checks + 1;
+    endtask
+    // The menu runs on its own: dots advance with no host command sent.
+    task automatic check_running(input string what);
+        logic [63:0] dots_before;
+        if (paused || dut.profile != PROFILE_LOADER_ID || !dut.image_valid)
+            $fatal(1, "LOADER_SYS_NOT_RUNNING %s paused=%b profile=%02h valid=%b", what, paused, dut.profile, dut.image_valid);
+        dots_before = dot_count;
+        repeat (5000) @(negedge clk_sys);
+        if (dot_count <= dots_before) $fatal(1, "LOADER_SYS_MENU_STALLED %s", what);
+        checks = checks + 1;
     endtask
 
     // Wire driver: COBS-framed packets with CRC-16, byte level on uart_rx/uart_tx.
@@ -476,6 +584,121 @@ module tb_loader_system #(
         checks = checks + 1;
     endtask
 
+    // Populated flash: the copier fills SDRAM after initialized, in order,
+    // within the bounds, and the menu runs with no host command at all.
+    task automatic fixture_flash_copy;
+        int edges;
+        copy_next_address = '0;
+        copy_scoreboard = 1;
+        edges = 0;
+        while (!dut.flash_boot) begin
+            @(negedge clk_sys); edges = edges + 1;
+            // sdram_ready and flash_boot become visible in the same clock.
+            if (dut.loader_sdram_ready && !dut.flash_boot) $fatal(1, "LOADER_SYS_READY_DURING_COPY clock=%0d", clock_index);
+            if (edges > INITIALIZED_CLOCK + CHECK_CLOCKS + COPY_BOUND_CLOCKS + 100)
+                $fatal(1, "LOADER_SYS_COPY_TIMEOUT lines=%0d", copy_lines_seen);
+        end
+        // Let the mid-clock monitor record this clock before reading it.
+        #1;
+        copy_scoreboard = 0;
+        if (copy_lines_seen != COPY_LINES) $fatal(1, "LOADER_SYS_COPY_LINES seen=%0d expected=%0d", copy_lines_seen, COPY_LINES);
+        if (initialized_clock != INITIALIZED_CLOCK) $fatal(1, "LOADER_SYS_INITIALIZED clock=%0d", initialized_clock);
+        // flash_boot is set on the edge the last line is accepted: COPY ran
+        // from initialized + CHECK to that edge.
+        if (flash_boot_clock - COPY_START_CLOCK < COPY_MIN_CLOCKS || flash_boot_clock - COPY_START_CLOCK > COPY_BOUND_CLOCKS)
+            $fatal(1, "LOADER_SYS_COPY_CLOCKS copy=%0d", flash_boot_clock - COPY_START_CLOCK);
+        if (ready_clock >= 0 && ready_clock < flash_boot_clock) $fatal(1, "LOADER_SYS_READY_EARLY clock=%0d", ready_clock);
+        checks = checks + 3;
+        // The menu runs within the whole-boot bound of initialized, without
+        // any host command: the boot select clears the power-up host pause.
+        wait_profile(PROFILE_LOADER_ID, BOOT_BOUND_CLOCKS, "flash boot menu");
+        if (clock_index - initialized_clock > BOOT_BOUND_CLOCKS) $fatal(1, "LOADER_SYS_BOOT_BOUND clocks=%0d", clock_index - initialized_clock);
+        if (epoch != 1) $fatal(1, "LOADER_SYS_BOOT_EPOCH epoch=%0d", epoch);
+        check_running("after flash boot");
+        $display("LOADER_SYS flash boot initialized=%0d ready=%0d flash_boot=%0d copy_clocks=%0d menu_clock=%0d",
+            initialized_clock, ready_clock, flash_boot_clock, flash_boot_clock - COPY_START_CLOCK, clock_index);
+        check_sdram_library();
+        // First host contact: running, flash_boot and sdram_ready set, result
+        // OK for the boot select of slot 16.
+        read_host(HOST_REG_STATE, STATE_RUN, "menu running from flash");
+        read_host(HOST_REG_PROFILE, PROFILE_LOADER_ID, "flash menu profile");
+        // The boot select is a return, not a select commit: $A003 stays $FF;
+        // the running menu has committed bank 33 and refills it.
+        read_status({2'b0, 6'd33, 8'hFF, LIBRARY_RESULT_OK, 8'h28}, 32'h3FFFFF3F, "flash boot status");
+        // A host HALT afterwards still pauses; RUN resumes.
+        simple(COMMAND_HALT, STATUS_OK, 8);
+        read_host(HOST_REG_STATE, STATE_PAUSE, "halted after flash boot");
+        simple(COMMAND_RUN, STATUS_OK, 0);
+        read_host(HOST_REG_STATE, STATE_RUN, "running again");
+        // A slot the flash left erased reads erased through the host too.
+        request_payload[0]=8'h00; request_payload[1]=8'h80; request_payload[2]=8'h01; request_payload[3]=8'h00; request_payload[4]=8'd1;
+        for (edges = 0; edges < 16; edges = edges + 1) expected_payload[edges] = 8'hFF;
+        exchange(COMMAND_SDRAM_READ,5,STATUS_OK,16);
+        checks = checks + 1;
+    endtask
+
+    // Erased flash: nothing happens but the CHECK; the console is exactly
+    // the phase 1 console, paused until the host loads and runs.
+    task automatic fixture_flash_blank;
+        int edges;
+        copy_next_address = '0;
+        copy_scoreboard = 1;
+        while (ready_clock < 0) @(negedge clk_sys);
+        repeat (200) @(negedge clk_sys);
+        copy_scoreboard = 0;
+        if (initialized_clock != INITIALIZED_CLOCK) $fatal(1, "LOADER_SYS_INITIALIZED clock=%0d", initialized_clock);
+        if (ready_clock != COPY_START_CLOCK)
+            $fatal(1, "LOADER_SYS_BLANK_READY ready=%0d expected=%0d", ready_clock, COPY_START_CLOCK);
+        if (copy_lines_seen != 0 || model_writes != 0 || dut.flash_boot || dut.loader_copy_busy || !paused || dut.image_valid)
+            $fatal(1, "LOADER_SYS_BLANK_ACTIVITY lines=%0d writes=%0d", copy_lines_seen, model_writes);
+        checks = checks + 3;
+        $display("LOADER_SYS flash blank initialized=%0d ready=%0d", initialized_clock, ready_clock);
+        // Phase 1 unchanged: paused, no image, sdram_ready, flash_boot 0.
+        read_host(HOST_REG_STATE, STATE_PAUSE, "blank initial state");
+        read_host(HOST_REG_LIBRARY_STATUS, 32'h00FF0020, "blank library status");
+        sdram_write_line(32'h0000000);
+        sdram_read_line(32'h0000000, 1);
+        load_begin(PROFILE_DIRECT_ID, image_crc[5], STATUS_OK);
+        load_image(5);
+        read_host(HOST_REG_STATE, STATE_PAUSE, "paused until RUN");
+        simple(COMMAND_RUN, STATUS_OK, 0);
+        read_host(HOST_REG_STATE, STATE_RUN, "game running");
+        read_host(HOST_REG_LIBRARY_STATUS, 32'h00FF0020, "status after host load");
+    endtask
+
+    // Populated flash with the host present: refused during COPY, served
+    // after; the host then overwrites SDRAM and the flash is untouched.
+    task automatic fixture_flash_precedence;
+        int edges;
+        while (!sdram_initialized) @(negedge clk_sys);
+        repeat (CHECK_CLOCKS + 20) @(negedge clk_sys);
+        if (!dut.loader_swap_busy || dut.loader_sdram_ready) $fatal(1, "LOADER_SYS_PRECEDENCE_NOT_COPYING");
+        read_host(HOST_REG_STATE, STATE_LOAD, "loading during copy");
+        read_host(HOST_REG_LIBRARY_STATUS, 32'h00FF0000, "status during copy");
+        load_begin(PROFILE_DIRECT_ID, image_crc[5], STATUS_BAD_STATE);
+        request_payload[0]=0; request_payload[1]=0; request_payload[2]=0; request_payload[3]=0; request_payload[4]=8'd1;
+        exchange(COMMAND_SDRAM_READ,5,STATUS_BAD_VALUE,0);
+        for (edges = 0; edges < 20; edges = edges + 1) request_payload[edges] = 8'(edges);
+        exchange(COMMAND_SDRAM_WRITE,20,STATUS_BAD_VALUE,0);
+        write_host(HOST_REG_LIBRARY_CONTROL, LIBRARY_CONTROL_RETURN, STATUS_BAD_STATE);
+        checks = checks + 2;
+        if (dut.flash_boot) $fatal(1, "LOADER_SYS_PRECEDENCE_COPY_ENDED_EARLY");
+        // After the bound the copier is done and the menu runs.
+        wait_profile(PROFILE_LOADER_ID, INITIALIZED_CLOCK + BOOT_BOUND_CLOCKS, "menu after precedence");
+        check_running("after refused commands");
+        check_sdram_library();
+        sdram_read_line(32'h0000000, 0);
+        sdram_read_line(32'h0088000, 0);
+        // The host load succeeds now and overwrites SDRAM slot 0 line 0.
+        load_begin(PROFILE_DIRECT_ID, image_crc[5], STATUS_OK);
+        load_image(5);
+        read_host(HOST_REG_PROFILE, PROFILE_DIRECT_ID, "host game after flash boot");
+        sdram_write_line(32'h0000000);
+        sdram_read_line(32'h0000000, 1);
+        read_host(HOST_REG_LIBRARY_STATUS, 32'h21FF0128, "status after host load");
+        check_flash_unchanged();
+    endtask
+
     initial begin
         clk_sys = 0; clk_pix = 0; reset_sys = 1; reset_pix = 1; uart_rx = 1; key1_n = 1;
         physical_commit = 0; physical_buttons = 0;
@@ -483,8 +706,16 @@ module tb_loader_system #(
         checks = 0; swaps = 0; returns = 0;
         for (command_count=0;command_count<256;command_count=command_count+1) expected_mask[command_count]=8'hFF;
         command_count = 0;
+        clock_index = -1; initialized_clock = -1; ready_clock = -1; flash_boot_clock = -1;
+        copy_scoreboard = 0; copy_lines_seen = 0; copy_next_address = '0;
         if (!$value$plusargs("fixture=%s", fixture)) fixture = "host";
         build_library();
+        // The flash fixtures program the double before reset release; the
+        // others leave it erased, so the copier skips to DONE.
+        if (fixture == "flash-copy" || fixture == "flash-precedence") begin
+            write_flash_image();
+            dut.u_copier.u_reader.u_flash.load(FLASH_IMAGE);
+        end
         $dumpfile("waves.vcd");
         $dumpvars(0, reset_sys, uart_rx, uart_tx, paused, core_reset, epoch, key1_n,
             sdram_request_valid, sdram_request_ready, sdram_response_valid, fault,
@@ -495,12 +726,18 @@ module tb_loader_system #(
         repeat (5) @(negedge clk_sys);
         reset_sys = 0; reset_pix = 0;
         repeat (3) @(negedge clk_sys);
-        preload_library();
-        while (!sdram_initialized) @(negedge clk_sys);
-        repeat (4) @(negedge clk_sys);
+        // The flash fixtures start from an empty SDRAM: the copier fills it.
+        if (fixture == "host" || fixture == "menu") begin
+            preload_library();
+            while (!sdram_initialized) @(negedge clk_sys);
+            repeat (4) @(negedge clk_sys);
+        end
         case (fixture)
             "host": fixture_host();
             "menu": fixture_menu();
+            "flash-copy": fixture_flash_copy();
+            "flash-blank": fixture_flash_blank();
+            "flash-precedence": fixture_flash_precedence();
             default: $fatal(1, "LOADER_SYS_FIXTURE %s", fixture);
         endcase
         $display("PASS loader-system-%s checks=%0d swaps=%0d returns=%0d commands=%0d", fixture, checks, swaps, returns, command_count);

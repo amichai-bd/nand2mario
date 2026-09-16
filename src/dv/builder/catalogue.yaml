@@ -189,6 +189,9 @@ units:
   dma-tags-raw: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.49}
   dma-terminal: {kind: sim, level: 2, labels: [dma], duration_seconds: 4.10}
   dma-terminal-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.53}
+  flash-blank: {kind: sim, level: 1, labels: [storage, system], duration_seconds: null}
+  flash-copy: {kind: sim, level: 1, labels: [storage, system], duration_seconds: null}
+  flash-precedence: {kind: sim, level: 1, labels: [storage, system], duration_seconds: null}
   flash-reader: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.00}
   flash-reader-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.00}
   flash-reader-fault-range: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.00}

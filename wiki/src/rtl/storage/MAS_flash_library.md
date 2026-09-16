@@ -1,17 +1,21 @@
 # Flash-resident game library and boot copier
 
-Owner: `src/rtl/storage/` and `src/dv/storage/`. Implemented today: the
-flash reader [`n2m_flash_reader`](../../../../src/rtl/storage/n2m_flash_reader.sv)
+Owner: `src/rtl/storage/` and `src/dv/storage/`. Implemented: the flash
+reader [`n2m_flash_reader`](../../../../src/rtl/storage/n2m_flash_reader.sv)
 with its constants in [`n2m_flash_pkg`](../../../../src/rtl/storage/n2m_flash_pkg.sv),
 the IP double [`n2m_sim_onchip_flash`](../../../../src/rtl/storage/n2m_sim_onchip_flash.sv),
-the [`tb_flash_reader`](../../../../src/dv/storage/tb_flash_reader.sv) fixtures,
-the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit and the
-builder's [library image and `.pof` path](../../../tools/n2m/SPEC.md#flash-library-image).
-The boot copier and its fixtures ([#675](https://github.com/amichai-bd/nand2mario/issues/675))
-and the board sessions ([#694](https://github.com/amichai-bd/nand2mario/issues/694),
+the boot copier [`n2m_boot_copier`](../../../../src/rtl/storage/n2m_boot_copier.sv)
+composed in [`n2m_v05_system`](../../../../src/rtl/system/n2m_v05_system.sv)
+as the [storage arbiter](../cartridge/MAS_loader_profile.md#storage-arbiter)'s
+third client, the [`tb_flash_reader`](../../../../src/dv/storage/tb_flash_reader.sv)
+and [`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv)
+fixtures, the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit,
+the copier in the `v05-board` image and the builder's
+[library image and `.pof` path](../../../tools/n2m/SPEC.md#flash-library-image).
+The board sessions ([#694](https://github.com/amichai-bd/nand2mario/issues/694),
 [#681](https://github.com/amichai-bd/nand2mario/issues/681)) remain open under
-[#658](https://github.com/amichai-bd/nand2mario/issues/658); until they land,
-the sections below that describe them are the contract those slices derive from.
+[#658](https://github.com/amichai-bd/nand2mario/issues/658); the programming
+section below is the contract those slices derive from.
 
 ## Scope
 
@@ -148,31 +152,47 @@ parameter-compatible and empty, beside the other five.
 
 ### Boot copier
 
-The copier is not implemented yet ([#675](https://github.com/amichai-bd/nand2mario/issues/675)).
-From `reset_sys` release the copier performs, in order:
+[`n2m_boot_copier`](../../../../src/rtl/storage/n2m_boot_copier.sv) owns the
+flash reader instance (`u_reader`) and one pending SDRAM write. Clock 0 is
+the first clock after `reset_sys` release, as in the
+[SDRAM initialization](MAS_sdram.md#initialization). From release the copier
+performs, in order:
 
-1. `WAIT_SDRAM`: wait for the SDRAM controller's `initialized`
-   (clock 5036 of [initialization](MAS_sdram.md#initialization)).
+1. `WAIT_SDRAM`: wait for the SDRAM controller's `initialized`, visible from
+   clock 5036; `CHECK` begins in clock 5037.
 2. `CHECK`: read the catalogue's entry 16 (flash words `0x22880`-`0x22887`,
-   two line reads: at the [reader cadence](#on-chip-flash-ip-boundary) the
-   first line is published 14 clocks after its acceptance and the second 17
-   clocks after the first, so `CHECK` lasts about 32 clocks; the copier
-   slice ([#675](https://github.com/amichai-bd/nand2mario/issues/675)) fixes
-   the exact count and every derived bound below). If it is not valid as
-   defined above, go to `DONE` with
-   `flash_boot` still 0: SDRAM is left as [phase 1](../cartridge/MAS_loader_profile.md#boot-source)
+   two line reads). The first line is accepted at the edge ending clock 5037
+   and published in clock 5052 (14 clocks after acceptance at the
+   [reader cadence](#on-chip-flash-ip-boundary)); the second is presented
+   the clock the reader is ready again and published 17 clocks after the
+   first, in clock 5069, where the entry is decoded. `CHECK` therefore lasts
+   exactly 33 clocks (5037-5069) and the next phase begins in clock 5070.
+   The entry is present when `valid == 0x01`, `length == 32768` and
+   `profile == LOADER_ID`; a `DIRECT_ID` entry 16, which the engine's select
+   would accept, is invalid to the copier because the flash menu is the
+   loader-profile menu. Otherwise go to `DONE` with `flash_boot` still 0:
+   SDRAM is left as [phase 1](../cartridge/MAS_loader_profile.md#boot-source)
    expects and nothing else on this page happens at this power-up.
 3. `COPY`: for SDRAM byte address `a = 0x0000000` to `0x00883F0` in steps of
    16, read flash line `flash_word(a)` and write it to SDRAM line `a` through
-   the arbiter, one line outstanding, in ascending order: slots 0-16, then
-   the catalogue. 34,880 lines. `flash_boot` is set on the edge the last
-   line is accepted, which is the edge `COPY` leaves; this is its only
-   setting event, and only `reset_sys` clears it.
-4. `BOOT`: request a select of slot 16 through the
+   the arbiter, in ascending order: slots 0-16, then the catalogue. 34,880
+   lines (`n2m_flash_pkg::FLASH_COPY_LINES`). The reader's published line is
+   the first pipeline stage (it holds until the next acceptance) and the
+   pending write register the second: a published line moves into the free
+   pending register, otherwise it waits in the reader, and the next flash
+   line is requested only once the reader's line has moved, so at most one
+   flash read and one SDRAM write are in flight. `flash_boot` is set on the
+   edge the last line is accepted, which is the edge `COPY` leaves; this is
+   its only setting event, and only `reset_sys` clears it.
+4. `BOOT`: one clock. Request a select of slot 16 through the
    [copy engine](../cartridge/MAS_loader_profile.md#copy-engine-and-rom-store-port-ownership)
    exactly as [KEY1 return](../cartridge/MAS_loader_profile.md#key1-return)
-   does, so the menu image is swapped into the ROM store, the core is reset
-   and runs.
+   does (`boot_return` into the loader's return path), so the menu image is
+   swapped into the ROM store and the core is reset; and clear the
+   [host pause](../uart/MAS_uart.md#core-and-storage-integration) exactly as
+   the host `RUN` command does (`boot_run` into the core control owner), so
+   the menu runs without any host command. A later host `HALT` pauses it as
+   usual.
 5. `DONE`: idle until the next `reset_sys`. Core resets and host loads never
    restart the copier.
 
@@ -186,34 +206,42 @@ Timing bounds a testbench checks:
   [sustained throughput](MAS_sdram.md#access-sequence-and-latency-bounds) of
   one line per 18.6 clocks bounds the copy: 34,880 lines complete within
   648,768 clocks (25.95 ms) of arbiter access plus the flash prefetch of the
-  first line, so `COPY` lasts at most 700,000 clocks (28.0 ms) and at least
-  34,880 x 18 = 627,840 clocks. The copier prefetches the next flash line
-  while the current SDRAM write waits; at 17 clocks per line the flash stays
-  just ahead of the SDRAM's 18.6, so the SDRAM sets the pace, with less
-  margin than first assumed ([#675](https://github.com/amichai-bd/nand2mario/issues/675)
-  confirms the bound with the copier in place).
-- Whole boot: `CHECK` about 32 clocks, `COPY` at most 700,000 clocks, the
-  slot 16 swap at most 80,000 edges (3.2 ms, the
+  first line, so `COPY` lasts at most 700,000 clocks (28.0 ms,
+  `FLASH_COPY_BOUND_CLOCKS`) and at least 34,880 x 18 = 627,840 clocks. At
+  17 clocks per line the flash stays ahead of the SDRAM's 18.6, so the SDRAM
+  sets the pace; the `flash-copy` fixture measures 647,216 clocks (25.9 ms, 18.56 per line)
+  from clock 5070 to the last acceptance in clock 652,286.
+- Whole boot: `CHECK` 33 clocks, `COPY` at most 700,000 clocks, the slot 16
+  swap at most 80,000 edges (3.2 ms, the
   [swap bound](../cartridge/MAS_loader_profile.md#select-register)):
   the menu runs within 800,000 clocks (32.0 ms) of `initialized`, so within
-  805,036 clocks of reset release. `flash_boot` is visible before the `BOOT`
-  select is requested.
+  805,036 clocks of reset release; the fixture measures the menu
+  running (paused released, first dot) in clock 705,389 from release, 700,353
+  after `initialized`. `flash_boot` is visible before the `BOOT` select is
+  requested.
 
 ### Precedence over host loads
 
 While the copier is in `CHECK` or `COPY`:
 
 - `sdram_ready` (`$A000` bit 5 and `LIBRARY_STATUS` bit 5) is 0: it is
-  defined as the controller's `initialized` and the copier not in `CHECK` or
-  `COPY`. Host `SDRAM_WRITE`/`SDRAM_READ` therefore return `BAD_VALUE` as the
+  defined as the controller's `initialized` and the copier in `BOOT` or
+  `DONE` (`library_pending` low), so it never pulses in the clock between
+  `initialized` and `CHECK`; with erased flash it rises in clock 5070. The
+  UART endpoint validates `SDRAM_WRITE`/`SDRAM_READ` against this bit, so
+  they return `BAD_VALUE` as the
   [host interaction](../cartridge/MAS_loader_profile.md#host-interaction) rules
   already state.
 - The arbiter serves only the copier; no engine or host line request exists
   yet because the core is paused with an invalid image after `reset_sys`.
-- The endpoint reports `STATE == LOADING`, exactly as during a swap, so
-  `LOAD_BEGIN` returns `BAD_STATE`; the host retries after at most 32 ms
-  (the whole-boot bound above) instead of the 3.2 ms swap bound. Every other host command keeps its
-  existing precondition behaviour.
+- The endpoint reports `STATE == LOADING`, exactly as during a swap (the
+  loader's exported `copy_busy` and `swap_busy` include the copier's `CHECK`
+  and `COPY`), so `LOAD_BEGIN` and `WRITE_HOST(LIBRARY_CONTROL)` return
+  `BAD_STATE`; the host retries after at most 32 ms (the whole-boot bound
+  above) instead of the 3.2 ms swap bound. Every other host command keeps its
+  existing precondition behaviour. Before `initialized` the endpoint is
+  `PAUSED` as in phase 1; at 115200 baud no host packet completes inside
+  those 5036 clocks.
 
 After `DONE`, host commands behave as in phase 1: a host load session
 excludes the engine, host SDRAM line commands overwrite slots and catalogue
@@ -266,8 +294,9 @@ In priority order:
    the host load of phase 1 is the only way to a valid library at this
    power-up.
 3. A flash read returning a line while the arbiter has not yet accepted the
-   previous SDRAM write: the copier holds the line; it never drops or
-   reorders lines (`FLASH_COPY_ORDER`).
+   previous SDRAM write: the line waits in the reader, which holds it until
+   its next acceptance, and no further flash read is issued; nothing is
+   dropped or reordered (`FLASH_COPY_ORDER`, `FLASH_COPY_HOLD_FREE`).
 4. Host `LOAD_BEGIN` or a `WRITE_HOST(LIBRARY_CONTROL)` during `COPY`:
    refused with `BAD_STATE` by the existing `LOADING` rules; the copier is
    never interrupted.
@@ -283,9 +312,9 @@ Simulation runs under Verilator on WSL with the double loaded from the same
 
 | Fixture | Checks |
 |---|---|
-| `flash-copy` | With a two-image fixture library (slots 0 and 16 valid): `COPY` starts after `initialized`, every SDRAM line equals the flash line, ascending order, `COPY` duration within the bounds above, `flash_boot` set, slot 16 swapped and the core running the menu |
-| `flash-blank` | Erased flash: no SDRAM request, no select, `flash_boot = 0`, `sdram_ready` rises when `CHECK` ends, about 32 clocks after `initialized` (5036 plus the exact `CHECK` count [#675](https://github.com/amichai-bd/nand2mario/issues/675) fixes); the phase 1 host load then works unchanged |
-| `flash-precedence` | `LOAD_BEGIN` and `SDRAM_READ` during `COPY` are refused with the existing codes and accepted after `DONE`; a host load after boot overwrites SDRAM and the double's contents are unchanged |
+| `flash-copy` | [`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv) with the double programmed from the fixture's own 17-image library, slot 3 left erased: `initialized` at clock 5036, no SDRAM request before it, every accepted write ascending from 0 with the flash line's bytes (34,880 lines), `COPY` within 627,840-700,000 clocks of clock 5070, `sdram_ready` low until `flash_boot`, the menu running (profile `LOADER_ID`, not paused, dots advancing, epoch 1) within 800,000 clocks of `initialized` with no host command; then every SDRAM word of the library range equals the flash byte (erased slot 3 reads `0xFF`), `LIBRARY_STATUS` shows `flash_boot`, `sdram_ready` and result `OK`, a host `HALT` pauses and `RUN` resumes |
+| `flash-blank` | Erased double: `sdram_ready` first high in clock 5070 exactly, no SDRAM request, no engine job, `flash_boot = 0`, the console paused with no image; then phase 1 unchanged: `LIBRARY_STATUS` `0x00FF0020`, an `SDRAM_WRITE`/`SDRAM_READ` round trip, a host load of a game paused until `RUN` |
+| `flash-precedence` | Programmed double with the host present during `COPY`: `STATE == LOADING`, `LIBRARY_STATUS` `0x00FF0000`, `LOAD_BEGIN` and `WRITE_HOST(LIBRARY_CONTROL)` `BAD_STATE`, `SDRAM_READ` and `SDRAM_WRITE` `BAD_VALUE`; after the boot the menu runs, SDRAM equals the flash, `SDRAM_READ` returns library lines, a host load of a game succeeds, `SDRAM_WRITE` overwrites a library line and every double word is unchanged |
 | `flash-reader` | Through the reader against the double loaded from a fixture image the testbench writes: every slot's first and last line, the whole catalogue, the line either side of each sector start and the last user line, each compared word for word with the fixture's own copy; an untouched slot, the reserved range and the user range's end read `0xFFFFFFFF`; the Avalon address equals the flash word less `0x00800`, burstcount is 4, `waitrequest`/`readdatavalid` and `line_data_valid`/`line_ready` follow the edge counts above, the catalogue streams back to back at one Avalon read per 17 clocks, the published line holds until the next acceptance, and a reset during a read publishes nothing |
 | `flash-reader-fault-misaligned`, `flash-reader-fault-range` | A misaligned request fails `FLASH_LINE_ALIGNED`; a word past the user range fails `FLASH_LINE_RANGE` |
 
@@ -297,8 +326,13 @@ Assertions the copier and reader carry:
 | `FLASH_LINE_RANGE` | acceptance implies `0x00800 <= line_word <= 0x2E7FF` |
 | `FLASH_ONE_OUTSTANDING` | no acceptance while a read has no `line_data_valid` yet |
 | `FLASH_DATA_EXPECTED` | `readdatavalid` only while a line is outstanding |
-| `FLASH_COPY_ORDER` | each accepted SDRAM write address is the previous one plus 16, starting at 0 |
+| `FLASH_COPY_ORDER` | each accepted SDRAM write address is the previous one plus 16, starting at 0 (an independent order register) |
 | `FLASH_COPY_BOUND` | `COPY` leaves within 700,000 clocks of entering |
+| `FLASH_COPY_REQUEST_IN_COPY` | an SDRAM request implies `COPY` |
+| `FLASH_COPY_LINE_EXPECTED` | a published line implies a flash read outstanding |
+| `FLASH_COPY_HOLD_FREE` | a flash line is accepted only while the reader's previous line has moved on |
+| `FLASH_BOOT_AFTER_COPY` | `flash_boot` rises only from `COPY` |
+| `LOADER_COPIER_EXCLUSIVE` | the copier's `CHECK`/`COPY` never overlaps an engine job ([loader](../cartridge/MAS_loader_profile.md)) |
 | `FLASH_NO_WRITE` | the IP's control slave `write` is constant 0 |
 
 Questa compiles the wrapper against the `altera_onchip_flash` stand-in under
@@ -306,14 +340,19 @@ the compile gate. The [`flash-proof`](../../../../src/fpga/de10_lite/README.md)
 fit places the reader on the composed image's PLLs and reset and walks the
 user range continuously; the builder checks `UFM blocks : 1 / 1`, the
 configuration mode assignment and the unchanged PLL, pin and slack evidence.
-The `flash-copy`, `flash-blank` and `flash-precedence` fixtures land with the
-copier ([#675](https://github.com/amichai-bd/nand2mario/issues/675)). A board
-check, authorized per slice ([#694](https://github.com/amichai-bd/nand2mario/issues/694),
+The `v05-board`, `v05` and `v05-controls-board` images place the copier and
+the IP under `u_system|u_copier|u_reader` ([`fpga_flash.reader_path`](../../../../tools/n2m/fpga_flash.py))
+with the same staging, mode assignment and classified diagnostics, and the
+builder feeds the reader's `INIT_FILENAME` and checks the `.pof` for them as
+for `flash-proof`; their audit reports the IP's strobe clock once per timing
+netlist update (seven, against one for `flash-proof`), which the builder
+counts from the audit script. A board check, authorized per slice
+([#694](https://github.com/amichai-bd/nand2mario/issues/694),
 [#681](https://github.com/amichai-bd/nand2mario/issues/681)): program the
 `.pof`, power-cycle without a host, observe the menu; then a host load, then a
-power cycle restoring the flash menu. Until it runs, the reader's evidence is
-simulation against the double plus the fit; the flash contents have not been
-read on the board.
+power cycle restoring the flash menu. Until it runs, the copier's and reader's
+evidence is simulation against the double plus the fit; the flash contents
+have not been read on the board.
 
 ### Measured facts
 

@@ -42,7 +42,15 @@ pins with the `sdram_clk` generated clock and I/O delays of `sdram-proof`
 appended to `v05.sdc` and `controls.sdc`, and KEY1/A7 as the return-to-menu
 button with its checked two-flop synchronizer. The builder applies the
 `sdram-proof` DRAM drive strength, pin clock exception and routed-clock
-diagnostic to every image pinned to `DRAM_CLK`.
+diagnostic to every image pinned to `DRAM_CLK`. The same three images place
+the [boot copier](../../rtl/storage/n2m_boot_copier.sv) with the flash reader
+and the On-Chip Flash IP under `u_system|u_copier|u_reader`, so they carry the
+`flash-proof` IP staging, configuration mode, UFM block check and classified
+strobe-clock and read-only-mode diagnostics as well
+([flash library contract](../../../wiki/src/rtl/storage/MAS_flash_library.md)).
+The builder names its [library image](../../../wiki/tools/n2m/SPEC.md#flash-library-image)
+on that reader instance, so their `.pof` holds the library; without it the
+flash reads erased and the copier skips to `DONE`.
 
 `v05-board` uses that composition with physical UART RX D0/AB5, TX D1/AB6,
 and KEY0/B8 reset. It retains the VGA pins and clocks above; remaining virtual

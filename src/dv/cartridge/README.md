@@ -48,6 +48,13 @@ the real CPU executing a menu program from slot 16 and drives the UART wire at
 | `loader-host` | `tb_loader_system` `host` | `PASS loader-system-host checks=39 swaps=0 returns=2 commands=170` |
 | `loader-menu` | `tb_loader_system` `menu` | `PASS loader-system-menu checks=19 swaps=4 returns=4 commands=18` |
 
+`tb_loader_system` also hosts the boot copier fixtures `flash-copy`,
+`flash-blank` and `flash-precedence`; the
+[storage test plan](../storage/README.md#boot-copier) owns them. The `host`
+and `menu` fixtures run with the flash double erased, so the copier checks
+entry 16 and skips to `DONE` in clock 5070; `sdram_ready` rises then instead
+of at `initialized`.
+
 The named assertions of the contract live in the RTL: `LOADER_PORT_EXCLUSIVE`
 and `LOADER_FILL_HOST_PORT` in the port arbiter, `LOADER_SWAP_PAUSED`,
 `LOADER_FILL_UPPER_ONLY`, `LOADER_IMAGE_INVALID_BEFORE_WRITE` and

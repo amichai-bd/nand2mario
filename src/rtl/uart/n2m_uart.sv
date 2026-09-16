@@ -87,6 +87,7 @@ module n2m_uart #(
     input var logic [31:0] library_key1,
     input var logic engine_pause,
     input var logic engine_reset_request,
+    input var logic boot_run,
     output logic engine_reset_accept,
     output logic engine_reset_done,
     output logic host_session,
@@ -204,7 +205,7 @@ module n2m_uart #(
         .loader_copy_busy(loader_copy_busy), .loader_swap_busy(loader_swap_busy),
         .engine_invalidate(engine_invalidate), .engine_publish(engine_publish), .engine_profile(engine_profile),
         .library_status(library_status), .library_key1(library_key1),
-        .engine_pause(engine_pause), .engine_reset_request(engine_reset_request),
+        .engine_pause(engine_pause), .engine_reset_request(engine_reset_request), .boot_run(boot_run),
         .engine_reset_accept(engine_reset_accept), .engine_reset_done(engine_reset_done),
         .host_session(host_session), .host_loading(host_loading), .host_port_busy(host_port_busy),
         .library_return(library_return)
