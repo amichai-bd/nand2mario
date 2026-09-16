@@ -80,8 +80,9 @@ file with `?page=wiki/tools/wiki/SPEC.md`; fragments select headings or `#L12` s
 lines. Former MkDocs document paths redirect to the matching source. Adding a tab
 changes no published URL. At desktop width every tab fits. At phone width
 (760 px and below) the strip scrolls sideways, and a CSS gradient pinned over
-its right edge shows that more tabs exist; it lifts once the strip is scrolled
-to its end. Discoverability needs no script.
+its right edge shows that more tabs exist. In browsers with scroll-driven
+animations it lifts once the strip is scrolled to its end; otherwise the fade
+stays. Discoverability needs no script.
 
 `site.py` matches each published path to the longest source root in `ROOTS` and
 records that root beside its tab in the manifest. The sidebar strips the root
