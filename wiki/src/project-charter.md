@@ -223,19 +223,18 @@ prove and which need physical presence.
 | Keyboard works | Yes: UART keyboard input drives the shared input owner and JOYP | — |
 | VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observed: the owner confirmed the picture on a connected monitor ([board bring-up](board-bring-up.md#display-observation)); timing tolerance, tearing and colour characterisation across displays are not measured |
 | 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | — |
-| Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
+| Three reset/load/start cycles | Yes with the UART core reset | Observed: two owner KEY0 press/release cycles reset the design and it came back with the same identity ([board bring-up](board-bring-up.md#key0-board-reset)) |
 | Wiring, voltage and timing proof at the board | — | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
 
 A `v1.0` claim built on the UART column alone must say so. The current
 [endurance fixture](../../src/dv/springtrail/ENDURANCE.md#retained-script) has
 source-qualified lives/countdown and complete-frame expectations. These host
 checks do not qualify a new current-image continuous physical run.
-One entry in the physical column stays open: the KEY0 board reset, under
-[#512](https://github.com/amichai-bd/nand2mario/issues/512), which needs hands
-at the board. Observing the monitor is done, recorded in
-[board bring-up](board-bring-up.md#display-observation) as a single direct
-observation rather than a measurement. The open entry gates physical claims
-only, not UART-observable, simulation or host work.
+No entry in the physical column stays open. The KEY0 board reset and the
+monitor picture are both recorded in
+[board bring-up](board-bring-up.md#key0-board-reset) as direct owner
+observations with UART readback, not as measurements; supply voltage and
+display tolerance remain unmeasured, as the table states.
 
 ## Dependencies and authority
 

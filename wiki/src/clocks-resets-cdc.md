@@ -145,10 +145,11 @@ implementation must prove a supported MAX 10 power-up initialization or wrapper
 reset source establishes these values without a running pixel clock.
 The board wrapper maps the active-low manual
 reset input. [Board bring-up](board-bring-up.md) shows the design releasing
-from reset and answering over UART, so the released level is not inverted;
-pressing KEY0 is unverified and still needs physical presence under
-[#512](https://github.com/amichai-bd/nand2mario/issues/512), inside the
-charter's [remote acceptance](project-charter.md#remote-acceptance) split.
+from reset and answering over UART, so the released level is not inverted, and
+its [KEY0 board reset record](board-bring-up.md#key0-board-reset) shows the
+asserted level as observed: two owner presses each reset the whole design
+(picture blank, boot copier rerun, dot counter and library epoch restarted) and
+each release brought it back answering with the same build identity.
 Assert reset without
 waiting for a clock. After release, synchronize the raw input through two flops
 and require 500000 consecutive released reference edges (10 ms nominal) before

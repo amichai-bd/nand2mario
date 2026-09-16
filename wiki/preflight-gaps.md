@@ -568,9 +568,8 @@ ping, build ID and CRC rejection.
 The monitor picture is confirmed: on 2026-09-13 the owner was at the board and
 observed it, recorded in
 [board bring-up](src/board-bring-up.md#display-observation). The KEY0 board
-reset still needs hands at the board, under
-[#512](https://github.com/amichai-bd/nand2mario/issues/512). That gates physical
-release claims only; it does not block UART-observable, simulation or host work.
+reset was observed on 2026-09-16, recorded in
+[board bring-up](src/board-bring-up.md#key0-board-reset).
 Reopen the closed issues if the board becomes routinely physically reachable or
 a runner can be hosted.
 
