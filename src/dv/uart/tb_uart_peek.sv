@@ -15,7 +15,7 @@ module tb_uart_peek;
     logic [31:0] epoch;
     logic [63:0] dot_count, retirement_count;
     logic image_valid, rom_write, rom_read, rom_read_valid;
-    logic [14:0] rom_address;
+    logic [15:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid;
     n2m_interfaces_pkg::snapshot_t snapshot_metadata;
@@ -85,7 +85,7 @@ module tb_uart_peek;
         .access_read(access_read),.access_write(access_write),.access_store(access_store),
         .access_address(access_address),.access_wdata(access_wdata),
         .access_rdata(access_rdata),.access_valid(access_valid),
-        .host_read(rom_read),.host_write(rom_write),.host_offset({17'b0,rom_address}),
+        .host_read(rom_read),.host_write(rom_write),.host_offset({16'b0,rom_address}),
         .host_wdata(rom_write_data),.host_rdata(rom_read_data),.host_valid(rom_read_valid),
         .ppu_vram_read(1'b0),.ppu_vram_address(13'd0),.ppu_vram_rdata(unused_vram),.ppu_vram_valid(unused_vram_valid),
         .ppu_oam_read(1'b0),.ppu_oam_pair(7'd0),.ppu_oam_rdata(unused_oam),.ppu_oam_valid(unused_oam_valid),

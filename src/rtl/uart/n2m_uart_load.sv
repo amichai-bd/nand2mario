@@ -14,6 +14,9 @@ module n2m_uart_load #(
     input var logic [31:0] offset,
     input var logic [15:0] count,
     input var logic [31:0] expected_crc,
+    // Image length of the session's profile: the clear and end sweeps and
+    // the range assertion cover exactly this many bytes.
+    input var logic [31:0] image_bytes,
     output logic busy,
     output logic done,
     output logic [7:0] status,
@@ -25,12 +28,12 @@ module n2m_uart_load #(
     input var logic output_ready,
     output logic rom_write,
     output logic rom_read,
-    output logic [$clog2(n2m_interfaces_pkg::PROFILE_ROM_BYTES)-1:0] rom_address,
+    output logic [$clog2(n2m_interfaces_pkg::PROFILE_STORE_BYTES)-1:0] rom_address,
     output logic [7:0] rom_write_data,
     input var logic [7:0] rom_read_data,
     input var logic rom_read_valid
 );
-    localparam integer ADDRESS_BITS = $clog2(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
+    localparam integer ADDRESS_BITS = $clog2(n2m_interfaces_pkg::PROFILE_STORE_BYTES);
     typedef enum logic [3:0] {
         IDLE, CLEAR, WRITE_BYTES, SCAN_FETCH, SCAN_USE,
         READ_FETCH, READ_USE, READ_SEND, COMPLETE
@@ -123,7 +126,7 @@ module n2m_uart_load #(
             end
             CLEAR: begin
                 address_next = address + 1'b1;
-                if (32'(address) == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
+                if (32'(address) == image_bytes - 1) begin
                     cleared_next = 1;
                     state_next = COMPLETE;
                 end
@@ -138,7 +141,7 @@ module n2m_uart_load #(
                 missing_next = missing || !presence_value;
                 crc_next = updated_crc;
                 address_next = address + 1'b1;
-                if (32'(address) == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
+                if (32'(address) == image_bytes - 1) begin
                     status_next = missing_next || (updated_crc ^ n2m_interfaces_pkg::WIRE_CRC32_INIT) != image_crc
                         ? n2m_interfaces_pkg::STATUS_BAD_IMAGE : n2m_interfaces_pkg::STATUS_OK;
                     state_next = COMPLETE;
@@ -170,7 +173,9 @@ module n2m_uart_load #(
     `N2M_ASSERT(UART_LOAD_START_IDLE, clk_sys, reset_sys, start |-> !busy)
     `N2M_ASSERT(UART_LOAD_RANGE, clk_sys, reset_sys,
         start && (operation == n2m_uart_pkg::UART_LOAD_WRITE || operation == n2m_uart_pkg::UART_LOAD_READ) |->
-        count != 0 && count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD && ({1'b0, offset} + {17'b0, count}) <= 33'(n2m_interfaces_pkg::PROFILE_ROM_BYTES))
+        count != 0 && count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD && ({1'b0, offset} + {17'b0, count}) <= {1'b0, image_bytes})
+    `N2M_ASSERT(UART_LOAD_IMAGE_BYTES, clk_sys, reset_sys,
+        start |-> image_bytes == n2m_interfaces_pkg::PROFILE_ROM_BYTES || image_bytes == n2m_interfaces_pkg::MBC1_ROM_BYTES)
     `N2M_ASSERT(UART_LOAD_CLEAR_REQUIRED, clk_sys, reset_sys,
         start && (operation == n2m_uart_pkg::UART_LOAD_WRITE || operation == n2m_uart_pkg::UART_LOAD_END) |-> cleared)
     `N2M_ASSERT(UART_LOAD_ROM_SERVICE, clk_sys, reset_sys,

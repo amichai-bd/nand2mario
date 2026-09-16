@@ -60,7 +60,7 @@ module n2m_uart_commands (
     output logic [7:0] endpoint_state,
     output logic rom_write,
     output logic rom_read,
-    output logic [14:0] rom_address,
+    output logic [15:0] rom_address,
     output logic [7:0] rom_write_data,
     input var logic [7:0] rom_read_data,
     input var logic rom_read_valid,
@@ -147,6 +147,7 @@ module n2m_uart_commands (
     n2m_uart_pkg::uart_load_operation_t load_operation;
     logic [7:0] load_status, load_output_data;
     logic [15:0] load_count;
+    logic [31:0] load_bytes;
     logic load_input_valid, load_input_ready, load_output_valid, load_output_ready;
     logic reply_start, reply_busy, reply_done, payload_valid, payload_ready;
     logic [7:0] payload_data;
@@ -204,6 +205,10 @@ module n2m_uart_commands (
     end
     assign load_count = request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_WRITE
         ? request_header.length - 16'(n2m_interfaces_pkg::OFFSET_BYTES) : range_fields.count;
+    // LOAD_BEGIN names the new session's profile; every later load operation
+    // uses the session profile this owner holds.
+    assign load_bytes = (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN ? begin_fields.profile : profile)
+        == n2m_interfaces_pkg::PROFILE_MBC1_ID ? n2m_interfaces_pkg::MBC1_ROM_BYTES : n2m_interfaces_pkg::PROFILE_ROM_BYTES;
     assign load_input_valid = state == WRITE_USE && packet_data_valid;
     assign load_output_ready = state == REPLY_ROM && payload_ready;
     assign reply_start = state == REPLY_START;
@@ -247,7 +252,7 @@ module n2m_uart_commands (
         .forced_status(command_forced_status), .endpoint_state(endpoint_state),
         .image_valid(image_valid), .snapshot_valid(snapshot_valid), .host_address_valid(host_address_valid),
         .sdram_ready(sdram_initialized), .swap_busy(loader_swap_busy), .host_loading(loading),
-        .status(validation_status), .response_length(validation_length)
+        .profile(profile), .status(validation_status), .response_length(validation_length)
     );
     n2m_uart_sdram u_sdram (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(sdram_start),
@@ -275,7 +280,7 @@ module n2m_uart_commands (
     );
     n2m_uart_load u_load (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(load_start), .operation(load_operation),
-        .offset(arguments[31:0]), .count(load_count), .expected_crc(begin_fields.crc32),
+        .offset(arguments[31:0]), .count(load_count), .expected_crc(begin_fields.crc32), .image_bytes(load_bytes),
         .busy(load_busy), .done(load_done), .status(load_status), .input_valid(load_input_valid),
         .input_data(packet_data), .input_ready(load_input_ready), .output_valid(load_output_valid),
         .output_data(load_output_data), .output_ready(load_output_ready), .rom_write(rom_write),

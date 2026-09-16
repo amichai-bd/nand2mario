@@ -18,6 +18,11 @@ CRC. Expectations come from the contract and that library, never from DUT state.
 [`tb_loader`](tb_loader.sv) drives the memory owner's CPU port with a bus
 driver in place of the CPU and models the command owner's `image_valid` and
 `PROFILE` rules; one fixture per run, `+fixture=<name>`.
+[`tb_mbc1`](tb_mbc1.sv) is the [MBC1 profile](../../../wiki/src/rtl/cartridge/MAS_mbc1_profile.md#verification)
+fixture: [`n2m_mbc1`](../../rtl/cartridge/n2m_mbc1.sv) with the real memory
+owner and CPU port, the same bus driver, and the fixture driving the ROM host
+port with its own 64 KiB signature image (each bank XORs an address pattern
+with a bank constant); one fixture per run, `+fixture=<name>`.
 [`tb_loader_system`](tb_loader_system.sv) runs the real `n2m_v05_system` with
 the real CPU executing a menu program from slot 16 and drives the UART wire at
 3.125 MBaud; the joypad reaches the menu through the physical producer.
@@ -34,6 +39,11 @@ the real CPU executing a menu program from slot 16 and drives the UART wire at
 | KEY1 ordering | Shortened thresholds: a press whose threshold lands inside a swap sets `key1_pending` and the menu swap follows the game swap; a press in a host session is dropped; release and re-press returns again; a return on the engine's done edge starts the menu swap at once with nothing left pending |
 | Host rules | `LOAD_BEGIN` during a fill waits for it and opens the session; during a swap it is `BAD_STATE`; `SDRAM_WRITE`/`SDRAM_READ` round trips through the arbiter while the menu fills; `LIBRARY_STATUS`, `LIBRARY_KEY1`; `WRITE_HOST(LIBRARY_CONTROL)` returns from power-up and from a running game and is `BAD_VALUE` for value 2 and `BAD_STATE` after a CRC mismatch; `LOAD_WRITE` and `LOAD_END` are `BAD_STATE` during a swap (no open session); a direct host load of a game after a swap behaves as today; KEY1 recovers from the mismatch |
 | Menu | The menu selects slots 1, 2, 3 and 15 from the pressed action nibble; each game boots (`DIRECT_ID`, epoch + 1, running, dots advancing) and KEY1 returns to the menu every time; slot 4's game writes `$10` into `$6000` by itself and the menu is back running (epoch + 2, result `OK`, index 4) with no KEY1 and no host command |
+| MBC1 map | Both windows after reset byte for byte (bank 0, bank 1), `$FF` at `$A000`-`$BFFF` before and after RAMG and cartridge RAM writes, a WRAM round trip, the identity mapping and inert BANK1 writes in `DIRECT_ID` and `LOADER_ID`, the windows unchanged back in `MBC1_ID` |
+| MBC1 bank | BANK1 0-63 through both ends of `$2000`-`$3FFF` and `$E3`, each followed by a 129-byte sample of both windows against `(BANK1 == 0 ? 1 : BANK1) & 3`; BANK2 0-3, MODE 1/0, the exit value and RAMG change nothing; every bank whole; the read on the edge after a commit sees the new bank |
+| MBC1 reset | Bank 3, BANK2 and MODE set, then a core reset: bank 1 at the first read and the store retained; a second image through the host port and a reset: every byte replaced, bank 3 selectable |
+| MBC1 fault | The reference names the next bank: the first switched-window sample fails with expected/actual bytes and a nonzero exit |
+| MBC1 exit | `tb_loader` `exit-mbc1`: in `MBC1_ID` the exit value at `$6000`/`$7FFF` returns to the menu exactly as in `DIRECT_ID`; `$00`/`$01`/`$11` and the exit value at other addresses change nothing |
 
 ## Targets
 
@@ -49,6 +59,11 @@ the real CPU executing a menu program from slot 16 and drives the UART wire at
 | `loader-key1-queue` | `tb_loader` `key1-queue` with `-gKEY1_DEBOUNCE_EDGES=5000 -gKEY1_HOLD_EDGES=50000` | `PASS loader-key1-queue checks=8 swaps=0 fills=0 engine_writes=163840` |
 | `loader-host` | `tb_loader_system` `host` | `PASS loader-system-host checks=39 swaps=0 returns=2 commands=170` |
 | `loader-menu` | `tb_loader_system` `menu` | `PASS loader-system-menu checks=23 swaps=5 returns=5 commands=21` |
+| `mbc1-map` | `tb_mbc1` `map` | `PASS mbc1-map checks=7 reads=147457` |
+| `mbc1-bank` | `tb_mbc1` `bank` | `PASS mbc1-bank checks=78 reads=140491` |
+| `mbc1-reset` | `tb_mbc1` `reset` | `PASS mbc1-reset checks=5 reads=98562` |
+| `mbc1-fault` | `tb_mbc1` `fault` | nonzero exit, `MBC1_TB_READ BANK1 sweep` |
+| `loader-exit-mbc1` | `tb_loader` `exit-mbc1` | `PASS loader-exit-mbc1 checks=<n> swaps=<n> fills=0 engine_writes=<n>` |
 
 `tb_loader_system` also hosts the boot copier fixtures `flash-copy`,
 `flash-blank` and `flash-precedence`; the
@@ -61,9 +76,10 @@ The named assertions of the contract live in the RTL: `LOADER_PORT_EXCLUSIVE`
 and `LOADER_FILL_HOST_PORT` in the port arbiter, `LOADER_SWAP_PAUSED`,
 `LOADER_FILL_UPPER_ONLY`, `LOADER_IMAGE_INVALID_BEFORE_WRITE` and
 `LOADER_VALID_IMPLIES_CRC` in the engine, `LOADER_REGS_ONLY_IN_PROFILE`,
-`LOADER_EXIT_ONLY_IN_DIRECT`, `LOADER_SWAP_BOUND` and `LOADER_FILL_BOUND` in the loader,
+`LOADER_EXIT_ONLY_IN_GAME_PROFILE`, `LOADER_SWAP_BOUND` and `LOADER_FILL_BOUND` in the loader,
 `LOADER_KEY1_THRESHOLD` in the KEY1 detector and `LOADER_ONE_CORE_CLIENT` in
 the core control owner. Every fixture runs with them armed.
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
-all of them with `python3 tools/build.py tests run --label cartridge --tag <tag>`.
+all of them with `python3 tools/build.py tests run --label cartridge --tag <tag>`;
+the MBC1 fixtures also carry the `mbc1` label.

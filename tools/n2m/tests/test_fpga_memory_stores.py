@@ -8,7 +8,7 @@ from n2m.fpga_memory_stores import verify_netlist, verify
 
 def fixture():
     chunks = []
-    for owner, depth, starts in (("rom", 32768, list(range(8)) * 4),
+    for owner, depth, starts in (("rom", 65536, list(range(8)) * 8),
                                  ("wram", 8192, range(8)), ("vram", 8192, range(8)),
                                  ("hram", 127, [0]), ("oam_low", 80, [0]),
                                  ("oam_high", 80, [0]), ("wave_ram", 16, [0])):
@@ -36,14 +36,14 @@ def fixture():
 class StoreFitTests(unittest.TestCase):
     def test_logical_rows_and_missing_capacity(self):
         lines = []
-        for owner, depth, blocks in (("rom", 32768, 32), ("wram", 8192, 8), ("vram", 8192, 8),
+        for owner, depth, blocks in (("rom", 65536, 64), ("wram", 8192, 8), ("vram", 8192, 8),
                                      ("hram", 127, 1), ("oam_low", 80, 1), ("oam_high", 80, 1), ("wave_ram", 16, 1)):
             fields = [f"n2m_intel_ram:{owner}|altsyncram:ram|ALTSYNCRAM", "M9K", "True Dual Port", "Single Clock",
                       str(depth), "8", str(depth), "8", "yes", "no", "yes", "no", str(depth * 8),
                       str(depth), "8", str(depth), "8", str(depth * 8), str(blocks), "None", "location",
                       "Old data", "New data with NBE Read", "New data with NBE Read"]
             lines.append("; " + " ; ".join(fields) + " ;")
-        lines.append("; Total block memory bits ; 395,640 / 1,677,312 ;")
+        lines.append("; Total block memory bits ; 657,784 / 1,677,312 ;")
         original = "\n".join(lines)
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
@@ -52,10 +52,10 @@ class StoreFitTests(unittest.TestCase):
             (folder / "simulation/questa/design.vo").write_text(fixture())
             report = folder / "output/design.fit.rpt"
             report.write_text(original)
-            self.assertEqual(len(verify(folder)["physical_atoms"]), 52)
-            for changed in (original.replace("395,640", "262,144"),
+            self.assertEqual(len(verify(folder)["physical_atoms"]), 84)
+            for changed in (original.replace("657,784", "262,144"),
                             original.replace("yes ; no ; yes ; no", "yes ; yes ; yes ; no", 1),
-                            original.replace("32 ; None", "31 ; None", 1),
+                            original.replace("64 ; None", "63 ; None", 1),
                             original + "\n" + lines[0], "\n".join(lines[1:])):
                 report.write_text(changed)
                 with self.assertRaises(ValueError):
@@ -63,7 +63,7 @@ class StoreFitTests(unittest.TestCase):
 
     def test_exact_inventory_and_mutations(self):
         original = fixture()
-        self.assertEqual(len(verify_netlist(original)), 52)
+        self.assertEqual(len(verify_netlist(original)), 84)
         mutations = [
             original.replace("fiftyfivenm_ram_block", "other_ram_block", 1),
             original.replace("rom|ram|", "unowned|ram|"),
@@ -71,7 +71,7 @@ class StoreFitTests(unittest.TestCase):
             original.replace('.port_b_read_enable_clock = "clock0"', '.port_b_read_enable_clock = "clock1"', 1),
             original.replace('.port_b_address_clock = "clock0"', '.port_b_address_clock = "clock1"', 1),
             original.replace('.port_a_data_out_clock = "none"', '.port_a_data_out_clock = "clock0"', 1),
-            original.replace('.port_a_logical_ram_depth = "32768"', '.port_a_logical_ram_depth = "8192"', 1),
+            original.replace('.port_a_logical_ram_depth = "65536"', '.port_a_logical_ram_depth = "8192"', 1),
             original.replace('.port_a_first_bit_number = "0"', '.port_a_first_bit_number = "1"', 1),
             original.replace('.power_up_uninitialized = "true"', '.power_up_uninitialized = "false"', 1),
             original.replace(".portabyteenamasks(1'b1)", ".portabyteenamasks(1'b0)", 1),

@@ -87,15 +87,15 @@ def verify_memory(folder, *, system_net, top="v05_proof"):
         prefix=prefix + 'u_system|', top=top)
     names = re.findall(r'fiftyfivenm_ram_block\s+\\(\S+)\s*\(', text)
     uart_names = {name for name in names if name.startswith(prefix + 'u_system|u_uart|')}
-    if (len(names) != 111 or len(set(names)) != 111
+    if (len(names) != 147 or len(set(names)) != 147
             or set(names) != set(backing) | set(vga) | uart_names):
         raise ValueError('composed memory atom partition differs')
     logical = [row for row in fpga_vga.rows(fit) if len(row) >= 24 and row[1] == 'M9K']
     if len(logical) != 20:
         raise ValueError('composed logical memory inventory differs')
-    for label, expected in (('M9Ks', '111 /'), ('Total block memory bits', '761,704 /')):
+    for label, expected in (('M9Ks', '147 /'), ('Total block memory bits', '1,056,616 /')):
         values = [row[1] for row in fpga_vga.rows(fit) if len(row) == 2 and row[0] == label]
         if len(values) != 1 or not values[0].startswith(expected):
             raise ValueError('composed memory capacity differs')
-    return {'logical_stores': 20, 'atoms': 111, 'bits': 761704,
+    return {'logical_stores': 20, 'atoms': 147, 'bits': 1056616,
             'backing_atoms': len(backing), 'vga_atoms': len(vga), 'uart': uart}

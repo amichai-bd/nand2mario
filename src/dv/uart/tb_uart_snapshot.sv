@@ -13,7 +13,7 @@ module tb_uart_snapshot;
     logic [31:0] epoch;
     logic [63:0] dot_count, retirement_count;
     logic image_valid, rom_write, rom_read, rom_read_valid;
-    logic [14:0] rom_address;
+    logic [15:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid;
     n2m_interfaces_pkg::snapshot_t snapshot_metadata;

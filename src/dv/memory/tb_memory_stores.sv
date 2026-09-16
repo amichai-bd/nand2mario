@@ -6,7 +6,7 @@ module tb_memory_stores;
     n2m_memory_pkg::memory_store_t access_store;
     n2m_memory_pkg::memory_oam_request_t oam_request;
     n2m_memory_pkg::memory_oam_response_t oam_response;
-    logic [14:0] access_address;
+    logic [15:0] access_address;
     logic [7:0] access_wdata, access_rdata, host_wdata, host_rdata;
     logic [31:0] host_offset;
     logic ppu_vram_read, ppu_vram_valid, ppu_oam_read, ppu_oam_valid, wave_read, wave_write, wave_valid;
@@ -122,7 +122,7 @@ module tb_memory_stores;
             access_read = 1;
             size = bytes_in_store(store_number);
             for (index = 0; index < size; index = index + 1) begin
-                access_address = 15'(index);
+                access_address = 16'(index);
                 edge_cycle();
                 if (!access_valid || access_rdata != (patterned ? pattern(store_number, index) : 8'd0))
                     $fatal(1, "MEMORY_STORES_READ store=%0d offset=%0d expected=%02h actual=%02h valid=%0d",
@@ -170,7 +170,7 @@ module tb_memory_stores;
             for (store_number=0; store_number<8; store_number=store_number+1) begin
                 access_store=n2m_memory_pkg::memory_store_t'(store_number);
                 for (index=0; index<32768; index=index+1) begin
-                    access_address=15'(index); access_read=1; access_write=0;
+                    access_address=16'(index); access_read=1; access_write=0;
                     if (range_fault && store_number==6 && index==0) force dut.wram.a_write=1'b1;
                     #1; inspect_enables(0);
                     access_read=0; access_write=1;
@@ -187,7 +187,7 @@ module tb_memory_stores;
             access_write = 1;
             size = bytes_in_store(store_number);
             for (index = 0; index < size; index = index + 1) begin
-                access_address = 15'(index);
+                access_address = 16'(index);
                 access_wdata = pattern(store_number, index);
                 edge_cycle();
             end
@@ -224,16 +224,16 @@ module tb_memory_stores;
             oam_request.write_enable=2'b01; oam_request.data=16'hff5a; edge_cycle();
             oam_request.write_enable=2'b10; oam_request.data=16'ha5ff; edge_cycle();
             oam_request.write_enable=0; oam_request.read=1;
-            access_read=1; access_store=n2m_memory_pkg::STORE_WRAM; access_address=15'(index);
+            access_read=1; access_store=n2m_memory_pkg::STORE_WRAM; access_address=16'(index);
             ppu_oam_read=1; ppu_oam_pair=7'(index); edge_cycle();
             if (!oam_response.valid || oam_response.data!=16'ha55a ||
                 !access_valid || access_rdata!=pattern(1,index) ||
                 !ppu_oam_valid || ppu_oam_rdata!=16'ha55a)
                 $fatal(1,"MEMORY_OAM_PARALLEL_PAIR index=%0d",index);
             oam_request='0; ppu_oam_read=0;
-            access_store=n2m_memory_pkg::STORE_OAM; access_address=15'(index*2); edge_cycle();
+            access_store=n2m_memory_pkg::STORE_OAM; access_address=16'(index*2); edge_cycle();
             if (!access_valid || access_rdata!=8'h5a) $fatal(1,"MEMORY_OAM_LOW_BYTE");
-            access_address=15'(index*2+1); edge_cycle();
+            access_address=16'(index*2+1); edge_cycle();
             if (!access_valid || access_rdata!=8'ha5) $fatal(1,"MEMORY_OAM_HIGH_BYTE");
             access_read=0;
         end
@@ -244,7 +244,7 @@ module tb_memory_stores;
         end
         host_write = 0;
         // CPU/store writes to ROM cannot perform loading.
-        access_store = n2m_memory_pkg::STORE_ROM; access_write = 1; access_address = 15'd32767; access_wdata = 8'h33;
+        access_store = n2m_memory_pkg::STORE_ROM; access_write = 1; access_address = 16'd32767; access_wdata = 8'h33;
         edge_cycle();
         access_write = 0;
         // Cancel actual outstanding valid responses between clock edges.
@@ -265,7 +265,7 @@ module tb_memory_stores;
         inspect_ram(0);
         host_read = 1; access_read = 1; access_store = n2m_memory_pkg::STORE_ROM;
         for (index = 0; index < 32768; index = index + 1) begin
-            host_offset = 32'(index); access_address = 15'(32767 - index);
+            host_offset = 32'(index); access_address = 16'(32767 - index);
             edge_cycle();
             if (!host_valid || host_rdata != pattern(0, index)
                 || !access_valid || access_rdata != pattern(0, 32767 - index))
@@ -289,7 +289,7 @@ module tb_memory_stores;
         inspect_ram(0);
         host_read = 1; access_read = 1; access_store = n2m_memory_pkg::STORE_ROM;
         for (index = 0; index < 32768; index = index + 1) begin
-            host_offset = 32'(index); access_address = 15'(32767 - index);
+            host_offset = 32'(index); access_address = 16'(32767 - index);
             edge_cycle();
             if (!host_valid || host_rdata != pattern(0, index)
                 || !access_valid || access_rdata != pattern(0, 32767 - index))

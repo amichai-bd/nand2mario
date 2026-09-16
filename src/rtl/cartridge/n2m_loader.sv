@@ -40,7 +40,7 @@ module n2m_loader #(
     // UART load owner side of the ROM host port.
     input var logic uart_rom_write,
     input var logic uart_rom_read,
-    input var logic [14:0] uart_rom_address,
+    input var logic [15:0] uart_rom_address,
     input var logic [7:0] uart_rom_wdata,
     output logic rom_host_write,
     output logic rom_host_read,
@@ -96,8 +96,9 @@ module n2m_loader #(
 );
     localparam logic [7:0] LOADER_ID = n2m_interfaces_pkg::PROFILE_LOADER_ID;
     localparam logic [7:0] DIRECT_ID = n2m_interfaces_pkg::PROFILE_DIRECT_ID;
+    localparam logic [7:0] MBC1_ID = n2m_interfaces_pkg::PROFILE_MBC1_ID;
     logic loader_active, bank_commit, select_commit, select_in_range, commit_accept;
-    logic direct_active, exit_commit, exit_return;
+    logic game_active, exit_commit, exit_return;
     logic engine_start, engine_busy, engine_done, engine_swap, engine_result_write;
     logic [7:0] engine_result;
     logic engine_sdram_valid, engine_sdram_ready, engine_sdram_response_valid;
@@ -126,8 +127,10 @@ module n2m_loader #(
     // Game exit register (MAS_loader_profile.md#game-exit-register): in the
     // direct profile a write of LIBRARY_GAME_EXIT_VALUE to $6000-$7FFF is a
     // return request; refused NOT_READY like a select while SDRAM is not ready.
-    assign direct_active = profile == DIRECT_ID;
-    assign exit_commit = rom_commit && direct_active && commit_offset[14:13] == 2'b11 &&
+    // The MBC1 profile honors the same register with the same decode
+    // (MAS_mbc1_profile.md#registers); its MODE register takes data[0] beside it.
+    assign game_active = profile == DIRECT_ID || profile == MBC1_ID;
+    assign exit_commit = rom_commit && game_active && commit_offset[14:13] == 2'b11 &&
         commit_data == n2m_interfaces_pkg::LIBRARY_GAME_EXIT_VALUE;
     assign exit_return = exit_commit && sdram_ready;
     // A host load session excludes the engine; the pending session and an
@@ -282,7 +285,7 @@ module n2m_loader #(
     );
     `N2M_ASSERT(LOADER_REGS_ONLY_IN_PROFILE, clk_sys, reset_sys,
         (bank_commit || select_commit || read_override) |-> profile == LOADER_ID)
-    `N2M_ASSERT(LOADER_EXIT_ONLY_IN_DIRECT, clk_sys, reset_sys, exit_commit |-> profile == DIRECT_ID)
+    `N2M_ASSERT(LOADER_EXIT_ONLY_IN_GAME_PROFILE, clk_sys, reset_sys, exit_commit |-> profile == DIRECT_ID || profile == MBC1_ID)
     `N2M_ASSERT(LOADER_SWAP_BOUND, clk_sys, reset_sys,
         engine_copy_busy && engine_swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_EDGES))
     `N2M_ASSERT(LOADER_FILL_BOUND, clk_sys, reset_sys,

@@ -1,15 +1,16 @@
 # MBC1 profile
 
-Owner: [`src/rtl/cartridge`](../../../../src/rtl/cartridge/n2m_loader.sv), beside
-the [loader profile](MAS_loader_profile.md), which already observes the resolved
-CPU ROM write commits this profile decodes. The generated
-[interface table](../interfaces/MAS_interfaces.md) owns `PROFILE_MBC1_ID`,
-`PROFILE_STORE_BYTES` and every `MBC1_*` constant this page names.
-
-Implementation status: this page is the reviewed contract; the register block,
-the 64 KiB store and the fixtures below are not in `src/` yet. The RTL slice is
-[#714](https://github.com/amichai-bd/nand2mario/issues/714) under the parent
-[#307](https://github.com/amichai-bd/nand2mario/issues/307).
+Owner: [`src/rtl/cartridge`](../../../../src/rtl/cartridge/n2m_mbc1.sv).
+[`n2m_mbc1`](../../../../src/rtl/cartridge/n2m_mbc1.sv) holds the registers
+and translates store offsets; it observes the same resolved CPU ROM write
+commits as the [loader profile](MAS_loader_profile.md), which also serves the
+game exit register for this profile. [`n2m_v05_system`](../../../../src/rtl/system/n2m_v05_system.sv)
+places it between the CPU port and the [memory owner](../memory/MAS_memory.md)'s
+stores; [`src/dv/cartridge`](../../../../src/dv/cartridge/README.md) holds the
+fixtures. The generated [interface table](../interfaces/MAS_interfaces.md) owns
+`PROFILE_MBC1_ID`, `PROFILE_STORE_BYTES` and every `MBC1_*` constant this page
+names. Toolchain support for building `dmg-mbc1-v1` images and the pinned
+external game are the open [#307](https://github.com/amichai-bd/nand2mario/issues/307).
 
 ## Scope
 
@@ -109,19 +110,19 @@ offsets. The loader engine and the UART load owner write the offset they are
 given; the 32 KiB swap and window fill paths are unchanged and touch offsets
 `$0000`-`$7FFF` only.
 
-Width dependency: today `PROFILE_ROM_BYTES` sizes the store and its host range
-in [`n2m_memory_stores`](../../../../src/rtl/memory/n2m_memory_stores.sv), the
-load address and presence sweep in [`n2m_uart_load`](../../../../src/rtl/uart/n2m_uart_load.sv)
-and [`n2m_uart_presence_store`](../../../../src/rtl/uart/n2m_uart_presence_store.sv),
-and the `LOAD_BEGIN` size and `LOAD_WRITE`/`READ_ROM` range checks in
-[`n2m_uart_validate`](../../../../src/rtl/uart/n2m_uart_validate.sv); the
-15-bit offset ports of [`n2m_memory_decode`](../../../../src/rtl/memory/n2m_memory_decode.sv),
-[`n2m_rom_port_arbiter`](../../../../src/rtl/cartridge/n2m_rom_port_arbiter.sv)
+Width dependency: `PROFILE_STORE_BYTES` sizes the store and its host range in
+[`n2m_memory_stores`](../../../../src/rtl/memory/n2m_memory_stores.sv) and the
+load address and presence bitmap in [`n2m_uart_load`](../../../../src/rtl/uart/n2m_uart_load.sv)
+and [`n2m_uart_presence_store`](../../../../src/rtl/uart/n2m_uart_presence_store.sv);
+the ROM host port and the UART load owner's address are 16 bits wide. The
+CPU-side offset stays 15 bits: [`n2m_memory_decode`](../../../../src/rtl/memory/n2m_memory_decode.sv)
 and [`n2m_loader_engine`](../../../../src/rtl/cartridge/n2m_loader_engine.sv)
-carry the same assumption. The implementation re-parameterizes the store,
-presence bitmap and offset ports on `PROFILE_STORE_BYTES` and the session
-checks on the loaded profile's image length; `PROFILE_ROM_BYTES` keeps its
-32 KiB meaning for the direct and loader profiles.
+address the low half, and [`n2m_rom_port_arbiter`](../../../../src/rtl/cartridge/n2m_rom_port_arbiter.sv)
+zero-extends the engine's offset. The session checks in
+[`n2m_uart_validate`](../../../../src/rtl/uart/n2m_uart_validate.sv) and the
+sweeps in the load owner use the loaded profile's image length, supplied by the
+[command owner](../uart/MAS_uart.md); `PROFILE_ROM_BYTES` keeps its 32 KiB
+meaning for the direct and loader profiles.
 
 The [SDRAM layout](../storage/MAS_sdram.md#address-space-layout), the flash
 library and the catalogue carry 32 KiB images only: `LIBRARY_SLOT_BYTES` is
@@ -162,12 +163,15 @@ In priority order:
 
 ## Verification
 
-Simulation runs under Verilator on WSL with the real memory owner and the
-bus-driven fixture style of [`tb_loader`](../../../../src/dv/cartridge/tb_loader.sv);
-expectations come from this page and an original image the fixture builds
-itself: every bank carries a distinct signature (its bank number, its
-complement and an address-dependent pattern) so that a wrong bank is a byte
-mismatch, never a silent pass. Composed execution uses the existing Intel
+Simulation runs under Verilator on WSL. [`tb_mbc1`](../../../../src/dv/cartridge/tb_mbc1.sv)
+composes the real memory owner and CPU port with a bus driver in place of the
+CPU and drives the ROM host port itself; expectations come from this page and
+an original image the fixture builds: every bank XORs an address-dependent
+pattern with its own constant, so that a wrong bank is a byte mismatch, never a
+silent pass. The load and exit cases run in the owning fixtures of the
+[UART load owner](../../../../src/dv/uart/tb_uart_load.sv), the
+[validator](../../../../src/dv/uart/tb_uart_validation.sv) and the
+[loader](../../../../src/dv/cartridge/tb_loader.sv). Composed execution uses the existing Intel
 preload path with an original program that switches banks and reports what it
 read. Mooneye `emulator-only/mbc1/rom_512kb` and `bits_bank1` are the pinned
 external executable specification for this capacity (type `$01`, four banks,
@@ -177,20 +181,25 @@ masking rules.
 
 | Fixture | Independent check |
 |---|---|
-| `mbc1-map` | All 65,536 addresses in `MBC1_ID` after reset: fixed window equals bank 0, switched window equals bank 1, `$A000`-`$BFFF` reads `$FF`; in `DIRECT_ID` and `LOADER_ID` the same image bytes at `$0000`-`$7FFF` read as today and BANK1 writes change nothing |
-| `mbc1-bank` | BANK1 values 0-31 and 32-63 through both ends of the alias range: the switched window equals the effective bank byte for byte on the read after the commit; BANK2 0-3 and MODE 0-1 change nothing; RAMG `$0A`/`$00` change nothing |
-| `mbc1-reset` | Bank 3 selected, then host `RESET` and then a fresh load: the switched window shows bank 1 at the first read; the store is retained across `RESET` |
-| `mbc1-load` | Full 64 KiB `LOAD_BEGIN`/`LOAD_WRITE`/`LOAD_END`/`READ_ROM` round trip, byte for byte; the size mismatches of edge case 5 refused; a 32 KiB direct load still refuses offset `$8000` |
-| `mbc1-exit` | `$10` to `$6000` and `$7FFF` raises one return request each, `$00`/`$01`/`$11` raise none, and MODE reads back as `data[0]` through the test hook |
-| `mbc1-fault` | A deliberately wrong bank in the reference (bank 2 expected where 1 is read) fails with the expected/actual bytes and a nonzero exit |
+| `mbc1-map` | `tb_mbc1` `map`: both windows after reset (bank 0, bank 1) byte for byte, `$A000`-`$BFFF` reads `$FF` before and after RAMG and cartridge RAM writes, a WRAM round trip; in `DIRECT_ID` and `LOADER_ID` the same image bytes at `$0000`-`$7FFF` read as the identity after BANK1 writes; back in `MBC1_ID` the windows are unchanged |
+| `mbc1-bank` | `tb_mbc1` `bank`: BANK1 values 0-63 through both ends of the alias range and `$E3`, each followed by a 129-byte sample of both windows against the contract's effective bank; BANK2 0-3, MODE 1/0, the exit value and RAMG `$0A`/`$00` change nothing; every bank whole; the read on the edge after a commit sees the new bank |
+| `mbc1-reset` | `tb_mbc1` `reset`: bank 3, BANK2 and MODE set, then a core reset: bank 1 at the first read and the store retained; a second image loaded through the host port and a reset: every byte replaced, bank 3 selectable |
+| `mbc1-fault` | `tb_mbc1` `fault`: the reference names the next bank, so the first switched-window sample fails with expected/actual bytes and a nonzero exit |
+| `uart-load-mbc1` | `tb_uart_load` with a 65,536-byte session: clear sweep, writes over the whole image, end sweep and CRC, full readback; a 32,768-byte session still ends at `$7FFF` |
+| `uart-validation` | `LOAD_BEGIN` accepts `MBC1_ID` with 65,536 and refuses it with 32,768; `DIRECT_ID` with 65,536 refused; `LOAD_WRITE`/`READ_ROM` ranges up to 65,536 accepted in an `MBC1_ID` session and refused above 32,768 in a `DIRECT_ID` session |
+| `loader-exit-mbc1` | `tb_loader` `exit-mbc1`: in `MBC1_ID` the exit value at `$6000`/`$7FFF` returns to the menu exactly as in `DIRECT_ID`; `$00`/`$01`/`$11` and the exit value at other addresses change nothing |
 
 Named assertions, synthesis-excluded:
 
 | Assertion | Invariant |
 |---|---|
 | `MBC1_REGISTERS_ONLY_IN_PROFILE` | A BANK1, BANK2 or MODE update implies `profile == MBC1_ID` |
-| `MBC1_FIXED_WINDOW_BANK0` | A CPU read at `$0000`-`$3FFF` in `MBC1_ID` presents store offset bits 15:14 equal to zero |
+| `MBC1_FIXED_WINDOW_BANK0` | A ROM access at `$0000`-`$3FFF` in `MBC1_ID` presents store offset bits 15:14 equal to zero |
 | `MBC1_EFFECTIVE_BANK_NONZERO_ALIAS` | `BANK1 == 0` implies the switched window presents bank `MBC1_RESET_BANK` |
+| `MBC1_IDENTITY_OUTSIDE_PROFILE` | Outside `MBC1_ID` the store offset is the zero-extended CPU offset |
+| `MBC1_ALIAS_DECODE` | The generated alias ranges equal the owner's 8 KiB select decode (constant property) |
+| `UART_LOAD_IMAGE_BYTES` | Every load operation starts with a session length that is one of the two profile image lengths |
+| `LOADER_EXIT_ONLY_IN_GAME_PROFILE` | In the [loader](MAS_loader_profile.md#verification): a game exit effect implies `DIRECT_ID` or `MBC1_ID` |
 
 ## References
 

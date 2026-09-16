@@ -7,7 +7,7 @@ from .fpga_vga import rows, node
 
 
 # Independent acceptance inventory, not inferred from DUT parameters.
-STORES = {"rom": (32768, 32), "wram": (8192, 8), "vram": (8192, 8),
+STORES = {"rom": (65536, 64), "wram": (8192, 8), "vram": (8192, 8),
           "hram": (127, 1), "oam_low": (80, 1), "oam_high": (80, 1),
           "wave_ram": (16, 1)}
 
@@ -71,7 +71,7 @@ def verify(folder):
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
     evidence = verify_rows(fit)
     totals = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
-    if len(totals) != 1 or not totals[0].startswith("395,640 /"):
+    if len(totals) != 1 or not totals[0].startswith("657,784 /"):
         raise ValueError("memory store total capacity differs")
     text = (folder / "simulation/questa/design.vo").read_text()
     if re.search(r"(?i)black.?box", text):

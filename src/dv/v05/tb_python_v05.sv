@@ -62,7 +62,7 @@ module tb_python_v05 #(
     assign wave_write = wave_enable ? {address,write_data} : 24'd0;
     assign wave_input = wave_enable ? input_sample : 104'd0;
     assign wave_load = wave_enable ? {dut.rom_write, dut.rom_read,
-        dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 34'd0;
+        dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 35'd0;
 
     // No KEY1 or SDRAM in this fixture; the loader profile stays idle.
     logic key1_n, sdram_initialized, sdram_request_valid, sdram_request_write;
@@ -469,7 +469,7 @@ module tb_python_v05 #(
     initial begin
         if ($test$plusargs("image_fault")) begin
             do @(negedge clk_sys);
-            while (!(!reset_sys && dut.rom_write && dut.rom_address == 15'h0200));
+            while (!(!reset_sys && dut.rom_write && dut.rom_address == 16'h0200));
             if (dut.rom_write_data != 8'hf3) $fatal(1, "V05_IMAGE_FAULT_SOURCE");
             wave_enable = 1;
             $display("V05_IMAGE_MUTATION address=0200 expected=f3 actual=00");

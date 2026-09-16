@@ -7,18 +7,18 @@ module n2m_uart_presence_store (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic write_enable,
-    input var logic [$clog2(n2m_interfaces_pkg::PROFILE_ROM_BYTES)-1:0] write_address,
+    input var logic [$clog2(n2m_interfaces_pkg::PROFILE_STORE_BYTES)-1:0] write_address,
     input var logic write_present,
     input var logic read_enable,
-    input var logic [$clog2(n2m_interfaces_pkg::PROFILE_ROM_BYTES)-1:0] read_address,
+    input var logic [$clog2(n2m_interfaces_pkg::PROFILE_STORE_BYTES)-1:0] read_address,
     output logic read_present,
     output logic read_valid
 );
     logic unused_data;
     logic unused_valid;
     n2m_intel_ram #(
-        .DEPTH(n2m_interfaces_pkg::PROFILE_ROM_BYTES), .DATA_BITS(1),
-        .ADDRESS_BITS($clog2(n2m_interfaces_pkg::PROFILE_ROM_BYTES))
+        .DEPTH(n2m_interfaces_pkg::PROFILE_STORE_BYTES), .DATA_BITS(1),
+        .ADDRESS_BITS($clog2(n2m_interfaces_pkg::PROFILE_STORE_BYTES))
     ) u_presence (
         .clk_a(clk_sys), .clk_b(clk_sys),
         .reset_a(reset_sys), .reset_b(reset_sys),

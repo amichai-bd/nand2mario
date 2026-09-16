@@ -32,11 +32,14 @@ def emit(image, destination, digest, entry, title, version, *, fixture=None):
     rom = destination / 'preload-rom.mif'
     presence = destination / 'preload-presence.mif'
     crc = destination / 'preload-crc.hex'
-    rom.write_text('DEPTH = 32768;\nWIDTH = 8;\nADDRESS_RADIX = HEX;\nDATA_RADIX = HEX;\nCONTENT BEGIN\n'
+    # Both files address the whole ROM store; the image occupies its first
+    # PROFILE_ROM_BYTES and the presence bitmap is zero above them.
+    store = abi.PROFILE_STORE_BYTES
+    rom.write_text(f'DEPTH = {store};\nWIDTH = 8;\nADDRESS_RADIX = HEX;\nDATA_RADIX = HEX;\nCONTENT BEGIN\n'
                    + ''.join(f'{address:04X} : {value:02X};\n' for address, value in enumerate(image))
                    + 'END;\n', encoding='ascii')
-    presence.write_text('DEPTH = 32768;\nWIDTH = 1;\nADDRESS_RADIX = HEX;\nDATA_RADIX = BIN;\n'
-                        'CONTENT BEGIN\n[0000..7FFF] : 1;\nEND;\n', encoding='ascii')
+    presence.write_text(f'DEPTH = {store};\nWIDTH = 1;\nADDRESS_RADIX = HEX;\nDATA_RADIX = BIN;\n'
+                        f'CONTENT BEGIN\n[0000..{len(image) - 1:04X}] : 1;\n[{len(image):04X}..{store - 1:04X}] : 0;\nEND;\n', encoding='ascii')
     crc.write_text(f'{zlib.crc32(image):08x}\n', encoding='ascii')
     record = {'schema_version': 1, 'mode': 'preloaded-execution',
               'image_sha256': digest, 'image_bytes': len(image),

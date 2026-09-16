@@ -55,7 +55,7 @@ module tb_dma_io;
     n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
-        .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
+        .access_address({1'b0, setup ? setup_address : access_address}), .access_wdata(setup ? setup_data : access_wdata),
         .access_rdata(access_rdata), .access_valid(access_valid), .host_read(1'b0),
         .host_write(host_write), .host_offset(host_address), .host_wdata(host_data),
         .host_rdata(unused_host), .host_valid(host_valid), .ppu_vram_read(raw_vram_read),

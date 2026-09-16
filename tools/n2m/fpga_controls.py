@@ -27,7 +27,7 @@ def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk",
     _, cells, params, *_ = parse_netlist(text, top)
     shapes = {'u_uart|u_packet_rx|stores|encoded': (270, 8, 1),
               'u_uart|u_packet_rx|stores|decoded': (268, 8, 1),
-              'u_uart|u_commands|u_load|u_presence|u_presence': (32768, 1, 4)}
+              'u_uart|u_commands|u_load|u_presence|u_presence': (65536, 1, 8)}
     shapes.update({f'u_uart|u_exchange|stores|banks[{i}].memory': (268, 8, 1) for i in range(3)})
     shapes = {prefix + owner: shape for owner, shape in shapes.items()}
     suffix = '|ram|auto_generated|'

@@ -15,7 +15,7 @@ module n2m_rom_port_arbiter (
     input var logic uart_owns,
     input var logic uart_write,
     input var logic uart_read,
-    input var logic [14:0] uart_address,
+    input var logic [15:0] uart_address,
     input var logic [7:0] uart_wdata,
     input var logic engine_owns,
     input var logic engine_write,
@@ -28,7 +28,9 @@ module n2m_rom_port_arbiter (
 );
     assign host_write = engine_owns ? engine_write : uart_write;
     assign host_read = engine_owns ? 1'b0 : uart_read;
-    assign host_offset = {17'd0, engine_owns ? engine_address : uart_address};
+    // The engine copies 32 KiB images and 16 KiB windows into the low half
+    // of the store; the UART load owner addresses the whole store.
+    assign host_offset = {16'd0, engine_owns ? {1'b0, engine_address} : uart_address};
     assign host_wdata = engine_owns ? engine_wdata : uart_wdata;
     `N2M_ASSERT(LOADER_PORT_EXCLUSIVE, clk_sys, reset_sys, !(engine_owns && uart_owns))
     `N2M_ASSERT(LOADER_FILL_HOST_PORT, clk_sys, reset_sys,
