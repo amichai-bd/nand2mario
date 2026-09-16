@@ -120,7 +120,10 @@ The copier's named assertions (`FLASH_COPY_ORDER`, `FLASH_COPY_BOUND`,
 `FLASH_COPY_REQUEST_IN_COPY`, `FLASH_COPY_LINE_EXPECTED`,
 `FLASH_COPY_HOLD_FREE`, `FLASH_BOOT_AFTER_COPY`) and the loader's
 `LOADER_COPIER_EXCLUSIVE` are armed in every run. The three targets carry the
-`storage` and `system` labels.
+`flash` and `system` labels: each compiles the whole composed system and the
+three together take about 180 s, which the 300 s `storage` aggregate (with
+`library-peer` at about 105 s) cannot absorb. Run them with
+`python3 tools/build.py tests run --label flash --tag <tag>`.
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label storage --tag <tag>`.
