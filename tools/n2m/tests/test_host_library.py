@@ -29,6 +29,16 @@ def fixture_image(title, seed):
     return package({'image': image, 'entry': 512}, title, 1)
 
 
+def mbc1_image(title, seed):
+    """A 64 KiB image with the title in its header; the packager is not involved (its MBC1 profile is the toolchain's)."""
+    image = bytearray((index * seed + index // 512) % 256 for index in range(65536))
+    image[0x134:0x144] = title.encode('ascii').ljust(16, b'\0')
+    return bytes(image)
+
+
+MBC1_PROFILE = {'dmg-mbc1-v1': abi.PROFILE_MBC1_ID}
+
+
 class CorruptingEndpoint(Endpoint):
     """Stores every line faithfully except one byte at ``corrupt`` (device address)."""
     def __init__(self, corrupt):
@@ -144,6 +154,59 @@ class LibraryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             library.profile_id('dmg-mbc1')
 
+    def test_a_64_kib_mbc1_entry_carries_its_length_in_the_high_byte_and_fills_two_slots(self):
+        image = mbc1_image('BANKED GAME', 4)
+        entry = library.image_entry(image, abi.PROFILE_MBC1_ID)
+        self.assertEqual((entry['length'], entry['crc32'], entry['title']), (65536, zlib.crc32(image), b'BANKED GAME' + bytes(5)))
+        raw = library.pack_entry(entry)
+        # Bytes 2-3 hold length bits 15:0 (zero for 65536), byte 24 bits 23:16; the rest stays reserved zero.
+        self.assertEqual(raw[:4], bytes([1, abi.PROFILE_MBC1_ID, 0x00, 0x00]))
+        self.assertEqual(raw[abi.CATALOGUE_ENTRY_LENGTH_HIGH_OFFSET], 1)
+        self.assertEqual(raw[abi.CATALOGUE_ENTRY_RESERVED_OFFSET:], bytes(7))
+        self.assertEqual(library.unpack_entry(raw)['length'], 65536)
+        # A 32 KiB entry packs exactly as before: length_high is the old reserved zero.
+        small = library.pack_entry(library.image_entry(fixture_image('SMALL', 3), abi.PROFILE_DIRECT_ID))
+        self.assertEqual(small[abi.CATALOGUE_ENTRY_LENGTH_HIGH_OFFSET:], bytes(8))
+        self.assertEqual(library.unpack_entry(small)['length'], abi.LIBRARY_SLOT_BYTES)
+        # Each profile takes exactly its own length.
+        for bad_image, profile in ((image, abi.PROFILE_DIRECT_ID), (image, abi.PROFILE_LOADER_ID),
+                                   (fixture_image('X', 3), abi.PROFILE_MBC1_ID), (image[:-1], abi.PROFILE_MBC1_ID)):
+            with self.assertRaisesRegex(ValueError, 'must be exactly'):
+                library.image_entry(bad_image, profile)
+        with self.assertRaisesRegex(ValueError, 'profile ID 9'):
+            library.image_entry(image, 9)
+        self.assertEqual((library.image_slots(32768), library.image_slots(65536)), (1, 2))
+        self.assertEqual(list(library.slot_range(14, 65536)), [14, 15])
+        self.assertEqual(list(library.slot_range(16, 32768)), [16])
+        for index, length in ((15, 65536), (16, 65536)):
+            with self.assertRaisesRegex(ValueError, 'would spill past'):
+                library.slot_range(index, length)
+
+    def test_load_places_a_64_kib_image_in_two_slots(self):
+        games = [(fixture_image('GAME 0', 3), abi.PROFILE_NAME), (mbc1_image('BANKED GAME', 4), 'dmg-mbc1-v1'),
+                 (fixture_image('GAME 3', 5), abi.PROFILE_NAME)]
+        menu = (fixture_image('MENU', 101), abi.PROFILE_NAME)
+        endpoint = Endpoint()
+        with patch.dict(library.PROFILE_IDS, MBC1_PROFILE):
+            result = library.load_library(Client(endpoint), games, menu)
+        self.assertEqual((result['status'], result['images']), ('PASS', 4))
+        self.assertEqual([(row['index'], row['length']) for row in result['slots']], [(0, 32768), (1, 65536), (3, 32768), (16, 32768)])
+        stored = b''.join(endpoint.sdram[0x8000 + line * 16] for line in range(4096))
+        self.assertEqual(stored, games[1][0])
+        self.assertEqual(b''.join(endpoint.sdram[0x18000 + line * 16] for line in range(2048)), games[2][0])
+        rows = library.parse_catalogue(b''.join(endpoint.sdram[0x88000 + line * 16] for line in range(64)))
+        self.assertEqual([row['valid'] for row in rows], [1, 1, 0, 1] + [0] * 12 + [1])
+        self.assertEqual((rows[1]['profile'], rows[1]['length'], rows[1]['crc32']), (abi.PROFILE_MBC1_ID, 65536, zlib.crc32(games[1][0])))
+        self.assertEqual(rows[2], {**library.EMPTY_ENTRY, 'reserved_zero': True})
+        # Sixteen slots in total: eight 64 KiB images fit, a ninth image does not, and a 64 KiB image cannot start in slot 15.
+        eight = [(mbc1_image(f'BANK {i}', 6 + i), 'dmg-mbc1-v1') for i in range(8)]
+        with patch.dict(library.PROFILE_IDS, MBC1_PROFILE):
+            self.assertEqual(sorted(library.plan_slots(eight)), list(range(0, 16, 2)))
+            with self.assertRaisesRegex(ValueError, 'at most 16 slots'):
+                library.plan_slots(eight + [games[0]])
+            with self.assertRaisesRegex(ValueError, 'would spill past slot 15'):
+                library.plan_slots(eight[:7] + [games[0], eight[7]])
+
     def test_blank_header_title_takes_the_fallback_and_a_named_header_keeps_its_own(self):
         blank = bytearray(fixture_image('X', 5))
         blank[0x134:0x144] = bytes(16)
@@ -180,7 +243,8 @@ class LibraryTests(unittest.TestCase):
                          abi.LIBRARY_SLOT_BYTES)
         self.assertEqual(int.from_bytes(raw[abi.CATALOGUE_ENTRY_CRC32_OFFSET:abi.CATALOGUE_ENTRY_TITLE_LOW_OFFSET], 'little'),
                          zlib.crc32(image))
-        self.assertEqual(raw[abi.CATALOGUE_ENTRY_TITLE_LOW_OFFSET:abi.CATALOGUE_ENTRY_RESERVED_OFFSET], b'OFFSETS' + bytes(9))
+        self.assertEqual(raw[abi.CATALOGUE_ENTRY_TITLE_LOW_OFFSET:abi.CATALOGUE_ENTRY_LENGTH_HIGH_OFFSET], b'OFFSETS' + bytes(9))
+        self.assertEqual(raw[abi.CATALOGUE_ENTRY_LENGTH_HIGH_OFFSET:], bytes(8))
         self.assertEqual(library.unpack_entry(raw)['profile'], abi.PROFILE_LOADER_ID)
 
     def test_menu_entry_profile_follows_the_package_profile(self):

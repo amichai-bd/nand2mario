@@ -28,12 +28,15 @@ EXTERNAL_TITLES = {3: 'LIBBET' + '?' * 10, 4: 'AIRAKI1     ????', 5: 'GB-WORDYL'
                    6: 'MAXPIRATE', 7: 'ALIEN INVASION', 8: 'SQUARE FALL', 9: 'KNIGHT' + '?' * 10}
 
 
-def external_image(title, seed, cartridge=0, rom_size=0):
-    """A locally generated 32 KiB ROM ONLY image with the given header title bytes; never a downloaded game."""
-    image = bytearray((index * seed + index // 128) % 256 for index in range(library.SLOT_BYTES))
+def external_image(title, seed, cartridge=0, rom_size=0, size=library.SLOT_BYTES):
+    """A locally generated image with the given header title and cartridge bytes; never a downloaded game."""
+    image = bytearray((index * seed + index // 128) % 256 for index in range(size))
     image[0x134:0x144] = bytes(title).ljust(16, b'\0')
     image[0x147], image[0x148] = cartridge, rom_size
     return bytes(image)
+
+
+MBC1_PROFILE = {'dmg-mbc1-v1': abi.PROFILE_MBC1_ID}
 
 
 def fixture_image(title, seed):
@@ -85,10 +88,40 @@ class AssemblyTests(unittest.TestCase):
         self.assertEqual(rows[5]['flash_word'], f'0x{DATA_BASE + 5 * SLOT_WORDS:05X}')
         self.assertEqual(rows[library.MENU_INDEX]['title'], 'GAME MENU')
 
+    def test_a_64_kib_image_fills_two_slots_with_one_entry(self):
+        banked = external_image(b'BANKED GAME', 13, cartridge=1, rom_size=1, size=abi.MBC1_ROM_BYTES)
+        images = {**self.images, 6: (banked, 'dmg-mbc1-v1')}
+        with patch.dict(library.PROFILE_IDS, MBC1_PROFILE):
+            assembled = flash_library.assemble(images)
+        words = assembled['words']
+        base = 6 * SLOT_WORDS
+        self.assertEqual(words[base], int.from_bytes(banked[:4], 'little'))
+        self.assertEqual(words[base + 2 * SLOT_WORDS - 1], int.from_bytes(banked[-4:], 'little'))
+        self.assertEqual(len(words), 5 * SLOT_WORDS + 256)
+        rows = library.parse_catalogue(assembled['catalogue'])
+        self.assertEqual((rows[6]['valid'], rows[6]['profile'], rows[6]['length'], rows[6]['crc32']),
+                         (library.VALID, abi.PROFILE_MBC1_ID, abi.MBC1_ROM_BYTES, zlib.crc32(banked)))
+        self.assertEqual(rows[7], {**library.EMPTY_ENTRY, 'reserved_zero': True})
+        self.assertEqual({row['index'] for row in assembled['rows']}, {0, 5, 6, library.MENU_INDEX})
+        parsed = flash_library.parse_intel_hex(flash_library.intel_hex(words))
+        self.assertEqual(bytes(parsed[6 * library.SLOT_BYTES + b] for b in range(abi.MBC1_ROM_BYTES)), banked)
+        # The 32 KiB entries and their words are the ones the all-32 KiB library produces.
+        self.assertEqual(assembled['catalogue'][:6 * 32], self.assembled['catalogue'][:6 * 32])
+        self.assertEqual({k: v for k, v in words.items() if k < 6 * SLOT_WORDS}, {k: v for k, v in self.words.items() if k < 6 * SLOT_WORDS})
+        with patch.dict(library.PROFILE_IDS, MBC1_PROFILE):
+            with self.assertRaisesRegex(ValueError, 'slot 6 is filled by both slot 5 and slot 6'):
+                flash_library.assemble({**images, 5: (banked, 'dmg-mbc1-v1')})
+            with self.assertRaisesRegex(ValueError, 'would spill past slot 15'):
+                flash_library.assemble({**self.images, 15: (banked, 'dmg-mbc1-v1')})
+            with self.assertRaisesRegex(ValueError, 'must be exactly 65536 bytes'):
+                flash_library.assemble({**self.images, 1: (self.images[0][0], 'dmg-mbc1-v1')})
+        with self.assertRaisesRegex(ValueError, 'must be exactly 32768 bytes'):
+            flash_library.assemble({**self.images, 1: (banked, abi.PROFILE_NAME)})
+
     def test_assembly_refuses_bad_images(self):
         with self.assertRaisesRegex(ValueError, 'requires the menu image'):
             flash_library.assemble({0: self.images[0]})
-        with self.assertRaisesRegex(ValueError, 'exactly one'):
+        with self.assertRaisesRegex(ValueError, 'must be exactly 32768 bytes'):
             flash_library.assemble({**self.images, 1: (self.images[0][0][:-1], abi.PROFILE_NAME)})
         with self.assertRaisesRegex(ValueError, 'refuses images of profile'):
             flash_library.assemble({**self.images, 1: (self.images[0][0], 'unknown-profile')})
@@ -178,7 +211,8 @@ class RegistryTests(unittest.TestCase):
         (self.root / external.PIN_FILE).parent.mkdir(parents=True)
         self.pin = {'url': 'https://example.invalid/game.gb', 'sha256': '0' * 64, 'size': library.SLOT_BYTES, 'license': 'MIT'}
         self.pins = {'game': dict(self.pin), 'other': dict(self.pin, url='https://example.invalid/other.gb', license='Zlib'),
-                     'small': dict(self.pin, size=16384), 'nolicense': {k: v for k, v in self.pin.items() if k != 'license'}}
+                     'small': dict(self.pin, size=16384), 'nolicense': {k: v for k, v in self.pin.items() if k != 'license'},
+                     'banked': dict(self.pin, size=abi.MBC1_ROM_BYTES, url='https://example.invalid/banked.gb')}
         (self.root / external.PIN_FILE).write_text(json.dumps({'external_roms': {'images': self.pins}}))
 
     def registry(self, **fields):
@@ -202,9 +236,22 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(flash_library.slot_source('external:game'), ('external', 'game'))
         self.assertEqual(flash_library.slot_source('springtrail'), ('package', 'springtrail'))
 
+    def test_a_64_kib_external_pin_needs_the_next_slot_free(self):
+        registry = self.registry(slots={'0': 'springtrail', '3': 'external:banked', '5': 'external:game'})
+        self.assertEqual(sorted(registry['externals']), [3, 5])
+        registry = self.registry(slots={'14': 'external:banked'})
+        self.assertEqual(sorted(registry['externals']), [14])
+        cases = ((dict(slots={'3': 'external:banked', '4': 'external:game'}), 'banked at slot 3 also fills slot 4, which is registered'),
+                 (dict(slots={'3': 'external:banked', '4': 'springtrail'}), 'also fills slot 4'),
+                 (dict(slots={'15': 'external:banked'}), 'would spill past slot 15'))
+        for fields, message in cases:
+            with self.subTest(fields=fields):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.registry(**fields)
+
     def test_external_registry_refusals(self):
         cases = ((dict(slots={'0': 'external:missing'}), 'names no pinned external image: missing'),
-                 (dict(slots={'0': 'external:small'}), 'pinned at 16384 bytes'),
+                 (dict(slots={'0': 'external:small'}), 'pinned at 16384 bytes, not 32768 or 65536'),
                  (dict(slots={'0': 'external:nolicense'}), 'missing license'),
                  (dict(slots={'0': 'external:Bad Name'}), 'invalid external image name'),
                  (dict(slots={'0': 'external:'}), 'invalid external image name'),
@@ -256,9 +303,13 @@ class ExternalImageTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.images = {'named': external_image(b'NAMED GAME', 3), 'blank': external_image(b'', 5),
                        'cgb': external_image(b'CGB' + bytes(12) + b'\x80', 7), 'mapper': external_image(b'MBC', 9, cartridge=1),
-                       'control': external_image(b'\x01BAD', 11), 'unnamed-blank': external_image(b'', 13)}
+                       'control': external_image(b'\x01BAD', 11), 'unnamed-blank': external_image(b'', 13),
+                       'banked': external_image(b'BANKED GAME', 15, cartridge=1, rom_size=1, size=abi.MBC1_ROM_BYTES),
+                       'banked-ram': external_image(b'BANKED RAM', 17, cartridge=3, rom_size=1, size=abi.MBC1_ROM_BYTES),
+                       'banked-rom-only': external_image(b'NO MAPPER', 19, size=abi.MBC1_ROM_BYTES),
+                       'banked-small-header': external_image(b'SMALL HEADER', 21, cartridge=1, size=abi.MBC1_ROM_BYTES)}
         self.pins = {name: {'url': f'https://example.invalid/{name}.gb', 'sha256': hashlib.sha256(image).hexdigest(),
-                            'size': library.SLOT_BYTES, 'license': 'MIT'} for name, image in self.images.items()}
+                            'size': len(image), 'license': 'MIT'} for name, image in self.images.items()}
         self.pins['blank']['title'] = 'BLANK TITLE'
         self.pins['bad-title'] = dict(self.pins['blank'], title='lower case')
         self.pins['uncached'] = dict(self.pins['named'])
@@ -272,16 +323,21 @@ class ExternalImageTests(unittest.TestCase):
 
     def test_cached_images_resolve_offline_with_their_header_titles(self):
         with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
-            image, record = flash_library.external_image(self.root, 'named', offline=True)
-            self.assertEqual(image, self.images['named'])
+            image, profile, record = flash_library.external_image(self.root, 'named', offline=True)
+            self.assertEqual((image, profile), (self.images['named'], abi.PROFILE_NAME))
             self.assertEqual((record['pin'], record['license'], record['title']), ('named', 'MIT', None))
             entry = library.image_entry(image, abi.PROFILE_DIRECT_ID, record['title'])
             self.assertEqual(entry['title'], b'NAMED GAME'.ljust(16, b'\0'))
-            image, record = flash_library.external_image(self.root, 'cgb', offline=True)
+            image, _profile, record = flash_library.external_image(self.root, 'cgb', offline=True)
             self.assertEqual(library.image_entry(image, abi.PROFILE_DIRECT_ID, record['title'])['title'], image[0x134:0x144])
+        # A 64 KiB image with an MBC1 family header runs in the MBC1 profile; cartridge RAM types are accepted.
+        # (The pin reader's own 64 KiB acceptance belongs to the toolchain slice; the header check is exercised directly.)
+        for name in ('banked', 'banked-ram'):
+            self.assertEqual(flash_library.check_external_header(self.images[name], name), 'dmg-mbc1-v1')
+            self.assertEqual(library.image_entry(self.images[name], abi.PROFILE_MBC1_ID)['length'], abi.MBC1_ROM_BYTES)
 
     def test_blank_header_title_takes_the_pinned_display_title_only(self):
-        image, record = flash_library.external_image(self.root, 'blank', offline=True)
+        image, _profile, record = flash_library.external_image(self.root, 'blank', offline=True)
         self.assertEqual(record['title'], b'BLANK TITLE')
         self.assertEqual(library.image_entry(image, abi.PROFILE_DIRECT_ID, record['title'])['title'], b'BLANK TITLE'.ljust(16, b'\0'))
         # A non-blank header is never overridden, and the fallback changes no other field.
@@ -293,7 +349,8 @@ class ExternalImageTests(unittest.TestCase):
 
     def test_external_refusals_name_the_image(self):
         cases = (('uncached', 'external image is not cached: uncached'), ('wrong-hash', 'hash mismatch: wrong-hash'),
-                 ('mapper', 'mapper is not a ROM ONLY 32 KiB cartridge'), ('control', 'outside printable ASCII at 0x134'),
+                 ('mapper', 'mapper header 0x147/0x148 does not describe a 32768-byte dmg-direct-v1 cartridge'),
+                 ('control', 'outside printable ASCII at 0x134'),
                  ('unnamed-blank', 'unnamed-blank has a blank header title and its pin has no title'),
                  ('bad-title', 'pin title must be'), ('unknown', 'unknown external image pin: unknown'))
         with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
@@ -301,8 +358,11 @@ class ExternalImageTests(unittest.TestCase):
                 with self.subTest(name=name):
                     with self.assertRaisesRegex(ValueError, message):
                         flash_library.external_image(self.root, name, offline=True)
-        with self.assertRaisesRegex(ValueError, 'not one 32768-byte slot'):
+        with self.assertRaisesRegex(ValueError, 'not a 32768- or 65536-byte image'):
             flash_library.check_external_header(self.images['named'][:-1], 'short')
+        for name in ('banked-rom-only', 'banked-small-header'):
+            with self.assertRaisesRegex(ValueError, f'{name} header 0x147/0x148 does not describe a 65536-byte dmg-mbc1-v1 cartridge'):
+                flash_library.check_external_header(self.images[name], name)
 
     def test_build_images_stages_external_slots_beside_the_packages(self):
         registry = {'slots': {0: 'springtrail', 3: 'external:named', 4: 'external:blank'}, 'menu': 'menu',

@@ -10,6 +10,9 @@ IP or its double loads is written in the 0-based Avalon numbering"), so:
     avalon_word(a) = flash_word(a) - 0x00800 = a >> 2
     Intel HEX byte address of slot byte b of slot i = 4 * avalon_word = i * 32768 + b
 
+A 64 KiB MBC1 image registered at slot i fills slots i and i + 1 (i at most
+14), so slot i + 1 must not be registered; its catalogue entry stays empty.
+
 The catalogue entry bytes come from one code path, tools/n2m/host/library.py,
 so the host loader and the flash image cannot disagree. library.hex defines
 every word of the user range, erased words as 0xFFFFFFFF: the assembler fills
@@ -26,6 +29,7 @@ import zlib
 
 from . import generated_interfaces as abi
 from .host import external, library
+from .profiles import DIRECT_PROFILE_NAME, MBC1_PROFILE_NAME
 from .records import atomic_json, file_hash
 
 REGISTRY = "src/fpga/de10_lite/library.json"
@@ -56,9 +60,15 @@ def avalon_word(address):
 
 
 EXTERNAL_PREFIX = "external:"
-# Header bytes a direct-profile external image must carry: ROM ONLY, 32 KiB.
+# Header bytes an external image must carry: ROM ONLY and 32 KiB for the
+# direct profile; an MBC1 family type (MBC1, MBC1+RAM, MBC1+RAM+BATTERY) and
+# 64 KiB for the MBC1 profile. Cartridge RAM is outside the profile and reads
+# $FF; a game that depends on it is the registry owner's choice.
 HEADER_CARTRIDGE_TYPE = 0x147
 HEADER_ROM_SIZE = 0x148
+DIRECT_HEADER = {"type": (0x00,), "rom_size": 0x00, "profile": DIRECT_PROFILE_NAME}
+MBC1_HEADER = {"type": (0x01,), "rom_size": 0x01, "profile": MBC1_PROFILE_NAME}
+EXTERNAL_HEADERS = {abi.PROFILE_ROM_BYTES: DIRECT_HEADER, abi.MBC1_ROM_BYTES: MBC1_HEADER}
 CGB_FLAG = 0x143
 CGB_COMPATIBLE = 0x80
 
@@ -108,8 +118,11 @@ def load_registry(root):
             missing = [field for field in external.FIELDS if field not in pin]
             if missing:
                 raise ValueError(f"external pin is missing {', '.join(missing)}: {name}")
-            if pin["size"] != library.SLOT_BYTES:
-                raise ValueError(f"external image {name} is pinned at {pin['size']} bytes, not one {library.SLOT_BYTES}-byte slot")
+            if pin["size"] not in EXTERNAL_HEADERS:
+                raise ValueError(f"external image {name} is pinned at {pin['size']} bytes, not {abi.PROFILE_ROM_BYTES} or {abi.MBC1_ROM_BYTES}")
+            for taken in library.slot_range(index, pin["size"]):
+                if taken != index and taken in slots:
+                    raise ValueError(f"external image {name} at {library.slot_name(index)} also fills {library.slot_name(taken)}, which is registered")
             externals[index] = {"pin": name, "licence": pin["license"], "source": pin["url"], "sha256": pin["sha256"]}
             continue
         if not NAME.fullmatch(name):
@@ -126,16 +139,21 @@ def load_registry(root):
 
 
 def check_external_header(image, name, fallback_title=None):
-    """A direct-profile header: ROM ONLY, 32 KiB, and a title of printable ASCII or zero bytes.
+    """The header of an external image and the profile name it runs in.
 
-    Byte 0x143 doubles as the CGB flag, so 0x80 (CGB-enhanced, DMG-compatible)
-    is accepted there; the catalogue carries it verbatim like any title byte.
-    An all-zero title needs the pin's display title, or the menu row is blank.
+    A 32 KiB image must be ROM ONLY (direct profile); a 64 KiB image must
+    carry an MBC1 family type with the 64 KiB ROM size (MBC1 profile). The
+    title is printable ASCII or zero bytes. Byte 0x143 doubles as the CGB
+    flag, so 0x80 (CGB-enhanced, DMG-compatible) is accepted there; the
+    catalogue carries it verbatim like any title byte. An all-zero title needs
+    the pin's display title, or the menu row is blank.
     """
-    if len(image) != library.SLOT_BYTES:
-        raise ValueError(f"external image {name} is not one {library.SLOT_BYTES}-byte slot")
-    if image[HEADER_CARTRIDGE_TYPE] != 0 or image[HEADER_ROM_SIZE] != 0:
-        raise ValueError(f"external image {name} is not a ROM ONLY 32 KiB cartridge (header 0x147/0x148)")
+    header = EXTERNAL_HEADERS.get(len(image))
+    if header is None:
+        raise ValueError(f"external image {name} is not a {abi.PROFILE_ROM_BYTES}- or {abi.MBC1_ROM_BYTES}-byte image")
+    if image[HEADER_CARTRIDGE_TYPE] not in header["type"] or image[HEADER_ROM_SIZE] != header["rom_size"]:
+        raise ValueError(f"external image {name} header 0x147/0x148 does not describe a {len(image)}-byte "
+                         f"{header['profile']} cartridge")
     title = image[library.TITLE_START:library.TITLE_START + library.TITLE_BYTES]
     if not any(title) and fallback_title is None:
         raise ValueError(f"external image {name} has a blank header title and its pin has no title")
@@ -145,15 +163,20 @@ def check_external_header(image, name, fallback_title=None):
         if library.TITLE_START + offset == CGB_FLAG and byte == CGB_COMPATIBLE:
             continue
         raise ValueError(f"external image {name} has a header title byte outside printable ASCII at 0x{library.TITLE_START + offset:03X}")
+    return header["profile"]
 
 
 def external_image(root, pin, offline):
-    """The verified pinned image of one external slot; offline reads the cache only."""
+    """The verified pinned image of one external slot and its profile name; offline reads the cache only.
+
+    The pin names the profile (`read_external`); the header must describe the
+    same profile, so a mispinned image is refused by name.
+    """
     image, provenance = external.read_external(root, pin, offline=offline)
-    if provenance["profile"] != abi.PROFILE_NAME:
-        raise ValueError(f"external image {pin} runs in {provenance['profile']}; the library carries {abi.PROFILE_NAME} slots only")
-    check_external_header(image, pin, provenance["title"])
-    return image, provenance
+    profile = check_external_header(image, pin, provenance["title"])
+    if profile != provenance["profile"]:
+        raise ValueError(f"external image {pin} is pinned as {provenance['profile']} but its header describes a {profile} cartridge")
+    return image, profile, provenance
 
 
 def build_images(root, build, registry, provenance, rebuild=False, offline=False):
@@ -167,18 +190,19 @@ def build_images(root, build, registry, provenance, rebuild=False, offline=False
     for index, value in sorted(registry["slots"].items()) + [(library.MENU_INDEX, registry["menu"])]:
         kind, name = slot_source(value)
         if kind == "external":
-            image, record = external_image(root, name, offline)
+            image, profile, record = external_image(root, name, offline)
             row = {"kind": "external", **registry["externals"][index], "image_sha256": record["sha256"],
                    "notices": record["notices"], "fallback_title": record["title"]}
-            images[index] = (image, abi.PROFILE_NAME, row)
+            images[index] = (image, profile, row)
             continue
         report = build_target(root, build, SimpleNamespace(target=name, rebuild=rebuild), provenance)
         if report.get("status") != "PASS":
             raise ValueError(f"software build of {name} failed: {report.get('error', 'no error recorded')}")
         rom = Path(root) / report["rom"]
         image = rom.read_bytes()
-        if file_hash(rom) != report["artifacts"].get(report["rom"]) or len(image) != library.SLOT_BYTES:
-            raise ValueError(f"software build of {name} left no complete {library.SLOT_BYTES}-byte image")
+        expected = library.profile_bytes(library.profile_id(report["profile"]))
+        if file_hash(rom) != report["artifacts"].get(report["rom"]) or len(image) != expected:
+            raise ValueError(f"software build of {name} left no complete {expected}-byte image")
         images[index] = (image, report["profile"], {"kind": "package", "package": name, "attempt": report["attempt"],
                                                     "result": (Path(root) / report["rom"]).parent.joinpath("result.json").relative_to(Path(root)).as_posix(),
                                                     "image_sha256": report["artifacts"][report["rom"]],
@@ -190,21 +214,26 @@ def assemble(images):
     """Words of the library in the IP's 0-based numbering, the catalogue and its rows.
 
     ``images`` is {index: (image, profile_name[, extra])}; every other slot is
-    empty. ``extra`` rows are copied into the summary; its ``fallback_title``
-    is the pinned display title used only for an all-zero header title.
+    empty. A 64 KiB image at ``index`` fills the next slot too, so that slot
+    must be absent. ``extra`` rows are copied into the summary; its
+    ``fallback_title`` is the pinned display title used only for an all-zero
+    header title.
     """
     words = {}
     entries = {}
     rows = []
+    filled = {}
     for index in sorted(images):
         image, profile = images[index][0], images[index][1]
         image = bytes(image)
         if type(index) is not int or not 0 <= index < library.IMAGE_COUNT:
             raise ValueError(f"library index must be 0..{library.MENU_INDEX}")
-        if len(image) != library.SLOT_BYTES or len(image) % WORD_BYTES:
-            raise ValueError(f"library image must be exactly one {library.SLOT_BYTES}-byte slot")
         extra = images[index][2] if len(images[index]) > 2 else {}
         entry = library.image_entry(image, library.profile_id(profile), extra.get("fallback_title"))
+        for slot in library.slot_range(index, len(image)):
+            if slot in filled:
+                raise ValueError(f"{library.slot_name(slot)} is filled by both {library.slot_name(filled[slot])} and {library.slot_name(index)}")
+            filled[slot] = index
         entries[index] = entry
         base = avalon_word(library.slot_address(index))
         for offset in range(0, len(image), WORD_BYTES):
