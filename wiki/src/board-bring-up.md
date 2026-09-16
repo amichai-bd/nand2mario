@@ -67,7 +67,14 @@ repository. It does not inspect the bitstream's own target device: a `.sof`
 built for a different device is refused by `quartus_pgm` itself, which checks
 the file against the device it finds on the chain. `quartus_pgm` is invoked in
 JTAG mode with `-o "p;<sof>"`; a nonzero exit, or output without its explicit
-success line, fails the run before any host traffic is attempted.
+success line, fails the run before any host traffic is attempted. The command
+is normally run from Windows PowerShell inside the WSL checkout over its
+`\\wsl.localhost\<distro>\...` UNC path with the `.sof` given as the
+repository-relative path `fpga build` printed; the
+[record](../tools/n2m/SPEC.md#program-records) stays repository-relative and
+portable, and a failed record names its `device_state` (`unchanged`,
+`changed` or `unconfirmed`) so the operator, not the tool, decides on a
+second programming pass.
 
 ### Flash programming procedure
 

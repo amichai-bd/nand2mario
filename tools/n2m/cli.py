@@ -16,7 +16,7 @@ from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
 from . import fpga_hold
-from .fpga_program import FLASH_TIMEOUT, program as program_fpga, program_flash
+from .fpga_program import FLASH_TIMEOUT, device_state_after, program as program_fpga, program_flash
 from .flash_library import library_stage
 from .lint import lint_questa
 from .progress import Progress, powershell_command
@@ -328,6 +328,10 @@ def tagged(root, args, header, publish, progress=None):
                 report["artifacts"] = failure_artifacts
                 atomic_json(folder / "result.json", report)
             if operation_folder is not None:
+                # The retained program.log decides what the failure means for the
+                # board: nothing ran, quartus_pgm succeeded before the host record
+                # failed, or quartus_pgm ran unconfirmed. No replay either way.
+                report["device_state"] = device_state_after(operation_folder)
                 failure_artifacts.update({p.relative_to(root).as_posix(): file_hash(p)
                                           for p in operation_folder.rglob("*") if p.is_file()})
                 report["artifacts"] = failure_artifacts
@@ -432,6 +436,8 @@ def _human_result(args, report, progress):
             progress.line(f"JTAG: cable {report['cable']}; device {', '.join(report['devices'])}")
         if report.get("program_log"):
             progress.line(f"Program log: {report['program_log']}")
+        if status != "PASS" and report.get("device_state"):
+            progress.line(f"Device state: {report['device_state']}; no automatic replay")
         if report.get("pof"):
             if report.get("dry_run"):
                 progress.line(f"Dry run: flash unchanged; command in {report.get('dry_run_log')}")
