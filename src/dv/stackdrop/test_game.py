@@ -12,10 +12,11 @@ sys.path[:0] = [str(ROOT/'tools'), str(ROOT/'src/dv/python/integration')]
 from client_transport import connect, frames, refresh_clock
 from test_integration import known, decode_record
 from n2m.preload import verify, adopt
-from game_check import Check, INPUT_WINDOW, END, FRAMES
+from game_check import Check, INPUT_WINDOW, END, FINAL, FRAMES
+from budget import timeout_ms
 
 
-@cocotb.test(timeout_time=100, timeout_unit='ms')
+@cocotb.test(timeout_time=timeout_ms(FINAL), timeout_unit='ms')
 async def game(dut):
     check = Check()
     received = Queue()

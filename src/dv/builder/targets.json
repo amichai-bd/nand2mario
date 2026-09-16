@@ -14871,6 +14871,7 @@
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/unit_check.py",
         "src/dv/stackdrop/test_short.py",
+        "src/dv/stackdrop/budget.py",
         "tools/sw/columns.py"
       ],
       "waves": [
@@ -15026,6 +15027,7 @@
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/unit_check.py",
         "src/dv/stackdrop/test_unit.py",
+        "src/dv/stackdrop/budget.py",
         "tools/sw/columns.py"
       ],
       "waves": [
@@ -15182,6 +15184,7 @@
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/unit_check.py",
         "src/dv/stackdrop/test_unit.py",
+        "src/dv/stackdrop/budget.py",
         "tools/sw/columns.py"
       ],
       "waves": [
@@ -15336,6 +15339,7 @@
         "src/dv/stackdrop/reference.py",
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/test_game.py",
+        "src/dv/stackdrop/budget.py",
         "src/dv/stackdrop/game_check.py",
         "src/dv/stackdrop/screen.py",
         "tools/sw/columns.py"

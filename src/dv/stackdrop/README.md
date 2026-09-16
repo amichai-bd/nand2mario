@@ -64,11 +64,20 @@ catalogue records, measured 68.4 (game), 59.6 (unit), 14.2 (short) and 12.2
 (unit-x) seconds inside a 156 second aggregate at load average 7, still under
 the 120 second per-simulation target. The earlier 274 and 278 second walls against the same 288 second
 limit were Questa measurements taken when Questa was the only registered
-backend; they do not describe the current targets. The game simulates 99.2 ms
-(`END` at391876 dots) against its cocotb `timeout_time` of100 ms; that
-simulated-time bound is deterministic and is not a wall-budget matter, but it
-leaves under one percent for further initialization growth; widening it is
-tracked in [#722](https://github.com/amichai-bd/nand2mario/issues/722).
+backend; they do not describe the current targets.
+
+Simulated time is deterministic and separate from the wall budget.
+[budget.py](budget.py) derives each cocotb `timeout_time` from the scenario's
+own dot bound: dots at the exact 4194304 Hz `gb_tick` rate, plus a 25 percent
+margin, plus a 10 ms host allowance for identify, preload adoption, RUN and
+HALT over the simulated UART (5.69 ms measured in every target). The game's
+bound is `FINAL` = `END` + 2000 = 393876 dots (93.9 ms), the latest pause its
+checker accepts, giving 128 ms; the run simulates 99.2 ms. The unit's bound is
+its 500000-dot `STACKDROP_PROGRESS` limit (119.2 ms), giving 160 ms; the run
+simulates 91.4 ms. The game loop leaves at `END` and the unit's progress check
+fires at its bound, both before the derived timeout, so a scenario failure is
+reported by name. The short entry keeps its literal 20 ms against 9.8 ms
+simulated.
 Run the short complete target first, then the full unit and its one intended
 fault. The fault changes one actual WRAM store after the first update marker;
 subsequent CPU reads preparing the image must fail the unchanged image oracle.
