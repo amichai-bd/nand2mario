@@ -1805,9 +1805,9 @@ SHA-256 on write and on every read, never committed; the `library.hex`,
 `library.dat` and `.pof` that contain them are build artifacts under
 `workdir/`. Each image is validated by its size before packing: a 32768-byte
 image must carry header byte `0x147` = `0x00` (ROM ONLY) and `0x148` = `0x00`
-(32 KiB) and is catalogued as `DIRECT_ID`; a 65536-byte image must carry an
-MBC1 family type at `0x147` (`0x01`-`0x03`; cartridge RAM is outside the
-profile and reads `$FF`) and `0x148` = `0x01` (64 KiB) and is catalogued as
+(32 KiB) and is catalogued as `DIRECT_ID`; a 65536-byte image must carry
+`0x147` = `0x01` (MBC1 without cartridge RAM; the profile has no RAM, so an
+MBC1+RAM image is refused) and `0x148` = `0x01` (64 KiB) and is catalogued as
 `MBC1_ID` under the `dmg-mbc1-v1` profile name; title bytes `0x134`-`0x143`
 are each zero or printable ASCII, with `0x80` (the CGB-compatible flag) also
 accepted at `0x143`. Wyrmhole and Rex Run are pinned but not registered:

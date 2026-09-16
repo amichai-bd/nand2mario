@@ -61,9 +61,9 @@ def avalon_word(address):
 
 EXTERNAL_PREFIX = "external:"
 # Header bytes an external image must carry: ROM ONLY and 32 KiB for the
-# direct profile; an MBC1 family type (MBC1, MBC1+RAM, MBC1+RAM+BATTERY) and
-# 64 KiB for the MBC1 profile. Cartridge RAM is outside the profile and reads
-# $FF; a game that depends on it is the registry owner's choice.
+# direct profile; MBC1 without cartridge RAM (type 0x01) and 64 KiB for the
+# MBC1 profile, which has no cartridge RAM (owner ruling 2026-09-16: a game
+# declaring MBC1+RAM is not carried).
 HEADER_CARTRIDGE_TYPE = 0x147
 HEADER_ROM_SIZE = 0x148
 DIRECT_HEADER = {"type": (0x00,), "rom_size": 0x00, "profile": DIRECT_PROFILE_NAME}
@@ -142,7 +142,7 @@ def check_external_header(image, name, fallback_title=None):
     """The header of an external image and the profile name it runs in.
 
     A 32 KiB image must be ROM ONLY (direct profile); a 64 KiB image must
-    carry an MBC1 family type with the 64 KiB ROM size (MBC1 profile). The
+    carry the MBC1 type without RAM and the 64 KiB ROM size (MBC1 profile). The
     title is printable ASCII or zero bytes. Byte 0x143 doubles as the CGB
     flag, so 0x80 (CGB-enhanced, DMG-compatible) is accepted there; the
     catalogue carries it verbatim like any title byte. An all-zero title needs

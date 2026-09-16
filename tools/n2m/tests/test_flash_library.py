@@ -306,6 +306,7 @@ class ExternalImageTests(unittest.TestCase):
                        'control': external_image(b'\x01BAD', 11), 'unnamed-blank': external_image(b'', 13),
                        'banked': external_image(b'BANKED GAME', 15, cartridge=1, rom_size=1, size=abi.MBC1_ROM_BYTES),
                        'banked-ram': external_image(b'BANKED RAM', 17, cartridge=3, rom_size=1, size=abi.MBC1_ROM_BYTES),
+                       'banked-ram-only': external_image(b'BANKED RAM2', 23, cartridge=2, rom_size=1, size=abi.MBC1_ROM_BYTES),
                        'banked-rom-only': external_image(b'NO MAPPER', 19, size=abi.MBC1_ROM_BYTES),
                        'banked-small-header': external_image(b'SMALL HEADER', 21, cartridge=1, size=abi.MBC1_ROM_BYTES)}
         self.pins = {name: {'url': f'https://example.invalid/{name}.gb', 'sha256': hashlib.sha256(image).hexdigest(),
@@ -330,11 +331,10 @@ class ExternalImageTests(unittest.TestCase):
             self.assertEqual(entry['title'], b'NAMED GAME'.ljust(16, b'\0'))
             image, _profile, record = flash_library.external_image(self.root, 'cgb', offline=True)
             self.assertEqual(library.image_entry(image, abi.PROFILE_DIRECT_ID, record['title'])['title'], image[0x134:0x144])
-        # A 64 KiB image with an MBC1 family header runs in the MBC1 profile; cartridge RAM types are accepted.
+        # A 64 KiB image with the MBC1 (no RAM) header runs in the MBC1 profile.
         # (The pin reader's own 64 KiB acceptance belongs to the toolchain slice; the header check is exercised directly.)
-        for name in ('banked', 'banked-ram'):
-            self.assertEqual(flash_library.check_external_header(self.images[name], name), 'dmg-mbc1-v1')
-            self.assertEqual(library.image_entry(self.images[name], abi.PROFILE_MBC1_ID)['length'], abi.MBC1_ROM_BYTES)
+        self.assertEqual(flash_library.check_external_header(self.images['banked'], 'banked'), 'dmg-mbc1-v1')
+        self.assertEqual(library.image_entry(self.images['banked'], abi.PROFILE_MBC1_ID)['length'], abi.MBC1_ROM_BYTES)
 
     def test_blank_header_title_takes_the_pinned_display_title_only(self):
         image, _profile, record = flash_library.external_image(self.root, 'blank', offline=True)
@@ -360,7 +360,8 @@ class ExternalImageTests(unittest.TestCase):
                         flash_library.external_image(self.root, name, offline=True)
         with self.assertRaisesRegex(ValueError, 'not a 32768- or 65536-byte image'):
             flash_library.check_external_header(self.images['named'][:-1], 'short')
-        for name in ('banked-rom-only', 'banked-small-header'):
+        # MBC1 with cartridge RAM (types 0x02/0x03) is not carried: the profile has no RAM.
+        for name in ('banked-rom-only', 'banked-small-header', 'banked-ram', 'banked-ram-only'):
             with self.assertRaisesRegex(ValueError, f'{name} header 0x147/0x148 does not describe a 65536-byte dmg-mbc1-v1 cartridge'):
                 flash_library.check_external_header(self.images[name], name)
 
