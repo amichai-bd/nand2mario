@@ -123,7 +123,7 @@
       "assets": {
         "Tiles": {
           "source": "assets/tiles.json",
-          "author": "Original Stackdrop frame, block, digit, label and marquee pixels by the nand2mario project; no external source"
+          "author": "Original Stackdrop frame, block, digit, label, marquee and title pixels by the nand2mario project; no external source"
         }
       },
       "layout": "layout.json",
@@ -144,7 +144,7 @@
       "assets": {
         "Tiles": {
           "source": "assets/tiles.json",
-          "author": "Original Stackdrop frame, block, digit, label and marquee pixels by the nand2mario project; no external source"
+          "author": "Original Stackdrop frame, block, digit, label, marquee and title pixels by the nand2mario project; no external source"
         }
       },
       "layout": "unit-layout.json",
@@ -165,7 +165,7 @@
       "assets": {
         "Tiles": {
           "source": "assets/tiles.json",
-          "author": "Original Stackdrop frame, block, digit, label and marquee pixels by the nand2mario project; no external source"
+          "author": "Original Stackdrop frame, block, digit, label, marquee and title pixels by the nand2mario project; no external source"
         }
       },
       "layout": "unit-layout.json",

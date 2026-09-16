@@ -2,7 +2,10 @@ import json
 import unittest
 from pathlib import Path
 from reference import Game, cells
-from screen import TILES, background, decode, image, tile
+import zlib
+from screen import TILES, TITLE_IMAGE, TITLE_SCROLL, background, decode, image, pack, page, tile, title, unpack
+
+FIXTURES = Path(__file__).resolve().parent/'fixtures'
 
 
 class Screen(unittest.TestCase):
@@ -15,6 +18,27 @@ class Screen(unittest.TestCase):
                 self.assertEqual((result['rotation'], result['next_piece'], result['score']), (rotation, (piece+1) % 7, 9876))
         for status in (0, 2):
             self.assertEqual(decode(image(Game(status=status)))['status'], status)
+
+    def test_title_is_one_static_frozen_image(self):
+        self.assertEqual(image(Game()), TITLE_IMAGE)
+        self.assertEqual(decode(TITLE_IMAGE), dict(status=0, rotation=0, board=[0]*96, active=[], next_piece=0, score=0))
+        packed = bytes.fromhex((FIXTURES/'title.hex').read_text().replace('\n', ''))
+        metadata = json.loads((FIXTURES/'title.json').read_text())
+        self.assertEqual((len(packed), unpack(packed), pack(TITLE_IMAGE)), (5760, TITLE_IMAGE, packed))
+        self.assertEqual(metadata['crc32'], f'{zlib.crc32(TITLE_IMAGE):08x}')
+        self.assertEqual(metadata['sha256'], __import__('hashlib').sha256(packed).hexdigest())
+        self.assertEqual((metadata['scx'], metadata['scy']), TITLE_SCROLL)
+        # A play-page frame carrying the retired T status tile is neither state.
+        pixels = bytearray(image(Game(status=1)))
+        pixels[120*160+120:120*160+128] = tile(4)[:8]
+        for line in range(1, 8):
+            pixels[(120+line)*160+120:(120+line)*160+128] = tile(4)[8*line:8*line+8]
+        with self.assertRaisesRegex(ValueError, 'STACKDROP_TILE x=120 y=120'):
+            decode(pixels)
+        changed = bytearray(TITLE_IMAGE)
+        changed[40*160+20] ^= 1
+        with self.assertRaisesRegex(ValueError, 'STACKDROP_TILE'):
+            decode(changed)
 
     def test_reject_changed_tile(self):
         pixels = bytearray(image(Game(status=1)))
@@ -44,8 +68,14 @@ class Screen(unittest.TestCase):
         rows = [[int(v) for v in line[3:].split(',')]
                 for line in source.split('Map:\n')[1].strip().splitlines()]
         self.assertEqual((len(rows), {len(row) for row in rows}), (32, {32}))
+        self.assertEqual(rows, page())
         self.assertEqual([row[:20] for row in rows[:18]], background())
-        self.assertEqual({v for row in rows for v in row[20:]} | {v for row in rows[18:] for v in row}, {0})
+        scx, scy = TITLE_SCROLL
+        self.assertEqual([[rows[(scy//8+r) % 32][(scx//8+c) % 32] for c in range(20)] for r in range(18)], title())
+        # Every other cell is blank, so the two pages never show each other.
+        shown = {((scy//8+r) % 32, (scx//8+c) % 32) for r in range(18) for c in range(20)}
+        shown |= {(r, c) for r in range(18) for c in range(20)}
+        self.assertEqual({rows[r][c] for r in range(32) for c in range(32) if (r, c) not in shown}, {0})
 
 
 if __name__ == '__main__':

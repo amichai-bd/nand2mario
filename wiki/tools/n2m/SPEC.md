@@ -1711,8 +1711,7 @@ and [`test_legacy_renderer.py`](../../../src/dv/springtrail/test_legacy_renderer
 assert that refusal; `stackdrop-unit` and `stackdrop-short` are routine
 runners that keep the LCD off; `linker-basic` and `assets-basic` are toolchain
 fixtures. The registry grows only with new game content, which arrives through
-its own issues such as the Stackdrop title screen
-([#553](https://github.com/amichai-bd/nand2mario/issues/553)).
+its own issues.
 
 #### External images
 

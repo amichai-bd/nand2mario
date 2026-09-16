@@ -56,13 +56,13 @@ host HALT is separate and freezes emulated time through the existing interface.
 
 ## Visible encoding
 
-Use original background tiles with identity palette E4. The 49-tile atlas in
+Use original background tiles with identity palette E4. The 103-tile atlas in
 [assets/tiles.json](../../../../src/sw/stackdrop/assets/tiles.json) is the
 editable source; `ASSET "Tiles"` emits it at `Tiles`, and initialization copies
-all784 bytes to $8000 before enabling the LCD. Every frame rule, corner, label,
-marquee letter and panel box belongs to the one 1024-byte background map copied
-at the same time, so decoration costs no per-frame work and the prepared image
-stays118 bytes.
+all 1648 bytes to $8000 before enabling the LCD. Every frame rule, corner, label,
+marquee letter, title letter and panel box belongs to the one 1024-byte
+background map copied at the same time, so decoration costs no per-frame work
+and the prepared image stays118 bytes.
 
 The well begins at pixel (48,24); each cell is one 8-by-8 tile. Empty cells have
 shade0 interiors, locked cells shade2 interiors, and active cells shade3
@@ -74,19 +74,52 @@ The well's fixed rectangle is the public visual coordinate system.
 A heavy double-ruled frame encloses the well from tile (5,2) to (14,15): each
 edge tile carries one thin outer line and one two-pixel inner bar, with four
 corner tiles mitring them. The original marquee STACKDROP fills tile rows0..1
-above the well, one 7-by-11 letterform per column across two stacked tiles.
+at columns 8..16, centred over the frame and panels, one 7-by-11 letterform per
+column across two stacked tiles.
 
 Separately framed stats boxes run down tiles15..19, each open against the well
 frame and titled in uppercase 5-by-7 letters: NEXT, SCORE and STATE. A
 next-piece preview occupies a 4-by-4 tile box at (120,32), using the same spawn
 geometry. Four original decimal digit tiles at (120,88) display the score with
-leading zeroes. A fixed status tile at (120,120) visibly distinguishes title (T),
-playing (P) and game over (O). An original decimal tile at (128,120) shows
+leading zeroes. A fixed status tile at (120,120) visibly distinguishes playing
+(P) and game over (O); the prepared title image still carries the letter T
+there, but it is never displayed. An original decimal tile at (128,120) shows
 rotation0..3, including visually equivalent I/O orientations. Document the
 literal tile atlas beside its source. Decode board, active cells, next piece,
 digits and status from these rendered pixels, rejecting unknown or mixed
-encodings. No gameplay WRAM reads, sprite MMIO shortcut or RTL debug port is
-part of the host interface.
+encodings, including a T status tile on the play page. No gameplay WRAM reads,
+sprite MMIO shortcut or RTL debug port is part of the host interface.
+
+### Title page
+
+The title state shows a separate static page: two double-rule dividers, the
+word STACKDROP in large original letters, the prompt PRESS START in the panel
+letters, and a falling T above a two-row locked stack with its slot. The letters
+are the marquee letterforms at twice the size, 14 by 22 pixels in a 16-by-24
+cell, with a shade1 bevel along the top and left edge of every stroke; six
+tiles per letter, 49..102 in the atlas, laid out in screen columns 1..18, rows
+4..6. The prompt sits in row10, columns 4..14.
+
+The page lives in the same 1024-byte map. A 32-by-32 map cannot hold two
+20-by-18 pages, so the title occupies the rows and columns the play view never
+shows: initialization writes SCY128 and SCX160 before enabling the LCD, and
+screen cell (x,y) shows map cell ((20+x) mod 32, (16+y) mod 32). The only cells
+both views could show, map row16 columns 15..19 and rows 0..1 columns 0..16,
+are either scrolled out of the title view or blank, and every map cell outside
+the two views is zero. The independent [layout](../../../../src/dv/stackdrop/screen.py)
+`page()` builds the whole map and the ROM table must equal it.
+
+The relaxed constraint is one scroll register write at the title-to-play
+transition, not per frame, and no map cell is ever rewritten. The frame loop
+decides before HALT, in visible time, whether the game has started while the
+title page is still shown: 32 dots per frame during play, 56 during the title,
+none inside VBlank. On that one frame, after the unchanged 4472-dot
+ReadButtons/Render bracket, it writes SCY0 and SCX0 and records the shown page,
+28 dots for the two register writes and 44 in total, so the scroll changes in
+the VBlank that copies the first playing image and no intermediate frame is
+shown. The composed check requires both writes inside that VBlank after the
+copy's last VRAM write. The title is reached only at reset, so this write
+happens once per boot; game over returns to play on the same page.
 
 At each VBlank, sample both JOYP rows, copy the previously prepared image to VRAM, then calculate the sampled action and prepare the next image in ordinary WRAM during visible time. The resulting state becomes visible at the following VBlank: this one-frame pipeline delay is intentional. Initialization prepares the title before enabling LCD. Each update must finish before the next VBlank, including the worst lock, multiple-clear and score case; the prepared map copy must fit within4560 dots. Actual CPU timing checks cover both bounds. All map changes complete in VBlank before the next visible image. The game
 uses ordinary CPU code, VRAM and JOYP; it does not disable LCD around updates
@@ -107,8 +140,9 @@ The game draws only background tiles; it has no object tiles or window.
 
 The bank sheet shows shade 0 as the review checkerboard; on screen it is
 BGP colour 0. Tiles 1, 7, 8, 9 and 20 to 23 rule the frames, 24 to 30 spell the
-panel labels, and 31 to 48 carry the marquee halves; tiles 4, 5 and 6 are the
-status letters and double as label letters.
+panel labels, 31 to 48 carry the marquee halves and 49 to 102 the six tiles of
+each title letter; tiles 4, 5 and 6 are the status letters and double as label
+letters.
 
 ![Seven pieces in four rotations](previews/pieces.svg)
 
@@ -118,7 +152,12 @@ status letters and double as label letters.
 
 ![Game over after the stack reaches the spawn row](previews/over.svg)
 
-The title is the first image the ROM displays. The play screen shows the
+The title is the first image the ROM displays, composed from the map through
+the initial SCX/SCY; the play and game-over screens use the scroll the
+transition writes. The frozen [title fixture](../../../../src/dv/stackdrop/fixtures/title.json)
+holds the same image in snapshot packing with its CRC32 and SHA-256, so a board
+capture compares pixel for pixel; `test_screen` proves it equals the
+independent composition. The play screen shows the
 state the [independent rules model](../../../../src/dv/stackdrop/reference.py)
 reaches after the input script recorded in the generator: six locked pieces,
 a falling Z, the I preview and no cleared rows. The game-over screen continues

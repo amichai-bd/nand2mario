@@ -1,5 +1,5 @@
 import unittest
-from game_check import Check, LCD, END, INPUT_WINDOW, FRAMES, ADDRESSES, TITLE, PLAY
+from game_check import Check, LCD, END, INPUT_WINDOW, FRAMES, ADDRESSES, TITLE, PLAY, SCROLL
 from cases import buffer
 
 
@@ -7,6 +7,8 @@ class GameCheck(unittest.TestCase):
     def complete(self):
         check = Check()
         check.write((52 << 24) | (0xff40 << 8))
+        for index, (address, value) in enumerate(SCROLL[:2]):
+            check.write(((100+index) << 24) | (address << 8) | value)
         check.write((LCD << 24) | (0xff40 << 8) | 145)
         check.input((2 << 72) | (INPUT_WINDOW[0] << 8) | 128)
         for frame, pixels in enumerate(FRAMES):
@@ -20,6 +22,9 @@ class GameCheck(unittest.TestCase):
             for index, (address, value) in enumerate(zip(ADDRESSES, buffer(game))):
                 check.write(((start+100+index*30) << 24) | (address << 8) | value)
             check.write(((start+15000) << 24) | (0xc275 << 8) | 10)
+            if frame == 1:
+                for index, (address, value) in enumerate(SCROLL[2:]):
+                    check.write(((start+4500+12*index) << 24) | (address << 8) | value)
         return check
 
     def test_complete_pipeline(self):
@@ -31,6 +36,19 @@ class GameCheck(unittest.TestCase):
         check = self.complete()
         check.prepared[0] = LCD+65664+70224
         with self.assertRaisesRegex(AssertionError, 'STACKDROP_PREPARATION_BUDGET'):
+            check.finish(END)
+
+    def test_scroll_write_order_and_window(self):
+        with self.assertRaisesRegex(AssertionError, 'STACKDROP_SCROLL '):
+            Check().write((100 << 24) | (0xff42 << 8) | 0)
+        check = Check()
+        for index, (address, value) in enumerate(SCROLL[:2]):
+            check.write(((100+index) << 24) | (address << 8) | value)
+        with self.assertRaisesRegex(AssertionError, 'STACKDROP_SCROLL_TIME'):
+            check.write((200 << 24) | (0xff42 << 8) | 0)
+        check = self.complete()
+        check.scroll[3] = LCD+70224+65664+4560
+        with self.assertRaisesRegex(AssertionError, 'STACKDROP_SCROLL_WINDOW'):
             check.finish(END)
 
     def test_wrong_pixel_and_input(self):

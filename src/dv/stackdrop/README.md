@@ -49,19 +49,22 @@ No product RTL behavior or positive stimulus changes for the fault.
 
 ## Whole-game timing
 
-The instruction-derived LCD enable commit is141000 dots. The prefix is128 dots
-through setting the768-byte clear count,36852 for that clear,36 setup+40764
-for784 tile bytes,36 setup+53244 for1024 map bytes,5564 for the initial title
-Prepare call,4312 for Render, then64 for palette/IE/LCDC setup. The checker
-rejects a different LCD commit immediately; the observed value never selects
-its oracle.
+The instruction-derived LCD enable commit is185948 dots. The prefix is148 dots
+through setting the768-byte clear count, including the title-page SCY/SCX
+writes and re-zeroing A for the clear,36852 for that clear,36 setup+85692 for1648 tile bytes,36 setup+53244
+for1024 map bytes,5564 for the initial title Prepare call,4312 for Render, then
+64 for palette/IE/LCDC setup. The checker rejects a different LCD commit
+immediately; the observed value never selects its oracle.
 
 Drive one real UART Start128 at171000..173000, safely before the first VBlank.
-Check all69120 pixels of startup white, title and the first playing image.
-The first VBlank copies the prepared title and computes NewGame; the second
-copies that prepared playing image. For each complete copy check all118 ordered
+Check all69120 pixels of startup white, the title page and the first playing
+image. The first VBlank copies the prepared title-state image into the hidden
+play page and computes NewGame; the second copies that prepared playing image
+and then writes SCY0 and SCX0. For each complete copy check all118 ordered
 VRAM writes within the real4560-dot window, and the final WRAM preparation byte
-before the following VBlank. Check per-line pixel time, epoch, shade and every
+before the following VBlank. The four scroll writes must be exactly SCY128,
+SCX160 before LCD enable and SCY0, SCX0 after the second copy's last VRAM write
+inside the same VBlank; the summary records their dots and VBlank offsets. Check per-line pixel time, epoch, shade and every
 retirement's sequence/time. Normal HALT after the third checked image may leave
 an exact prefix of the next VBlank copy; this is explicit and does not claim that
 third update complete. The first two update/copy windows are complete proofs.
@@ -86,7 +89,9 @@ commands drive it.
 durable sequence journal, machine mutex, verified wire build, paused valid image
 with neutral UART input) and runs a frozen script. It reuses `screen.decode` on
 each captured frame, so every observation comes from the rendered image and no
-gameplay WRAM is read. Frames, PNGs, decoded states and `result.json` stay in
+gameplay WRAM is read. A captured title is also compared pixel for pixel with
+the frozen [title fixture](fixtures/title.json) and the result recorded under
+`title_reference`; the script stops if it differs. Frames, PNGs, decoded states and `result.json` stay in
 the ignored `workdir/stackdrop-play/`; the transaction journal stays under the
 build tag. No frame bytes or decoded images are committed.
 
