@@ -387,9 +387,10 @@ title, input and world frames with deliberate output faults. Movement and
 interactions are implemented; expanded features are explicitly planned in the
 game specification. The current [UART endurance fixture](../src/dv/springtrail/ENDURANCE.md#retained-script)
 uses source-qualified lives/countdown and complete-frame expectations. A new
-current-image continuous physical run remains separate from those host checks;
-physical-presence verification remains open in the charter's
-[remote acceptance](src/project-charter.md#remote-acceptance) split.
+current-image continuous physical run remains separate from those host checks
+and, with supply voltage and display tolerance, is the physical work the
+charter's [remote acceptance](src/project-charter.md#remote-acceptance) split
+still names as unmeasured; the KEY0 reset and the monitor picture are observed.
 
 **Risk**
 

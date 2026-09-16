@@ -1,9 +1,11 @@
 # Original platformer verification
 
 The original complete-game baseline is qualified and the UART-observable
-`v1.0` checks are proven on the current image; physical-presence
-acceptance remains open in the charter's
-[remote acceptance](../../project-charter.md#remote-acceptance) split. The
+`v1.0` checks are proven on the current image; the charter's
+[remote acceptance](../../project-charter.md#remote-acceptance) split records
+the KEY0 reset and the monitor picture as observed and names the remaining
+unmeasured physical work (supply voltage, display tolerance, a current-image
+continuous physical run). The
 [game specification](../../sw/springtrail/SPEC.md) owns gameplay;
 the [charter](../../project-charter.md#release-acceptance) owns release criteria.
 The [foundation proof](../../../../src/dv/springtrail/README.md) checks

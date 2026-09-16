@@ -181,8 +181,10 @@ bound to pass the implementation.
 | `v1.0` | After separate board approval and wiring/timing proof: full load/readback, scripted checkpoints and pre-VGA frame hashes match simulation; VGA and keyboard work; 30-minute continuous run without unexpected reset/lost input; repeat reset/load/start three times. Silent output. |
 
 The v0.5 and original v0.9 baselines are qualified separately from physical
-release acceptance, whose physical-presence column remains open within the
-[remote acceptance](#remote-acceptance) split below.
+release acceptance, whose physical-presence column in the
+[remote acceptance](#remote-acceptance) split below records the KEY0 reset and
+the monitor picture as observed and still names supply voltage, display
+tolerance and a current-image continuous physical run as unmeasured.
 Functional boot/input/checkpoint requirements are preserved,
 but their execution matrices must be named and reviewed before work: use short
 complementary simulations under the [total wall cap](../tools/n2m/SPEC.md#test-wall-budget)
