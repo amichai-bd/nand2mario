@@ -1908,8 +1908,8 @@ range holds all sixteen slots and the catalogue by construction
 separate 672 KiB CFM0, so the slot count does not compete with the design:
 the practical slot capacity is the contract's sixteen. The CFM0 usage of a
 build is measured in its `.pof` evidence, described below; the `v05-board`
-build of this eleven-image registry records CFM0_USED of 688,128 CFM0 bytes
-used (CFM0_PROGRAMMED programmed, CFM0_SPARE spare) beside a 427,008-byte
+build of this eleven-image registry records 369,711 of 688,128 CFM0 bytes
+used (368,193 programmed, 318,417 spare) beside a 427,008-byte
 library that matches the `.pof` user range exactly once.
 
 `python tools/build.py sw library --tag <tag> --json` builds every registered
