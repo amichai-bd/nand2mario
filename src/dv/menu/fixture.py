@@ -2,7 +2,7 @@
 
 `build` is the registered `menu` preload builder: it builds the menu image
 through the software pipeline, lays out a seventeen-image SDRAM library
-around it (six stub games, one empty slot, one entry that is valid but
+around it (eight stub games, one empty slot, one entry that is valid but
 has a foreign length, the rest empty) and writes the bytes the testbench
 reads with `$readmemh`, plus the reference frames of the scripted scenario.
 The catalogue entry layout is the `catalogue_entry_t` record of
@@ -21,11 +21,14 @@ CATALOGUE_ADDRESS, ENTRY_BYTES = 0x88000, 32
 LIBRARY_BYTES = 0x8C000
 ENTRY = struct.Struct('<BBHI16s8x')
 PROFILE_DIRECT, PROFILE_LOADER = 1, 2
-# Six stub games: the three registered titles, a title with digits and
-# dashes, a full sixteen-character title and one on the last row, so seven
-# rows (with the short slot) are valid and the empty rows are the minority.
-GAMES = {0: 'SPRINGTRAIL', 1: 'STACKDROP', 2: 'V05 BUTTONS', 5: 'ABC-123 XYZ 789',
-         7: 'SIXTEEN CHAR ROW', 15: 'LAST SLOT'}
+# Eight stub games: the three registered titles, a title with digits and
+# dashes, a fifteen-byte title with the CGB flag at header 0x143, a full
+# sixteen-character title, a padded title with the CGB-only flag and one on
+# the last row, so nine rows (with the short slot) are valid and the empty
+# rows are the minority.
+GAMES = {0: b'SPRINGTRAIL', 1: b'STACKDROP', 2: b'V05 BUTTONS', 5: b'ABC-123 XYZ 789',
+         6: b'CGB FLAGGED ROW\x80', 7: b'SIXTEEN CHAR ROW', 8: b'CGB ONLY TITLE\x00\xC0',
+         15: b'LAST SLOT'}
 # Slot 4 is valid to the menu (valid byte 1) but the engine refuses its
 # foreign length; slot 3 is the empty slot the refused-selection scenario uses.
 SHORT_SLOT, EMPTY_SLOT = 4, 3
@@ -36,11 +39,13 @@ SCENARIO = [dict(cursor=0), dict(cursor=1), dict(cursor=2), dict(cursor=3),
 
 
 def game_image(index, title):
-    """A stub game: NOP; JP $0150; JR $0150, its title in the header, a slot-specific pattern elsewhere."""
+    """A stub game: NOP; JP $0150; JR $0150, its title (str or bytes) in the header, a slot-specific pattern elsewhere."""
+    if isinstance(title, str):
+        title = title.encode('ascii')
     image = bytearray(((index * 37 + offset * 11 + (offset >> 7) * 5) ^ (offset >> 12)) & 255 for offset in range(SLOT_BYTES))
     image[0x100:0x150] = bytes(0x50)
     image[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])
-    image[0x134:0x144] = title.encode('ascii').ljust(16, b'\0')
+    image[0x134:0x144] = title.ljust(16, b'\0')
     image[0x14a] = 1
     image[0x150:0x152] = bytes([0x18, 0xFE])
     return bytes(image)
@@ -58,7 +63,7 @@ def entries(menu_image):
             image = game_image(index, GAMES[index])
             row.update(valid=1, profile=PROFILE_DIRECT, length=SLOT_BYTES)
         elif index == SHORT_SLOT:
-            image = game_image(index, 'SHORT IMAGE')
+            image = game_image(index, b'SHORT IMAGE')
             row.update(valid=1, profile=PROFILE_DIRECT, length=16384)
         else:
             rows.append(row)
@@ -74,7 +79,7 @@ def image_bytes(index, menu_image):
     if index in GAMES:
         return game_image(index, GAMES[index])
     if index == SHORT_SLOT:
-        return game_image(index, 'SHORT IMAGE')
+        return game_image(index, b'SHORT IMAGE')
     return bytes(SLOT_BYTES)
 
 

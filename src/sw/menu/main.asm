@@ -25,6 +25,10 @@ NUMBER_COLUMN EQU 1
 TITLE_COLUMN EQU 4
 STATUS_ROW EQU 17
 TITLE_BYTES EQU 16
+; Header byte $0143 is the CGB flag when the title is 15 bytes long; the
+; menu draws these two values in the last title cell as blank.
+CGB_FLAG EQU $80
+CGB_ONLY EQU $C0
 STATUS_BYTES EQU 20
 WORD_BYTES EQU 12
 KEY_NOT_READY EQU 254
@@ -271,7 +275,9 @@ LD [BankDone],A
 RET
 
 ; A = slot. Its catalogue entry is at window offset slot * 32; a valid entry
-; draws its 16 title bytes, any other entry a blank title.
+; draws its 16 title bytes, any other entry a blank title. The 16th byte is
+; header $0143: the CGB flag values draw blank, any other byte follows
+; CharTile.
 DrawSlot:
 LD C,A
 LD L,A
@@ -305,8 +311,20 @@ JR NZ,BlankTitle
 LD A,L
 ADD A,ENTRY_TITLE
 LD L,A
-LD B,TITLE_BYTES
-JP DrawText
+LD B,TITLE_BYTES - 1
+CALL DrawText
+LD A,[HL]
+CP A,CGB_FLAG
+JR Z,FlagBlank
+CP A,CGB_ONLY
+JR Z,FlagBlank
+CALL CharTile
+LD [DE],A
+RET
+FlagBlank:
+LD A,TILE_BLANK
+LD [DE],A
+RET
 BlankTitle:
 LD B,TITLE_BYTES
 LD A,TILE_BLANK
