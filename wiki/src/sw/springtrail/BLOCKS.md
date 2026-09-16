@@ -110,8 +110,7 @@ Coins do not change the displayed score. The HUD's approved glyph set has no
 digit above 4, so the displayed score stays the four legacy collectibles and
 `Coins` is an undisplayed counter. No coin threshold grants a reward.
 
-The original acquisition rule selected in [#515](https://github.com/amichai-bd/nand2mario/issues/515)
-adds promotion only when the intact coin block releases its content while the
+The original acquisition rule adds promotion only when the intact coin block releases its content while the
 player is large. Small players receive only the coin; throwers keep their
 power. Saturation at 255 does not prevent promotion. The block becomes used
 before either reward, and its coin effect is unchanged. Consuming it while
