@@ -97,10 +97,23 @@ class ExternalRomTests(unittest.TestCase):
             self.assertEqual(image, self.image)
             self.assertEqual(record['pin'], self.name)
             self.assertEqual(record['sha256'], self.digest)
-            self.assertEqual((record['size'], record['license']), (abi.PROFILE_ROM_BYTES, 'CC0-1.0'))
+            self.assertEqual((record['size'], record['license'], record['title']), (abi.PROFILE_ROM_BYTES, 'CC0-1.0', None))
             self.assertEqual(read_external(ROOT, self.name, self.pins())[0], self.image)
+            self.assertEqual(read_external(ROOT, self.name, self.pins(title='A-1 GAME'))[1]['title'], b'A-1 GAME')
+            with self.assertRaisesRegex(ValueError, 'pin title must be'):
+                read_external(ROOT, self.name, self.pins(title='lower'))
         self.assertEqual(len(download.calls), 1)
         self.assertEqual((self.cache / 'image.gb').read_bytes(), self.image)
+
+    def test_offline_reads_the_cache_and_refuses_to_fetch(self):
+        download = Download(self.image)
+        with patch('n2m.host.external.urllib.request.urlopen', download):
+            with self.assertRaisesRegex(ValueError, f'not cached: {self.name}'):
+                read_external(ROOT, self.name, self.pins(), offline=True)
+            self.assertFalse(self.cache.exists())
+            read_external(ROOT, self.name, self.pins())
+            self.assertEqual(read_external(ROOT, self.name, self.pins(), offline=True)[0], self.image)
+        self.assertEqual(len(download.calls), 1)
 
     def test_wrong_size_wrong_hash_and_missing_pin_refuse_before_caching(self):
         cases = [({'size': 16384}, self.image, 'direct-profile image size'),

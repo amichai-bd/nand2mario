@@ -144,6 +144,18 @@ class LibraryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             library.profile_id('dmg-mbc1')
 
+    def test_blank_header_title_takes_the_fallback_and_a_named_header_keeps_its_own(self):
+        blank = bytearray(fixture_image('X', 5))
+        blank[0x134:0x144] = bytes(16)
+        entry = library.image_entry(bytes(blank), abi.PROFILE_DIRECT_ID, b'PINNED TITLE')
+        self.assertEqual(entry['title'], b'PINNED TITLE\0\0\0\0')
+        self.assertEqual(entry['crc32'], zlib.crc32(bytes(blank)))
+        self.assertEqual(library.image_entry(bytes(blank), abi.PROFILE_DIRECT_ID)['title'], bytes(16))
+        named = fixture_image('OWN TITLE', 5)
+        self.assertEqual(library.image_entry(named, abi.PROFILE_DIRECT_ID, b'PINNED TITLE')['title'], b'OWN TITLE'.ljust(16, b'\0'))
+        with self.assertRaisesRegex(ValueError, r'1\.\.16 bytes'):
+            library.image_entry(bytes(blank), abi.PROFILE_DIRECT_ID, b'')
+
     def test_layout_values_come_from_the_generated_table(self):
         self.assertEqual((library.SLOT_BYTES, library.GAME_SLOTS, library.MENU_INDEX, library.IMAGE_COUNT,
                           library.CATALOGUE_ADDRESS, library.ENTRY_BYTES, library.VALID),

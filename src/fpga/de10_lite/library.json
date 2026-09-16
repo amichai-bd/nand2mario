@@ -3,7 +3,14 @@
   "slots": {
     "0": "springtrail",
     "1": "stackdrop",
-    "2": "v05"
+    "2": "v05",
+    "3": "external:libbet",
+    "4": "external:airaki",
+    "5": "external:gb-wordyl",
+    "6": "external:max-pirate",
+    "7": "external:alien-invasion",
+    "8": "external:square-fall",
+    "9": "external:unstoppable-knight"
   },
   "menu": "menu"
 }

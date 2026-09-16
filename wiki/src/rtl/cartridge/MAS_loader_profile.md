@@ -216,7 +216,11 @@ status` reads the catalogue as stored and `LIBRARY_STATUS`. The menu entry's
 `DIRECT_ID` for
 a direct-profile image at index 16; the select rule above accepts either. The
 host tool takes every slot, catalogue and profile number from the generated
-[interface table](../interfaces/MAS_interfaces.md).
+[interface table](../interfaces/MAS_interfaces.md). Each catalogue entry's
+title is the image header verbatim; only an all-zero header title takes the
+image's pinned display title
+([catalogue entry](../storage/MAS_sdram.md#address-space-layout)), the same
+rule for a host load and for the [flash library](../storage/MAS_flash_library.md).
 Then the host loads the menu into the ROM store with the existing
 `LOAD_BEGIN`/`LOAD_WRITE`/`LOAD_END` sequence using profile `LOADER_ID`, then
 `RUN`. From then on the player uses only the board.

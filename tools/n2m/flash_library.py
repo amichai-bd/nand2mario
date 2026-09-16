@@ -24,7 +24,8 @@ import re
 from types import SimpleNamespace
 import zlib
 
-from .host import library
+from . import generated_interfaces as abi
+from .host import external, library
 from .records import atomic_json, file_hash
 
 REGISTRY = "src/fpga/de10_lite/library.json"
@@ -54,8 +55,28 @@ def avalon_word(address):
     return flash_word(address) - FLASH_DATA_BASE
 
 
+EXTERNAL_PREFIX = "external:"
+# Header bytes a direct-profile external image must carry: ROM ONLY, 32 KiB.
+HEADER_CARTRIDGE_TYPE = 0x147
+HEADER_ROM_SIZE = 0x148
+CGB_FLAG = 0x143
+CGB_COMPATIBLE = 0x80
+
+
+def slot_source(name):
+    """('package', name) or ('external', pin) for one registry slot value."""
+    if name.startswith(EXTERNAL_PREFIX):
+        return "external", name[len(EXTERNAL_PREFIX):]
+    return "package", name
+
+
 def load_registry(root):
-    """The validated slot registry: {index: package name} and the menu package name."""
+    """The validated slot registry: {index: slot value} and the menu package name.
+
+    A slot value is a `src/sw/targets.json` package name or `external:<name>`,
+    a pin of `tools/n2m/dependencies.json` `external_roms.images` whose image
+    is fetched at build time and never committed. The menu is always a package.
+    """
     root = Path(root)
     data = json.loads((root / REGISTRY).read_text(encoding="utf-8"))
     if (not isinstance(data, dict) or set(data) != {"schema_version", "slots", "menu"}
@@ -65,13 +86,33 @@ def load_registry(root):
     packages = json.loads((root / SW_REGISTRY).read_text(encoding="utf-8"))
     if not isinstance(packages, dict) or not isinstance(packages.get("targets"), dict):
         raise ValueError("unsupported software target registry")
+    pins = json.loads((root / external.PIN_FILE).read_text(encoding="utf-8")).get("external_roms", {}).get("images", {})
     slots = {}
     for key, name in data["slots"].items():
         if not re.fullmatch(r"(0|[1-9][0-9]?)", key) or not 0 <= int(key) < library.GAME_SLOTS:
             raise ValueError(f"flash library slot must be 0..{library.GAME_SLOTS - 1}: {key!r}")
         slots[int(key)] = name
-    for index, name in sorted(slots.items()) + [(library.MENU_INDEX, data["menu"])]:
-        if not isinstance(name, str) or not NAME.fullmatch(name):
+    externals = {}
+    for index, value in sorted(slots.items()) + [(library.MENU_INDEX, data["menu"])]:
+        if not isinstance(value, str):
+            raise ValueError(f"invalid flash library package name at {library.slot_name(index)}")
+        kind, name = slot_source(value)
+        if kind == "external":
+            if index == library.MENU_INDEX:
+                raise ValueError("the menu image must be a packaged software target")
+            if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", name):
+                raise ValueError(f"invalid external image name at {library.slot_name(index)}")
+            pin = pins.get(name)
+            if not isinstance(pin, dict):
+                raise ValueError(f"flash library {library.slot_name(index)} names no pinned external image: {name}")
+            missing = [field for field in external.FIELDS if field not in pin]
+            if missing:
+                raise ValueError(f"external pin is missing {', '.join(missing)}: {name}")
+            if pin["size"] != library.SLOT_BYTES:
+                raise ValueError(f"external image {name} is pinned at {pin['size']} bytes, not one {library.SLOT_BYTES}-byte slot")
+            externals[index] = {"pin": name, "licence": pin["license"], "source": pin["url"], "sha256": pin["sha256"]}
+            continue
+        if not NAME.fullmatch(name):
             raise ValueError(f"invalid flash library package name at {library.slot_name(index)}")
         package = packages["targets"].get(name)
         if not isinstance(package, dict) or package.get("profile") not in library.PROFILE_IDS:
@@ -81,14 +122,54 @@ def load_registry(root):
     names = list(slots.values()) + [data["menu"]]
     if len(set(names)) != len(names):
         raise ValueError("a package may occupy only one flash library slot")
-    return {"slots": slots, "menu": data["menu"], "sha256": file_hash(root / REGISTRY)}
+    return {"slots": slots, "menu": data["menu"], "externals": externals, "sha256": file_hash(root / REGISTRY)}
 
 
-def build_images(root, build, registry, provenance, rebuild=False):
-    """Build every registered package under this tag; {index: (image, profile, package report)}."""
+def check_external_header(image, name, fallback_title=None):
+    """A direct-profile header: ROM ONLY, 32 KiB, and a title of printable ASCII or zero bytes.
+
+    Byte 0x143 doubles as the CGB flag, so 0x80 (CGB-enhanced, DMG-compatible)
+    is accepted there; the catalogue carries it verbatim like any title byte.
+    An all-zero title needs the pin's display title, or the menu row is blank.
+    """
+    if len(image) != library.SLOT_BYTES:
+        raise ValueError(f"external image {name} is not one {library.SLOT_BYTES}-byte slot")
+    if image[HEADER_CARTRIDGE_TYPE] != 0 or image[HEADER_ROM_SIZE] != 0:
+        raise ValueError(f"external image {name} is not a ROM ONLY 32 KiB cartridge (header 0x147/0x148)")
+    title = image[library.TITLE_START:library.TITLE_START + library.TITLE_BYTES]
+    if not any(title) and fallback_title is None:
+        raise ValueError(f"external image {name} has a blank header title and its pin has no title")
+    for offset, byte in enumerate(title):
+        if byte == 0 or 0x20 <= byte < 0x7F:
+            continue
+        if library.TITLE_START + offset == CGB_FLAG and byte == CGB_COMPATIBLE:
+            continue
+        raise ValueError(f"external image {name} has a header title byte outside printable ASCII at 0x{library.TITLE_START + offset:03X}")
+
+
+def external_image(root, pin, offline):
+    """The verified pinned image of one external slot; offline reads the cache only."""
+    image, provenance = external.read_external(root, pin, offline=offline)
+    check_external_header(image, pin, provenance["title"])
+    return image, provenance
+
+
+def build_images(root, build, registry, provenance, rebuild=False, offline=False):
+    """Build every registered package and read every external image; {index: (image, profile, row)}.
+
+    ``offline`` refuses to fetch an external image that is not cached, so a
+    Quartus build never waits on the network; `sw library` fetches.
+    """
     from sw.rom_build import build_target
     images = {}
-    for index, name in sorted(registry["slots"].items()) + [(library.MENU_INDEX, registry["menu"])]:
+    for index, value in sorted(registry["slots"].items()) + [(library.MENU_INDEX, registry["menu"])]:
+        kind, name = slot_source(value)
+        if kind == "external":
+            image, record = external_image(root, name, offline)
+            row = {"kind": "external", **registry["externals"][index], "image_sha256": record["sha256"],
+                   "notices": record["notices"], "fallback_title": record["title"]}
+            images[index] = (image, abi.PROFILE_NAME, row)
+            continue
         report = build_target(root, build, SimpleNamespace(target=name, rebuild=rebuild), provenance)
         if report.get("status") != "PASS":
             raise ValueError(f"software build of {name} failed: {report.get('error', 'no error recorded')}")
@@ -96,7 +177,7 @@ def build_images(root, build, registry, provenance, rebuild=False):
         image = rom.read_bytes()
         if file_hash(rom) != report["artifacts"].get(report["rom"]) or len(image) != library.SLOT_BYTES:
             raise ValueError(f"software build of {name} left no complete {library.SLOT_BYTES}-byte image")
-        images[index] = (image, report["profile"], {"package": name, "attempt": report["attempt"],
+        images[index] = (image, report["profile"], {"kind": "package", "package": name, "attempt": report["attempt"],
                                                     "result": (Path(root) / report["rom"]).parent.joinpath("result.json").relative_to(Path(root)).as_posix(),
                                                     "image_sha256": report["artifacts"][report["rom"]],
                                                     "fingerprint": report["fingerprint"]})
@@ -106,7 +187,9 @@ def build_images(root, build, registry, provenance, rebuild=False):
 def assemble(images):
     """Words of the library in the IP's 0-based numbering, the catalogue and its rows.
 
-    ``images`` is {index: (image, profile_name[, extra])}; every other slot is empty.
+    ``images`` is {index: (image, profile_name[, extra])}; every other slot is
+    empty. ``extra`` rows are copied into the summary; its ``fallback_title``
+    is the pinned display title used only for an all-zero header title.
     """
     words = {}
     entries = {}
@@ -118,15 +201,15 @@ def assemble(images):
             raise ValueError(f"library index must be 0..{library.MENU_INDEX}")
         if len(image) != library.SLOT_BYTES or len(image) % WORD_BYTES:
             raise ValueError(f"library image must be exactly one {library.SLOT_BYTES}-byte slot")
-        entry = library.image_entry(image, library.profile_id(profile))
+        extra = images[index][2] if len(images[index]) > 2 else {}
+        entry = library.image_entry(image, library.profile_id(profile), extra.get("fallback_title"))
         entries[index] = entry
         base = avalon_word(library.slot_address(index))
         for offset in range(0, len(image), WORD_BYTES):
             words[base + offset // WORD_BYTES] = int.from_bytes(image[offset:offset + WORD_BYTES], "little")
         row = library.describe(index, entry)
         row.update(flash_word=f"0x{flash_word(library.slot_address(index)):05X}", profile_name=profile)
-        if len(images[index]) > 2:
-            row.update(images[index][2])
+        row.update({key: value for key, value in extra.items() if key != "fallback_title"})
         rows.append(row)
     if library.MENU_INDEX not in entries:
         raise ValueError("the flash library requires the menu image at index 16")
@@ -254,7 +337,7 @@ def summary(registry, assembled, hashes, folder, root):
 
 
 def library_stage(root, build, args, provenance):
-    """`sw library`: build the registered packages and write the flash image files under sw/library."""
+    """`sw library`: build the packages, fetch or reread the external images and write the flash image files under sw/library."""
     import uuid
     root = Path(root)
     stage = build / "sw/library"
@@ -263,7 +346,8 @@ def library_stage(root, build, args, provenance):
     report = {"status": "FAIL", **provenance, "attempt": folder.name}
     try:
         registry = load_registry(root)
-        images = build_images(root, build, registry, provenance, rebuild=getattr(args, "rebuild", False))
+        images = build_images(root, build, registry, provenance, rebuild=getattr(args, "rebuild", False),
+                              offline=getattr(args, "offline", False))
         assembled = assemble(images)
         hashes = write(folder, assembled)
         report.update(status="PASS", library=summary(registry, assembled, hashes, folder, root),
