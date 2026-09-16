@@ -37,6 +37,19 @@ class SourceStale(ValueError):
     pass
 
 
+def describe_failure(stage, error):
+    """Stage and error class of a failure, with a message naming no path or secret.
+
+    The retained result and the operator's terminal carry this record. An OSError
+    keeps only its strerror, so a held session lock reports 'File exists' and
+    never its local path or hashed device key; any other message drops every
+    word that looks like a path. Credentials are never part of an exception here.
+    """
+    message = (error.strerror or '') if isinstance(error,OSError) else str(error)
+    words = [word for word in message.split() if '/' not in word and '\\' not in word]
+    return {'stage':stage,'error_class':type(error).__name__,'message':' '.join(words)[:200]}
+
+
 class Latest:
     def __init__(self, *, clock=time.monotonic, stale_after=5):
         self.clock, self.stale_after = clock, stale_after
@@ -253,7 +266,8 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
     if type(step_frames) is not int or not 1 <= step_frames <= MAX_STEP_FRAMES:
         raise ValueError('step must be 1..%d whole frames' % MAX_STEP_FRAMES)
     wait = wait or stop.wait
-    result = {'status':'FAIL','captures':[],'capture_count':0}
+    # `stage` names where a failure happened: identity/preconditions, or capture.
+    result = {'status':'FAIL','stage':'preflight','captures':[],'capture_count':0}
     started = clock()
     try:
         identity = client.identify()
@@ -299,6 +313,7 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             steps.append(advance(client,step_frames*FRAME_DOTS))
             return steps[-1]
 
+        result['stage'] = 'capture'
         while not stop.is_set() and clock()-started < seconds:
             tick = clock()
             steps.clear()
@@ -364,6 +379,8 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         result['status'] = 'PASS'
     except Exception as error:
         result['reason'] = type(error).__name__
+        result.update(describe_failure(result['stage'],error))
+        # The page learns only the class name; the message stays in the result.
         latest.mark('STALE' if isinstance(error,SourceStale) else 'ERROR',type(error).__name__)
     finally:
         # No cleanup/control traffic after failed identity/preconditions.

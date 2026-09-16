@@ -691,4 +691,177 @@ class SteppedModeTests(unittest.TestCase):
         self.assertEqual(report['short_by_dots'],0)
 
 
+PASSWORD='p'*40
+DEVICE={'DeviceID':'COM92','PNPDeviceID':'USB\\VID_1234&PID_5678\\ORIGINAL_FAKE',
+        'Status':'OK','ConfigManagerErrorCode':0}
+
+
+class PreflightDiagnosticTests(unittest.TestCase):
+    """A refusal before capture keeps its stage and cause; it sends and clears nothing."""
+    def run_worker(self, root, open_session, client=None):
+        """Drive the real worker with a fake session opener; no board, no console handlers."""
+        import fpga_viewer as viewer
+        from contextlib import nullcontext, redirect_stderr, redirect_stdout
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import io
+        (root/'private.json').write_text(json.dumps({'username':'viewuser','password':PASSWORD}))
+        tag='preflight'+self._testMethodName[-12:].replace('_','')
+        args=SimpleNamespace(tag=tag,credentials=str(root/'private.json'),seconds=2,port=0,input_origin=None,
+                             interval=1,step_frames=1,expected_build_id=BUILD,uart_port='COM92',uart_vid=None,
+                             uart_pid=None,uart_identity=None)
+        out,err=io.StringIO(),io.StringIO()
+        with patch.object(viewer,'ROOT',root),patch.object(viewer,'machine_lock',lambda _id:nullcontext()),\
+             patch.object(viewer,'session',open_session),patch.object(viewer.signal,'signal'),\
+             patch.object(viewer,'session_root',lambda _root:root/'state'),\
+             patch.object(viewer,'Client',lambda wire,**_:client or wire),\
+             redirect_stdout(out),redirect_stderr(err):
+            code=viewer.worker(args)
+        folder=root/'workdir/builds'/tag/'live-viewer'
+        result=json.loads((folder/'result.json').read_text())
+        return code,result,folder,out.getvalue(),err.getvalue()
+
+    def assert_private(self, root, *texts):
+        """No credential, private selector or local path in any retained or printed text."""
+        for text in texts:
+            for secret in (PASSWORD,'viewuser',DEVICE['PNPDeviceID'],str(root)):
+                self.assertNotIn(secret,text)
+
+    def test_describe_failure_drops_paths_and_keeps_stage_and_class(self):
+        from n2m.live_viewer import describe_failure
+        held=FileExistsError(17,'File exists','/home/someone/workdir/host-sessions/abc.lock')
+        self.assertEqual(describe_failure('session-open',held),
+                         {'stage':'session-open','error_class':'FileExistsError','message':'File exists'})
+        record=describe_failure('credentials',ValueError('cannot read C:\\Users\\x\\viewer.json here'))
+        self.assertEqual(record['message'],'cannot read here')
+        self.assertEqual(describe_failure('capture',RuntimeError('x'*300))['message'],'x'*200)
+        self.assertEqual(describe_failure('preflight',OSError())['message'],'')
+
+    def test_held_lock_before_client_reports_stage_class_and_no_traffic(self):
+        from contextlib import contextmanager
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            @contextmanager
+            def held(out,args,state_root):
+                raise FileExistsError(17,'File exists',str(root/'host-sessions'/('ab'*32+'.lock')))
+                yield
+            code,result,out,stdout,stderr=self.run_worker(root,held)
+            self.assertEqual((out/'packets.jsonl').read_text(),'')
+        self.assertEqual(code,1)
+        self.assertEqual((result['status'],result['stage'],result['error_class'],result['message']),
+                         ('FAIL','session-open','FileExistsError','File exists'))
+        self.assertIn('device lock',result['conflict'])
+        self.assertEqual(result['cleanup'],{'verified':False,'reason':'session not opened; no control sent'})
+        summary=json.loads(stdout)
+        self.assertEqual((summary['status'],summary['stage'],summary['error_class']),('FAIL','session-open','FileExistsError'))
+        self.assertFalse(summary['cleanup']['verified'])
+        self.assertIn('FAIL at stage session-open: FileExistsError (File exists)',stderr)
+        self.assertIn('Cleanup verified: False',stderr)
+        self.assert_private(root,json.dumps(result),stdout,stderr)
+
+    def test_stale_lock_is_refused_and_left_in_place_with_no_traffic(self):
+        from n2m.doctor import select_uart
+        from n2m.host.transport import session
+        import hashlib
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);state=root/'state';state.mkdir()
+            key=hashlib.sha256(DEVICE['PNPDeviceID'].casefold().encode()).hexdigest()
+            lock=state/(key+'.lock');lock.write_text('pid=999999\n')
+            opened=[]
+            def real(out,args,state_root):
+                return session(out,args,state,discover=lambda folder,args:select_uart([DEVICE],args),
+                               opener=lambda port:opened.append(port))
+            code,result,out,stdout,stderr=self.run_worker(root,real)
+            # The dead owner's lock is reported, never reclaimed by the viewer.
+            self.assertEqual(lock.read_text(),'pid=999999\n')
+            self.assertEqual(sorted(path.name for path in state.iterdir()),[key+'.lock'])
+            self.assertEqual(opened,[])
+            self.assertEqual((out/'packets.jsonl').read_text(),'')
+            self.assertEqual((code,result['stage'],result['error_class']),(1,'session-open','FileExistsError'))
+            self.assertIn('Another session holds this device lock',stderr)
+            self.assertFalse(result['cleanup']['verified'])
+            self.assert_private(root,json.dumps(result),stdout,stderr)
+
+    def test_uncertain_session_is_refused_and_stays_pending(self):
+        from n2m.doctor import select_uart
+        from n2m.host.transport import session
+        import hashlib
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);state=root/'state';state.mkdir()
+            key=hashlib.sha256(DEVICE['PNPDeviceID'].casefold().encode()).hexdigest()
+            journal=state/(key+'.json');journal.write_text(json.dumps({'next_sequence':7,'pending':True}))
+            opened=[]
+            def real(out,args,state_root):
+                return session(out,args,state,discover=lambda folder,args:select_uart([DEVICE],args),
+                               opener=lambda port:opened.append(port))
+            code,result,out,stdout,stderr=self.run_worker(root,real)
+            self.assertEqual(json.loads(journal.read_text()),{'next_sequence':7,'pending':True})
+            self.assertFalse((state/(key+'.lock')).exists())
+            self.assertEqual(opened,[])
+            self.assertEqual((out/'packets.jsonl').read_text(),'')
+            self.assertEqual((code,result['stage'],result['error_class']),(1,'session-open','RuntimeError'))
+            self.assertIn('uncertain',result['message'])
+            self.assertIn('durable session for this device is uncertain',stderr)
+            self.assertFalse(result['cleanup']['verified'])
+            self.assert_private(root,json.dumps(result),stdout,stderr)
+
+    def test_preflight_exception_after_open_names_its_stage_and_sends_no_control(self):
+        from contextlib import contextmanager
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);client=Fake(Clock(),'identity')
+            @contextmanager
+            def opened(out,args,state_root):
+                yield client,0,lambda *_:None,DEVICE
+            code,result,out,stdout,stderr=self.run_worker(root,opened,client)
+        self.assertEqual(client.events,['identify'])
+        self.assertEqual((code,result['status'],result['stage'],result['error_class'],result['message']),
+                         (1,'FAIL','preflight','ValueError','build mismatch'))
+        self.assertEqual(result['cleanup'],{'verified':False,'reason':'preconditions failed; no control sent'})
+        self.assertIn('FAIL at stage preflight: ValueError (build mismatch)',stderr)
+        self.assert_private(root,json.dumps(result),stdout,stderr)
+
+    def test_capture_stage_and_page_carry_only_the_error_class(self):
+        clock=Clock();client=Fake(clock,'uncertain');latest=Latest(clock=clock)
+        with tempfile.TemporaryDirectory() as folder:
+            result=capture_loop(client,latest,Path(folder),png_writer,expected_build=BUILD,stop=clock,
+                                clock=clock,wait=clock.wait,seconds=4,interval=2)
+        self.assertEqual((result['stage'],result['error_class'],result['message']),('capture','RuntimeError','fake uncertainty'))
+        status=latest.read()[0]
+        self.assertEqual((status['state'],status['reason']),('ERROR','RuntimeError'))
+        self.assertNotIn('fake uncertainty',json.dumps(status))
+
+    def test_parent_repeats_the_hidden_worker_verdict(self):
+        from unittest.mock import MagicMock,patch
+        from contextlib import redirect_stdout
+        import io
+        import fpga_viewer as viewer
+        from n2m.fixture_preflight import fixture_imports
+        # main() adds the springtrail path under the patched ROOT; import the real
+        # supervisor first, isolated from the v05 fixture's own reference module.
+        with fixture_imports(viewer.ROOT),tempfile.TemporaryDirectory() as folder:
+            import endurance  # noqa: F401
+            root=Path(folder);tag='preflightparent'
+            retained={'status':'FAIL','stage':'session-open','error_class':'FileExistsError','message':'File exists',
+                      'conflict':'Another session holds this device lock.',
+                      'cleanup':{'verified':False,'reason':'session not opened; no control sent'}}
+            def launch(*_,**__):
+                (root/'workdir/builds'/tag/'live-viewer').mkdir(parents=True)
+                (root/'workdir/builds'/tag/'live-viewer/result.json').write_text(json.dumps(retained))
+                return tree
+            tree=MagicMock();tree.__enter__.return_value=tree
+            tree.process.returncode=1
+            with patch.object(viewer,'ROOT',root),patch('n2m.process_tree.Tree',side_effect=launch),redirect_stdout(io.StringIO()) as stdout:
+                code=viewer.main(['--tag',tag,'--credentials','private.json','--expected-build-id',BUILD,'--seconds','30'])
+            self.assertEqual(code,1)
+            text=stdout.getvalue()
+            self.assertIn('Viewer worker FAIL at stage session-open: FileExistsError (File exists)',text)
+            self.assertIn('Another session holds this device lock.',text)
+            self.assertIn('Cleanup verified: False; session not opened; no control sent',text)
+            tree.process.returncode=0
+            with patch.object(viewer,'ROOT',root),patch('n2m.process_tree.Tree',return_value=tree),redirect_stdout(io.StringIO()) as stdout:
+                code=viewer.main(['--tag','preflightnone','--credentials','private.json','--expected-build-id',BUILD,'--seconds','30'])
+            self.assertEqual(code,0)
+            self.assertIn('left no result.json',stdout.getvalue())
+
+
 if __name__=='__main__':unittest.main()

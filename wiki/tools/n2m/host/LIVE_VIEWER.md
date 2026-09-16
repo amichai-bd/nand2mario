@@ -224,6 +224,34 @@ procedures. Never reclaim a live owner's lock by age or clear an uncertain
 session merely to reconnect. A crashed producer lock similarly fails closed and
 requires inspection.
 
+### Refusal diagnostics
+
+The worker runs without a console window, so a failure before the first capture
+is retained and repeated rather than lost. `live-viewer/result.json` under the
+tag records `stage`, `error_class` and a redacted `message`; the parent prints
+the same verdict on the operator's terminal after the supervisor returns, with
+the cleanup outcome, and the worker's own stdout JSON carries `stage` and
+`error_class`. Stages in order: `credentials`, `http-server`, `machine-lock`,
+`session-open`, then `preflight` (identity, image, input authority and core
+state checks) and `capture`. A held or dead-owner session lock reports
+`session-open` / `FileExistsError`; an uncertain durable session reports
+`session-open` / `RuntimeError`; a build mismatch reports `preflight` /
+`ValueError`. A known conflict adds the same `conflict` explanation the
+[on-screen pad](GAMEPAD.md) gives.
+
+The message is redacted by rule ([`describe_failure`](https://github.com/amichai-bd/nand2mario/blob/main/tools/n2m/live_viewer.py)):
+an `OSError` keeps only its `strerror`, so a lock refusal says `File exists`
+and never the lock path or hashed device key, and every other message drops
+words containing a path separator. Credentials, selectors and local paths
+never enter the result, the terminal line or the page; `/status.json` shows
+only the error class. A refusal reports `cleanup.verified: false` with
+`session not opened; no control sent` or `preconditions failed; no control
+sent`. It sends no UART traffic, leaves an existing lock and a pending journal
+exactly as found, and is not a clean stop.
+[`test_live_viewer.py`](https://github.com/amichai-bd/nand2mario/blob/main/tools/n2m/tests/test_live_viewer.py)
+covers the held lock, dead-owner lock, uncertain session, preflight failure,
+redaction and the parent's repeated verdict.
+
 Preserve the active checkout, private credentials and runtime artifacts while a
 viewer runs; ordinary PR cleanup must not kill it. Stop and verify a safe board
 state before changing imported runtime source. A manually started tunnel remains

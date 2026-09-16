@@ -23,7 +23,7 @@ from ci.storage import machine_lock
 from n2m.host.client import Client
 from n2m.host.transport import session, session_root
 from n2m.gui_pad import explain_conflict, pad_loop
-from n2m.live_viewer import MAX_STEP_FRAMES, Latest, capture_loop, server
+from n2m.live_viewer import MAX_STEP_FRAMES, Latest, capture_loop, describe_failure, server
 from n2m.records import atomic_json
 from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
 
@@ -56,47 +56,94 @@ class Stop:
         return True
 
 
-def worker(args):
-    out = ROOT/'workdir/builds'/args.tag/'live-viewer'
-    out.mkdir(parents=True,exist_ok=False)
-    credential_path = Path(args.credentials).resolve()
+def load_credentials(path):
+    credential_path = Path(path).resolve()
     if not credential_path.is_file():
         raise ValueError('private credentials file must be initialized before launch')
     credentials = json.loads(credential_path.read_text(encoding='utf-8'))
     if not credentials.get('username') or len(credentials.get('password','')) < 32:
         raise ValueError('high entropy credentials required')
-    latest = Latest()
-    stop = Stop(out/'STOP',args.seconds)
-    signal.signal(signal.SIGINT,lambda *_:stop.event.set())
-    signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
-    http = server(latest,credentials['username'],credentials['password'],args.port,
-                  input_origin=args.input_origin,submit=lambda mask,ms:enqueue(out,mask,ms),
-                  submit_mode=lambda mode:enqueue_mode(out,mode),command_history=lambda:history(out))
-    thread = threading.Thread(target=http.serve_forever,daemon=True)
-    thread.start()
-    atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})
-    selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
-                                uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
-    result = {'status':'FAIL','reason':'preflight not completed'}
-    buttons = Buttons(out)
+    return credentials
+
+
+def failure_line(result):
+    """One operator line: stage, error class and redacted message; never a secret.
+
+    A refusal names its cleanup outcome so it cannot read as a clean stop.
+    """
+    line = f"Viewer worker FAIL at stage {result.get('stage','unknown')}: {result.get('error_class') or result.get('reason','unknown')}"
+    if result.get('message'):
+        line += f" ({result['message']})"
+    if result.get('conflict'):
+        line += '\n'+result['conflict']
+    cleanup = result.get('cleanup') or {}
+    return line+f"\nCleanup verified: {cleanup.get('verified',False)}; {cleanup.get('reason','see result.json')}"
+
+
+def report_worker(path):
+    """The hidden worker's retained verdict, said again on the parent's terminal."""
+    if not path.is_file():
+        return 'Viewer worker left no result.json; see viewer-budget/budget.json under the tag'
+    result = json.loads(path.read_text(encoding='utf-8'))
+    if result.get('status') == 'PASS':
+        return f"Viewer worker PASS: {result.get('capture_count',0)} captures in {result.get('seconds')} s"
+    return failure_line(result)
+
+
+def worker(args):
+    out = ROOT/'workdir/builds'/args.tag/'live-viewer'
+    out.mkdir(parents=True,exist_ok=False)
+    # Until a client exists no session was opened, so cleanup is truthfully "none".
+    result = {'status':'FAIL','stage':'credentials','reason':'preflight not completed',
+              'cleanup':{'verified':False,'reason':'session not opened; no control sent'}}
+    http = buttons = None
     try:
+        credentials = load_credentials(args.credentials)
+        result['stage'] = 'http-server'
+        latest = Latest()
+        stop = Stop(out/'STOP',args.seconds)
+        signal.signal(signal.SIGINT,lambda *_:stop.event.set())
+        signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
+        http = server(latest,credentials['username'],credentials['password'],args.port,
+                      input_origin=args.input_origin,submit=lambda mask,ms:enqueue(out,mask,ms),
+                      submit_mode=lambda mode:enqueue_mode(out,mode),command_history=lambda:history(out))
+        thread = threading.Thread(target=http.serve_forever,daemon=True)
+        thread.start()
+        atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})
+        selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
+                                    uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
+        buttons = Buttons(out)
+        result['stage'] = 'machine-lock'
         with machine_lock(1357311510), (out/'packets.jsonl').open('w',encoding='utf-8') as packets:
             def record(row):
                 packets.write(json.dumps(row)+'\n');packets.flush()
+            result['stage'] = 'session-open'
             with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
                 client = Client(wire,sequence=sequence,persist=persist,record=record)
                 result = capture_loop(client,latest,out,png_writer,expected_build=args.expected_build_id,
                                       stop=stop,seconds=args.seconds,interval=args.interval,buttons=buttons,
                                       step_frames=args.step_frames)
+    except Exception as error:
+        # A refusal before capture keeps its decisive cause: the stage, the error
+        # class and a message with no path, device fact or credential in it.
+        result.update(describe_failure(result['stage'],error))
+        explanation = explain_conflict(error)
+        if explanation:
+            result['conflict'] = explanation
     finally:
-        try:
-            result['cancelled_inputs'] = buttons.close()
-        except Exception as error:
-            result.update(status='FAIL',queue_close_error=str(error))
+        if buttons is not None:
+            try:
+                result['cancelled_inputs'] = buttons.close()
+            except Exception as error:
+                result.update(status='FAIL',queue_close_error=str(error))
         atomic_json(out/'result.json',result)
-        http.shutdown();http.server_close();thread.join(timeout=2)
+        if http is not None:
+            http.shutdown();http.server_close();thread.join(timeout=2)
     print(json.dumps({'status':result['status'],'captures':result.get('capture_count',0),
-                      'seconds':result.get('seconds'),'cleanup':result.get('cleanup')}))
+                      'seconds':result.get('seconds'),'cleanup':result.get('cleanup'),
+                      'stage':result.get('stage'),'error_class':result.get('error_class')}))
+    if result['status'] != 'PASS':
+        print(failure_line(result),file=sys.stderr)
     return 0 if result['status']=='PASS' and result.get('released') else 1
 
 
@@ -211,7 +258,10 @@ def main(argv=None):
     sys.path.insert(0,str(ROOT/'src/dv/springtrail'))
     from endurance import supervise
     print(f'Viewer tag {args.tag}; lease {args.seconds}s; whole cap {args.seconds+30}s',flush=True)
-    return supervise(command,args.seconds+30,ROOT/'workdir/builds'/args.tag/'viewer-budget')
+    code = supervise(command,args.seconds+30,ROOT/'workdir/builds'/args.tag/'viewer-budget')
+    # The worker runs without a console window, so its verdict is repeated here.
+    print(report_worker(ROOT/'workdir/builds'/args.tag/'live-viewer/result.json'),flush=True)
+    return code
 
 
 if __name__ == '__main__':
