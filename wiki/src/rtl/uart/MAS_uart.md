@@ -28,6 +28,12 @@ the request. No command is exposed before integrity checking completes.
 and 268 decoded bytes with the current generated ABI, 4304 logical bits total.
 It does not contain the completed request/response cache. Both RAMs use nine-bit
 addresses, one `clk_sys`, byte writes on port A and one-edge read-only port B.
+Each address is a receiver register (`encoded_count`, `encoded_index`,
+`decoded_count`) driving the M9K's own input address register with no logic
+between them, so the path's fast-corner hold margin is only its routing delay
+against the M9K's later clock (about 0.2 ns of skew plus the block's hold
+requirement); the [system-clock hold uncertainty](../../clocks-resets-cdc.md#timing-constraints)
+gives every such path a constructed 0.150 ns margin instead of a placement-dependent one.
 The receiver writes and decoder reads the encoded bank in disjoint states;
 the decoder writes and dispatcher reads the decoded bank in disjoint states.
 There is no required mixed-port collision value. Reset masks read validity and

@@ -3,8 +3,12 @@
 The timing summary keeps one hold slack per clock; the fitter only pushes hold
 to a non-negative value, so a shrinking slack has no visible endpoint until it
 fails. These reports name the few worst paths captured by each clock so the
-pair can be watched across fits. They are evidence only: pass/fail stays with
-the summary and structural checks in fpga.timing_evidence.
+pair can be watched across fits. Each path also records the clock uncertainty
+TimeQuest applied to its hold check: the SDC adds 0.150 ns of same-clock hold
+uncertainty on the system clock so the fitter routes register-to-hard-block
+paths with that physical margin, and the reported slack is what remains above
+it. They are evidence only: pass/fail stays with the summary and structural
+checks in fpga.timing_evidence.
 """
 import re
 
@@ -18,6 +22,7 @@ MODELS = {corner: f"{model.title()} 1200mV {temperature}C Model" for corner, mod
 FOUND = re.compile(r"Report Timing: Found (\d+) hold paths \((\d+) violated\)\.\s+Worst case slack is (\S+)")
 EMPTY = "Report Timing: No paths to report."
 COLUMNS = ("slack_ns", "from", "to", "launch_clock", "latch_clock", "relationship_ns", "clock_skew_ns", "data_delay_ns")
+UNCERTAINTY_ROW = "clock uncertainty"
 
 
 def report_name(corner, label):
@@ -44,7 +49,9 @@ def parse(text, *, corner, clock):
     """Rows of one report: found/violated counts and the summary-table paths.
 
     The report must be for the expected delay model and destination clock;
-    the table must agree with its header. Slack signs are recorded, not judged.
+    the table must agree with its header, and every path's required-time
+    detail must carry its clock uncertainty row. Slack signs are recorded,
+    not judged.
     """
     if f"Delay Model:\n    {MODELS[corner]}" not in text.replace("\r\n", "\n"):
         raise ValueError(f"hold path report corner differs: {corner}")
@@ -57,11 +64,16 @@ def parse(text, *, corner, clock):
     rows = [r for r in fpga_vga.rows(fpga_vga.summary(text)) if len(r) == len(COLUMNS) and r[0] != "Slack"]
     if len(rows) != found or not 0 < found <= NPATHS:
         raise ValueError("hold path report table and header disagree")
+    # One "clock uncertainty" row per path, in the required-time detail of the full_path report.
+    uncertainties = [fpga_vga.number(r[1]) for r in fpga_vga.rows(text) if len(r) == 7 and r[6] == UNCERTAINTY_ROW]
+    if len(uncertainties) != found:
+        raise ValueError("hold path report uncertainty rows differ from its paths")
     paths = []
-    for row in rows:
+    for row, uncertainty in zip(rows, uncertainties):
         path = {"slack_ns": fpga_vga.number(row[0]), "from": fpga_vga.node(row[1]), "to": fpga_vga.node(row[2]),
                 "launch_clock": row[3], "latch_clock": row[4], "relationship_ns": fpga_vga.number(row[5]),
-                "clock_skew_ns": fpga_vga.number(row[6]), "data_delay_ns": fpga_vga.number(row[7])}
+                "clock_skew_ns": fpga_vga.number(row[6]), "data_delay_ns": fpga_vga.number(row[7]),
+                "hold_uncertainty_ns": uncertainty}
         if path["latch_clock"] != clock:
             raise ValueError("hold path latched by another clock")
         paths.append(path)
@@ -100,6 +112,7 @@ def summary_lines(evidence):
         if worst is None:
             lines.append(f"Worst hold ({label} {entry['clock']}): no paths reported")
             continue
-        lines.append(f"Worst hold ({label} {entry['clock']}): {worst['slack_ns']:.3f} ns at {worst['corner']}, "
+        lines.append(f"Worst hold ({label} {entry['clock']}): {worst['slack_ns']:.3f} ns at {worst['corner']} "
+                     f"above {worst['hold_uncertainty_ns']:.3f} ns hold uncertainty, "
                      f"{worst['from']} -> {worst['to']} ({worst['report']})")
     return lines

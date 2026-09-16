@@ -19,7 +19,7 @@ def row(*cells):
     return "; " + " ; ".join(str(c) for c in cells) + " ;\n"
 
 
-def report(corner, label, slacks, *, violated=None):
+def report(corner, label, slacks, *, violated=None, uncertainty=0.150):
     """The shape quartus_sta writes for report_timing -hold -detail full_path -file."""
     clock = fpga_hold.CLOCKS[label]
     launch = SYSTEM
@@ -34,7 +34,11 @@ def report(corner, label, slacks, *, violated=None):
     table = "; Summary of Paths\n" + row("Slack", "From Node", "To Node", "Launch Clock", "Latch Clock", "Relationship", "Clock Skew", "Data Delay")
     for slack, (source, sink) in zip(slacks, endpoints):
         table += row(f"{slack:.3f}", source, sink, launch, clock, "0.000", "-0.025", f"{slack + 0.3:.3f}")
-    return header + table + "\nPath #1: Hold slack is %.3f \n" % slacks[0]
+    detail = ""
+    for index, slack in enumerate(slacks, 1):
+        # The required-time detail of each path carries the uncertainty TimeQuest applied to its hold check.
+        detail += f"\nPath #{index}: Hold slack is {slack:.3f} \n" + row("0.219", f"{uncertainty:.3f}", "", "", "", "", "clock uncertainty")
+    return header + table + detail
 
 
 def fixture(folder, *, system=SYSTEM_SLACKS, sdram=SDRAM_SLACKS):
@@ -70,8 +74,11 @@ class HoldPathTests(unittest.TestCase):
         first = parsed["paths"][0]
         self.assertEqual(first, {"slack_ns": 0.019, "from": "u_system|u_uart|stage[0]", "to": "u_system|u_uart|stage[1]",
                                  "launch_clock": SYSTEM, "latch_clock": SYSTEM, "relationship_ns": 0.0,
-                                 "clock_skew_ns": -0.025, "data_delay_ns": 0.319})
+                                 "clock_skew_ns": -0.025, "data_delay_ns": 0.319, "hold_uncertainty_ns": 0.15})
         self.assertEqual([p["slack_ns"] for p in parsed["paths"]], list(SYSTEM_SLACKS["fast0"]))
+        self.assertEqual({p["hold_uncertainty_ns"] for p in parsed["paths"]}, {0.15})
+        zero = fpga_hold.parse(report("fast0", "system", SYSTEM_SLACKS["fast0"], uncertainty=0.0), corner="fast0", clock=SYSTEM)
+        self.assertEqual(zero["paths"][0]["hold_uncertainty_ns"], 0.0)
         sdram = fpga_hold.parse(report("slow85", "sdram", SDRAM_SLACKS["slow85"]), corner="slow85", clock=SDRAM)
         self.assertEqual((sdram["found"], sdram["paths"][0]["to"], sdram["paths"][0]["latch_clock"]), (3, "DRAM_ADDR[0]", SDRAM))
         text = f"Delay Model:\n    {fpga_hold.MODELS['fast0']}\n{fpga_hold.EMPTY}\n"
@@ -92,6 +99,7 @@ class HoldPathTests(unittest.TestCase):
             "violated": ("(0 violated)", "(1 violated)"),
             "nonfinite": ("; 0.127 ; ", "; nan ; "),
             "table": ("; Summary of Paths", "; Summary"),
+            "uncertainty": ("; clock uncertainty ;", "; clock skew ;"),
         }
         for name, (before, after) in cases.items():
             with self.subTest(name=name):
@@ -112,6 +120,7 @@ class HoldPathTests(unittest.TestCase):
         self.assertEqual(len(system["corners"]["slow0"]["paths"]), 5)
         self.assertEqual(system["worst"]["corner"], "fast0")
         self.assertEqual(system["worst"]["slack_ns"], 0.019)
+        self.assertEqual(system["worst"]["hold_uncertainty_ns"], 0.15)
         self.assertEqual(system["worst"]["report"], "hold_fast0_system.rpt")
         self.assertEqual((system["worst"]["from"], system["worst"]["to"]), ("u_system|u_uart|stage[0]", "u_system|u_uart|stage[1]"))
         sdram = evidence["clocks"]["sdram"]
@@ -119,8 +128,8 @@ class HoldPathTests(unittest.TestCase):
                          (SDRAM, "fast0", 18.939, "DRAM_ADDR[0]"))
         lines = fpga_hold.summary_lines(evidence)
         self.assertEqual(lines, [
-            f"Worst hold (system {SYSTEM}): 0.019 ns at fast0, u_system|u_uart|stage[0] -> u_system|u_uart|stage[1] (hold_fast0_system.rpt)",
-            f"Worst hold (sdram {SDRAM}): 18.939 ns at fast0, u_system|u_sdram|addr[0] -> DRAM_ADDR[0] (hold_fast0_sdram.rpt)"])
+            f"Worst hold (system {SYSTEM}): 0.019 ns at fast0 above 0.150 ns hold uncertainty, u_system|u_uart|stage[0] -> u_system|u_uart|stage[1] (hold_fast0_system.rpt)",
+            f"Worst hold (sdram {SDRAM}): 18.939 ns at fast0 above 0.150 ns hold uncertainty, u_system|u_sdram|addr[0] -> DRAM_ADDR[0] (hold_fast0_sdram.rpt)"])
         self.assertEqual(fpga_hold.summary_lines(None), [])
         (self.folder / "output/hold_slow85_sdram.rpt").unlink()
         with self.assertRaisesRegex(ValueError, "missing hold path report: hold_slow85_sdram.rpt"):
