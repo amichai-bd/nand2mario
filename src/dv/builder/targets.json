@@ -7119,7 +7119,7 @@
       "verilator"
     ],
     "args": [],
-    "signature": "PASS UART validation checks=223",
+    "signature": "PASS UART validation checks=237",
     "expected_exit": "zero"
   },
   "uart-validation-corrupt": {
@@ -30320,7 +30320,7 @@
     ],
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS library-peer transactions=6635 device_writes=6208 device_reads=6272",
+    "signature": "PASS library-peer transactions=843 device_writes=6208 device_reads=6272",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {

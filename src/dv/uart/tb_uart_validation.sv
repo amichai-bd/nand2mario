@@ -7,7 +7,7 @@ module tb_uart_validation;
     n2m_interfaces_pkg::snapshot_t metadata;
     n2m_interfaces_pkg::packet_header_t header;
     logic [8:0] packet_bytes;
-    logic [159:0] arguments;
+    logic [n2m_uart_pkg::UART_ARGUMENT_BYTES*8-1:0] arguments;
     logic [7:0] status;
     logic [15:0] response_length;
     logic [31:0] expected_data;
@@ -92,14 +92,14 @@ module tb_uart_validation;
         command_case(8'h01,16'd0,16'd4);
         command_case(8'h02,16'd4,16'd4);
         command_case(8'h05,16'd0,16'd8);
-        arguments = 160'd1;
+        arguments = 72'd1;
         command_case(8'h06,16'd4,16'd8);
         command_case(8'h0F,16'd4,16'd13);
         packet_bytes = 9'd16;
-        arguments = 160'd70224; check_reply(8'h00,16'd13);
-        arguments = 160'd0; check_reply(8'h04,16'd0);
-        arguments = 160'd70225; check_reply(8'h04,16'd0);
-        arguments = 160'd1; endpoint_state = 8'h01; check_reply(8'h05,16'd0);
+        arguments = 72'd70224; check_reply(8'h00,16'd13);
+        arguments = 72'd0; check_reply(8'h04,16'd0);
+        arguments = 72'd70225; check_reply(8'h04,16'd0);
+        arguments = 72'd1; endpoint_state = 8'h01; check_reply(8'h05,16'd0);
         endpoint_state = 8'h02; check_reply(8'h05,16'd0);
         endpoint_state = 8'h00;
         command_case(8'h0B,16'd1,16'd8);
@@ -126,7 +126,23 @@ module tb_uart_validation;
         endpoint_state = 8'h00;
         address = 32'hDEADBEEF; header.command = 8'h02; header.length = 16'd4; packet_bytes = 9'd16;
         check_reply(8'h04,16'd0);
-        if (checks != 223) $fatal(1, "UART_VALIDATE_COVERAGE");
+        // SDRAM_WRITE: the address record plus 1..15 whole lines. 20, 36 and
+        // 244 bytes are accepted; 19, 21, 4 and 252 are BAD_LENGTH; a range
+        // past the device end and a misaligned address are BAD_VALUE; a
+        // 260-byte sixteen-line payload is the structural BAD_LENGTH.
+        header.command = 8'h11; arguments = '0;
+        command_case(8'h11,16'd20,16'd0);
+        command_case(8'h11,16'd36,16'd0);
+        command_case(8'h11,16'd244,16'd0);
+        header.length = 16'd19; packet_bytes = 9'd31; check_reply(8'h03,16'd0);
+        header.length = 16'd21; packet_bytes = 9'd33; check_reply(8'h03,16'd0);
+        header.length = 16'd4; packet_bytes = 9'd16; check_reply(8'h03,16'd0);
+        header.length = 16'd252; packet_bytes = 9'd264; check_reply(8'h03,16'd0);
+        header.length = 16'd260; packet_bytes = 9'd272; check_reply(8'h03,16'd0);
+        header.length = 16'd36; packet_bytes = 9'd48; arguments[31:0] = 32'h3fffff0; check_reply(8'h04,16'd0);
+        header.length = 16'd20; packet_bytes = 9'd32; check_reply(8'h00,16'd0);
+        arguments[31:0] = 32'h0000008; check_reply(8'h04,16'd0);
+        if (checks != 237) $fatal(1, "UART_VALIDATE_COVERAGE");
         $display("PASS UART validation checks=%0d", checks); $finish;
     end
 endmodule
