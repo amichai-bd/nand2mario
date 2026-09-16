@@ -1831,7 +1831,9 @@ external value is resolved at registry load: an unknown pin, a pin missing
 `url`, `sha256`, `size` or `license`, a pin whose `size` is neither 32768 nor
 65536, or a 64 KiB pin whose next slot is registered is refused by name.
 Today it lists `springtrail`, `stackdrop` and `v05` in slots 0-2, the seven
-playing homebrew images in slots 3-9 and `menu` at 16.
+playing 32 KiB homebrew images in slots 3-9, the 64 KiB MBC1 game PostBot at
+slot 10 (its continuation fills slot 11, which stays unregistered) and `menu`
+at 16.
 
 A slot is registrable when its image turns the LCD on and is an original game
 or interactive demo, or a pinned freely licensed third-party game that has run
@@ -1878,6 +1880,7 @@ blank screen.
 | 7 | `alien-invasion` | blank; pinned `ALIEN INVASION` | NiliusJulius | GPL-3.0-only | [Alien-Invasion.gb v1.0.0](https://github.com/NiliusJulius/Alien-Invasion/releases/download/v1.0.0/Alien-Invasion.gb) |
 | 8 | `square-fall` | blank; pinned `SQUARE FALL` | bjorn_nah | MIT | [square_fall_v03.gb v0.3](https://github.com/bjorn-nah/square_fall/releases/download/v0.3/square_fall_v03.gb) |
 | 9 | `unstoppable-knight` | `KNIGHT` | Rafagars | MIT | [knight.gb 2.2.2](https://github.com/Rafagars/Unstoppable-Knight-GB/releases/download/2.2.2/knight.gb) |
+| 10-11 | `postbot` (64 KiB, `dmg-mbc1-v1`) | `POSTBOT` | Tobias Rojahn (MasterIV) | MIT | [PostBot.gb @ 5e9316a](https://raw.githubusercontent.com/MasterIV/PostBot/5e9316ae37761171870fd6350b55725b83d59e6c/PostBot.gb) |
 
 The SHA-256 of every artifact and its licence text are the pin file's; the
 library record repeats the licence, the pinned URL and the image hash per row
@@ -1893,20 +1896,21 @@ that only an all-zero header takes the fallback and a named header is never
 overridden. Four of the images (Libbet, Airaki, GB Wordyl, Unstoppable Knight)
 set the CGB-compatible flag `0x80` at `0x143`, the last title byte; the
 [menu](../../src/sw/menu/SPEC.md) draws `0x80` and `0xC0` in that cell as
-blank, so the flag never shows. Every other title byte of the seven images is
+blank, so the flag never shows. Every other title byte of the eight images is
 a letter, digit, dash, space or zero, so the
 [menu reference](../../../src/dv/menu/reference.py) draws them as written.
 
-Capacity: the ten registered images and the catalogue define 90,368 words of
-the 188,416-word user range, so six more 32 KiB slots (indices 10-15) remain
-addressable, and the user range holds all sixteen slots and the catalogue by
-construction (`16 * 8192 + 256 < 0x2E000` words). The compressed bitstream
-lives in the separate 672 KiB CFM0, so the slot count does not compete with
-the design: the practical slot capacity is the contract's sixteen. The CFM0
-usage of a build is measured in its `.pof` evidence, described below; the
-`v05-board` build of this ten-image registry records 368,590 of 688,128 CFM0
-bytes used (367,027 programmed, 319,538 spare) beside a 361,472-byte library
-that matches the `.pof` user range exactly once.
+Capacity: the eleven registered images (ten 32 KiB, one 64 KiB in slots
+10-11) and the catalogue define 106,752 words of the 188,416-word user range,
+so four more 32 KiB slots (indices 12-15) remain addressable, and the user
+range holds all sixteen slots and the catalogue by construction
+(`16 * 8192 + 256 < 0x2E000` words). The compressed bitstream lives in the
+separate 672 KiB CFM0, so the slot count does not compete with the design:
+the practical slot capacity is the contract's sixteen. The CFM0 usage of a
+build is measured in its `.pof` evidence, described below; the `v05-board`
+build of this eleven-image registry records CFM0_USED of 688,128 CFM0 bytes
+used (CFM0_PROGRAMMED programmed, CFM0_SPARE spare) beside a 427,008-byte
+library that matches the `.pof` user range exactly once.
 
 `python tools/build.py sw library --tag <tag> --json` builds every registered
 package through the same `sw build` stages under that tag (cached as usual;
