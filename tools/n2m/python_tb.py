@@ -188,6 +188,8 @@ def fixture_inputs(root, preload):
                     "src/sw/generated/interfaces.inc", "cfg/interfaces.json"}
         required.update(p.relative_to(root).as_posix() for p in (root / "src/sw/menu").rglob("*")
                         if p.suffix in (".asm", ".json"))
+        required.update(p.relative_to(root).as_posix() for p in (root / "src/sw/exit-demo").iterdir()
+                        if p.suffix in (".asm", ".json"))
     if preload.startswith('startup-'):
         required = {'src/dv/ppu/startup202.py', 'src/sw/generated/interfaces.inc'}
     if preload.startswith('late-'):

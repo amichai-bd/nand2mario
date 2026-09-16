@@ -1,11 +1,12 @@
 """Fixture library and scripted frames for the menu Verilator targets.
 
 `build` is the registered `menu` preload builder: it builds the menu image
-through the software pipeline, lays out a sixteen-slot SDRAM library around
-it (eight 32 KiB stub games, one 64 KiB MBC1 stub game in two slots, one
+and the `exit-demo` game through the software pipeline, lays out a
+sixteen-slot SDRAM library around them (seven 32 KiB stub games, the built
+`exit-demo` image in slot 1, one 64 KiB MBC1 stub game in two slots, one
 empty slot, one entry that is valid but has a foreign length, the rest
 empty) and writes the bytes the testbench reads with `$readmemh`, plus the
-reference frames of the scripted scenario. The catalogue entry layout is
+reference frames of the scripted scenario and the `exit-demo` game frame. The catalogue entry layout is
 the `catalogue_entry_t` record of cfg/interfaces.json: valid, profile,
 length (bits 15:0), crc32, title, length_high (bits 23:16), 7 reserved bytes.
 """
@@ -24,14 +25,20 @@ LIBRARY_BYTES = 0x8C000
 ENTRY = struct.Struct('<BBHI16sB7x')
 PROFILE_DIRECT, PROFILE_LOADER, PROFILE_MBC1 = 1, 2, 3
 GAME_EXIT_VALUE = 0x10
-# Eight 32 KiB stub games: the three registered titles, a full
+# Seven 32 KiB stub games: two registered titles, a full
 # sixteen-character title, a padded title with the CGB-only flag, a title
 # with digits and dashes, a fifteen-byte title with the CGB flag at header
-# 0x143 and one on the last row, so ten rows (with the short slot and the
-# 64 KiB game) are valid and the empty rows are the minority.
-GAMES = {0: b'SPRINGTRAIL', 1: b'STACKDROP', 2: b'V05 BUTTONS', 7: b'SIXTEEN CHAR ROW',
+# 0x143 and one on the last row, so ten rows (with the exit demo, the short
+# slot and the 64 KiB game) are valid and the empty rows are the minority.
+GAMES = {0: b'SPRINGTRAIL', 2: b'V05 BUTTONS', 7: b'SIXTEEN CHAR ROW',
          8: b'CGB ONLY TITLE\x00\xC0', 9: b'ABC-123 XYZ 789', 10: b'CGB FLAGGED ROW\x80',
          15: b'LAST SLOT'}
+# Slot 1 holds the built `exit-demo` image (title EXIT DEMO, one Down from
+# the boot cursor): a solid bar on map row eight, and while Start is held
+# it writes the game exit value. Without the build (host-only tests) a stub
+# with the same title stands in, so the menu reference frames are equal.
+EXIT_SLOT, EXIT_TITLE, EXIT_TARGET = 1, b'EXIT DEMO', 'exit-demo'
+BAR_ROW = 8
 # Slot 4 is valid to the menu (valid byte 1) but the engine refuses its
 # foreign length; slot 3 is the empty slot the refused-selection scenario uses.
 SHORT_SLOT, EMPTY_SLOT = 4, 3
@@ -43,6 +50,8 @@ SCENARIO = [dict(cursor=0), dict(cursor=1), dict(cursor=2), dict(cursor=3),
             dict(cursor=3, result=reference.RESULT_INVALID_SLOT, index=3),
             dict(cursor=2, result=reference.RESULT_INVALID_SLOT, index=3),
             dict(cursor=MBC1_SLOT)]
+# The exit-demo game frame follows the scenario frames in `menu-frames.hex`.
+GAME_FRAME = len(SCENARIO)
 
 
 def game_image(index, title):
@@ -76,7 +85,21 @@ def mbc1_image():
     return bytes(image)
 
 
-def entries(menu_image):
+def exit_stub():
+    return game_image(EXIT_SLOT, EXIT_TITLE)
+
+
+def exit_frame():
+    """The exit-demo screen: shade 3 on the eight pixel rows of map row BAR_ROW, shade 0 elsewhere."""
+    return bytes(3 if BAR_ROW * 8 <= y < BAR_ROW * 8 + 8 else 0 for y in range(reference.HEIGHT) for _x in range(reference.WIDTH))
+
+
+def pack(pixels):
+    """Shade bytes to the packed `host snapshot` layout: four 2-bit pixels per byte, first pixel low."""
+    return bytes(sum(pixels[i + k] << (2 * k) for k in range(4)) for i in range(0, len(pixels), 4))
+
+
+def entries(menu_image, exit_image=None):
     """Seventeen catalogue rows shaped like n2m.host.library.unpack_entry."""
     rows = []
     for index in range(IMAGES):
@@ -84,6 +107,9 @@ def entries(menu_image):
         if index == MENU:
             image = menu_image
             row.update(valid=1, profile=PROFILE_LOADER, length=SLOT_BYTES)
+        elif index == EXIT_SLOT:
+            image = exit_stub() if exit_image is None else exit_image
+            row.update(valid=1, profile=PROFILE_DIRECT, length=SLOT_BYTES)
         elif index in GAMES:
             image = game_image(index, GAMES[index])
             row.update(valid=1, profile=PROFILE_DIRECT, length=SLOT_BYTES)
@@ -101,10 +127,12 @@ def entries(menu_image):
     return rows
 
 
-def image_bytes(index, menu_image):
+def image_bytes(index, menu_image, exit_image=None):
     """The 32 KiB of slot `index`; the MBC1 image spans MBC1_SLOT and the slot after it."""
     if index == MENU:
         return menu_image
+    if index == EXIT_SLOT:
+        return exit_stub() if exit_image is None else exit_image
     if index in GAMES:
         return game_image(index, GAMES[index])
     if index == SHORT_SLOT:
@@ -120,18 +148,21 @@ def pack_entry(row):
     return ENTRY.pack(row['valid'], row['profile'], row['length'] & 0xFFFF, row['crc32'], row['title'], row['length'] >> 16)
 
 
-def library_bytes(menu_image):
+def library_bytes(menu_image, exit_image=None):
     if len(menu_image) != SLOT_BYTES:
         raise ValueError('menu image must be one 32 KiB slot')
-    rows = entries(menu_image)
+    if exit_image is not None and (len(exit_image) != SLOT_BYTES or exit_image[0x134:0x144] != EXIT_TITLE.ljust(16, b'\0')):
+        raise ValueError('exit-demo image must be one 32 KiB slot titled EXIT DEMO')
+    rows = entries(menu_image, exit_image)
     table = b''.join(pack_entry(row) for row in rows)
-    library = b''.join(image_bytes(index, menu_image) for index in range(IMAGES)) + table
+    library = b''.join(image_bytes(index, menu_image, exit_image) for index in range(IMAGES)) + table
     return library.ljust(LIBRARY_BYTES, b'\0')
 
 
 def scenario_frames(menu_image):
+    """The scripted menu frames, then the exit-demo game frame at GAME_FRAME."""
     rows = entries(menu_image)
-    return [reference.frame(rows, **state) for state in SCENARIO]
+    return [reference.frame(rows, **state) for state in SCENARIO] + [exit_frame()]
 
 
 def hex_lines(data):
@@ -150,7 +181,11 @@ def build(root, destination):
     if report['status'] != 'PASS' or report['profile'] != 'dmg-loader-v1':
         raise ValueError('menu preload software build failed')
     image = (root / report['rom']).read_bytes()
-    (destination / 'menu-library.hex').write_text(hex_lines(library_bytes(image)), encoding='ascii')
+    game = build_target(root, destination / 'sw', SimpleNamespace(target=EXIT_TARGET, rebuild=True), git_state(root))
+    if game['status'] != 'PASS' or game['profile'] != 'dmg-direct-v1':
+        raise ValueError('exit-demo preload software build failed')
+    exit_image = (root / game['rom']).read_bytes()
+    (destination / 'menu-library.hex').write_text(hex_lines(library_bytes(image, exit_image)), encoding='ascii')
     (destination / 'menu-frames.hex').write_text(''.join(hex_lines(frame) for frame in scenario_frames(image)), encoding='ascii')
     (destination / 'program.gb').write_bytes(image)
     return image

@@ -164,14 +164,16 @@ fresh menu and a moved cursor. The board session reads the stored catalogue
 with `host library status` and passes its rows.
 
 [`fixture.py`](../../../../src/dv/menu/fixture.py) is the registered `menu`
-preload builder: it builds the image, lays out a library with stub games in
-slots 0, 1, 2, 7, 8, 9, 10 and 15 (slot 10 carries the CGB flag `$80` and
-slot 8 the CGB-only flag `$C0` in header `$0143`), a 64 KiB MBC1 stub game
-in slots 5-6 whose bank 2 returns through the game exit register, an empty
-slot 3, a valid entry with a foreign length in slot 4 and the menu at 16,
-and writes
-`menu-library.hex` and the scripted
-`menu-frames.hex` for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
+preload builder: it builds the image and the
+[`exit-demo`](../../../../src/sw/exit-demo/main.asm) game, lays out a library
+with the built `EXIT DEMO` image in slot 1 (a solid bar on map row 8; Start
+writes the game exit register), stub games in slots 0, 2, 7, 8, 9, 10 and
+15 (slot 10 carries the CGB flag `$80` and slot 8 the CGB-only flag `$C0` in
+header `$0143`), a 64 KiB MBC1 stub game in slots 5-6 whose bank 2 returns
+through the game exit register, an empty slot 3, a valid entry with a
+foreign length in slot 4 and the menu at 16, and writes `menu-library.hex`
+and `menu-frames.hex` (the scripted menu frames, then the exit-demo game
+frame) for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 runs the real `n2m_v05_system` with the SDRAM controller and device model,
 swaps the menu in through the host return, selects the board joypad and
 compares every captured display-eligible frame; the
@@ -182,8 +184,11 @@ compares every captured display-eligible frame; the
 | `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a repeated Up at slot 0 change nothing (each step is one sampled press; a hold across frames is not simulated) |
 | `menu-select` | Down then A commits 1 to the select register; the game boots in `DIRECT_ID` with epoch + 1 and `LIBRARY_STATUS` result `OK` index 1 |
 | `menu-select-mbc1` | Five Downs reach the 64 KiB entry listed once at slot 5 (pixel-exact frame, slot 6 blank); A commits 5 and the game boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; its bank 2 code returns to the menu through the game exit register (epoch + 2, index still 5, the menu running in `LOADER_ID`) |
+| `menu-exit` | Down then A starts the built `exit-demo` image in slot 1 with a pixel-exact bar frame; Start makes it write `$10` to `$6000` and the menu returns by itself: `LOADER_ID`, epoch + 2, result `OK` index 1, running without a host `RUN`, the boot frame pixel-exact again |
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
-Every target runs under the `menu` label within the ordinary wall budget.
+Every target runs within the ordinary wall budget; `menu-select-mbc1` and
+`menu-exit` carry the `mbc1`/`system` and `system` labels so the `menu`
+label aggregate stays inside it.

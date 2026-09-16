@@ -281,6 +281,22 @@
       "version": 1,
       "profile": "dmg-mbc1-v1",
       "interface_schema_version": 1
+    },
+    "exit-demo": {
+      "directory": "exit-demo",
+      "sources": [
+        "main.asm"
+      ],
+      "assets": {},
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "EXIT DEMO",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }
