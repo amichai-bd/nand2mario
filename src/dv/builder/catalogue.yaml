@@ -639,7 +639,6 @@ units:
   tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.78, inputs: [cfg, src/sw, tools]}
   tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: null, inputs: [src/dv/builder, src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 2.23, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_windows_camera.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: null, inputs: []}
   tools/n2m/tests/test_mooneye.py: {kind: unit, level: 0, labels: [builder, mooneye], duration_seconds: 0.10, inputs: [src/dv/mooneye, src/rtl/ppu/GPL-3.0.txt, tools/n2m/dependencies.json]}
   tools/n2m/tests/test_peer_bridge.py: {kind: unit, level: 0, labels: [builder, integration], duration_seconds: 0.07, inputs: []}
   tools/n2m/tests/test_ppu_scene.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.04, inputs: []}
@@ -675,6 +674,7 @@ units:
   tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.20, inputs: [src/dv/v05/check.py, src/dv/v05/program.json, src/dv/v05/reference.py]}
   tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.14, inputs: [src/dv/cpu/generate_vectors.py]}
   tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.58, inputs: [src/dv/builder, src/dv/display, src/dv/integration, src/dv/mooneye, src/dv/preload, src/dv/python, src/rtl/common, src/rtl/display, src/rtl/interfaces, src/rtl/joypad, src/rtl/ppu/GPL-3.0.txt, src/sw/generated/interfaces.inc, tools/build.py, tools/n2m, tools/sw]}
+  tools/n2m/tests/test_windows_camera.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: null, inputs: []}
   tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.14, inputs: [src/dv/display/tb_dmg_tile_pixel.sv, src/rtl/display/dmg_tile_pixel.sv]}
   tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: 0.13, inputs: []}
   tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.07, inputs: [tools/wiki/check.py]}
