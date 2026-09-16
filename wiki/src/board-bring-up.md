@@ -291,7 +291,7 @@ same swap `key1_return` performs) exercised the SDRAM-to-ROM swap path.
 Board state after the session: programmed with the session bitstream, console
 running Springtrail.
 
-### Session 2: menu, joypad selection and return
+### Session 2: menu, host-injected joypad selection and return
 
 - Git commit: `main` `5a79bd91fb80f151583487c79391a3ac7a2c9de0`; packages
   `menu` (`dmg-loader-v1`, profile id 2, ROM SHA-256
@@ -319,8 +319,8 @@ The host records under tag `681b-board` are timestamped 2026-09-15 23:47 to
 | Host return (`WRITE_HOST(LIBRARY_CONTROL)` 1) from the paused console | `write/aaf2124c…`, `status/1b2ac5d1…` | menu swapped in: `IMAGE_VALID` 1, `PROFILE` 2, `STATE` paused |
 | `host run`, `host status`, `host library status` | `run/15846d6f…`, `status/39350634…`, `library-status/db747176d248471494b68699369fbe78` | `STATE` running; `$A000` 0x60 (`window_ready`, `sdram_ready`), result `OK`; catalogue SHA-256 `15fe956cb3b7fa66be36f766873de6f620ceb4c3c42341fcc6f1a4e8887649a3` |
 | Menu frame | `snapshot/ba40d05617a44d5bb05ecff7b94678bc` | epoch 1; pixel-exact `expected('menu')`: 23040 pixels, 0 mismatches, CRC32 `c3753fdc`, frame SHA-256 `373f18d5d978be4762330a11a5f02d36f12ee06f23045dfc0e1fe7b3959b022d`; header, slots 00-15 with the three titles, cursor on 00 |
-| Joypad Down (`host input --mask 8`, then release) | `input/7b01ef7d…`, `input/d64d6fa2…`, `snapshot/55c55e6b2cd14c7fa1af6b389a3920eb` | pixel-exact `expected('cursor-1')`, CRC32 `b56eb400` |
-| Joypad A on slot 1 | `input/df5e447e…`, `input/7c8e9359…`, `status/6f375a01…`, `library-status/c05069ef…` | the menu wrote the select register; the loader swapped slot 1: `PROFILE` 1, running, result `OK` index 1 |
+| Host-injected joypad Down (`host input --mask 8`, then release) | `input/7b01ef7d…`, `input/d64d6fa2…`, `snapshot/55c55e6b2cd14c7fa1af6b389a3920eb` | pixel-exact `expected('cursor-1')`, CRC32 `b56eb400` |
+| Host-injected joypad A on slot 1 | `input/df5e447e…`, `input/7c8e9359…`, `status/6f375a01…`, `library-status/c05069ef…` | the menu wrote the select register; the loader swapped slot 1: `PROFILE` 1, running, result `OK` index 1 |
 | Started game frame | `snapshot/721995456db14e32a32c57514aa409eb` | epoch 2; pixel-exact Springtrail title, CRC32 `4a3bad02`, frame SHA-256 `2fceba2f…` (the session 1 frame) |
 | Host return | `write/9ab81d26…`, `status/f5cfc9cd…`, `library-status/fd1d2c71bce346e89f867ea0fc4b32dd`, `snapshot/58a8f84a682e4ac29aee4fdd4d90af6b` | menu back: `PROFILE` 2, running without a host `RUN`, epoch 3; pixel-exact menu frame, CRC32 `c3753fdc` |
 | A on slot 0 (stackdrop) | `input/6efdeea9…`, `input/09f60588…`, `status/a5407164…`, `library-status/11477654…`, `snapshot/039c49df10794a58a880cb17ed06cca1` | swap `OK` index 0, epoch 4, running; frame retained (SHA-256 `29fba9b0e546dd5cc1112a8c880a496f94c77bd789b4582b3ec4a0cd077a54ae`), no independent reference |
@@ -369,14 +369,16 @@ snapshot; the same catalogue SHA-256 `15fe956c…` as session 2.
 | Step | Record (tag `681c-key1`) | Result |
 |---|---|---|
 | Earlier KEY1 presses from the menu | `status/8658981a…`, `library-status/7564086d…`, `snapshot/15d571db01b54b99abc376de4ed3802c` | `PROFILE` 2, running, result `OK`; epoch 12 where session 2 ended at 7, so each press restarted the menu through the return path; pixel-exact menu frame, CRC32 `c3753fdc`, frame SHA-256 `373f18d5…` |
-| Owner started Stackdrop from the menu with the joypad | `status/13de9b2e…`, `library-status/47048d1e…`, `snapshot/357c2afe30b04a06888671796bcfa12e` | `PROFILE` 1, running, result `OK` index 0, `$A000` 0x20; epoch 21; game frame retained (SHA-256 `c54654fbfe502e02a37434f475b96d9b372847e024bb30d0270dc617fffe3da9`) |
+| Stackdrop running at 05:21 UTC, started from the menu by the owner through the display viewer's own UART session | `status/13de9b2e…`, `library-status/47048d1e…`, `snapshot/357c2afe30b04a06888671796bcfa12e` | `PROFILE` 1, running, result `OK` index 0, `$A000` 0x20; epoch 21 (12 after the earlier presses); no host record of the selection exists under this tag; game frame retained (SHA-256 `c54654fbfe502e02a37434f475b96d9b372847e024bb30d0270dc617fffe3da9`) |
 | Owner held KEY1 about 0.5 s | `status/50713275…`, `library-status/a4b92a33…`, `snapshot/b37001933af141a6abb3c8e68c125b0d` | back in the menu: `PROFILE` 2, `IMAGE_VALID` 1, running, epoch 22, result `OK`, `$A000` 0x60 (`window_ready`, `sdram_ready`); pixel-exact menu frame, 23040 pixels, 0 mismatches, CRC32 `c3753fdc`, frame SHA-256 `373f18d5…`, byte-identical to the session 2 menu frame and its published render |
 
-Four `host input` attempts between the first two rows failed to open the UART
-port while another host process held it; they changed nothing on the board and
-are retained as failures. The owner also watched the game start and the long
-press return to the menu on the display viewer; that observation carries the
-same limits as the [display observation](#display-observation) below.
+Between the first two rows the owner's display viewer held the UART port
+(05:09 to 05:21 UTC) and issued the selection that started Stackdrop; it keeps
+no host record under this tag. The four `host input` attempts made in that
+window failed to open the port, changed nothing on the board and are retained
+as failures. The owner also watched the game start and the long press return
+to the menu on the viewer; that observation carries the same limits as the
+[display observation](#display-observation) below.
 
 ### Game library acceptance
 
@@ -384,7 +386,7 @@ same limits as the [display observation](#display-observation) below.
 |---|---|---|
 | Library load with zero mismatches for every slot and the catalogue; `host library status` matches | session 2 `library-load/53678d3c…`, `library-status/db747176…` (and session 1 `library-load/b6823421…`) | proven |
 | Menu frame pixel-exact after a host library load | `snapshot/ba40d056…`, CRC32 `c3753fdc` | proven |
-| Joypad selection of a loaded slot starts that game | `snapshot/55c55e6b…` (cursor), `library-status/c05069ef…` (swap `OK` index 1), and the slot 0 and slot 2 swaps | proven |
+| Selection of a loaded slot through the host-injected joypad path (`host input`) starts that game | `snapshot/55c55e6b…` (cursor), `library-status/c05069ef…` (swap `OK` index 1), and the slot 0 and slot 2 swaps | proven |
 | Started game title frame pixel-exact | `snapshot/72199545…`, CRC32 `4a3bad02` (Springtrail, the accepted reference game; stackdrop and v05 frames retained without a reference) | proven |
 | Return to the menu with a pixel-exact menu frame | host return `write/9ab81d26…` then `snapshot/58a8f84a…`, and the final return `snapshot/6770ea06…` | proven through the host return |
 | Physical KEY1 hold returns to the menu with a pixel-exact menu frame | session 3 `snapshot/357c2afe…` (Stackdrop running, epoch 21) then the owner's 0.5 s hold and `snapshot/b3700193…` (menu, epoch 22, result `OK`, CRC32 `c3753fdc`); earlier presses `snapshot/15d571db…` | proven, owner present |

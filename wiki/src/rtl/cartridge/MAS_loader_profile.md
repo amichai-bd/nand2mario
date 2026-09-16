@@ -402,7 +402,8 @@ The Questa compile-only gate, the fit and the board sessions follow the
 [charter workflow](../../project-charter.md#game-library). The
 [game library sessions](../../board-bring-up.md#game-library-sessions) on the
 fitted `v05-board` image proved this owner on the DE10-Lite: after a host
-library load, a selection made through the board joypad path swapped the
+library load, a selection made through the host-injected joypad path
+(`host input`) swapped the
 chosen slot in with the epoch change and `LIBRARY_STATUS` result `OK`, the
 started game's frame matched the independent title reference pixel for pixel,
 and the host return (`WRITE_HOST(LIBRARY_CONTROL)`, the same swap

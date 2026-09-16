@@ -128,10 +128,11 @@ the checkerboard is the review tool's transparency convention, not menu pixels.
 
 The Verilator matrix below is the preliminary evidence. The board criterion
 is proven by the [game library sessions](../../board-bring-up.md#game-library-sessions):
-after a host library load the menu frame, the cursor frames after joypad
-Down, and the menu frame after the return from a started game were read back
-with `SNAPSHOT`/`READ_FRAME` and matched `reference.py` pixel for pixel, and
-joypad A started the selected slot. The owner's physical KEY1 hold returned
+after a host library load the menu frame, the cursor frames after a
+host-injected joypad Down (`host input`), and the menu frame after the return
+from a started game were read back with `SNAPSHOT`/`READ_FRAME` and matched
+`reference.py` pixel for pixel, and a host-injected A started the selected
+slot; the board has no physical joypad. The owner's physical KEY1 hold returned
 from a running game to a pixel-exact menu frame; the host return exercised the
 same swap.
 
