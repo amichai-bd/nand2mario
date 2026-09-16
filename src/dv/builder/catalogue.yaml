@@ -596,11 +596,13 @@ units:
   tools/ci/tests/test_profiles.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 13.46, inputs: [src/dv/builder/targets.json, src/fpga/de10_lite, src/rtl]}
   tools/ci/tests/test_trust.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 2.92, inputs: []}
   tools/n2m/tests/test_affected.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.15, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_affected_mutations.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null}
   tools/n2m/tests/test_assembler.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.27, inputs: [cfg, src/sw/assembler, src/sw/generated, src/sw/targets.json, tools/n2m, tools/sw]}
   tools/n2m/tests/test_assets.py: {kind: unit, level: 1, labels: [builder, sw], duration_seconds: 0.55, inputs: [cfg, src/sw, tools]}
   tools/n2m/tests/test_baseline.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.11, inputs: [src/dv/baseline]}
   tools/n2m/tests/test_builder.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 0.88, inputs: [src/dv/builder, src/dv/display, src/rtl/common, src/rtl/display, tools/build.py, tools/n2m, tools/sw/opcodes.json]}
   tools/n2m/tests/test_catalogue.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.63}
+  tools/n2m/tests/test_closure_trace.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null, inputs: []}
   tools/n2m/tests/test_columns.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.08, inputs: [src/sw/springtrail]}
   tools/n2m/tests/test_core_art.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.45, inputs: [src/sw/springtrail/assets, wiki/src/sw/springtrail/core-art]}
   tools/n2m/tests/test_crc_proof.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.10, inputs: [tools/sw/opcodes.json]}

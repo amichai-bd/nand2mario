@@ -290,6 +290,12 @@ def _tests_plan(menu, root):
         if action == "validate":
             return Plan(["tests", action], ("tests", action), "Current host",
                         "Validate the test catalogue", back_to_action=True)
+        if action == "mutations":
+            return Plan(["tests", action], ("tests", action), "Current host",
+                        "Prove recorded mutations select their detectors; no tests run", back_to_action=True)
+        if action == "closure-trace":
+            return Plan(["tests", action], ("tests", action), "Current host",
+                        "Trace every declared host unit against its closure", back_to_action=True)
         if action == "affected":
             plan = _editable(menu, [("base", lambda _: menu.text(
                 "Git base reference", default="origin/main"))], lambda answers: Plan(

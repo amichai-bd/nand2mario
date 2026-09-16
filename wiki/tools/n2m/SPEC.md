@@ -38,6 +38,9 @@ python3 tools/build.py tests validate --json
 python3 tools/build.py tests list --level 0 --json
 python3 tools/build.py tests run --level 0 --tag level0 --json
 python3 tools/build.py tests run --label springtrail --tag springtrail --budget 600 --broader --json
+python3 tools/build.py tests mutations --tag mutations --json
+python3 tools/build.py tests mutations --confirm --tag mutations-confirm --json
+python3 tools/build.py tests closure-trace --unit tools/n2m/tests/test_baseline.py --tag closure-trace --json
 python3 tools/build.py regress pre-merge --tag pre-merge --json
 python3 tools/build.py regress builder-fault --tag deliberate-aggregate --json
 python3 tools/build.py sw library --tag flash-library --json
@@ -367,14 +370,12 @@ root the test passes in, are not detected; the author accounts for them in
 [affected report's](#advisory-affected-test-report) unknown-closure fallback.
 A unit whose real closure is the whole tree, such as
 [`test_catalogue.py`](../../../tools/n2m/tests/test_catalogue.py), which walks
-every test file, stays undeclared for that reason. The declarations were
-verified dynamically: every declared unit was run once under a
-`sys.addaudithook` tracer recording `open`, `os.scandir`, `os.listdir`,
-`glob.glob`, `shutil.copy*` and `subprocess.Popen` events, inherited by child
-interpreters, and the traced tracked-file reads outside `tools/`, `cfg/` and
-`.github/` were compared with `host_closure.closure()`; zero units read
-outside their closure. A declaration change re-runs that trace before it is
-trusted; a product-owned form of the proof belongs to the mutation slice.
+every test file, stays undeclared for that reason. The declarations are
+proved dynamically by
+[`tests closure-trace`](#conservativeness-proof), which runs each declared
+unit under a file tracer and fails by name on a tracked file read outside its
+closure; a declaration change re-runs that trace for the changed unit before
+it is trusted.
 
 ### Selection
 
@@ -2685,3 +2686,75 @@ prevent equality. The report is advisory preparation cost, not proof of faster
 delivery or permission to omit pixel, state, mutation or completion gates.
 Without a global fallback it hashes each closure path once against the base;
 about 16 s on this tree when quiet, and several times that under machine load.
+
+### Conservativeness proof
+
+[`mutations.json`](../../../src/dv/builder/mutations.json) records, for a
+representative set of inputs, one byte mutation and the units that detect it:
+an RTL source, a cocotb testbench module, a Python test source another unit
+reads as data, the catalogue, a toolchain module and data files such as the
+baseline record, an SDC, the SameBoy scenario and source manifests, a
+Springtrail asset and the regression subsets. Each row names the input `path`,
+its `kind` (`rtl`, `python`, `catalogue`, `tool` or `data`), the `mutation`
+(`append`, which adds the document's marker as a trailing line, or
+`{"replace": [old, new]}`, applied once), the `detectors` (catalogue units)
+and the `evidence` that they detect it. The kinds must all be present, paths
+must be tracked files and detectors catalogue units; a malformed row fails by
+name.
+
+[`mutations.py`](../../../tools/n2m/mutations.py) and the catalogued
+[`test_affected_mutations.py`](../../../tools/n2m/tests/test_affected_mutations.py)
+prove selection is conservative for that set: for each row, the report's own
+decision function ([`affected.decide`](../../../tools/n2m/affected.py)) is run
+in process on the current tree with exactly that path differing from the base,
+deciding only the recorded detectors, and every detector must be `selected`. A
+detector left as a review candidate fails as `mutation NAME: unit U not
+selected for PATH (reason)`, so dropping an input from a unit's declaration
+fails by the unit's name. One row is also applied for real: a shared clone of
+`HEAD` receives the RTL mutation, the full `tests affected` report runs against
+it and must equal the in-process decision for every unit. The harness runs
+under `check` and costs about 25 s (closure derivation about 9 s, the real
+report about 14 s). `tests validate` and `check` also reject a manifest row
+that names an unknown unit or an untracked path; the harness fails when the
+manifest is absent. `python tools/build.py tests
+mutations [--name N] --tag TAG --json` runs the same selection proof as a
+command; its record lists `mutations` and `misses`.
+
+`tests mutations --confirm` re-derives the recorded detection instead of
+trusting it: for each row it clones `HEAD`, borrows the installed cocotb
+environment, runs every detector unmutated (a host unit through the catalogue
+runner, a simulation target through `sim test` under its ordinary wall budget),
+applies the mutation and runs them again. A detector that does not pass before
+or does not fail after leaves the row unconfirmed and the command `FAIL`, so an
+environment failure is never mistaken for a detection. It is opt-in: all
+eleven rows take about 100 s, dominated by the two Verilator builds and the
+before/after runs of the slower host units. `--verilator-bin` is passed
+through to the target runs.
+
+`tests closure-trace [--unit NAME]` is the dynamic proof of the declared host
+closures ([`closure_trace.py`](../../../tools/n2m/closure_trace.py), tested on a
+fixture tree by
+[`test_closure_trace.py`](../../../tools/n2m/tests/test_closure_trace.py)). Each
+declared unit runs exactly as the catalogue runner runs it, with a
+`sitecustomize` audit hook appended to `PYTHONPATH` that records every
+repository path the interpreter and its child interpreters `open`, list,
+glob or copy, and the spawned commands. A tracked file whose contents were
+read (`open` or `shutil.copy*`) that is neither in
+[`host_closure.closure()`](#host-unit-closure), under `tools/`, `cfg/` or
+`.github/`, nor the registry or catalogue fails as `unit NAME reads outside
+its declared closure: PATH`; a unit that fails or cannot run fails as `unit
+NAME not traced: reason`. Directory listings and globs are recorded but are
+not misses: only modified contents are judged by the report, and a file
+added, removed or renamed in a listed directory already forces its full
+fallback. Reads under the global-fallback prefixes are not misses for the
+same reason. The full trace of every declared unit takes several minutes,
+so it is opt-in and recorded when declarations change; a single unit takes
+its own run time plus about five seconds of catalogue validation. Each
+trace's log and record are kept under the tag.
+
+Limits: the proof covers the recorded rows, not every input; a detector is
+recorded as failing under that one mutation, not under every defect in the
+file; the tracer sees the interpreter's file events, not those of native
+tools such as Verilator or Git, whose inputs the registry lists; and none of
+this changes which checks are required or lets a review candidate skip them.
+

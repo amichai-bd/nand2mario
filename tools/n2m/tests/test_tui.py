@@ -387,6 +387,8 @@ class TuiTests(unittest.TestCase):
             ("tests", "validate"): ["tests", "validate"],
             ("tests", "list"): ["tests", "list", "--level", "0"],
             ("tests", "affected"): ["tests", "affected", "--base", "origin/main"],
+            ("tests", "mutations"): ["tests", "mutations"],
+            ("tests", "closure-trace"): ["tests", "closure-trace"],
             ("tests", "run"): ["tests", "run", "--label", "agents", "--sim", "verilator"],
             ("sw", "oracle"): ["sw", "oracle"],
             ("sw", "assemble"): ["sw", "assemble", "assembler-basic"],
