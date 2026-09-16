@@ -193,9 +193,9 @@ units:
   flash-blank: {kind: sim, level: 1, labels: [flash, system], duration_seconds: null}
   flash-copy: {kind: sim, level: 1, labels: [flash, system], duration_seconds: null}
   flash-precedence: {kind: sim, level: 1, labels: [flash, system], duration_seconds: null}
-  flash-reader: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.00}
-  flash-reader-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.00}
-  flash-reader-fault-range: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.00}
+  flash-reader: {kind: sim, level: 1, labels: [storage], duration_seconds: 2.29}
+  flash-reader-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.47}
+  flash-reader-fault-range: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.47}
   host-play: {kind: sim, level: 2, labels: [host-play, integration, memory], duration_seconds: 215.72}
   host-play-frame: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 123.20}
   host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 143.99}
@@ -236,7 +236,7 @@ units:
   joypad-matrix-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.42}
   joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.42}
   joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.43}
-  library-peer: {kind: sim, level: 1, labels: [python-tb, storage], duration_seconds: 134.04}
+  library-peer: {kind: sim, level: 1, labels: [python-tb, storage], duration_seconds: 59.06}
   loader-host: {kind: sim, level: 1, labels: [cartridge, system], duration_seconds: null}
   loader-key1: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-key1-queue: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
@@ -459,14 +459,14 @@ units:
   python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.78}
   register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: 1.46}
   register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.45}
-  sdram-fault-before-init: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.92}
-  sdram-fault-deadline: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.03}
-  sdram-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.53}
-  sdram-fault-read-early: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.03}
-  sdram-fault-read-late: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.76}
-  sdram-init: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.53}
-  sdram-line: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.55}
-  sdram-refresh: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.64}
+  sdram-fault-before-init: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.18}
+  sdram-fault-deadline: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.92}
+  sdram-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.49}
+  sdram-fault-read-early: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.86}
+  sdram-fault-read-late: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.60}
+  sdram-init: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.65}
+  sdram-line: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.73}
+  sdram-refresh: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.80}
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.74}
   serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.72}
   serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.73}
@@ -580,7 +580,7 @@ units:
   tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.23}
   tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.54}
   tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.01}
-  tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 0.00}
+  tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 2.14}
   tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 1.26}
   tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.08}
   tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.12}
@@ -597,7 +597,7 @@ units:
   tools/n2m/tests/test_gui_pad.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.12}
   tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.06}
   tools/n2m/tests/test_host.py: {kind: unit, level: 1, labels: [builder, host], duration_seconds: 1.28}
-  tools/n2m/tests/test_host_library.py: {kind: unit, level: 1, labels: [builder, host, storage], duration_seconds: 11.05}
+  tools/n2m/tests/test_host_library.py: {kind: unit, level: 1, labels: [builder, host, storage], duration_seconds: 4.03}
   tools/n2m/tests/test_host_play.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.11}
   tools/n2m/tests/test_import_check.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.24}
   tools/n2m/tests/test_intel_adc.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.13}
@@ -674,8 +674,8 @@ units:
   uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.57}
   uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.05}
   uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: 42.21}
-  uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 2.62}
-  uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 2.30}
+  uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 5.99}
+  uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 2.02}
   uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.71}
   uart-serial-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.70}
   uart-snapshot: {kind: sim, level: 2, labels: [uart], duration_seconds: 10.41}
