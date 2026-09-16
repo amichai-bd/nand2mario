@@ -20,6 +20,8 @@ SLOTS = 16
 PACKED_BYTES = WIDTH * HEIGHT // 4
 # Font atlas order: A-Z, 0-9, dash, blank, cursor arrow.
 TILE_DIGIT, TILE_DASH, TILE_BLANK, TILE_ARROW = 26, 36, 37, 38
+# Header 0x143 values that mark a 15-byte title: the CGB flag and CGB-only flag.
+CGB_FLAG, CGB_ONLY = 0x80, 0xC0
 HEADER, HEADER_COLUMN = 'GAME LIBRARY', 4
 SLOT_ROW, NUMBER_COLUMN, TITLE_COLUMN, STATUS_ROW = 1, 1, 4, 17
 RESULT_NONE, RESULT_OK, RESULT_INVALID_SLOT, RESULT_CRC_MISMATCH, RESULT_NOT_READY = 0, 1, 2, 3, 4
@@ -36,6 +38,13 @@ def glyph_tile(byte):
     if 0x41 <= byte <= 0x5A:
         return byte - 0x41
     return TILE_DASH
+
+
+def title_tiles(title):
+    """The 16 title cells: header 0x143 is the CGB flag when the title is 15 bytes, so 0x80/0xC0 there is blank."""
+    title = bytes(title)[:16].ljust(16, b'\0')
+    last = TILE_BLANK if title[15] in (CGB_FLAG, CGB_ONLY) else glyph_tile(title[15])
+    return [glyph_tile(byte) for byte in title[:15]] + [last]
 
 
 def text_tiles(text):
@@ -62,8 +71,7 @@ def tilemap(entries, cursor=0, result=RESULT_NONE, index=NO_INDEX, sdram_ready=T
         row = rows[SLOT_ROW + slot]
         row[NUMBER_COLUMN:NUMBER_COLUMN + 2] = text_tiles(f'{slot:02d}')
         if slot < drawn_slots and slot < len(entries) and entries[slot]['valid'] == 1:
-            title = bytes(entries[slot]['title'])[:16].ljust(16, b'\0')
-            row[TITLE_COLUMN:TITLE_COLUMN + 16] = [glyph_tile(byte) for byte in title]
+            row[TITLE_COLUMN:TITLE_COLUMN + 16] = title_tiles(entries[slot]['title'])
     rows[SLOT_ROW + cursor][0] = TILE_ARROW
     rows[STATUS_ROW] = text_tiles(status_text(result, index, sdram_ready))
     return rows

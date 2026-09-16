@@ -69,7 +69,7 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$04E1` | `code` section: entry `Start`, frame loop, drawing routines and text tables (738 bytes) |
+| `$0200`-`$04F3` | `code` section: entry `Start`, frame loop, drawing routines and text tables (756 bytes) |
 | `$0800`-`$0A6F` | `assets` section: the 39 font tiles, 624 bytes, from `ASSET "Font"` |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
@@ -112,7 +112,11 @@ The row is padded with blanks to 20 cells.
 
 Title bytes map to font tiles: `A`-`Z` to tiles 0..25, `0`-`9` to 26..35,
 `-` to 36, zero and space to the blank tile 37; any other byte draws the
-dash so a foreign title stays visible. Tile 38 is the cursor arrow.
+dash so a foreign title stays visible. The sixteenth title byte is header
+`$0143`, the CGB flag when the title is 15 bytes long: `$80` and `$C0`
+there draw the blank tile, and any other value follows the same rule as the
+other cells. Those two values in cells 1..15 still draw the dash. Tile 38 is
+the cursor arrow.
 
 ### Font
 
@@ -158,8 +162,10 @@ with `host library status` and passes its rows.
 
 [`fixture.py`](../../../../src/dv/menu/fixture.py) is the registered `menu`
 preload builder: it builds the image, lays out a library with stub games in
-slots 0, 1, 2, 5, 7 and 15, an empty slot 3, a valid entry with a foreign
-length in slot 4 and the menu at 16, and writes `menu-library.hex` and the scripted
+slots 0, 1, 2, 5, 6, 7, 8 and 15 (slot 6 carries the CGB flag `$80` and
+slot 8 the CGB-only flag `$C0` in header `$0143`), an empty slot 3, a valid
+entry with a foreign length in slot 4 and the menu at 16, and writes
+`menu-library.hex` and the scripted
 `menu-frames.hex` for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 runs the real `n2m_v05_system` with the SDRAM controller and device model,
 swaps the menu in through the host return, selects the board joypad and

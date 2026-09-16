@@ -13,13 +13,14 @@ tilemap or DUT state.
 [`fixture.py`](fixture.py) is the `menu` preload builder. Before each run it
 builds the image through `sw build menu`, writes the seventeen-image SDRAM
 library (`menu-library.hex`) and the scripted reference frames
-(`menu-frames.hex`) into the attempt directory. Slots 0, 1, 2, 5, 7 and 15
-hold stub games titled `SPRINGTRAIL`, `STACKDROP`, `V05 BUTTONS`,
-`ABC-123 XYZ 789`, `SIXTEEN CHAR ROW` and `LAST SLOT`; slot 3 is empty; slot 4
+(`menu-frames.hex`) into the attempt directory. Slots 0, 1, 2, 5, 6, 7, 8
+and 15 hold stub games titled `SPRINGTRAIL`, `STACKDROP`, `V05 BUTTONS`,
+`ABC-123 XYZ 789`, `CGB FLAGGED ROW` + `0x80`, `SIXTEEN CHAR ROW`,
+`CGB ONLY TITLE` + `0x00 0xC0` and `LAST SLOT`; slot 3 is empty; slot 4
 is valid to the menu but its entry length is 16384, so the engine refuses it;
-slot 16 is the menu. Seven of the sixteen rows are therefore valid, more than
+slot 16 is the menu. Nine of the sixteen rows are therefore valid, more than
 the three-game registry, and the titles cover digits, dashes, the full
-sixteen-cell width and the last row.
+sixteen-cell width, the CGB flag values in header `0x143` and the last row.
 
 [`tb_menu_system`](tb_menu_system.sv) preloads the device model from the hex
 file, swaps the menu in with `WRITE_HOST(LIBRARY_CONTROL)`, selects the board
@@ -31,12 +32,12 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 
 | Requirement | Independent check |
 |---|---|
-| Boot frame | The first display-eligible frame equals reference frame 0: header, sixteen numbered rows, six titles, blank rows for slots 3, 6 and 8..14, the `SHORT IMAGE` title of slot 4, cursor on slot 0, blank status row; `LIBRARY_STATUS` shows bank 34 and result `OK` |
+| Boot frame | The first display-eligible frame equals reference frame 0: header, sixteen numbered rows, eight titles with a blank last cell on the CGB-flagged slots 6 and 8, blank rows for slots 3 and 9..14, the `SHORT IMAGE` title of slot 4, cursor on slot 0, blank status row; `LIBRARY_STATUS` shows bank 34 and result `OK` |
 | Cursor | Down, Down, Up show the cursor on slots 1, 2, 1; Up at slot 0 and a repeated Up leave frame 0 unchanged; every frame is 23040 pixels in source order |
 | Select | Down then A: the only write into `$6000`-`$7FFF` carries 1; the core boots in `DIRECT_ID` with epoch + 1, `LIBRARY_STATUS` result `OK` index 1 |
 | Refused select | Cursor on the empty slot 3, A: `LIBRARY_STATUS` result `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up moves the cursor while the message stays; A on slot 2 starts that game with select data 2; `window_ready` stays set across the refused select |
 | Checker | `+pixel_fault` forces the source shade to 2 for the boot frame and must fail with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
-| Reference | `test_menu_reference.py`: font tiles equal the approved core glyphs, glyph mapping, layout rows, status texts, fixture library bytes and catalogue entry packing, snapshot unpacking and the negative pixel check |
+| Reference | `test_menu_reference.py`: font tiles equal the approved core glyphs, glyph mapping, the CGB flag rule in the last title cell only, layout rows, status texts, fixture library bytes and catalogue entry packing, snapshot unpacking and the negative pixel check |
 
 ## Targets
 

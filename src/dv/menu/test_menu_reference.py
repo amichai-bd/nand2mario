@@ -36,8 +36,21 @@ class Font(unittest.TestCase):
         self.assertEqual(reference.glyph_tile(ord('-')), reference.TILE_DASH)
         for byte in (0, 0x20):
             self.assertEqual(reference.glyph_tile(byte), reference.TILE_BLANK)
-        for byte in (0x21, 0x2F, 0x3A, 0x40, 0x5B, 0x61, 0x7F, 0xFF):
+        for byte in (0x21, 0x2F, 0x3A, 0x40, 0x5B, 0x61, 0x7F, 0x80, 0xC0, 0xFF):
             self.assertEqual(reference.glyph_tile(byte), reference.TILE_DASH, byte)
+
+    def test_title_cgb_flag_is_blank_only_in_the_last_cell(self):
+        R = reference
+        for flag in (0x80, 0xC0):
+            tiles = R.title_tiles(b'CGB FLAGGED ROW' + bytes([flag]))
+            self.assertEqual(tiles, R.text_tiles('CGB FLAGGED ROW') + [R.TILE_BLANK], flag)
+            # The same byte anywhere before the flag position still draws the dash.
+            self.assertEqual(R.title_tiles(bytes([flag]) + b'A' * 14 + bytes([flag]))[0], R.TILE_DASH)
+            self.assertEqual(R.title_tiles(b'A' * 14 + bytes([flag, flag]))[14], R.TILE_DASH)
+        self.assertEqual(R.title_tiles(b'SIXTEEN CHAR ROW'), R.text_tiles('SIXTEEN CHAR ROW'))
+        self.assertEqual(R.title_tiles(b'A' * 15 + b'\x81')[15], R.TILE_DASH)
+        self.assertEqual(R.title_tiles(b'A' * 15 + b'\x00')[15], R.TILE_BLANK)
+        self.assertEqual(R.title_tiles(b'SHORT'), R.text_tiles('SHORT'.ljust(16)))
 
 
 class Layout(unittest.TestCase):
@@ -45,12 +58,16 @@ class Layout(unittest.TestCase):
         self.entries = fixture.entries(MENU_IMAGE)
 
     def test_fixture_library(self):
-        self.assertEqual([row['valid'] for row in self.entries], [1, 1, 1, 0, 1, 1, 0, 1] + [0] * 7 + [1, 1])
+        self.assertEqual([row['valid'] for row in self.entries], [1, 1, 1, 0, 1, 1, 1, 1, 1] + [0] * 6 + [1, 1])
         self.assertGreaterEqual(sum(row['valid'] for row in self.entries[:16]), 6)
         self.assertEqual(self.entries[0]['title'], b'SPRINGTRAIL'.ljust(16, b'\0'))
+        self.assertEqual(self.entries[6]['title'], b'CGB FLAGGED ROW\x80')
         self.assertEqual(self.entries[7]['title'], b'SIXTEEN CHAR ROW')
+        self.assertEqual(self.entries[8]['title'], b'CGB ONLY TITLE\x00\xC0')
         self.assertEqual(self.entries[15]['title'], b'LAST SLOT'.ljust(16, b'\0'))
-        self.assertEqual(len(set(row['title'] for row in self.entries if row['valid'])), 8)
+        self.assertEqual(len(set(row['title'] for row in self.entries if row['valid'])), 10)
+        # The stub image carries the flag at header 0x143, as a CGB-flagged homebrew does.
+        self.assertEqual(fixture.game_image(6, fixture.GAMES[6])[0x143], 0x80)
         self.assertEqual(self.entries[fixture.SHORT_SLOT]['length'], 16384)
         self.assertEqual(self.entries[16]['profile'], fixture.PROFILE_LOADER)
         library = fixture.library_bytes(MENU_IMAGE)
@@ -71,8 +88,10 @@ class Layout(unittest.TestCase):
         self.assertEqual(rows[1][4:20], reference.text_tiles('SPRINGTRAIL     '))
         self.assertEqual(rows[4][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[5][4:20], reference.text_tiles('SHORT IMAGE     '))
-        self.assertEqual(rows[7][4:20], [reference.TILE_BLANK] * 16)
+        self.assertEqual(rows[7][4:20], reference.text_tiles('CGB FLAGGED ROW '))
         self.assertEqual(rows[8][4:20], reference.text_tiles('SIXTEEN CHAR ROW'))
+        self.assertEqual(rows[9][4:20], reference.text_tiles('CGB ONLY TITLE  '))
+        self.assertEqual(rows[10][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[16][1:3], reference.text_tiles('15'))
         self.assertEqual(rows[16][4:20], reference.text_tiles('LAST SLOT       '))
         self.assertEqual(rows[17], [reference.TILE_BLANK] * 20)
