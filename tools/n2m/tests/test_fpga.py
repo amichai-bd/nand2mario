@@ -360,6 +360,15 @@ class FpgaTests(unittest.TestCase):
             fpga.diagnostics(line)
 
     def test_v05_generated_design_diagnostics_are_exact_and_retained(self):
+        expected_files = (
+            "n2m_system_pll_altpll.v", "n2m_pixel_pll_altpll.v",
+            "altsyncram_dam2.tdf", "altsyncram_ram2.tdf", "altsyncram_jll2.tdf",
+            "decode_h7a.tdf", "mux_l1b.tdf", "altsyncram_9km2.tdf", "mux_q1b.tdf",
+            "altsyncram_pgm2.tdf", "altsyncram_bam2.tdf", "altsyncram_77m2.tdf",
+            "altsyncram_v6m2.tdf", "altsyncram_cbm2.tdf", "decode_b7a.tdf",
+            "mux_12b.tdf", "altsyncram_lgm2.tdf",
+        )
+        self.assertEqual(fpga.GENERATED_DESIGN_FILES, expected_files)
         database = self.build / "db"
         database.mkdir()
         suffix = (", which is not specified as a design file for the current project, "
@@ -394,7 +403,15 @@ class FpgaTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "owned attempt directory"):
             fpga.generated_design_diagnostics(output, linked)
 
-        (database / fpga.GENERATED_DESIGN_FILES[0]).unlink()
+        generated = database / fpga.GENERATED_DESIGN_FILES[0]
+        generated.unlink()
+        outside = self.build / "outside-generated.v"
+        outside.write_text("outside attempt database\n")
+        generated.symlink_to(outside)
+        with self.assertRaisesRegex(ValueError, "owned database output"):
+            fpga.generated_design_diagnostics(output, self.build)
+
+        generated.unlink()
         with self.assertRaisesRegex(ValueError, "owned database output"):
             fpga.generated_design_diagnostics(output, self.build)
 

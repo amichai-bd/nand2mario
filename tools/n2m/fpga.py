@@ -41,10 +41,10 @@ CLASSIFIED = {
 GENERATED_DESIGN_FILES = (
     "n2m_system_pll_altpll.v", "n2m_pixel_pll_altpll.v",
     "altsyncram_dam2.tdf", "altsyncram_ram2.tdf", "altsyncram_jll2.tdf",
-    "decode_c7a.tdf", "mux_l1b.tdf", "altsyncram_9km2.tdf", "mux_s1b.tdf",
+    "decode_h7a.tdf", "mux_l1b.tdf", "altsyncram_9km2.tdf", "mux_q1b.tdf",
     "altsyncram_pgm2.tdf", "altsyncram_bam2.tdf", "altsyncram_77m2.tdf",
     "altsyncram_v6m2.tdf", "altsyncram_cbm2.tdf", "decode_b7a.tdf",
-    "mux_m1b.tdf", "altsyncram_lgm2.tdf",
+    "mux_12b.tdf", "altsyncram_lgm2.tdf",
 )
 AUDIT = """project_open design
 create_timing_netlist
