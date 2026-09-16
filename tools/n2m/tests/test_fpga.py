@@ -304,6 +304,40 @@ class FpgaTests(unittest.TestCase):
         self.assertEqual(qsf.count('CURRENT_STRENGTH_NEW "8MA" -to "DRAM_'), 39)
         self.assertEqual(qsf.count('-name IO_STANDARD "3.3-V LVTTL"'), 53)
         self.assertIn("controls_uart", (self.build / "checked.sdc").read_text(encoding="utf-8"))
+        audit = (self.build / "audit.tcl").read_text(encoding="utf-8")
+        self.assertIn("report_timing -to_clock $hold_system -hold -npaths 5 -detail full_path -file output/hold_fast0_system.rpt", audit)
+        self.assertIn("report_timing -to_clock $hold_sdram -hold -npaths 5 -detail full_path -file output/hold_slow85_sdram.rpt", audit)
+        self.assertEqual(audit.count("update_timing_netlist"), 7)
+        self.assertTrue(audit.endswith("project_close\n"))
+
+    def test_sdram_images_record_and_cache_their_hold_paths(self):
+        try:
+            from .test_fpga_hold import fixture as hold_fixture
+        except ImportError:  # unittest discover loads this module without its package
+            from test_fpga_hold import fixture as hold_fixture
+        reports(self.build)
+        with patch.object(fpga, "sdram_target", return_value=True):
+            with self.assertRaisesRegex(ValueError, "missing hold path report: hold_slow85_system.rpt"):
+                fpga.timing_evidence(self.build, self.target)
+            hold_fixture(self.build)
+            evidence = fpga.timing_evidence(self.build, self.target)
+            self.assertEqual(evidence["hold_paths"]["clocks"]["system"]["worst"]["slack_ns"], 0.019)
+            self.assertEqual(evidence["hold_paths"]["clocks"]["sdram"]["worst"]["corner"], "fast0")
+
+            def execute(argv, folder, log, timeout, record, build):
+                self.execute(argv, folder, log, timeout, record, build)
+                hold_fixture(folder)
+                # The SDRAM image's chain reports are inventory only here; the hold reports are the subject.
+                for name in fpga.fpga_controls.required_reports(chains=fpga.SDRAM_CHAINS):
+                    (folder / "output" / name).write_text("retained evidence\n")
+                return ""
+            built = self.run_build(execute)
+            self.assertEqual((built["status"], built["cache"]), ("PASS", "BUILT"))
+            self.assertIn("hold_paths", built["evidence"])
+            self.assertEqual(self.run_build(execute)["cache"], "CACHED")
+            (self.root / next(name for name in built["artifacts"] if name.endswith("/output/hold_fast0_sdram.rpt"))).unlink()
+            self.assertEqual(self.run_build(execute)["cache"], "BUILT")
+        self.assertNotIn("hold_paths", fpga.timing_evidence(self.build, self.target))
 
     def test_structural_netlist_accepts_bidirectional_ports_only_as_declarations(self):
         from n2m.fpga_lock import parse_netlist
@@ -491,9 +525,12 @@ class FpgaTests(unittest.TestCase):
 
         def fake(root, build, args, provenance=None, progress=None):
             bitstream = "workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof"
+            hold = {"clock": "sdram_clk", "worst": {"corner": "fast0", "report": "hold_fast0_sdram.rpt", "slack_ns": 18.939,
+                                                     "from": "u_system|u_sdram|addr[0]", "to": "DRAM_ADDR[0]"}, "corners": {}}
             return {"status": status[0], "cache": "BUILT", "attempt_result": "result.json",
                     "artifacts": {bitstream: "hash"},
                     "build_id_override": comparison[0],
+                    "evidence": {"hold_paths": {"npaths": 5, "clocks": {"sdram": hold}}},
                     "notices": [fpga.ALLOCATOR_OVERRIDE_NOTICE]}
 
         with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
@@ -507,6 +544,7 @@ class FpgaTests(unittest.TestCase):
         self.assertIn("Checked bitstream: workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof", text)
         self.assertIn("--sof 'workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof'", text)
         self.assertIn("--quartus-bin 'tools with spaces'", text)
+        self.assertIn("Worst hold (sdram sdram_clk): 18.939 ns at fast0, u_system|u_sdram|addr[0] -> DRAM_ADDR[0] (hold_fast0_sdram.rpt)", text.splitlines())
 
         comparison[0] = True
         with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
@@ -525,6 +563,7 @@ class FpgaTests(unittest.TestCase):
                                    "--tag", "notice-failed"], self.root), 1)
         text = output.getvalue()
         self.assertIn("Unverified bitstream artifact:", text)
+        self.assertNotIn("Worst hold", text)
         self.assertNotIn("Checked bitstream:", text)
         self.assertNotIn("Next (Windows PowerShell):", text)
 

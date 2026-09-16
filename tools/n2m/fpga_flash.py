@@ -59,8 +59,8 @@ STROBE_WARNING = ("Warning (332060): Node: {node} was determined to be a clock b
                   "associated clock assignment.")
 # The fitter's own timing pass and the three quartus_sta corners each report
 # the strobe once in compile.log; the audit reports it once per timing
-# netlist update in its script (one for flash_proof, seven for the composed
-# images whose audit walks three corners twice), read from audit.tcl.
+# netlist update in its script (one for flash_proof, ten for the composed
+# images whose audit walks three corners three times), read from audit.tcl.
 STROBE_COUNTS = {"compile.log": 4}
 STROBE_LOGS = ("compile.log", "audit.log")
 AUDIT_UPDATE = "update_timing_netlist"
