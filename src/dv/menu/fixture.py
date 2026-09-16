@@ -2,7 +2,7 @@
 
 `build` is the registered `menu` preload builder: it builds the menu image
 through the software pipeline, lays out a seventeen-image SDRAM library
-around it (three stub games, one empty slot, one entry that is valid but
+around it (six stub games, one empty slot, one entry that is valid but
 has a foreign length, the rest empty) and writes the bytes the testbench
 reads with `$readmemh`, plus the reference frames of the scripted scenario.
 The catalogue entry layout is the `catalogue_entry_t` record of
@@ -21,7 +21,11 @@ CATALOGUE_ADDRESS, ENTRY_BYTES = 0x88000, 32
 LIBRARY_BYTES = 0x8C000
 ENTRY = struct.Struct('<BBHI16s8x')
 PROFILE_DIRECT, PROFILE_LOADER = 1, 2
-GAMES = {0: 'SPRINGTRAIL', 1: 'STACKDROP', 2: 'TRAIL UNIT', 5: 'ABC-123 XYZ 789'}
+# Six stub games: the three registered titles, a title with digits and
+# dashes, a full sixteen-character title and one on the last row, so seven
+# rows (with the short slot) are valid and the empty rows are the minority.
+GAMES = {0: 'SPRINGTRAIL', 1: 'STACKDROP', 2: 'V05 BUTTONS', 5: 'ABC-123 XYZ 789',
+         7: 'SIXTEEN CHAR ROW', 15: 'LAST SLOT'}
 # Slot 4 is valid to the menu (valid byte 1) but the engine refuses its
 # foreign length; slot 3 is the empty slot the refused-selection scenario uses.
 SHORT_SLOT, EMPTY_SLOT = 4, 3

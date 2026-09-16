@@ -45,8 +45,12 @@ class Layout(unittest.TestCase):
         self.entries = fixture.entries(MENU_IMAGE)
 
     def test_fixture_library(self):
-        self.assertEqual([row['valid'] for row in self.entries], [1, 1, 1, 0, 1, 1] + [0] * 10 + [1])
+        self.assertEqual([row['valid'] for row in self.entries], [1, 1, 1, 0, 1, 1, 0, 1] + [0] * 7 + [1, 1])
+        self.assertGreaterEqual(sum(row['valid'] for row in self.entries[:16]), 6)
         self.assertEqual(self.entries[0]['title'], b'SPRINGTRAIL'.ljust(16, b'\0'))
+        self.assertEqual(self.entries[7]['title'], b'SIXTEEN CHAR ROW')
+        self.assertEqual(self.entries[15]['title'], b'LAST SLOT'.ljust(16, b'\0'))
+        self.assertEqual(len(set(row['title'] for row in self.entries if row['valid'])), 8)
         self.assertEqual(self.entries[fixture.SHORT_SLOT]['length'], 16384)
         self.assertEqual(self.entries[16]['profile'], fixture.PROFILE_LOADER)
         library = fixture.library_bytes(MENU_IMAGE)
@@ -67,7 +71,10 @@ class Layout(unittest.TestCase):
         self.assertEqual(rows[1][4:20], reference.text_tiles('SPRINGTRAIL     '))
         self.assertEqual(rows[4][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[5][4:20], reference.text_tiles('SHORT IMAGE     '))
+        self.assertEqual(rows[7][4:20], [reference.TILE_BLANK] * 16)
+        self.assertEqual(rows[8][4:20], reference.text_tiles('SIXTEEN CHAR ROW'))
         self.assertEqual(rows[16][1:3], reference.text_tiles('15'))
+        self.assertEqual(rows[16][4:20], reference.text_tiles('LAST SLOT       '))
         self.assertEqual(rows[17], [reference.TILE_BLANK] * 20)
         # The menu entry itself is never listed.
         self.assertFalse(any(reference.text_tiles('GAME MENU') == row[4:13] for row in rows))
