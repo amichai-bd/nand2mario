@@ -108,9 +108,21 @@ class FlashIpTests(unittest.TestCase):
         (output / "design.pof").write_bytes(pof[:-len(b"trailer") - 1])
         with self.assertRaisesRegex(ValueError, "ends before the CFM0"):
             fpga_flash.verify(self.attempt, "flash_proof")
+        # The assembler enforces the CFM0 fit and emits no .pof otherwise: a
+        # missing or empty .pof is the overflow failure, and a CFM0 programmed
+        # to its last byte is the accepted boundary with no spare.
         (output / "design.pof").unlink()
         with self.assertRaisesRegex(ValueError, "design.pof"):
             fpga_flash.verify(self.attempt, "flash_proof")
+        (output / "design.pof").write_bytes(b"")
+        with self.assertRaisesRegex(ValueError, "design.pof"):
+            fpga_flash.verify(self.attempt, "flash_proof")
+        user = flash_library.pof_words(flash_library.words_to_bytes(words))
+        full = b"POF header" + user + b"\x5A" * flash_library.CFM0_BYTES + b"trailer"
+        (output / "design.pof").write_bytes(full)
+        evidence = fpga_flash.verify(self.attempt, "flash_proof")
+        self.assertEqual((evidence["pof"]["cfm0_used_bytes"], evidence["pof"]["cfm0_spare_bytes"]),
+                         (flash_library.CFM0_BYTES, 0))
         (output / "design.pof").write_bytes(pof)
         (self.attempt / flash_library.DAT_NAME).write_text("@00000 03020100\n")
         with self.assertRaisesRegex(ValueError, "different words"):

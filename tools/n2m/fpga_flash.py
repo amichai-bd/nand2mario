@@ -130,7 +130,9 @@ def pof_evidence(path, words):
     CFM0, each 32-bit word bit-reversed (flash_library.pof_words). The user
     range is located by its exact expected bytes, so a shifted, reordered or
     altered library fails here, and CFM0 usage is the last programmed byte
-    after it.
+    after it. The assembler enforces the CFM0 fit: a compressed image that
+    does not fit produces no .pof at all, so the required .pof is the
+    overflow evidence and the usage below is measured, not thresholded.
     """
     if not path.is_file() or not path.stat().st_size:
         raise ValueError("missing FPGA evidence: design.pof")
@@ -144,8 +146,6 @@ def pof_evidence(path, words):
         raise ValueError("the .pof ends before the CFM0 sector")
     used = len(cfm0.rstrip(b"\xFF"))
     programmed = sum(1 for byte in cfm0 if byte != 0xFF)
-    if used > flash_library.CFM0_BYTES:
-        raise ValueError("compressed image exceeds CFM0")
     return {"sha256": file_hash(path), "bytes": len(pof), "user_range_offset": base,
             "user_range_match": True, "library_bytes": len(words) * flash_library.WORD_BYTES,
             "cfm0_bytes": flash_library.CFM0_BYTES, "cfm0_used_bytes": used, "cfm0_programmed_bytes": programmed,

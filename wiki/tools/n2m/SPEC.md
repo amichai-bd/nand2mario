@@ -1685,9 +1685,11 @@ in the `.pof` (`user_range_match`, `user_range_offset`), and measures CFM0
 from the byte after it: `cfm0_used_bytes` is the last programmed byte,
 `cfm0_programmed_bytes` the count of non-erased bytes and `cfm0_spare_bytes`
 the remainder of 688,128. A `.pof` that ends before CFM0, holds a shifted or
-altered library, or lacks the parameter assignment fails the build; the
-contract states no numeric margin beyond fitting CFM0, so the numbers are
-recorded, not thresholded. The text output names the `.pof` and the CFM0
+altered library, or lacks the parameter assignment fails the build. The
+assembler enforces the CFM0 fit and emits no `.pof` for an image that does
+not fit, so the required `.pof` is the overflow evidence; the contract states
+no numeric margin beyond fitting CFM0, so the numbers are recorded, not
+thresholded. The text output names the `.pof` and the CFM0
 usage after the bitstream.
 
 ### Quartus allocator override

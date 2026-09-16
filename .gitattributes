@@ -10,6 +10,7 @@
 *.qpf text eol=lf
 *.qsf text eol=lf
 *.toml text eol=lf
+*.json text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 
