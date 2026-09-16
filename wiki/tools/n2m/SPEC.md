@@ -279,8 +279,8 @@ smallest thing that can be executed alone, which is what makes a recorded
 duration meaningful.
 
 The file holds `version` 1, a `labels` vocabulary, a `units` mapping, a
-`not_runnable` mapping and an optional `retired` mapping. Each unit declares
-exactly:
+`not_runnable` mapping and optional `external_imports` and `retired` mappings.
+Each unit declares exactly:
 
 - `kind`: `sim` for a registered target, `unit` for a `test_*.py` file;
 - `level`: `0`, `1` or `2`, single-valued and ordered. Level 0 buys simple
@@ -290,6 +290,15 @@ exactly:
   file's own `labels` vocabulary; an undeclared label fails validation.
 - `duration_seconds`: the wall of the last actual run, or `null` before the
   first. `tests run` writes it back; it is not edited by hand.
+- `inputs` (host units only, optional): the repository files or directories the
+  unit reads as data, sorted. Its module imports are never listed; they are
+  [derived](#host-unit-closure). Declaring `inputs`, even `[]`, asserts that
+  the derived modules plus these paths are the unit's whole input closure.
+
+`external_imports` maps a package name outside the tree that a host unit's
+import closure reaches, such as `cocotb` or `serial`, to its provenance. An
+import that resolves nowhere in the tree, is not a standard-library module and
+is not listed here fails `tests validate` as an undeclared import.
 
 `not_runnable` maps a `test_*.py` path to the reason nothing can run it. It
 covers the builder's own `tools/n2m/test_budget.py`, which is the wall-budget
@@ -322,6 +331,50 @@ target — the last case covers cocotb modules, which run through their target
 and never alone. A registered target absent from the catalogue, a catalogued
 target absent from the registry, and a catalogued path naming no file each fail
 the same way. This is the control that stops the catalogue drifting out of date.
+
+### Host unit closure
+
+[`host_closure.py`](../../../tools/n2m/host_closure.py) derives a host unit's
+module closure statically from its `test_*.py` file. It follows every import
+statement, including ones inside functions and branches, transitively across
+the repository in the order the [runner](#execution-and-contention) gives the unit:
+the module's own evaluated `sys.path` edits, its directory, the repository root
+and `tools/`. Evaluation covers `Path(__file__)` chains with `resolve`,
+`parent`, `parents[N]`, `with_name` and `/ 'constant'`, names bound to such
+chains once, string constants naming repository directories, and a single
+constant beside a caller-supplied root such as `root / 'tools'`. An import no
+search directory serves resolves to every module of that name in the tree; an
+edit that cannot be evaluated widens every absolute import in the closure the
+same way. Both over-approximate and never omit. Generated output under
+`workdir/`, `worktrees/` and virtual environments is never an input.
+
+`tests validate` and `check` check every host unit, declared or not: an import
+that resolves nowhere, is not a standard-library module and is not in
+`external_imports` fails as `undeclared import NAME at line L of PATH`. A
+declared unit also fails when an input is missing or outside the tree, when it
+declares a module its imports already reach, or when the test module anchors a
+repository path at its own location, through `__file__`, that is neither a
+declared input, under a declared directory, nor a derived module. A declared
+`.py` input is a module the test loads dynamically, for example through
+`importlib.util.spec_from_file_location`; its imports are followed too. A
+declared child of a wider referenced directory is accepted as the author's
+narrowing.
+
+The guard is a positive heuristic, not a proof. Bare string paths such as
+`Path('src/sw/x.json')`, and paths a helper reads inside a function from a
+root the test passes in, are not detected; the author accounts for them in
+`inputs` or leaves the unit undeclared, which keeps it on the
+[affected report's](#advisory-affected-test-report) unknown-closure fallback.
+A unit whose real closure is the whole tree, such as
+[`test_catalogue.py`](../../../tools/n2m/tests/test_catalogue.py), which walks
+every test file, stays undeclared for that reason. The declarations were
+verified dynamically: every declared unit was run once under a
+`sys.addaudithook` tracer recording `open`, `os.scandir`, `os.listdir`,
+`glob.glob`, `shutil.copy*` and `subprocess.Popen` events, inherited by child
+interpreters, and the traced tracked-file reads outside `tools/`, `cfg/` and
+`.github/` were compared with `host_closure.closure()`; zero units read
+outside their closure. A declaration change re-runs that trace before it is
+trusted; a product-owned form of the proof belongs to the mutation slice.
 
 ### Selection
 
@@ -2611,9 +2664,15 @@ identity and independent scoped review. Without `--json` the same record prints
 as text: the base and head commits, each fallback reason, one `name: decision
 reasons` line per unit, then the selected and review-candidate counts.
 
-Standalone host dependency closure is unknown, so host units remain selected.
+A host unit with declared [`inputs`](#host-unit-closure) is judged on its
+derived modules, declared files and the tracked files under declared
+directories: a changed path in that closure selects it with `changed inputs:
+PATHS`; a closure whose bytes all equal the base makes it a review candidate
+with `validated declared host closure equal base`; anything else selects it.
+A host unit without a declaration is always `selected unknown closure: no
+declared inputs in src/dv/builder/catalogue.yaml`.
 New, deleted, renamed, unmapped, tool, configuration or catalogue changes force
-conservative fallback. Invalid input closure, dynamic data/import behavior,
+conservative fallback for every unit, host or simulation. Invalid input closure, dynamic data/import behavior,
 preloads/drivers, non-Python and unresolved import qualification select the
 corresponding simulation too. Candidates are restricted to declared modules with plain imports and call-free
 function/data bodies. Only the literal no-argument `@cocotb.test()` entry
@@ -2624,3 +2683,5 @@ declared imported Python module must also qualify. Candidates carry exact
 repository input hashes against the base; byte differences, including checkout line endings,
 prevent equality. The report is advisory preparation cost, not proof of faster
 delivery or permission to omit pixel, state, mutation or completion gates.
+Without a global fallback it hashes each closure path once against the base;
+about 16 s on this tree when quiet, and several times that under machine load.

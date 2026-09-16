@@ -86,6 +86,69 @@ class Validation(unittest.TestCase):
                          path.read_text(encoding="utf-8"),
                          "the catalogue is not in its canonical written form")
 
+    def test_host_inputs_and_external_imports_round_trip_and_are_validated(self):
+        unit = {"kind": "unit", "level": 0, "labels": [], "duration_seconds": None, "inputs": ["src/dv/builder", ".github/x.yml"]}
+        document = model(units={"cpu-alu": dict(ENTRY), "src/dv/builder/test_a.py": unit}) | {
+            "external_imports": {"serial": "tools/n2m/host/THIRD_PARTY.md records pySerial 3.5."}}
+        self.write(document)
+        (self.root / "src/dv/builder/test_a.py").write_text("import unittest\n", encoding="utf-8")
+        (self.root / ".github").mkdir()
+        (self.root / ".github/x.yml").write_text("", encoding="utf-8")
+        loaded, path = module.load(self.root)
+        self.assertEqual(loaded["external_imports"], document["external_imports"])
+        # The formatter writes the declaration sorted, so a rebase onto another author's row stays mechanical.
+        self.assertEqual(loaded["units"]["src/dv/builder/test_a.py"]["inputs"], sorted(unit["inputs"]))
+        self.assertEqual(module.read_yaml(module.format_document(loaded)),
+                         {key: value for key, value in loaded.items() if key != "retired"})
+        self.assertIn("inputs: [.github/x.yml, src/dv/builder]", path.read_text(encoding="utf-8"))
+        self.assertEqual(module.coverage(self.root, loaded), [])
+        # The duration write-back keeps the declaration.
+        module.record_durations(path, {"src/dv/builder/test_a.py": 0.5})
+        self.assertEqual(module.load(self.root)[0]["units"]["src/dv/builder/test_a.py"]["inputs"], sorted(unit["inputs"]))
+        for units, extra, message in (
+                ({"cpu-alu": dict(ENTRY, inputs=[])}, {}, "its inputs live in targets.json"),
+                ({"src/dv/builder/test_a.py": dict(unit, inputs=["src", "src"])}, {}, "inputs must be a set"),
+                ({"src/dv/builder/test_a.py": dict(unit, inputs=["../x"])}, {}, "not a repository-relative path"),
+                ({"src/dv/builder/test_a.py": dict(unit, inputs=["src/"])}, {}, "not a repository-relative path"),
+                ({"src/dv/builder/test_a.py": dict(unit, inputs=["/etc/passwd"])}, {}, "not a repository-relative path"),
+                ({"cpu-alu": dict(ENTRY)}, {"external_imports": {"serial": " "}}, "requires a recorded provenance"),
+                ({"cpu-alu": dict(ENTRY)}, {"external_imports": {"not-a-module": "x"}}, "requires a recorded provenance")):
+            with self.subTest(message=message):
+                self.write(model(units=units) | extra)
+                with self.assertRaisesRegex(ValueError, message):
+                    module.load(self.root)
+        # Shapes the canonical formatter cannot write are still refused when read.
+        for text, message in (('version: 1\nlabels:\n  cpu: "c"\nexternal_imports:\n  - serial\nunits:\n'
+                               '  cpu-alu: {kind: sim, level: 1, labels: [], duration_seconds: null}\nnot_runnable: {}\n',
+                               "must be a mapping"),
+                              ('version: 1\nlabels:\n  cpu: "c"\nunits:\n  src/dv/builder/test_a.py: '
+                               '{kind: unit, level: 0, labels: [], duration_seconds: null, inputs: src}\nnot_runnable: {}\n',
+                               "inputs must be a set")):
+            with self.subTest(message=message):
+                (self.root / module.CATALOGUE).write_text(text, encoding="utf-8", newline="\n")
+                with self.assertRaisesRegex(ValueError, message):
+                    module.load(self.root)
+
+    def test_coverage_rejects_an_undeclared_import_and_an_inconsistent_declaration(self):
+        (self.root / "src/dv/builder/test_a.py").write_text(
+            "from pathlib import Path\nimport helper\nDATA = Path(__file__).with_name('data.json')\n", encoding="utf-8")
+        (self.root / "src/dv/builder/helper.py").write_text("import serial\n", encoding="utf-8")
+        (self.root / "src/dv/builder/data.json").write_text("{}", encoding="utf-8")
+        unit = {"kind": "unit", "level": 0, "labels": [], "duration_seconds": None}
+        self.write(model(units={"cpu-alu": dict(ENTRY), "src/dv/builder/test_a.py": unit}))
+        loaded, _ = module.load(self.root)
+        self.assertEqual(module.coverage(self.root, loaded), [
+            "unit src/dv/builder/test_a.py: undeclared import serial at line 1 of src/dv/builder/helper.py"])
+        self.write(model(units={"cpu-alu": dict(ENTRY), "src/dv/builder/test_a.py": dict(unit, inputs=[])})
+                   | {"external_imports": {"serial": "pySerial 3.5"}})
+        loaded, _ = module.load(self.root)
+        self.assertEqual(module.coverage(self.root, loaded), [
+            "unit src/dv/builder/test_a.py references an undeclared input: src/dv/builder/data.json"])
+        self.write(model(units={"cpu-alu": dict(ENTRY), "src/dv/builder/test_a.py": dict(unit, inputs=["src/dv/builder/data.json"])})
+                   | {"external_imports": {"serial": "pySerial 3.5"}})
+        loaded, _ = module.load(self.root)
+        self.assertEqual(module.coverage(self.root, loaded), [])
+
     def test_undeclared_label_fails_validation(self):
         self.write(model(units={"cpu-alu": dict(ENTRY, labels=["cpu", "ppu"])}))
         with self.assertRaisesRegex(ValueError, "undeclared label: ppu"):

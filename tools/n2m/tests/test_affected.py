@@ -141,6 +141,43 @@ class Impact(unittest.TestCase):
         self.assertEqual(row['decision'],'selected')
         self.assertIn('model.py',row['reasons'][0])
 
+    def declare_host(self,inputs):
+        """Add a declared host unit beside a helper module and a data directory outside tools/."""
+        self.write('src/dv/host/helper.py','VALUE=1\n');self.write('src/dv/host/data/table.json','{}\n')
+        self.write('src/dv/host/test_host.py','import unittest\nimport helper\n')
+        model,path=catalogue.load(self.root)
+        model['units']['src/dv/host/test_host.py']=dict(kind='unit',level=0,labels=['test'],duration_seconds=None,inputs=inputs)
+        self.write(catalogue.CATALOGUE,catalogue.format_document(model))
+        self.commit();self.base=self.git('rev-parse','HEAD').strip()
+
+    def test_declared_host_unit_selects_on_changed_module_or_data_and_is_a_candidate_otherwise(self):
+        self.declare_host(['src/dv/host/data'])
+        row=self.result()['units']['src/dv/host/test_host.py']
+        self.assertEqual(row['decision'],'review_candidate')
+        self.assertEqual(row['reasons'],['validated declared host closure equal base'])
+        self.assertEqual(set(row['inputs']),{'src/dv/host/test_host.py','src/dv/host/helper.py','src/dv/host/data/table.json'})
+        self.assertIn('not accepted reuse',row['limitation'])
+        self.write('src/dv/host/data/table.json','{"changed":1}\n')
+        row=self.result()['units']['src/dv/host/test_host.py']
+        self.assertEqual((row['decision'],row['reasons']),('selected',['changed inputs: src/dv/host/data/table.json']))
+        self.write('src/dv/host/data/table.json','{}\n');self.write('src/dv/host/helper.py','VALUE=2\n')
+        row=self.result()['units']['src/dv/host/test_host.py']
+        self.assertEqual((row['decision'],row['reasons']),('selected',['changed inputs: src/dv/host/helper.py']))
+        # An RTL-only change leaves the declared host unit a candidate while its simulation is selected.
+        self.write('src/dv/host/helper.py','VALUE=1\n');self.write('src/rtl/tb.sv','module tb; initial $finish; endmodule\n')
+        report=self.result()
+        self.assertEqual(report['units']['src/dv/host/test_host.py']['decision'],'review_candidate')
+        self.assertEqual(report['units']['tools/test_host.py']['decision'],'selected')
+        self.assertEqual(report['units']['a']['decision'],'selected')
+
+    def test_undeclared_host_unit_stays_selected_and_an_undeclared_import_fails_validation(self):
+        self.write('tools/test_host.py','import unittest\nimport helper\n');self.write('tools/helper.py','VALUE=1\n')
+        self.commit();self.base=self.git('rev-parse','HEAD').strip()
+        row=self.result()['units']['tools/test_host.py']
+        self.assertEqual((row['decision'],row['reasons'][0][:15]),('selected','unknown closure'))
+        self.write('tools/helper.py','import serial\n')
+        with self.assertRaisesRegex(ValueError,'undeclared import serial'):self.result()
+
     def test_missing_catalogue_test_is_a_validation_failure(self):
         self.write('tools/test_missing.py','import unittest\n')
         with self.assertRaisesRegex(ValueError,'missing from'):self.result()
@@ -163,7 +200,7 @@ class Impact(unittest.TestCase):
         self.assertIn(f"Base: {report['base']}  head: {report['head']}  1 changed paths",lines)
         self.assertIn('a: selected changed inputs: src/dv/springtrail/model.py',lines)
         self.assertIn('b: review_candidate validated declared repository inputs equal base',lines)
-        self.assertIn('tools/test_host.py: selected standalone host dependency closure is unknown',lines)
+        self.assertIn('tools/test_host.py: selected unknown closure: no declared inputs in src/dv/builder/catalogue.yaml',lines)
         self.assertIn('2 selected, 1 review candidates of 3 units',lines)
         self.assertNotIn('Fallback:',text);self.assertIn('Scope: advisory only',text);self.assertIn('Elapsed: ',text)
 
