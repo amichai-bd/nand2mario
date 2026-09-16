@@ -366,10 +366,9 @@ module tb_menu_system;
         step(BUTTON_DOWN, 2);
         step(BUTTON_DOWN, 3);
         // Slot 3 is empty: the select is refused and the status row says so.
-        // window_ready (bit 6) is masked: the hardware clears it on a refused
-        // select against the contract (#685); the menu never depends on it.
+        // The refused select leaves the filled window's window_ready set.
         step(BUTTON_A, 4);
-        read_status({2'b0, 6'd34, 8'd3, LIBRARY_RESULT_INVALID_SLOT, 8'h20}, 32'h3FFFFFBF);
+        read_status({2'b0, 6'd34, 8'd3, LIBRARY_RESULT_INVALID_SLOT, 8'h60}, 32'h3FFFFFFF);
         step(BUTTON_UP, 5);
         select_game(8'd2);
     endtask

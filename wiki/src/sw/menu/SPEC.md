@@ -44,10 +44,7 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
 
 The catalogue is read once, at boot or through the delayed path; the drawn
 map is the menu's copy of the titles. Nothing after a selection depends on
-`window_ready`, so the hardware's clearing of that bit by a refused select
-([#685](https://github.com/amichai-bd/nand2mario/issues/685), a deviation
-from the [bank register rule](../../rtl/cartridge/MAS_loader_profile.md#bank-register))
-does not affect the menu.
+`window_ready`.
 
 The menu lists game slots 0..15 only. It reads all 17 catalogue entries
 through the window but never lists entry 16, which is itself. A slot is drawn
@@ -164,7 +161,7 @@ compares every captured display-eligible frame; the
 |---|---|
 | `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a repeated Up at slot 0 change nothing (each step is one sampled press; a hold across frames is not simulated) |
 | `menu-select` | Down then A commits 1 to the select register; the game boots in `DIRECT_ID` with epoch + 1 and `LIBRARY_STATUS` result `OK` index 1 |
-| `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 (its `window_ready` bit is not asserted, [#685](https://github.com/amichai-bd/nand2mario/issues/685)) and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
+| `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 

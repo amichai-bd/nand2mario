@@ -494,19 +494,32 @@ module tb_loader #(
     task automatic fixture_swap_fault;
         int edges, writes_before;
         logic [7:0] value;
+        // A filled window first: window_ready must survive every refused select.
+        cpu_write(16'h2000, 8'd1); wait_copy(edges, FILL_BOUND, "fill before faults");
+        expect_read(16'hA000, 8'h60, "filled window");
+        fills = fills + 1;
         // Refused selects: exact codes, index recorded, no ROM byte written.
         writes_before = engine_writes;
         cpu_write(16'h6000, 8'd3); wait_copy(edges, SWAP_BOUND, "empty slot");
-        expect_status(8'h20, LIBRARY_RESULT_INVALID_SLOT, 8'd3, "empty slot");
+        expect_status(8'h60, LIBRARY_RESULT_INVALID_SLOT, 8'd3, "empty slot");
         cpu_write(16'h6000, 8'd5); wait_copy(edges, SWAP_BOUND, "wrong length");
-        expect_status(8'h20, LIBRARY_RESULT_INVALID_SLOT, 8'd5, "wrong length");
+        expect_status(8'h60, LIBRARY_RESULT_INVALID_SLOT, 8'd5, "wrong length");
         cpu_write(16'h6000, 8'd7); wait_copy(edges, SWAP_BOUND, "bad profile");
-        expect_status(8'h20, LIBRARY_RESULT_INVALID_SLOT, 8'd7, "bad profile");
+        expect_status(8'h60, LIBRARY_RESULT_INVALID_SLOT, 8'd7, "bad profile");
         if (engine_writes != writes_before || paused || !image_valid || profile != PROFILE_LOADER_ID)
             $fatal(1, "LOADER_TB_REFUSED_EFFECT writes=%0d paused=%b", engine_writes - writes_before, paused);
+        check_upper_half(1);
         // CRC mismatch: paused with no valid image, PROFILE 0, LOADING for the host.
+        // The accepted swap keeps window_ready through its catalogue check and
+        // clears it once the core is paused, before the first ROM write.
         cpu_write(16'h6000, 8'd9);
-        while (!paused) edge_cycle();
+        while (!paused) begin
+            edge_cycle();
+            if (!library_status[6]) $fatal(1, "LOADER_TB_WINDOW_READY_EARLY");
+        end
+        repeat (2) edge_cycle();
+        if (library_status[6]) $fatal(1, "LOADER_TB_WINDOW_READY_HELD");
+        checks = checks + 1;
         wait_copy(edges, SWAP_BOUND, "crc mismatch");
         if (!paused || image_valid || profile != 8'd0 || library_status[15:8] != LIBRARY_RESULT_CRC_MISMATCH ||
             library_status[23:16] != 8'd9)

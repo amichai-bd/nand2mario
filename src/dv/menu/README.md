@@ -31,7 +31,7 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 | Boot frame | The first display-eligible frame equals reference frame 0: header, sixteen numbered rows, four titles, blank rows for slots 3 and 6..15, the `SHORT IMAGE` title of slot 4, cursor on slot 0, blank status row; `LIBRARY_STATUS` shows bank 34 and result `OK` |
 | Cursor | Down, Down, Up show the cursor on slots 1, 2, 1; Up at slot 0 and a repeated Up leave frame 0 unchanged; every frame is 23040 pixels in source order |
 | Select | Down then A: the only write into `$6000`-`$7FFF` carries 1; the core boots in `DIRECT_ID` with epoch + 1, `LIBRARY_STATUS` result `OK` index 1 |
-| Refused select | Cursor on the empty slot 3, A: `LIBRARY_STATUS` result `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up moves the cursor while the message stays; A on slot 2 starts that game with select data 2. The status read masks `window_ready`, which the hardware clears on a refused select against the contract ([#685](https://github.com/amichai-bd/nand2mario/issues/685)); the menu does not depend on it |
+| Refused select | Cursor on the empty slot 3, A: `LIBRARY_STATUS` result `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up moves the cursor while the message stays; A on slot 2 starts that game with select data 2; `window_ready` stays set across the refused select |
 | Checker | `+pixel_fault` forces the source shade to 2 for the boot frame and must fail with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 | Reference | `test_menu_reference.py`: font tiles equal the approved core glyphs, glyph mapping, layout rows, status texts, fixture library bytes and catalogue entry packing, snapshot unpacking and the negative pixel check |
 

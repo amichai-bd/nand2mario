@@ -133,8 +133,10 @@ module n2m_loader #(
             key1_pending_next = 1'b0;
         end
         if (engine_start) job_valid_next = 1'b0;
-        // A swap and a host load session both overwrite the upper half.
-        if (host_loading || (engine_start && job_swap)) window_ready_next = 1'b0;
+        // A swap and a host load session both overwrite the upper half. The
+        // swap clears the window on its invalidate step, after the catalogue
+        // check passed and the core paused; a refused select changes nothing.
+        if (host_loading || image_invalidate) window_ready_next = 1'b0;
         if (select_commit) last_index_next = commit_data;
         if (bank_commit && !copy_busy) begin
             if (!sdram_ready) result_next = n2m_interfaces_pkg::LIBRARY_RESULT_NOT_READY;

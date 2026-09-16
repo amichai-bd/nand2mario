@@ -30552,7 +30552,7 @@
       "+fixture=swap-fault"
     ],
     "expected_exit": "zero",
-    "signature": "PASS loader-swap-fault checks=26 swaps=1 fills=0 engine_writes=65536",
+    "signature": "PASS loader-swap-fault checks=30 swaps=1 fills=1 engine_writes=81920",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   },

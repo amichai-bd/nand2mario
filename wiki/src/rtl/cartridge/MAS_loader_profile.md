@@ -82,7 +82,9 @@ holds whatever the last image left there, and `window_ready` is 0 until the
 first fill completes. `window_ready` is also cleared by every swap and by
 every host load session, because both overwrite the upper half; `bank`
 keeps its value, and the menu must commit the bank register again to
-refill the window.
+refill the window. A swap clears it only once its catalogue check has
+passed and the core is paused, so a select refused with `INVALID_SLOT`
+leaves it unchanged.
 
 Reads of `$4000`-`$7FFF` return `$FF` while `window_busy`, so a program that
 does not poll observes a defined value rather than a mix of old and new bytes.
@@ -366,7 +368,7 @@ all under the `cartridge` label; the
 | `loader-window` | Bank commits 0, 1, 33, 34, 63; upper half equals the SDRAM bank after `window_busy` falls; 40,000-edge bound; ignored commit during busy; `window_ready` and `$A001` |
 | `loader-swap` | Select 0, 15 and 16 with a valid catalogue: pause, `image_valid` low before the first ROM write, CRC, `PROFILE`, epoch + 1, running without host `RUN`; 80,000-edge bound; the ROM store equals the image byte for byte |
 | `loader-swap-host` | A select committed by the menu while a host `RUN_DOTS` runs, and a return requested during a host `STEP`: the host command completes (`STOPPED`, `STEP_LIMIT`), the swap completes within the bound with the expected `PROFILE` and epoch + 1, the console stays paused for the host afterwards and resumes on host `RUN`; the ROM store equals the image |
-| `loader-swap-fault` | Invalid entry, wrong length, bad profile, CRC mismatch: exact result codes, no ROM byte changed for refused selects, paused with `image_valid` 0 for the mismatch |
+| `loader-swap-fault` | Invalid entry, wrong length, bad profile, CRC mismatch: exact result codes, no ROM byte changed and `window_ready` unchanged for refused selects, `window_ready` cleared once the accepted swap pauses the core, paused with `image_valid` 0 for the mismatch |
 | `loader-key1` | 4 ms glitch, 0.49 s and 0.51 s presses, hold through the swap, press during a swap (`key1_pending`), press in a host session (dropped), release and re-press |
 | `loader-host` | `LOAD_BEGIN` during swap returns `BAD_STATE`; during fill it waits; `SDRAM_WRITE`/`SDRAM_READ` round trips; `LIBRARY_STATUS`; `WRITE_HOST(LIBRARY_CONTROL)` return; a direct host load of a game after a swap behaves as today |
 
