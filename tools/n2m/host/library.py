@@ -202,9 +202,11 @@ def decode_library_status(word):
 # Endpoint STATE and response status names, from the generated table.
 STATE_NAMES = {abi.STATE_PAUSED: 'PAUSED', abi.STATE_RUNNING: 'RUNNING', abi.STATE_LOADING: 'LOADING'}
 STATUS_NAMES = {getattr(abi, key): key[len('STATUS_'):] for key in vars(abi) if key.startswith('STATUS_')}
-# The menu swap lasts at most 3.2 ms (MAS_loader_profile.md#host-interaction);
-# one READ_HOST round trip at 115200 baud already takes longer, so this many
-# status reads bound `--wait` far beyond a healthy swap without a wall clock.
+# The menu swap lasts at most 3.2 ms (MAS_loader_profile.md#host-interaction).
+# One READ_HOST round trip is about 32 framed bytes each way, about 2.8 ms at
+# 115200 baud, so a healthy swap settles within one or two reads; 64 reads
+# (over 150 ms) bound `--wait` without a wall clock, which also suits the
+# simulation peer whose clock is simulation time.
 RETURN_STATUS_READS = 64
 
 

@@ -52,7 +52,9 @@ class LoaderEndpoint(Endpoint):
     """Models the loader's menu return: LIBRARY_CONTROL = 1 swaps in the menu.
 
     The swap reports ``copy_busy`` and STATE LOADING for ``busy_reads`` status
-    reads, then result OK with the loader profile live and the core running.
+    reads, then result OK with the loader profile live. The console keeps its
+    prior host state (MAS_loader_profile.md select register step 6): a host
+    pause survives the swap until RUN, so only a RUNNING console resumes.
     A stuck endpoint (``busy_reads`` None) never clears ``copy_busy``.
     """
     def __init__(self, busy_reads=2, result=abi.LIBRARY_RESULT_OK):
@@ -62,10 +64,12 @@ class LoaderEndpoint(Endpoint):
         self.swapping = False
         self.result_byte = abi.LIBRARY_RESULT_NONE
         self.status_reads = 0
+        self.state_before_swap = self.state
 
     def host_write(self, address, value):
         if address == abi.HOST_REG_LIBRARY_CONTROL and value == abi.LIBRARY_CONTROL_RETURN:
             self.swapping, self.status_reads = True, 0
+            self.state_before_swap = self.state
             self.state, self.valid = abi.STATE_LOADING, 0
 
     def library_status(self):
@@ -76,7 +80,7 @@ class LoaderEndpoint(Endpoint):
             return 0x00FF0000 | abi.LIBRARY_STATUS_COPY_BUSY | abi.LIBRARY_STATUS_SDRAM_READY
         self.swapping, self.result_byte = False, self.swap_result
         if self.swap_result == abi.LIBRARY_RESULT_OK:
-            self.state, self.valid, self.profile = abi.STATE_RUNNING, 1, abi.PROFILE_LOADER_ID
+            self.state, self.valid, self.profile = self.state_before_swap, 1, abi.PROFILE_LOADER_ID
         return (self.result_byte << 8) | (abi.LIBRARY_MENU_INDEX << 16) | abi.LIBRARY_STATUS_SDRAM_READY | abi.LIBRARY_STATUS_WINDOW_READY
 
 
@@ -357,9 +361,13 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual((report['status'], report['action']), ('PASS', 'library-return'))
         self.assertEqual((report['result']['settled'], report['result']['status_reads']), (True, 2))
         self.assertEqual(report['result']['library_status']['result'], 'OK')
-        self.assertEqual(report['result']['endpoint']['state_name'], 'RUNNING')
+        # A host-paused console stays PAUSED through a healthy return (contract step 6); it is not a failed return.
+        self.assertEqual((report['result']['before']['state_name'], report['result']['endpoint']['state_name']), ('PAUSED', 'PAUSED'))
+        self.assertEqual((report['result']['endpoint']['PROFILE'], report['result']['endpoint']['IMAGE_VALID']), (abi.PROFILE_LOADER_ID, 1))
         self.assertEqual(endpoint.host_writes, [(abi.HOST_REG_LIBRARY_CONTROL, abi.LIBRARY_CONTROL_RETURN)])
-        with patch('n2m.host.command.session', self.fake_session(LoaderEndpoint(busy_reads=0))), redirect_stdout(io.StringIO()) as stdout:
+        running = LoaderEndpoint(busy_reads=0)
+        running.state = abi.STATE_RUNNING
+        with patch('n2m.host.command.session', self.fake_session(running)), redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main(['host', 'library', 'return', '--uart-port', 'COM92', '--tag', self.tag], ROOT), 0)
         self.assertIn('library return: result OK flags window_ready,sdram_ready bank 0; endpoint RUNNING profile 2 image_valid 1',
                       stdout.getvalue())
