@@ -64,7 +64,7 @@ module n2m_boot_copier (
     logic check_second, check_second_next;
     logic flash_boot_next;
     logic [19:0] copy_clocks, copy_clocks_next;
-    logic [ADDRESS_BITS-1:0] order_address;
+    logic [ADDRESS_BITS-1:0] order_address, order_address_next;
     logic accept;
     logic fetch_accept;
     logic last_line;
@@ -113,6 +113,8 @@ module n2m_boot_copier (
         check_second_next = check_second;
         flash_boot_next = flash_boot;
         copy_clocks_next = phase == BOOT_COPY ? copy_clocks + 20'd1 : 20'd0;
+        // Independent order witness: the address every accepted write must carry.
+        order_address_next = accept ? order_address + LINE_STEP : order_address;
         if (fetch_accept) begin
             fetch_word_next = fetch_word + FLASH_WORD_BITS'(FLASH_LINE_WORDS);
             fetch_outstanding_next = 1'b1;
@@ -179,8 +181,7 @@ module n2m_boot_copier (
     `DFF_ARST_VAL(check_second, check_second_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(flash_boot, flash_boot_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(copy_clocks, copy_clocks_next, clk_sys, reset_sys, '0)
-    // Independent order witness: the address every accepted write must carry.
-    `DFF_ARST_VAL(order_address, accept ? order_address + LINE_STEP : order_address, clk_sys, reset_sys, '0)
+    `DFF_ARST_VAL(order_address, order_address_next, clk_sys, reset_sys, '0)
 
     `N2M_ASSERT(FLASH_COPY_ORDER, clk_sys, reset_sys, accept |-> sdram_address == order_address)
     `N2M_ASSERT(FLASH_COPY_BOUND, clk_sys, reset_sys,
