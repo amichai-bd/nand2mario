@@ -15,8 +15,6 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import affected, catalogue, host_closure, mutations
 
-closures = affected.closures
-
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -61,36 +59,47 @@ class RepositoryProof(unittest.TestCase):
         self.assertEqual(found, [f"mutation {row['name']}: unit {unit} not selected for {row['path']} "
                                  "(validated declared host closure equal base)"])
 
-    def test_real_report_on_a_mutated_clone_equals_the_in_process_decision(self):
-        """`tests affected` and the proof share decide(): the same mutation, applied for real, agrees.
+    def test_the_real_report_comparison_names_each_disagreement(self):
+        """`tests mutations --confirm` runs the real report on a mutated clone; the comparison is proved here cheaply.
 
-        An RTL change decides most simulations by their changed inputs; a data
-        change leaves them undecided and validates each one, so both kinds run."""
-        for kind in ("rtl", "data"):
-            with self.subTest(kind=kind):
-                self.real_report_equals_decision(next(r for r in self.rows if r["kind"] == kind))
-
-    def real_report_equals_decision(self, row):
-        base = ROOT / "workdir/builds/affected-mutation-unit-tests"
-        base.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix="clone ", dir=base) as temp:
-            clone = mutations.clone(ROOT, Path(temp) / "tree")
-            head = subprocess.check_output(["git", "-C", str(clone), "rev-parse", "HEAD"], text=True).strip()
-            mutations.mutate(clone, row, self.marker)
-            model, _ = catalogue.load(clone)
-            derived = []
-            # Capture the closures the report derives, so the in-process decision starts from the same ones.
-            with patch.object(affected, "closures", side_effect=lambda *a: derived.append(closures(*a)) or derived[-1]):
-                report = affected.report(clone, head)
-            _, expected = mutations.selection(clone, model, derived[0], row["path"])
-        self.assertEqual([c["path"] for c in report["changes"]], [row["path"]])
-        self.assertEqual(report["fallback"], [])
-        strip = lambda units: {n: {k: v for k, v in r.items() if k != "inputs"} for n, r in units.items()}
-        self.assertEqual(strip(report["units"]), strip(expected))
-        for detector in row["detectors"]:
-            self.assertEqual(report["units"][detector]["decision"], "selected")
-        self.assertIn("advisory only", report["scope"])
-        self.assertTrue(report["required_checks"].startswith("unchanged"))
+        The real clones cost about 20 s each, so they run only under the opt-in
+        confirm path; this test substitutes both the report and the in-process
+        decision and proves the comparison accepts agreement and names every
+        kind of disagreement."""
+        row = next(r for r in self.rows if r["kind"] == "data")
+        detector = row["detectors"][0]
+        expected = {detector: {"decision": "selected", "reasons": ["changed inputs: " + row["path"]]},
+                    "builder-smoke": {"decision": "review_candidate", "reasons": ["validated declared repository "
+                                      "inputs equal base"], "inputs": {"src/rtl/a.sv": "hash"}}}
+        agreed = dict(changes=[dict(status="M", path=row["path"])], fallback=[],
+                      required_checks="unchanged; follow the existing PR required suite",
+                      units=copy.deepcopy(expected), selected=1, review_candidates=1, elapsed_seconds=0.5)
+        del agreed["units"]["builder-smoke"]["inputs"]  # the report's hashes are not compared
+        with patch.object(affected, "report", return_value=agreed) as report, \
+                patch.object(mutations, "selection", return_value=([], expected)) as selection:
+            problems, summary = mutations.report_equals_decision(ROOT, row, self.model, self.known)
+        self.assertEqual(problems, [])
+        self.assertEqual(summary, {"selected": 1, "review_candidates": 1, "elapsed_seconds": 0.5})
+        self.assertEqual(report.call_args.args[2], self.known)
+        self.assertEqual(selection.call_args.args[2:], (self.known, row["path"]))
+        differing = copy.deepcopy(agreed)
+        differing["changes"].append(dict(status="M", path="tools/build.py"))
+        differing["fallback"] = ["tool, configuration or catalogue change can affect preparation and execution"]
+        differing["required_checks"] = "widened"
+        differing["units"][detector]["decision"] = "review_candidate"
+        del differing["units"]["builder-smoke"]
+        with patch.object(affected, "report", return_value=differing), \
+                patch.object(mutations, "selection", return_value=([], expected)):
+            problems, _ = mutations.report_equals_decision(ROOT, row, self.model, self.known)
+        name = f"mutation {row['name']}"
+        self.assertEqual(problems, [
+            f"{name}: the real report saw changes {[row['path'], 'tools/build.py']} instead of [{row['path']!r}]",
+            f"{name}: the real report fell back: tool, configuration or catalogue change can affect "
+            "preparation and execution",
+            f"{name}: the real report changed the required checks: widened",
+            f"{name}: unit builder-smoke is None in the real report and review_candidate in process",
+            f"{name}: unit {detector} is review_candidate in the real report and selected in process",
+            f"{name}: unit {detector} is review_candidate in the real report for {row['path']}"])
 
 
 class Manifest(unittest.TestCase):

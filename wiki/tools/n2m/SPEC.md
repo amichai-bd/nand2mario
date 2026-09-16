@@ -1243,6 +1243,28 @@ schedule a longer run or shorten its oracle to claim completion. An explicitly
 authorized acceptance revision must name the new matrix and leave missing proof
 open, as in [v0.5](../../src/dv/v05/SPEC.md#revised-milestone-matrix).
 
+`check` runs the host suite ([host_suite.py](../../../tools/n2m/host_suite.py))
+as three `unittest discover` subprocesses over `tools/n2m/tests` at the same
+time, one per alphabetical module group (`test_[a-e]*.py`, `test_[f-l]*.py`,
+`test_[m-z]*.py`), each with its own 180-second budget. `unittest` runs modules
+one after another, so the groups balance measured module time recorded once in
+the source, not live timings; a new module joins the group its name falls in,
+and a module no group matches fails `check` by name. A group that fails or
+exceeds its budget fails `check` naming the group and its first failing test;
+a timeout is never a partial pass. `check.log` carries each group's status and
+wall before its output, and the record's `groups` and `wall_seconds` keep them.
+The CPU time is the suite's own; only the wall shrinks to the slowest group. No
+single test may cost tens of seconds: the real-clone reports of the
+[conservativeness proof](#conservativeness-proof) run under the opt-in
+`tests mutations --confirm` instead. Measured on the shared Linux WSL2
+development host (22 CPUs, 912 tests, load average 4 to 5.5 from other agents'
+host suites; a quiet host was not available): 62 s wall (groups 43, 55 and
+39 s; 112 s user and 13 s system CPU), and 59 s with one concurrent Verilator
+`regress pre-merge` (groups 42, 53 and 38 s). Before the split, the single
+subprocess took 170 s at that load and timed out at 180 s under load average
+5.8; its direct run cost 155 s user and 21 s system CPU. Do not raise the
+budget without a measured justification; move or rebalance the work instead.
+
 Elapsed time is captured before final evidence-file writes. OS scheduling,
 process launch and synchronous filesystem calls are not preemptible Python
 timeouts; the supervisor does not claim to measure or bound those final writes.
@@ -2729,15 +2751,10 @@ in process on the current tree with exactly that path differing from the base,
 deciding only the recorded detectors, and every detector must be `selected`. A
 detector left as a review candidate fails as `mutation NAME: unit U not
 selected for PATH (reason)`, so dropping an input from a unit's declaration
-fails by the unit's name. Two rows are also applied for real: a shared clone of
-`HEAD` receives the RTL mutation, then another the data mutation, and the full
-`tests affected` report against each must equal the in-process decision for
-every unit; the data change validates every undecided simulation, so it
-exercises the report's memoized validation path. The harness runs under
-`check` and costs about 65 s (closure derivation about 9 s, the real reports
-about 17 s and 22 s). `tests validate` and `check` also reject a manifest row
-that names an unknown unit or an untracked path; the harness fails when the
-manifest is absent. `python tools/build.py tests
+fails by the unit's name. The in-process harness runs under `check` and costs
+about 20 s at load average 4, mostly closure derivation. `tests validate` and `check` also
+reject a manifest row that names an unknown unit or an untracked path; the
+harness fails when the manifest is absent. `python tools/build.py tests
 mutations [--name N] --tag TAG --json` runs the same selection proof as a
 command; its record lists `mutations` and `misses`.
 
@@ -2747,10 +2764,22 @@ environment, runs every detector unmutated (a host unit through the catalogue
 runner, a simulation target through `sim test` under its ordinary wall budget),
 applies the mutation and runs them again. A detector that does not pass before
 or does not fail after leaves the row unconfirmed and the command `FAIL`, so an
-environment failure is never mistaken for a detection. It is opt-in: all
-eleven rows take about 100 s, dominated by the two Verilator builds and the
-before/after runs of the slower host units. `--verilator-bin` is passed
-through to the target runs.
+environment failure is never mistaken for a detection. The first mutated clone
+of the `rtl` kind and the first of the `data` kind also run the full
+`tests affected` report against `HEAD`
+([`report_equals_decision`](../../../tools/n2m/mutations.py)), which must equal
+the in-process decision for every unit: a changed path, fallback or required
+checks the mutation did not cause, or a unit decided differently, is a named
+problem and the command `FAIL`. The RTL change decides most simulations by
+their changed inputs; the data change leaves them undecided and validates each
+one, so both report paths run. The row record keeps the real report's
+`selected`, `review_candidates` and `elapsed_seconds` under `report`. The
+comparison itself is proved under `check` with a substituted report
+([`test_affected_mutations.py`](../../../tools/n2m/tests/test_affected_mutations.py));
+the real clones run only here, so `check` stays inside its budget. It is
+opt-in: all eleven rows take about 160 s, dominated by the two
+Verilator builds, the two real reports and the before/after runs of the slower
+host units. `--verilator-bin` is passed through to the target runs.
 
 `tests closure-trace [--unit NAME]` is the dynamic proof of the declared host
 closures ([`closure_trace.py`](../../../tools/n2m/closure_trace.py), tested on a

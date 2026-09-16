@@ -161,7 +161,8 @@ def decide(root, model, changed, same, known=None, only=None):
     return fallback,units
 
 
-def report(root, base):
+def report(root, base, known=None):
+    """The advisory report against `base`; `known` closures, when given, replace their derivation."""
     started=time.monotonic(); root=Path(root).resolve()
     commit,changed=changes(root,base)
     model,_=catalogue.load(root)
@@ -173,7 +174,7 @@ def report(root, base):
         if path not in equal_to_base:
             equal_to_base[path]=(file_hash(root/path),hashlib.sha256(git(root,'show',commit+':'+path)).hexdigest())
         return equal_to_base[path]
-    fallback,units=decide(root,model,changed,same)
+    fallback,units=decide(root,model,changed,same,known)
     return dict(status='PASS',scope='advisory only; no tests executed or evidence reused',base=commit,
                 head=git(root,'rev-parse','HEAD').decode().strip(),changes=changed,fallback=fallback,
                 required_checks='unchanged; follow the existing PR required suite',units=units,

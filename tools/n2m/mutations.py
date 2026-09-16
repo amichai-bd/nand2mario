@@ -6,7 +6,9 @@ one byte mutation and the units recorded as detecting it. The proof is that
 from the base; a recorded detector left unselected is a miss named as such.
 `confirm` re-derives the record itself: it applies each mutation in a shared
 clone and runs the detectors before and after, so the record never claims a
-detection an environment failure produced.
+detection an environment failure produced. On the first mutated clone of each
+reported kind it also runs the real `tests affected` report, which must equal
+the in-process decision for every unit.
 """
 import json
 import os
@@ -24,6 +26,10 @@ KINDS = ("rtl", "python", "catalogue", "tool", "data")
 FIELDS = {"name", "kind", "path", "mutation", "detectors", "evidence"}
 # The interpreter directory the clone borrows so a python-testbench detector can run.
 COCOTB_ENV = "workdir/builds/python-dv-env"
+# The kinds whose first row also runs the real report under --confirm: an RTL change decides
+# most simulations by their changed inputs; a data change leaves them undecided and validates
+# each one, so both report paths run. Each real report costs about 20 s, so not every row does.
+REPORTED_KINDS = ("rtl", "data")
 
 
 def load(root, model=None):
@@ -160,6 +166,39 @@ def run_detector(root, name, entry, verilator_bin=None):
     return outcome
 
 
+def report_equals_decision(clone, row, model, known):
+    """Problems where the real `tests affected` report on the mutated clone differs from decide() in process.
+
+    The report and the selection proof share decide(); this proves the same
+    mutation, applied for real, yields the same decision for every unit. Returns
+    the problem list and a short summary of the real report."""
+    clone = Path(clone).resolve()
+    head = subprocess.check_output(["git", "-C", str(clone), "rev-parse", "HEAD"], text=True).strip()
+    real = affected.report(clone, head, known)
+    _, expected = selection(clone, model, known, row["path"])
+    name = f"mutation {row['name']}"
+    problems = []
+    changed = [c["path"] for c in real["changes"]]
+    if changed != [row["path"]]:
+        problems.append(f"{name}: the real report saw changes {changed} instead of [{row['path']!r}]")
+    if real["fallback"]:
+        problems.append(f"{name}: the real report fell back: " + "; ".join(real["fallback"]))
+    if not real["required_checks"].startswith("unchanged"):
+        problems.append(f"{name}: the real report changed the required checks: {real['required_checks']}")
+    strip = lambda unit: {k: v for k, v in unit.items() if k != "inputs"}
+    for unit in sorted(set(real["units"]) | set(expected)):
+        actual, wanted = real["units"].get(unit), expected.get(unit)
+        if actual is None or wanted is None or strip(actual) != strip(wanted):
+            problems.append(f"{name}: unit {unit} is {actual and actual['decision']} in the real report and "
+                            f"{wanted and wanted['decision']} in process")
+    for detector in row["detectors"]:
+        decision = real["units"].get(detector, {}).get("decision")
+        if decision != "selected":
+            problems.append(f"{name}: unit {detector} is {decision} in the real report for {row['path']}")
+    summary = {k: real[k] for k in ("selected", "review_candidates", "elapsed_seconds")}
+    return problems, summary
+
+
 def confirm(root, model, rows, marker, build, verilator_bin=None):
     """Re-derive each record: every detector passes unmutated and fails mutated, in a clone.
 
@@ -167,6 +206,8 @@ def confirm(root, model, rows, marker, build, verilator_bin=None):
     unconfirmed; that is an environment or record problem, never a detection."""
     root = Path(root).resolve()
     outcome = {"rows": {}, "problems": []}
+    reported = {row["kind"]: row["name"] for row in reversed(rows) if row["kind"] in REPORTED_KINDS}
+    known = None
     for row in rows:
         checkout = clone(root, Path(build) / "mutations" / row["name"])
         record = {"path": row["path"], "detectors": {}}
@@ -178,6 +219,14 @@ def confirm(root, model, rows, marker, build, verilator_bin=None):
                 outcome["problems"].append(f"mutation {row['name']}: unit {detector} did not pass before the "
                                            f"mutation ({before.get('error', before.get('reason', before['status']))})")
         mutate(checkout, row, marker)
+        if reported.get(row["kind"]) == row["name"]:
+            # The clones share HEAD, whose catalogue may differ from the working tree's, so the
+            # comparison uses the clone's own model; its closures, derived once, serve every reported row.
+            if known is None:
+                clone_model, _ = catalogue.load(checkout)
+                known = affected.closures(checkout, clone_model)
+            problems, record["report"] = report_equals_decision(checkout, row, clone_model, known)
+            outcome["problems"] += problems
         for detector in row["detectors"]:
             entry = model["units"][detector]
             after = run_detector(checkout, detector, entry, verilator_bin)
