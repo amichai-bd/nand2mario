@@ -744,8 +744,9 @@ with `preload_inputs` now does on the stage.
 
 Beyond the shared fields, a Verilator record carries `simulator`
 (`verilator`), `os`, `seed`, `waves` (`format: fst` and the retained path),
-`timing` with `build_seconds` and `run_seconds` measured separately so the
-compile cost against the wall budget is visible, `elapsed_seconds`,
+`timing` with the four separately measured walls listed under
+[prepared attempts](#prepared-attempts), so the preparation and compile cost
+against the wall budget are visible, `elapsed_seconds`,
 `exit_code` and `timeout_seconds` on each command, `preload` when the
 target declares a fixture, and `peer` plus `python_results` when it declares
 a driver. Measured on WSL: the
@@ -1251,8 +1252,11 @@ tool identity, options), the hash of every prepared file, the preparer pid,
 target's own allowance; an expired preparation leaves no tag lock, a stale
 attempt lock and an unadoptable `PREPARING` receipt.
 
-Adoption happens under the tag lock, before `RUNNING` is published and before
-any tool runs. The stage recomputes every input hash and the fingerprint with
+The stage cache check precedes adoption: with a valid cached `PASS` of the
+same fingerprint, `sim test --prepared ID` returns `CACHED` and the attempt is
+neither adopted nor refused, so it stays adoptable; `--rebuild` then adopts or
+refuses it. Otherwise adoption happens under the tag lock, before `RUNNING` is
+published and before any tool runs. The stage recomputes every input hash and the fingerprint with
 the tools it discovered and hashes every file now in the attempt; it refuses
 by name a receipt that is not `PREPARED`, an attempt already adopted, a
 different target, backend or seed, any changed, missing or added input or
