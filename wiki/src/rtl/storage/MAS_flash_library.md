@@ -369,9 +369,14 @@ power-cycle without a host, observe the menu and read the library state back,
 ran on `v05-board` in the
 [flash-resident boot sessions](../../board-bring-up.md#flash-resident-boot-and-sdram-sweep-sessions):
 the copier set `flash_boot`, the catalogue read from SDRAM equalled the packed
-catalogue and the menu frame was pixel-exact. The copier's and reader's timing
-evidence remains simulation against the double plus the fit; a host load
-followed by a power cycle restoring the flash menu is not yet recorded.
+catalogue and the menu frame was pixel-exact. After host library loads and a
+full SDRAM sweep had overwritten the SDRAM, both a JTAG flash programming
+(the device reconfigures from CFM0 without a power cycle) and a KEY0 press ran
+the copier again and restored the flash menu with the same catalogue and a
+pixel-exact frame
+([session 6](../../board-bring-up.md#session-6-flash-reconfiguration-restores-the-library-without-a-power-cycle)).
+The copier's and reader's timing evidence remains simulation against the
+double plus the fit.
 
 ### Measured facts
 

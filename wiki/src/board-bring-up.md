@@ -467,8 +467,8 @@ MBC1 board proof, and it repeated the flash-boot proof on the new image.
 - Git commit: the fit was built at `3ab8f2066c92f4646daeb450f81b79b8c6c88063`
   on the branch squashed into `main` as `b2f8169`; the program and host records
   below were taken from the same clone at that branch's final head
-  `894059ceb9654d52d598d58b67dc8e6129178c36` (documentation commits after the
-  fit, no source change). `library.hex` SHA-256 `7e1da81c…`, packed
+  `894059ceb9654d52d598d58b67dc8e6129178c36` (host-tool and documentation
+  commits after the fit; no `src/` change). `library.hex` SHA-256 `7e1da81c…`, packed
   `catalogue.bin` SHA-256 `1d274b38…`, ten games in slots 0 to 9 and the menu
   at 16.
 - Fit: `v05-board` attempt `98d391b31e04` (tag `712r-fit`), status `PASS`,
@@ -498,6 +498,27 @@ The MBC1 selection and gameplay frames that followed in this session belong to
 the [MBC1 board proof](rtl/cartridge/MAS_loader_profile.md#verification), not
 to this record. Board state after the session: flash holds the ten-game
 library image.
+
+### Session 6: flash reconfiguration restores the library without a power cycle
+
+After the host library loads and the full sweep had overwritten the SDRAM, the
+board returned to the flash-resident menu twice without a power cycle, on the
+eleven-game `v05-board` fit of the PostBot slice (attempt `d3352b4ff0fb`, tag
+`738-fit`, build id `2f671a6f2216860496e024e2954b712b`, wire build id
+`2b714b95e224e096048616226f1a672f`, `.pof` SHA-256 `36ba5d0f…`, CFM0 used
+369,711 of 688,128 bytes, packed `catalogue.bin` SHA-256 `b4b5b3f7…`). Records
+from 18:42 to 18:51 UTC; the owner was present.
+
+| Step | Record | Result |
+|---|---|---|
+| Flash programming over JTAG, `pvb` | `738-program`, `fpga-program/13fa692a5b8d` | `PASS`, `isp_seconds` 49.313, `device_state` changed; the MAX 10 reconfigured from CFM0 at the end of programming with no power cycle |
+| `host status`, `host library status` after programming | `738-status-after-program`, `status/fe26b95b…`; `738-board-libstatus`, `library-status/e8c2da6e…` | wire build id `2b714b95…` equals the program record's; `PROFILE` 2, running; `$A000` 0x68 with `flash_boot`, result `OK`, twelve valid entries (slots 0 to 10 and the menu), catalogue SHA-256 `b4b5b3f7…` equal to the fit's |
+| Menu frame | `738-board-menu`, `snapshot/e16d8d5c…` | epoch 1; pixel-exact, 23040 pixels, 0 mismatches, CRC32 `c625db9f` |
+| Owner pressed and released KEY0 (`PIN_B8`) after a menu session had selected slot 10 | `512-before`: `status/60dd7a3f…`, `library-status/008b6830…`, `snapshot/0f0b4859…`; `512-after1`: `status/20dbb8fc…`, `library-status/07bee945…`, `snapshot/4eca1745…` | before: epoch 5, selected index `$A003` 10; after: same wire build id, epoch 1, selected index cleared to 255, `flash_boot` set, result `OK`; menu frame pixel-exact, CRC32 `c625db9f` |
+
+Both paths ran the boot copier again: the library came back from flash with
+the same catalogue and the same menu frame as at power-up. The KEY0 wiring and
+asserted-direction record belongs to the reset section of this page, not here.
 
 ### Full SDRAM sweep
 
