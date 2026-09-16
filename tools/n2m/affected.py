@@ -122,6 +122,9 @@ def decide(root, model, changed, same, known=None, only=None):
     root=Path(root).resolve()
     names,_=catalogue.select(model,level=2)
     if only is not None:names=[n for n in names if n in only]
+    # Undecided simulations share test modules and fixture builders; one memo keeps each registry
+    # read and import walk once per decision, so a data-only change costs about what an RTL change costs.
+    validation={}
     paths={r['path'] for r in changed}|{r['old_path'] for r in changed if 'old_path' in r}
     inputs,errors=known or closures(root,model)
     known_paths=set(model['units'])|set().union(*inputs.values())
@@ -143,7 +146,7 @@ def decide(root, model, changed, same, known=None, only=None):
             try:
                 # A host unit's declared closure is validated by `tests validate`; a simulation
                 # target also needs its call-free qualification before its inputs count as complete.
-                unknown=None if host else uncertainty(root,load_target(root,name)[0])
+                unknown=None if host else uncertainty(root,load_target(root,name,cache=validation)[0])
                 if unknown:row['reasons']=[unknown]
                 else:
                     hashes={p:same(p)[0] for p in sorted(inputs[name])}

@@ -2684,8 +2684,13 @@ declared imported Python module must also qualify. Candidates carry exact
 repository input hashes against the base; byte differences, including checkout line endings,
 prevent equality. The report is advisory preparation cost, not proof of faster
 delivery or permission to omit pixel, state, mutation or completion gates.
-Without a global fallback it hashes each closure path once against the base;
-about 16 s on this tree when quiet, and several times that under machine load.
+Without a global fallback it hashes each closure path once against the base.
+A simulation with no changed input is validated through
+[`load_target`](../../../tools/n2m/simulation.py) before its call-free
+qualification; one memo per report keeps the parsed registry and each import
+walk of the shared test modules and fixture builders, so the cost does not
+depend on the change kind: on this tree when quiet, about 17 s for an RTL
+change and 22 s for a data-only change.
 
 ### Conservativeness proof
 
@@ -2710,11 +2715,13 @@ in process on the current tree with exactly that path differing from the base,
 deciding only the recorded detectors, and every detector must be `selected`. A
 detector left as a review candidate fails as `mutation NAME: unit U not
 selected for PATH (reason)`, so dropping an input from a unit's declaration
-fails by the unit's name. One row is also applied for real: a shared clone of
-`HEAD` receives the RTL mutation, the full `tests affected` report runs against
-it and must equal the in-process decision for every unit. The harness runs
-under `check` and costs about 25 s (closure derivation about 9 s, the real
-report about 14 s). `tests validate` and `check` also reject a manifest row
+fails by the unit's name. Two rows are also applied for real: a shared clone of
+`HEAD` receives the RTL mutation, then another the data mutation, and the full
+`tests affected` report against each must equal the in-process decision for
+every unit; the data change validates every undecided simulation, so it
+exercises the report's memoized validation path. The harness runs under
+`check` and costs about 65 s (closure derivation about 9 s, the real reports
+about 17 s and 22 s). `tests validate` and `check` also reject a manifest row
 that names an unknown unit or an untracked path; the harness fails when the
 manifest is absent. `python tools/build.py tests
 mutations [--name N] --tag TAG --json` runs the same selection proof as a
