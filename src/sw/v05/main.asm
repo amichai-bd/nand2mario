@@ -45,6 +45,10 @@ XOR A,A
 LDH [$FF0F],A
 HALT
 ; IME stays clear: VBlank wakes HALT without an interrupt stack transaction.
+; The NOP absorbs the DMG halt bug: a VBlank that sets IF between the clear
+; above and HALT makes the CPU fetch the next byte twice, so that byte must be
+; harmless; without it the doubled $3E would turn `LD A,n` into STOP.
+NOP
 LD A,$20
 LDH [$FF00],A
 LDH A,[$FF00]

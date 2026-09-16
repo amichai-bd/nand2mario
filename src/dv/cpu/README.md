@@ -146,9 +146,11 @@ ended at DI and did not establish this behavioral cancellation; its evidence is
 retained with that review limitation.
 
 
-`cpu-halt-lock` checks pending-IME0 HALT followed by an immediate load and by RST.
+`cpu-halt-lock` checks pending-IME0 HALT followed by an immediate load, by RST,
+and by the original images' guarded tail `HALT / NOP / LD A,n`.
 The first reads the opcode byte again as its immediate value; the second pushes
-the RST address itself. Literal bus and full retirement records prove both.
+the RST address itself; the third doubles the NOP and loads the intended value.
+Literal bus and full retirement records prove all three.
 All eleven illegal base encodings then enter lock without retirement or further
 access, stay locked across pause and pending requests, and recover through core
 reset with a fresh epoch/sequence/profile NOP. Wrong-PC and invented locked-event

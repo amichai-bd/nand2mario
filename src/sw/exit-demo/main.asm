@@ -58,6 +58,10 @@ XOR A,A
 LDH [GB_REG_IF],A
 HALT
 ; IME stays clear: VBlank wakes HALT without an interrupt stack transaction.
+; The NOP absorbs the DMG halt bug: a VBlank that sets IF between the clear
+; above and HALT makes the CPU fetch the next byte twice, so that byte must be
+; harmless; without it the doubled $3E would turn `LD A,n` into STOP.
+NOP
 ; Button row: P15 low, settled eight machine cycles, bit 3 low is Start.
 LD A,$10
 LDH [GB_REG_JOYP],A

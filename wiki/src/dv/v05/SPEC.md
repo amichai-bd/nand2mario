@@ -75,8 +75,8 @@ bounded window, fault, complementary and endurance requirements.
   never from observed pixels. Preserve blank startup, cross-frame update, actual
   final pause/completion and independent progress watchdog.
   The next wake177872 is later than the maximum pause147132. Thus all valid
-  pauses require6357 retirements (6281 setup plus76 update), with the last HALT
-  at108156. Expected pixel count is23040 plus, for each y0..143,
+  pauses require6358 retirements (6281 setup plus77 update), with the last HALT
+  at108160. Expected pixel count is23040 plus, for each y0..143,
   `clamp(pause_dot-(112300+456*y)+1,0,160)`:34561 at145132 and35360 at147132.
   This includes partial active rows after the requested bound; collectors do
   not stop when the controller requests HALT.
@@ -109,8 +109,9 @@ LCD at C=41984 and retires the first HALT at 42008. No host pause is permitted
 from RUN until the selected bound completes; CPU HALT leaves ticks live.
 
 The pinned PPU mapping puts VBlank at C+65662+n*70224. T3 captures it before
-wake T4 at C+65664+n*70224. The first following LD A,20 retires eight dots later.
-Each complete update contributes 76 retirements; its final HALT is 508 dots after
+wake T4 at C+65664+n*70224. The first following NOP, which absorbs the halt
+bug, retires four dots later.
+Each complete update contributes 77 retirements; its final HALT is 512 dots after
 wake T4. All eight tile writes finish during VBlank, before the next visible fetch.
 
 Normal frame 1 starts at completed dot 112300; pixel(x,y) occurs at

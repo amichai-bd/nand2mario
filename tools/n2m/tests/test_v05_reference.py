@@ -28,14 +28,14 @@ class V05ReferenceTests(unittest.TestCase):
 
     def test_initialization_and_first_wake(self):
         model = reference.Reference()
-        rows = list(model.records(108156))
+        rows = list(model.records(108160))
         self.assertEqual(model.lcd_commit, 41984)
-        self.assertEqual(len(rows), 6357)
+        self.assertEqual(len(rows), 6358)
         self.assertEqual(rows[6280]['dot'], 42008)
         self.assertEqual(rows[6280]['halted'], 1)
-        self.assertEqual(rows[6281]['dot'], 107656)
+        self.assertEqual(rows[6281]['dot'], 107652)
         self.assertEqual(rows[6281]['iflags'], 1)
-        self.assertEqual(rows[-1]['dot'], 108156)
+        self.assertEqual(rows[-1]['dot'], 108160)
         self.assertEqual(rows[-1]['iflags'], 0)
         self.assertEqual(rows[-1]['halted'], 1)
         map_clear = [w for w in model.writes if 0x9800 <= w[1] < 0x9c00][:1024]
@@ -52,10 +52,10 @@ class V05ReferenceTests(unittest.TestCase):
             count += 1
             if row['pc_before'] == 0x244:
                 samples[row['dot']] = row
-        self.assertEqual(count, 51957)
+        self.assertEqual(count, 52558)
         for j, mask in enumerate((1,0,2,0,4,0,8,0,16,0,32,0,64,0,128,0,17,0), 1):
             # First effected image20*j+3 follows VBlank index20*j+2.
-            halt_dot = 108156 + (20*j+2)*70224
+            halt_dot = 108160 + (20*j+2)*70224
             self.assertEqual(samples[halt_dot]['c'], mask)
             self.assertEqual(samples[halt_dot]['buttons'], mask)
             self.assertEqual(samples[halt_dot]['iflags'], 0)

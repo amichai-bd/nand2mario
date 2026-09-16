@@ -381,7 +381,7 @@
     ],
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS CPU HALT bug cases=2 illegal_locks=11 reset_recovery=11"
+    "signature": "PASS CPU HALT bug cases=3 illegal_locks=11 reset_recovery=11"
   },
   "cpu-idu-arithmetic": {
     "sources": [
@@ -653,7 +653,7 @@
       "+lock_fault"
     ],
     "expected_exit": "nonzero",
-    "signature": "CPU_POWER_LOCK_EVENT case=2"
+    "signature": "CPU_POWER_LOCK_EVENT case=3"
   },
   "cpu-program": {
     "sources": [

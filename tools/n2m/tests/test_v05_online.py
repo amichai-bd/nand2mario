@@ -89,8 +89,8 @@ class OnlineTests(unittest.TestCase):
         self.assertEqual([pixel_shade(f,0,64,continuity=True) for f in (20,21,22)], [1,0,0])
         events = [(input_window(j, continuity=True)[0], mask) for j, mask in enumerate(m.input_masks, 1)]
         rows = list(Reference(events).records(m.end))
-        self.assertEqual(len(rows), 6357 + 21 * 76)
-        self.assertEqual((rows[-1]['dot'], rows[-1]['halted'], rows[-1]['buttons']), (1582860, 1, 0))
+        self.assertEqual(len(rows), 6358 + 21 * 77)
+        self.assertEqual((rows[-1]['dot'], rows[-1]['halted'], rows[-1]['buttons']), (1582864, 1, 0))
 
     def test_short_finish_missing_and_extra_observations(self):
         m = Online(short=True)
@@ -121,9 +121,9 @@ class OnlineTests(unittest.TestCase):
         for dot in (50000,52000):
             reference = Reference([(dot,0x11)])
             records = list(reference.records(147132))
-            self.assertEqual(len(records),6357)
+            self.assertEqual(len(records),6358)
             self.assertEqual((records[-1]['dot'],records[-1]['halted'],records[-1]['buttons']),
-                             (108156,1,0x11))
+                             (108160,1,0x11))
         self.assertEqual([pixel_shade(1,x,64,bounded=True) for x in (0,8,32,40)], [1,0,1,0])
         with self.assertRaisesRegex(ValueError,'V05_INPUT_WINDOW'):
             Online(bounded=True).input(49999,0x11)
