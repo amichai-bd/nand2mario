@@ -58,16 +58,27 @@ class Layout(unittest.TestCase):
         self.entries = fixture.entries(MENU_IMAGE)
 
     def test_fixture_library(self):
-        self.assertEqual([row['valid'] for row in self.entries], [1, 1, 1, 0, 1, 1, 1, 1, 1] + [0] * 6 + [1, 1])
+        self.assertEqual([row['valid'] for row in self.entries], [1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1])
         self.assertGreaterEqual(sum(row['valid'] for row in self.entries[:16]), 6)
+        # The 64 KiB MBC1 stub: one entry at slot 5 with its profile and length, slot 6 empty, its
+        # two halves at slots 5 and 6, MBC1 header bytes and the bank-2 exit code.
+        banked = fixture.mbc1_image()
+        self.assertEqual(len(banked), 65536)
+        self.assertEqual((self.entries[5]['profile'], self.entries[5]['length'], self.entries[5]['crc32']),
+                         (fixture.PROFILE_MBC1, 65536, zlib.crc32(banked)))
+        self.assertEqual(self.entries[5]['title'], b'BANKED GAME'.ljust(16, b'\0'))
+        self.assertEqual(self.entries[6]['valid'], 0)
+        self.assertEqual(fixture.image_bytes(5, MENU_IMAGE) + fixture.image_bytes(6, MENU_IMAGE), banked)
+        self.assertEqual((banked[0x147], banked[0x148]), (1, 1))
+        self.assertEqual(banked[0x8000:0x8002], bytes([0x3E, fixture.GAME_EXIT_VALUE]))
         self.assertEqual(self.entries[0]['title'], b'SPRINGTRAIL'.ljust(16, b'\0'))
-        self.assertEqual(self.entries[6]['title'], b'CGB FLAGGED ROW\x80')
+        self.assertEqual(self.entries[10]['title'], b'CGB FLAGGED ROW\x80')
         self.assertEqual(self.entries[7]['title'], b'SIXTEEN CHAR ROW')
         self.assertEqual(self.entries[8]['title'], b'CGB ONLY TITLE\x00\xC0')
         self.assertEqual(self.entries[15]['title'], b'LAST SLOT'.ljust(16, b'\0'))
-        self.assertEqual(len(set(row['title'] for row in self.entries if row['valid'])), 10)
+        self.assertEqual(len(set(row['title'] for row in self.entries if row['valid'])), 11)
         # The stub image carries the flag at header 0x143, as a CGB-flagged homebrew does.
-        self.assertEqual(fixture.game_image(6, fixture.GAMES[6])[0x143], 0x80)
+        self.assertEqual(fixture.game_image(10, fixture.GAMES[10])[0x143], 0x80)
         self.assertEqual(self.entries[fixture.SHORT_SLOT]['length'], 16384)
         self.assertEqual(self.entries[16]['profile'], fixture.PROFILE_LOADER)
         library = fixture.library_bytes(MENU_IMAGE)
@@ -77,6 +88,11 @@ class Layout(unittest.TestCase):
         valid, profile, length, crc32, title = struct.Struct('<BBHI16s8x').unpack(entry)
         self.assertEqual((valid, profile, length, crc32), (1, 1, 32768, zlib.crc32(fixture.game_image(0, 'SPRINGTRAIL'))))
         self.assertEqual(title, self.entries[0]['title'])
+        # The 64 KiB entry keeps the 16-bit length word at 0 and carries bit 16 in byte 24; slot 6's entry is empty.
+        entry = library[fixture.CATALOGUE_ADDRESS + 5 * 32:fixture.CATALOGUE_ADDRESS + 6 * 32]
+        self.assertEqual((entry[0], entry[1], entry[2:4], entry[24], entry[25:]), (1, 3, bytes(2), 1, bytes(7)))
+        self.assertEqual(library[fixture.CATALOGUE_ADDRESS + 6 * 32:fixture.CATALOGUE_ADDRESS + 7 * 32], bytes(32))
+        self.assertEqual(library[5 * 32768:7 * 32768], banked)
         with self.assertRaises(ValueError):
             fixture.library_bytes(b'short')
 
@@ -88,10 +104,15 @@ class Layout(unittest.TestCase):
         self.assertEqual(rows[1][4:20], reference.text_tiles('SPRINGTRAIL     '))
         self.assertEqual(rows[4][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[5][4:20], reference.text_tiles('SHORT IMAGE     '))
-        self.assertEqual(rows[7][4:20], reference.text_tiles('CGB FLAGGED ROW '))
+        # The 64 KiB entry is listed once: slot 5 carries its title, slot 6 (its upper half) is blank.
+        self.assertEqual(rows[6][4:20], reference.text_tiles('BANKED GAME     '))
+        self.assertEqual(rows[7][1:3], reference.text_tiles('06'))
+        self.assertEqual(rows[7][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[8][4:20], reference.text_tiles('SIXTEEN CHAR ROW'))
         self.assertEqual(rows[9][4:20], reference.text_tiles('CGB ONLY TITLE  '))
-        self.assertEqual(rows[10][4:20], [reference.TILE_BLANK] * 16)
+        self.assertEqual(rows[10][4:20], reference.text_tiles('ABC-123 XYZ 789 '))
+        self.assertEqual(rows[11][4:20], reference.text_tiles('CGB FLAGGED ROW '))
+        self.assertEqual(rows[12][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[16][1:3], reference.text_tiles('15'))
         self.assertEqual(rows[16][4:20], reference.text_tiles('LAST SLOT       '))
         self.assertEqual(rows[17], [reference.TILE_BLANK] * 20)

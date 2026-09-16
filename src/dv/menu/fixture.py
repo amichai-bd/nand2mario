@@ -1,12 +1,13 @@
 """Fixture library and scripted frames for the menu Verilator targets.
 
 `build` is the registered `menu` preload builder: it builds the menu image
-through the software pipeline, lays out a seventeen-image SDRAM library
-around it (eight stub games, one empty slot, one entry that is valid but
-has a foreign length, the rest empty) and writes the bytes the testbench
-reads with `$readmemh`, plus the reference frames of the scripted scenario.
-The catalogue entry layout is the `catalogue_entry_t` record of
-cfg/interfaces.json: valid, profile, length, crc32, title, 8 reserved bytes.
+through the software pipeline, lays out a sixteen-slot SDRAM library around
+it (eight 32 KiB stub games, one 64 KiB MBC1 stub game in two slots, one
+empty slot, one entry that is valid but has a foreign length, the rest
+empty) and writes the bytes the testbench reads with `$readmemh`, plus the
+reference frames of the scripted scenario. The catalogue entry layout is
+the `catalogue_entry_t` record of cfg/interfaces.json: valid, profile,
+length (bits 15:0), crc32, title, length_high (bits 23:16), 7 reserved bytes.
 """
 from pathlib import Path
 import struct
@@ -17,25 +18,31 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reference  # noqa: E402
 
 SLOT_BYTES, IMAGES, MENU = 32768, 17, 16
+MBC1_BYTES = 65536
 CATALOGUE_ADDRESS, ENTRY_BYTES = 0x88000, 32
 LIBRARY_BYTES = 0x8C000
-ENTRY = struct.Struct('<BBHI16s8x')
-PROFILE_DIRECT, PROFILE_LOADER = 1, 2
-# Eight stub games: the three registered titles, a title with digits and
-# dashes, a fifteen-byte title with the CGB flag at header 0x143, a full
-# sixteen-character title, a padded title with the CGB-only flag and one on
-# the last row, so nine rows (with the short slot) are valid and the empty
-# rows are the minority.
-GAMES = {0: b'SPRINGTRAIL', 1: b'STACKDROP', 2: b'V05 BUTTONS', 5: b'ABC-123 XYZ 789',
-         6: b'CGB FLAGGED ROW\x80', 7: b'SIXTEEN CHAR ROW', 8: b'CGB ONLY TITLE\x00\xC0',
+ENTRY = struct.Struct('<BBHI16sB7x')
+PROFILE_DIRECT, PROFILE_LOADER, PROFILE_MBC1 = 1, 2, 3
+GAME_EXIT_VALUE = 0x10
+# Eight 32 KiB stub games: the three registered titles, a full
+# sixteen-character title, a padded title with the CGB-only flag, a title
+# with digits and dashes, a fifteen-byte title with the CGB flag at header
+# 0x143 and one on the last row, so ten rows (with the short slot and the
+# 64 KiB game) are valid and the empty rows are the minority.
+GAMES = {0: b'SPRINGTRAIL', 1: b'STACKDROP', 2: b'V05 BUTTONS', 7: b'SIXTEEN CHAR ROW',
+         8: b'CGB ONLY TITLE\x00\xC0', 9: b'ABC-123 XYZ 789', 10: b'CGB FLAGGED ROW\x80',
          15: b'LAST SLOT'}
 # Slot 4 is valid to the menu (valid byte 1) but the engine refuses its
 # foreign length; slot 3 is the empty slot the refused-selection scenario uses.
 SHORT_SLOT, EMPTY_SLOT = 4, 3
+# The 64 KiB MBC1 stub game fills slots 5 and 6 under one entry at 5; the
+# menu lists it once and shows slot 6 as empty.
+MBC1_SLOT, MBC1_TITLE = 5, b'BANKED GAME'
 # Scripted frames in `menu-frames.hex` order.
 SCENARIO = [dict(cursor=0), dict(cursor=1), dict(cursor=2), dict(cursor=3),
             dict(cursor=3, result=reference.RESULT_INVALID_SLOT, index=3),
-            dict(cursor=2, result=reference.RESULT_INVALID_SLOT, index=3)]
+            dict(cursor=2, result=reference.RESULT_INVALID_SLOT, index=3),
+            dict(cursor=MBC1_SLOT)]
 
 
 def game_image(index, title):
@@ -51,6 +58,24 @@ def game_image(index, title):
     return bytes(image)
 
 
+def mbc1_image():
+    """The 64 KiB MBC1 stub: its entry selects ROM bank 2 and jumps into the window.
+
+    Bank 1, the window after reset, only loops there; bank 2 (the upper half
+    of the image) writes the game exit value, so a return to the menu proves
+    the second slot was copied and the bank switch mapped it.
+    """
+    image = bytearray(((MBC1_SLOT * 37 + offset * 11 + (offset >> 7) * 5) ^ (offset >> 12)) & 255 for offset in range(MBC1_BYTES))
+    image[0x100:0x150] = bytes(0x50)
+    image[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])                    # nop; jp $0150
+    image[0x134:0x144] = MBC1_TITLE.ljust(16, b'\0')
+    image[0x147], image[0x148], image[0x14a] = 0x01, 0x01, 1                 # MBC1, 64 KiB
+    image[0x150:0x158] = bytes([0x3E, 0x02, 0xEA, 0x00, 0x20, 0xC3, 0x00, 0x40])  # ld a,2; ld ($2000),a; jp $4000
+    image[0x4000:0x4002] = bytes([0x18, 0xFE])                                # bank 1: jr $4000
+    image[0x8000:0x8007] = bytes([0x3E, GAME_EXIT_VALUE, 0xEA, 0x00, 0x60, 0x18, 0xFE])  # bank 2: exit; jr
+    return bytes(image)
+
+
 def entries(menu_image):
     """Seventeen catalogue rows shaped like n2m.host.library.unpack_entry."""
     rows = []
@@ -62,6 +87,9 @@ def entries(menu_image):
         elif index in GAMES:
             image = game_image(index, GAMES[index])
             row.update(valid=1, profile=PROFILE_DIRECT, length=SLOT_BYTES)
+        elif index == MBC1_SLOT:
+            image = mbc1_image()
+            row.update(valid=1, profile=PROFILE_MBC1, length=MBC1_BYTES)
         elif index == SHORT_SLOT:
             image = game_image(index, b'SHORT IMAGE')
             row.update(valid=1, profile=PROFILE_DIRECT, length=16384)
@@ -74,20 +102,29 @@ def entries(menu_image):
 
 
 def image_bytes(index, menu_image):
+    """The 32 KiB of slot `index`; the MBC1 image spans MBC1_SLOT and the slot after it."""
     if index == MENU:
         return menu_image
     if index in GAMES:
         return game_image(index, GAMES[index])
     if index == SHORT_SLOT:
         return game_image(index, b'SHORT IMAGE')
+    if index in (MBC1_SLOT, MBC1_SLOT + 1):
+        start = (index - MBC1_SLOT) * SLOT_BYTES
+        return mbc1_image()[start:start + SLOT_BYTES]
     return bytes(SLOT_BYTES)
+
+
+def pack_entry(row):
+    """The 32 catalogue bytes of one row: the length split into its low word and high byte."""
+    return ENTRY.pack(row['valid'], row['profile'], row['length'] & 0xFFFF, row['crc32'], row['title'], row['length'] >> 16)
 
 
 def library_bytes(menu_image):
     if len(menu_image) != SLOT_BYTES:
         raise ValueError('menu image must be one 32 KiB slot')
     rows = entries(menu_image)
-    table = b''.join(ENTRY.pack(row['valid'], row['profile'], row['length'], row['crc32'], row['title']) for row in rows)
+    table = b''.join(pack_entry(row) for row in rows)
     library = b''.join(image_bytes(index, menu_image) for index in range(IMAGES)) + table
     return library.ljust(LIBRARY_BYTES, b'\0')
 

@@ -31,7 +31,11 @@ module tb_loader_system #(
     localparam int SLOT = 32768;
     localparam int LIBRARY_BYTES = 32'h8C000;
     localparam int MENU = 16;
+    // The 64 KiB MBC1 game fills slots LARGE and LARGE + 1 under one entry.
+    localparam int LARGE = 11;
+    localparam int LARGE_BYTES = 65536;
     localparam int SWAP_BOUND = 80000;
+    localparam int SWAP_BOUND_MBC1 = 120000;
     localparam int FILL_BOUND = 40000;
     // Boot copier contract numbers (MAS_flash_library.md#boot-copier): the
     // library the copier moves, the SDRAM initialization clock, the CHECK
@@ -170,8 +174,28 @@ module tb_loader_system #(
             default: return 8'h00;
         endcase
     endfunction
+    // The MBC1 game: the entry code selects ROM bank 2 and jumps into the
+    // switched window. Bank 1 (the window after reset) only loops there;
+    // bank 2, the upper half of the 64 KiB image, writes the game exit value,
+    // so the return to the menu proves the banked half was copied and mapped.
+    function automatic logic [7:0] mbc1_game_byte(input int offset);
+        case (offset)
+            16'h0100: return 8'h3E; 16'h0101: return 8'h02;                        // ld a,2
+            16'h0102: return 8'hEA; 16'h0103: return 8'h00; 16'h0104: return 8'h20; // ld ($2000),a
+            16'h0105: return 8'hC3; 16'h0106: return 8'h00; 16'h0107: return 8'h40; // jp $4000
+            16'h0147: return 8'h01; 16'h0148: return 8'h01;                        // MBC1, 64 KiB
+            16'h0150: return 8'(LARGE);
+            16'h4000: return 8'h18; 16'h4001: return 8'hFE;                        // bank 1: jr $4000
+            16'h8000: return 8'h3E; 16'h8001: return LIBRARY_GAME_EXIT_VALUE;      // bank 2: ld a,LIBRARY_GAME_EXIT_VALUE
+            16'h8002: return 8'hEA; 16'h8003: return 8'h00; 16'h8004: return 8'h60; // ld ($6000),a
+            16'h8005: return 8'h18; 16'h8006: return 8'hFE;                        // jr $8005
+            default: return offset >= 16'h4002 ? 8'((LARGE * 37 + offset * 11 + (offset >> 7) * 5) ^ (offset >> 12)) : 8'h00;
+        endcase
+    endfunction
     function automatic logic [7:0] image_byte(input int index, input int offset);
         if (index == MENU) return menu_byte(offset);
+        if (index == LARGE) return mbc1_game_byte(offset);
+        if (index == LARGE + 1) return mbc1_game_byte(SLOT + offset);
         if (index == 4 && offset < 16'h0107) return exit_game_byte(offset);
         if (offset == 16'h0100) return 8'h18;
         if (offset == 16'h0101) return 8'hFE;
@@ -195,7 +219,7 @@ module tb_loader_system #(
         logic [255:0] entry;
         for (index = 0; index < IMAGES; index = index + 1) begin
             crc = WIRE_CRC32_INIT;
-            for (offset = 0; offset < SLOT; offset = offset + 1)
+            for (offset = 0; offset < (index == LARGE ? LARGE_BYTES : SLOT); offset = offset + 1)
                 crc = n2m_uart_pkg::crc32_byte(crc, image_byte(index, offset));
             image_crc[index] = crc ^ WIRE_CRC32_INIT;
             entry = '0;
@@ -204,6 +228,10 @@ module tb_loader_system #(
             entry[31:16] = 16'(SLOT);
             entry[63:32] = index == 9 ? image_crc[index] ^ 32'h1 : image_crc[index];
             for (k = 0; k < 16; k = k + 1) entry[64 + k*8 +: 8] = image_byte(index, 32'h134 + k);
+            // The 64 KiB entry: MBC1_ID, length 65536 as low word 0 and
+            // length_high 1 (byte 24); the slot its upper half fills is empty.
+            if (index == LARGE) begin entry[15:8] = PROFILE_MBC1_ID; entry[31:16] = 16'h0000; entry[199:192] = 8'h01; end
+            if (index == LARGE + 1) entry[7:0] = 8'h00;
             entries[index] = entry;
         end
     endtask
@@ -605,6 +633,23 @@ module tb_loader_system #(
         press_buttons(8'h00);
         read_status({2'b0, 6'd33, 8'd4, LIBRARY_RESULT_OK, 8'h20}, 32'h3FFFFF3F, "exit status");
         read_host(HOST_REG_STATE, STATE_RUN, "menu after exit");
+        swaps = swaps + 1;
+        returns = returns + 1;
+        checks = checks + 1;
+        // The 64 KiB MBC1 game in slots 11-12: the menu's select copies both
+        // slots within the MBC1 bound, the game boots in MBC1_ID, switches to
+        // bank 2 and returns by itself through the exit register from the
+        // banked half of the image.
+        epoch_before = epoch;
+        write_host(HOST_REG_INPUT_SOURCE, INPUT_SOURCE_PHYSICAL, STATUS_OK);
+        press_buttons(8'(LARGE << 4));
+        wait_profile(PROFILE_MBC1_ID, 600000, "mbc1 game");
+        if (epoch != epoch_before + 1) $fatal(1, "LOADER_SYS_MBC1_GAME_EPOCH epoch=%0d", epoch);
+        wait_profile(PROFILE_LOADER_ID, SWAP_BOUND + 2000, "mbc1 game exit");
+        if (epoch != epoch_before + 2) $fatal(1, "LOADER_SYS_MBC1_EXIT_EPOCH epoch=%0d", epoch);
+        press_buttons(8'h00);
+        read_status({2'b0, 6'd33, 8'(LARGE), LIBRARY_RESULT_OK, 8'h20}, 32'h3FFFFF3F, "mbc1 exit status");
+        read_host(HOST_REG_STATE, STATE_RUN, "menu after mbc1 exit");
         swaps = swaps + 1;
         returns = returns + 1;
         checks = checks + 1;
