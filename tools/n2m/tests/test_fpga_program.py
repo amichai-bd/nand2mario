@@ -2,6 +2,7 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -276,8 +277,12 @@ class FlashProgramTests(unittest.TestCase):
         sof.write_text("x")
         self.refused(sof, "missing or unsafe .pof path")
         link = self.folder / "output/link.pof"
-        link.symlink_to(self.pof)
-        self.refused(link, "missing or unsafe .pof path")
+        try:
+            link.symlink_to(self.pof)
+        except OSError:
+            pass  # Windows without the symlink privilege; the link refusal is covered where links exist.
+        else:
+            self.refused(link, "missing or unsafe .pof path")
         with tempfile.TemporaryDirectory() as outside:
             escaping = Path(outside) / "design.pof"
             escaping.write_text("x")
@@ -325,6 +330,13 @@ class FlashProgramTests(unittest.TestCase):
             result = program_flash(ROOT, self.folder, self.pof, quartus_bin="tools", cable="2", dry_run=True)
             run.assert_not_called()
         self.assertEqual(result["command"][2], "2")
+        # The path `fpga build` prints is relative to the repository; it is recorded resolved.
+        relative = Path(os.path.relpath(self.pof, Path.cwd()))
+        with patch("n2m.fpga_program.execute") as run:
+            result = program_flash(ROOT, self.folder, relative, quartus_bin="tools", dry_run=True)
+            run.assert_not_called()
+        self.assertEqual(result["pof"], self.pof.resolve().relative_to(ROOT.resolve()).as_posix())
+        self.assertEqual(result["attempt_result"], (self.folder / "result.json").resolve().relative_to(ROOT.resolve()).as_posix())
 
     def test_program_runs_pvb_after_a_single_chain_and_measures_the_time(self):
         calls = []

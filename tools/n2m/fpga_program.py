@@ -143,7 +143,7 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=
         if SUCCESS_LINE not in output:
             raise RuntimeError("quartus_pgm did not report a successful configuration; see program.log")
     return {"devices": device_names,
-            "cable": index, "sof": sof.relative_to(root).as_posix(),
+            "cable": index, "sof": sof.resolve().relative_to(Path(root).resolve()).as_posix(),
             "chain": chain, "output": output.strip(),
             **({"build_id": record["build_id"], "wire_build_id": on_wire} if on_wire else {}),
             **({"fpga_target": fpga_target} if fpga_target else {}),
@@ -180,10 +180,12 @@ def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_T
         raise
     else:
         progress.finish(label, started)
-    result = {"pof": pof.relative_to(root).as_posix(), "pof_sha256": evidence["sha256"],
+    # The path is checked as given (a link is refused unresolved) and recorded resolved.
+    located = pof.resolve()
+    result = {"pof": located.relative_to(Path(root).resolve()).as_posix(), "pof_sha256": evidence["sha256"],
               "operation": FLASH_OPERATION, "configuration_mode": CONFIGURATION_MODE,
               "cfm0_used_bytes": evidence.get("cfm0_used_bytes"),
-              "attempt_result": (pof.parent.parent / "result.json").relative_to(root).as_posix(),
+              "attempt_result": (located.parent.parent / "result.json").relative_to(Path(root).resolve()).as_posix(),
               **({"build_id": record["build_id"], "wire_build_id": on_wire} if on_wire else {}),
               **({"fpga_target": fpga_target} if fpga_target else {}),
               "next_step": NEXT_STEP}
