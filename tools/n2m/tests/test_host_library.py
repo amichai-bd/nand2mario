@@ -250,7 +250,7 @@ class LibraryTests(unittest.TestCase):
     def test_menu_entry_profile_follows_the_package_profile(self):
         self.assertEqual(library.profile_id(abi.PROFILE_NAME), abi.PROFILE_DIRECT_ID)
         self.assertEqual(library.profile_id(library.LOADER_PROFILE_NAME), abi.PROFILE_LOADER_ID)
-        self.assertEqual(library.PROFILE_IDS, {'dmg-direct-v1': 1, 'dmg-loader-v1': 2})
+        self.assertEqual(library.PROFILE_IDS, {'dmg-direct-v1': 1, 'dmg-loader-v1': 2, 'dmg-mbc1-v1': 3})
         game = (fixture_image('GAME', 21), abi.PROFILE_NAME)
         for name, expected in ((library.LOADER_PROFILE_NAME, abi.PROFILE_LOADER_ID), (abi.PROFILE_NAME, abi.PROFILE_DIRECT_ID)):
             with self.subTest(profile=name):
