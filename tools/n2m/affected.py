@@ -96,32 +96,40 @@ def host_inputs(root, model, cache):
     return inputs
 
 
-def report(root, base):
-    started=time.monotonic(); root=Path(root).resolve()
-    commit,changed=changes(root,base)
-    model,_=catalogue.load(root)
-    problems=catalogue.coverage(root,model)
-    if problems:raise ValueError(problems[0])
+def closures(root, model):
+    """Every known input closure by unit name: declared host closures and simulation inputs.
+
+    A simulation whose registry inputs cannot be listed is recorded in the
+    second mapping by its error and stays selected."""
     names,_=catalogue.select(model,level=2)
-    paths={r['path'] for r in changed}|{r['old_path'] for r in changed if 'old_path' in r}
     definitions=json.loads((root/'src/dv/builder/targets.json').read_text(encoding='utf-8'))
     inputs=host_inputs(root,model,{}); errors={}
     for name in names:
         if model['units'][name]['kind']!='sim':continue
         try:inputs[name]=target_inputs(root,definitions[name])
         except (ValueError,OSError,KeyError) as error:errors[name]=str(error)
-    known=set(model['units'])|set().union(*inputs.values())
+    return inputs,errors
+
+
+def decide(root, model, changed, same, known=None, only=None):
+    """(fallback, units) for one change set; the whole advisory decision, free of Git.
+
+    `changed` is the `changes()` row list and `same(path)` returns the
+    (current, base) hash pair of one closure path. `tests affected` supplies
+    both from Git and decides every unit; the mutation proof supplies a single
+    differing path and, through `only`, decides just the recorded detectors,
+    because each undecided simulation costs a registry validation."""
+    root=Path(root).resolve()
+    names,_=catalogue.select(model,level=2)
+    if only is not None:names=[n for n in names if n in only]
+    paths={r['path'] for r in changed}|{r['old_path'] for r in changed if 'old_path' in r}
+    inputs,errors=known or closures(root,model)
+    known_paths=set(model['units'])|set().union(*inputs.values())
     fallback=[]
     if any(r['status']!='M' for r in changed):fallback.append('new, deleted or renamed paths require full impact review')
-    if paths-known:fallback.append('unmapped changed paths: '+', '.join(sorted(paths-known)))
+    if paths-known_paths:fallback.append('unmapped changed paths: '+', '.join(sorted(paths-known_paths)))
     if any(p.startswith(('tools/','cfg/','.github/')) or p in ('src/dv/builder/targets.json',catalogue.CATALOGUE) for p in paths):
         fallback.append('tool, configuration or catalogue change can affect preparation and execution')
-    # Units share most closure files, so each path is hashed and compared to the base once.
-    equal_to_base={}
-    def same(path):
-        if path not in equal_to_base:
-            equal_to_base[path]=(file_hash(root/path),hashlib.sha256(git(root,'show',commit+':'+path)).hexdigest())
-        return equal_to_base[path]
     units={}
     for name in names:
         row=dict(decision='selected',reasons=[])
@@ -147,6 +155,22 @@ def report(root, base):
             except (ValueError,OSError,KeyError,StopIteration,SyntaxError,subprocess.CalledProcessError) as error:
                 row['reasons']=['dependency qualification failed: '+str(error)]
         units[name]=row
+    return fallback,units
+
+
+def report(root, base):
+    started=time.monotonic(); root=Path(root).resolve()
+    commit,changed=changes(root,base)
+    model,_=catalogue.load(root)
+    problems=catalogue.coverage(root,model)
+    if problems:raise ValueError(problems[0])
+    # Units share most closure files, so each path is hashed and compared to the base once.
+    equal_to_base={}
+    def same(path):
+        if path not in equal_to_base:
+            equal_to_base[path]=(file_hash(root/path),hashlib.sha256(git(root,'show',commit+':'+path)).hexdigest())
+        return equal_to_base[path]
+    fallback,units=decide(root,model,changed,same)
     return dict(status='PASS',scope='advisory only; no tests executed or evidence reused',base=commit,
                 head=git(root,'rev-parse','HEAD').decode().strip(),changes=changed,fallback=fallback,
                 required_checks='unchanged; follow the existing PR required suite',units=units,

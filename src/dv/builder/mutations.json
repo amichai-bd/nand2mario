@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "marker": "@@@N2M-MUTATION@@@",
+  "mutations": [
+    {
+      "name": "rtl-cpu-source",
+      "kind": "rtl",
+      "path": "src/rtl/cpu/n2m_cpu.sv",
+      "mutation": "append",
+      "detectors": ["dma-family-store"],
+      "evidence": "tests mutations --confirm: Verilator rejects the trailing marker line, so the smallest target compiling n2m_cpu.sv fails"
+    },
+    {
+      "name": "python-testbench-module",
+      "kind": "python",
+      "path": "src/dv/python/joypad/test_joypad.py",
+      "mutation": "append",
+      "detectors": ["python-joypad-fault"],
+      "evidence": "tests mutations --confirm: the marker is a SyntaxError in the cocotb module, so the target misses its recorded JOYP_MISMATCH signature"
+    },
+    {
+      "name": "python-target-source-read-as-data",
+      "kind": "python",
+      "path": "src/dv/python/mooneye/test_reg_f.py",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_test_budget.py"],
+      "evidence": "tests mutations --confirm: the budget test parses every python input of the real registry and fails on the SyntaxError"
+    },
+    {
+      "name": "catalogue-row",
+      "kind": "catalogue",
+      "path": "src/dv/builder/catalogue.yaml",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_catalogue.py"],
+      "evidence": "tests mutations --confirm: the catalogue parser rejects the marker line, so every catalogue test fails"
+    },
+    {
+      "name": "toolchain-module",
+      "kind": "tool",
+      "path": "tools/n2m/lint.py",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_lint.py"],
+      "evidence": "tests mutations --confirm: the marker is a SyntaxError on import of the lint module"
+    },
+    {
+      "name": "baseline-regression-record",
+      "kind": "data",
+      "path": "src/dv/baseline/regression.json",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_baseline.py"],
+      "evidence": "tests mutations --confirm: baseline.load_plan reads the real manifest and fails on the JSONDecodeError"
+    },
+    {
+      "name": "fpga-constraints",
+      "kind": "data",
+      "path": "src/fpga/de10_lite/v05.sdc",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_lint.py", "tools/n2m/tests/test_tui.py"],
+      "evidence": "tests mutations --confirm: lint.plan parses every registered SDC and rejects the marker as unsupported syntax"
+    },
+    {
+      "name": "sameboy-scenario",
+      "kind": "data",
+      "path": "src/dv/sameboy/scenario.json",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_sameboy_retirement.py"],
+      "evidence": "tests mutations --confirm: retirement.py reads the scenario at import and fails on the JSONDecodeError"
+    },
+    {
+      "name": "sameboy-sources",
+      "kind": "data",
+      "path": "src/dv/sameboy/sources.json",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_sameboy_probe.py", "tools/n2m/tests/test_springtrail_native.py"],
+      "evidence": "tests mutations --confirm: both units read the real source manifest and fail on the JSONDecodeError"
+    },
+    {
+      "name": "springtrail-asset",
+      "kind": "data",
+      "path": "src/sw/springtrail/assets/core/core-maps.json",
+      "mutation": "append",
+      "detectors": ["tools/wiki/test_quality_surfaces.py"],
+      "evidence": "tests mutations --confirm: repository_stats scans the asset tree and fails on the JSONDecodeError"
+    },
+    {
+      "name": "regression-subsets",
+      "kind": "data",
+      "path": "src/dv/builder/regressions.json",
+      "mutation": "append",
+      "detectors": ["tools/n2m/tests/test_tui.py"],
+      "evidence": "tests mutations --confirm: the TUI loads the declared regression subsets and fails on the JSONDecodeError"
+    }
+  ]
+}

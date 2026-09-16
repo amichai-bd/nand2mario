@@ -87,6 +87,13 @@ def parser():
     listing = tests.add_parser("list", help="name the tests one selection would run")
     affected = tests.add_parser("affected", help="explain conservative impact; never replace required checks")
     affected.add_argument("--base", required=True)
+    mutations = tests.add_parser("mutations", help="prove recorded mutations select their detecting units; opt-in, never a required check")
+    mutations.add_argument("--confirm", action="store_true",
+                           help="re-run each detector before and after its mutation in a shared clone")
+    mutations.add_argument("--name", action="append", default=[], help="only this recorded mutation; repeatable")
+    mutations.add_argument("--verilator-bin")
+    trace = tests.add_parser("closure-trace", help="run declared host units under a file tracer and fail any read outside the declared closure")
+    trace.add_argument("--unit", action="append", default=[], help="only this declared host unit; repeatable")
     runner = tests.add_parser("run", help="run one selection and write each measured wall back")
     for leaf in (listing, runner):
         leaf.add_argument("--level", type=int, choices=catalogue.LEVELS,
@@ -102,7 +109,7 @@ def parser():
     runner.add_argument("--questa-bin")
     runner.add_argument("--intel-sim-lib")
     runner.add_argument("--sim", choices=SIMULATORS)
-    for leaf in (validate, listing, runner, affected):
+    for leaf in (validate, listing, runner, affected, mutations, trace):
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true")
     remove = commands.add_parser("clean", help="remove generated output under exactly one build tag")

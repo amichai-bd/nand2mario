@@ -357,6 +357,12 @@ def coverage(root, model):
     for path in sorted(files):
         if (root / path).is_file():
             problems += host_closure.check(root, path, units[path], model["external_imports"], cache)
+    # The recorded mutations name catalogue units and tracked paths; a stale row is a coverage failure.
+    from . import mutations
+    try:
+        mutations.load(root, model)
+    except (OSError, ValueError) as error:
+        problems.append(f"{mutations.MANIFEST}: {error}")
     return problems
 
 
@@ -592,6 +598,19 @@ def command(root, args, header, publish):
     if args.action == "affected":
         from .affected import report as impact_report
         return {**header(args.tag or "-"), **impact_report(root, args.base)}
+    if args.action in ("mutations", "closure-trace"):
+        # Both are opt-in proofs about the catalogue's declarations; their clones,
+        # traces and records live under the tag like any other build output.
+        from . import closure_trace, mutations
+        proof = mutations if args.action == "mutations" else closure_trace
+        with workspace(root, args.tag) as build:
+            report = header(build.name)
+            try:
+                report.update(proof.command(root, build, args))
+            except Exception as error:
+                report.update(status="FAIL", error=str(error))
+            publish(build, report)
+        return report
     if args.action in ("list", "validate"):
         report = header(args.tag or "-")
         model, path = load(root)
