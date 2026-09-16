@@ -22,7 +22,9 @@ STACKDROP_TILE_NAMES = (['EMPTY', 'RULE T', 'LOCKED', 'ACTIVE', 'STATUS T', 'STA
                          'RULE B', 'RULE L', 'RULE R'] + [f'DIGIT {d}' for d in range(10)]
                         + ['CORNER TL', 'CORNER TR', 'CORNER BL', 'CORNER BR']
                         + [f'LABEL {c}' for c in 'NEXSCRA']
-                        + [f'{c} {half}' for c in STACKDROP_WORD for half in ('TOP', 'FOOT')])
+                        + [f'{c} {half}' for c in STACKDROP_WORD for half in ('TOP', 'FOOT')]
+                        + [f'TITLE {c} {part}' for c in STACKDROP_WORD
+                           for part in ('TL', 'TR', 'ML', 'MR', 'BL', 'BR')])
 STACKDROP_TILES = len(STACKDROP_TILE_NAMES)
 PIECE_NAMES = 'IOTLJSZ'
 # Button bits follow JOYP packing in both programs: Right, Left, Up, Down, A, B, Select, Start.
@@ -67,19 +69,23 @@ def build(root, name):
     return rom, symbols, lines
 
 
-def port_write(lines, port):
-    """Value stored by the last `LDH [$FF<port>],A`: the preceding LD A,n or XOR A, past other stores of A."""
+def port_writes(lines, port):
+    """Values stored by each `LDH [$FF<port>],A` in address order: the preceding LD A,n or XOR A, past other stores of A."""
     stores = [i for i, line in enumerate(lines) if line['bytes'] == [0xE0, port]]
     if not stores:
         raise ValueError(f'no write to FF{port:02X}')
-    index = stores[-1] - 1
-    while lines[index]['bytes'][:1] in ([0xE0], [0xEA]):
-        index -= 1
-    if lines[index]['bytes'][:1] == [0x3E]:
-        return lines[index]['bytes'][1]
-    if lines[index]['bytes'] == [0xAF]:
-        return 0
-    raise ValueError(f'unrecognised source of the FF{port:02X} write')
+    values = []
+    for store in stores:
+        index = store - 1
+        while lines[index]['bytes'][:1] in ([0xE0], [0xEA]):
+            index -= 1
+        if lines[index]['bytes'][:1] == [0x3E]:
+            values.append(lines[index]['bytes'][1])
+        elif lines[index]['bytes'] == [0xAF]:
+            values.append(0)
+        else:
+            raise ValueError(f'unrecognised source of the FF{port:02X} write')
+    return values
 
 
 def decode_tiles(data):
@@ -178,7 +184,12 @@ def stackdrop(root, out):
     rom, symbols, lines = build(root, 'stackdrop')
     bank = decode_tiles(rom[symbols['Tiles']:symbols['Tiles'] + 16 * STACKDROP_TILES])
     shapes = rom[symbols['Shapes']:symbols['Shapes'] + 112]
-    registers = {port: port_write(lines, port) for port in (0x40, 0x42, 0x43, 0x47)}
+    # LCDC's last write enables the LCD and BGP is written once; SCY/SCX first
+    # select the title page before LCD enable and then, once at the
+    # title-to-play transition, the play page.
+    registers = {port: port_writes(lines, port) for port in (0x40, 0x42, 0x43, 0x47)}
+    if len(registers[0x47]) != 1 or any(len(registers[port]) != 2 for port in (0x42, 0x43)):
+        raise ValueError('stackdrop must write BGP once and SCY/SCX twice')
     reference = load_module('n2m_stackdrop_reference', root / 'src/dv/stackdrop/reference.py')
     title = reference.Game()
     play = reference.Game()
@@ -197,15 +208,15 @@ def stackdrop(root, out):
             cells = [[0] * 4 for _ in range(4)]
             for cell in shapes[piece * 16 + rotation * 4:][:4]:
                 cells[cell >> 4][cell & 15] = 3
-            pieces.append(card(compose(bank, cells, 4, 4, registers[0x47]),
+            pieces.append(card(compose(bank, cells, 4, 4, registers[0x47][0]),
                                f'{PIECE_NAMES[piece]} R{rotation}', False))
     views = {'tile-bank': (bank_sheet(bank, STACKDROP_TILE_NAMES, 7), 8),
              'pieces': (grid(pieces, 7), 4)}
     frames = {}
-    for name, game in (('title', title), ('play', play), ('over', over)):
+    for index, (name, game) in enumerate((('title', title), ('play', play), ('over', over))):
         image = stackdrop_prepare(shapes, game)
-        frames[name] = screen(bank, stackdrop_map(rom, symbols, image), registers[0x40],
-                              registers[0x43], registers[0x42], registers[0x47])
+        frames[name] = screen(bank, stackdrop_map(rom, symbols, image), registers[0x40][-1],
+                              registers[0x43][min(index, 1)], registers[0x42][min(index, 1)], registers[0x47][0])
         views[name] = ([[PALETTE[v] for v in row] for row in frames[name]['pixels']], SCREEN_SCALE)
     save(out, 'stackdrop', bank, views, frames)
 

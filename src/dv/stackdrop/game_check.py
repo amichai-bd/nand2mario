@@ -1,9 +1,12 @@
 """Literal startup/input schedule and complete image oracle for the game."""
 from reference import Game
-from screen import image
+from screen import image, TITLE_SCROLL
 from cases import buffer
 
-LCD = 141000  # 784 atlas bytes at 52 dots each, plus the fixed prefix.
+LCD = 185948  # 1648 atlas bytes at 52 dots each, plus the fixed prefix.
+# SCY, SCX: the title page before LCD enable, then the play page once, in the
+# VBlank that copies the first playing image.
+SCROLL = ((0xff42, TITLE_SCROLL[1]), (0xff43, TITLE_SCROLL[0]), (0xff42, 0), (0xff43, 0))
 INPUT_WINDOW = (LCD+30000, LCD+32000)
 END = LCD+2*70224+65480
 TITLE = Game()
@@ -22,6 +25,7 @@ class Check:
         self.inputs = []
         self.copies = [[], [], []]
         self.prepared = []
+        self.scroll = []
 
     def pixel(self, value):
         frame, index = divmod(self.pixels, 23040)
@@ -41,6 +45,10 @@ class Check:
             expected = ((52, 0), (LCD, 145))
             assert len(self.lcd) < 2 and (dot, data) == expected[len(self.lcd)], f'STACKDROP_LCD dot={dot} data={data}'
             self.lcd.append((dot, data))
+        if address in (0xff42, 0xff43):
+            assert len(self.scroll) < 4 and (address, data) == SCROLL[len(self.scroll)], f'STACKDROP_SCROLL dot={dot} address={address:x} data={data}'
+            assert (dot <= LCD) == (len(self.scroll) < 2), f'STACKDROP_SCROLL_TIME dot={dot}'
+            self.scroll.append(dot)
         if dot <= LCD:
             return
         if 0x9800 <= address < 0x9c00:
@@ -68,6 +76,10 @@ class Check:
         # checked frame; it must still be an exact prefix of the stable image.
         tail = [(a, v) for _, a, v in self.copies[2]]
         assert tail == list(zip(ADDRESSES, buffer(PLAY)))[:len(tail)], 'STACKDROP_TAIL_COPY'
+        # The one scroll change follows the second copy inside the same VBlank.
+        second = LCD+70224+65664
+        assert len(self.scroll) == 4 and self.copies[1][-1][0] < self.scroll[2] < self.scroll[3] < second+4560, f'STACKDROP_SCROLL_WINDOW {self.scroll}'
         return dict(pixels=self.pixels, pause_dot=pause, input_dots=self.inputs,
                     last_pixel_dot=self.last_pixel, preparation_dots=self.prepared,
-                    complete_copy_last_dots=[rows[-1][0] for rows in self.copies[:2]])
+                    complete_copy_last_dots=[rows[-1][0] for rows in self.copies[:2]],
+                    scroll_dots=self.scroll, scroll_vblank_offsets=[d-second for d in self.scroll[2:]])

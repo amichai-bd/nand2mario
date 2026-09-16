@@ -1,4 +1,5 @@
 """Read only original rendered tiles; no gameplay memory or predicted state."""
+from pathlib import Path
 # Original 5x7 glyphs for digits, labels and the status letter, drawn here and
 # mirrored by the ROM atlas; `test_screen` compares both against the asset.
 SMALL = """\
@@ -41,7 +42,16 @@ NAMED.update({str(d): 10+d for d in range(10)})
 WORD = 'STACKDROP'
 RULE = (2, 5, 6)  # Ink offsets from a frame tile's outer edge: thin line, heavy bar.
 FRAME = {1: 'T', 7: 'B', 8: 'L', 9: 'R', 20: 'TL', 21: 'TR', 22: 'BL', 23: 'BR'}
-TILES = 49
+MARQUEE = 8  # First marquee column; centred over the frame and panels at 5..19.
+TITLE_TILE = 49  # Six tiles per title letter: top, middle, foot; left, right.
+TILES = TITLE_TILE+6*len(WORD)
+# The title page: SCX/SCY the ROM stores before LCD enable. Screen cell (s, r)
+# shows map cell ((20+s) % 32, (16+r) % 32). The two views intersect only at
+# map rows 16..17, columns 0..7, which both keep zero; the play page's STATE
+# box bottom (row 16, columns 15..19) and marquee (rows 0..1, columns 8..16)
+# lie outside the title view.
+TITLE_SCROLL = (160, 128)
+PROMPT = 'PRESS START'
 PREVIEW = ('....####........', '.##..##.........', '.#..###.........',
            '..#.###.........', '#...###.........', '.##.##..........',
            '##...##.........')
@@ -75,20 +85,36 @@ def tile(number):
         for y in range(7):
             for x in range(5):
                 put(1+x, y, 3*int(rows[y][x] == '#'))
-    elif 31 <= number < TILES:
+    elif 31 <= number < TITLE_TILE:
         rows = LETTER[WORD[(number-31)//2]]
         top = (number-31) % 2 == 0
         for index in range(6 if top else 5):
             for x in range(7):
                 put(x, (2+index) if top else index, 3*int(rows[index if top else 6+index][x] == '#'))
+    elif TITLE_TILE <= number < TILES:
+        letter, part = divmod(number-TITLE_TILE, 6)
+        row, column = divmod(part, 2)
+        shades = letterform(WORD[letter])
+        for y in range(8):
+            for x in range(8):
+                put(x, y, shades[8*row+y][8*column+x])
     return bytes(result)
+
+
+def letterform(letter):
+    """Title letter: the 7x11 marquee form at 2x with a shade-1 bevel on each stroke's top/left edge."""
+    rows = LETTER[letter]
+    body = [[x < 14 and y < 22 and rows[y//2][x//2] == '#' for x in range(16)] for y in range(24)]
+    return [[0 if not body[y][x] else
+             1 if x == 0 or y == 0 or not body[y][x-1] or not body[y-1][x] else 3
+             for x in range(16)] for y in range(24)]
 
 
 def background():
     """The static map the ROM writes once: marquee, well frame and panel boxes."""
     cells = [[0]*20 for _ in range(18)]
     for index, letter in enumerate(WORD):
-        cells[0][5+index], cells[1][5+index] = 31+2*index, 32+2*index
+        cells[0][MARQUEE+index], cells[1][MARQUEE+index] = 31+2*index, 32+2*index
     for row in range(2, 16):
         for column in range(5, 15):
             edge = (row in (2, 15), column in (5, 14))
@@ -110,16 +136,76 @@ def background():
     return cells
 
 
+def title():
+    """The static title page: dividers, large lettering, prompt, a falling T over a stack."""
+    cells = [[0]*20 for _ in range(18)]
+    for column in range(1, 19):
+        cells[3][column], cells[7][column] = 7, 1
+        cells[14][column] = 0 if column in (8, 9, 10) else 2
+        cells[15][column] = 2
+    for index, letter in enumerate(WORD):
+        for part in range(6):
+            cells[4+part//2][1+2*index+part % 2] = TITLE_TILE+6*index+part
+    for index, character in enumerate(PROMPT):
+        if character != ' ':
+            cells[10][4+index] = NAMED[character]
+    for x, y in ((9, 12), (8, 13), (9, 13), (10, 13)):
+        cells[y][x] = 3
+    return cells
+
+
+def page():
+    """The whole 32x32 map the ROM copies once: play page at the origin, title where the scroll shows it."""
+    cells = [[0]*32 for _ in range(32)]
+    for row, values in enumerate(background()):
+        cells[row][:20] = values
+    for row, values in enumerate(title()):
+        for column, value in enumerate(values):
+            if value:
+                target = cells[(TITLE_SCROLL[1]//8+row) % 32]
+                index = (TITLE_SCROLL[0]//8+column) % 32
+                assert not target[index], 'STACKDROP_PAGE_OVERLAP'
+                target[index] = value
+    return cells
+
+
+def compose(layout):
+    result = bytearray(23040)
+    for y, row in enumerate(layout):
+        for x, number in enumerate(row):
+            values = tile(number)
+            for line in range(8):
+                offset = (8*y+line)*160+8*x
+                result[offset:offset+8] = values[line*8:line*8+8]
+    return bytes(result)
+
+
+TITLE_IMAGE = compose(title())
+TITLE_STATE = dict(status=0, rotation=0, board=[0]*96, active=[], next_piece=0, score=0)
+
+
+def pack(pixels):
+    """Snapshot packing: four shades per byte, the first pixel in the low bits."""
+    return bytes(sum(pixels[i+j] << (2*j) for j in range(4)) for i in range(0, len(pixels), 4))
+
+
+def unpack(packed):
+    return bytes((b >> shift) & 3 for b in packed for shift in (0, 2, 4, 6))
+
+
 def decode(pixels):
     if len(pixels) != 23040 or any(p > 3 for p in pixels):
         raise ValueError('STACKDROP_SCREEN_SIZE')
+    # The title page is one static image; anything else must be the play page.
+    if bytes(pixels) == TITLE_IMAGE:
+        return dict(TITLE_STATE, board=[0]*96, active=[])
     def read(x, y, allowed):
         observed = bytes(pixels[(y+dy)*160+x+dx] for dy in range(8) for dx in range(8))
         matches = [n for n in allowed if observed == tile(n)]
         if len(matches) != 1:
             raise ValueError(f'STACKDROP_TILE x={x} y={y}')
         return matches[0]
-    status = read(120, 120, (4, 5, 6))-4
+    status = read(120, 120, (5, 6))-4
     rotation = read(128, 120, range(10, 14))-10
     board, active = [], []
     for y in range(12):
@@ -142,6 +228,8 @@ def decode(pixels):
 def image(game):
     """Independent full image from the specified state, for the frame oracle."""
     from cases import buffer
+    if game.status == 0:
+        return TITLE_IMAGE
     cells = buffer(game)
     layout = background()
     for i in range(96):
@@ -151,11 +239,23 @@ def image(game):
     for i in range(4):
         layout[11][15+i] = cells[112+i]
     layout[15][15], layout[15][16] = cells[116:118]
-    result = bytearray(23040)
-    for y, row in enumerate(layout):
-        for x, number in enumerate(row):
-            values = tile(number)
-            for line in range(8):
-                offset = (8*y+line)*160+8*x
-                result[offset:offset+8] = values[line*8:line*8+8]
-    return bytes(result)
+    return compose(layout)
+
+
+if __name__ == '__main__':
+    import hashlib
+    import json
+    import sys
+    import zlib
+    if sys.argv[1:] != ['--write-title-fixture']:
+        raise SystemExit('usage: screen.py --write-title-fixture')
+    folder = Path(__file__).resolve().parent/'fixtures'
+    packed = pack(TITLE_IMAGE)
+    (folder/'title-frame.txt').write_text(''.join(packed[i:i+64].hex()+'\n' for i in range(0, len(packed), 64)))
+    metadata = dict(schema_version=1, program='stackdrop', state='title', width=160, height=144,
+                    packing='snapshot: four 2-bit shades per byte, first pixel in the low bits; title-frame.txt holds the bytes as hex text, 64 per line',
+                    bytes=len(packed), crc32=f'{zlib.crc32(TITLE_IMAGE):08x}',
+                    sha256=hashlib.sha256(packed).hexdigest(), scx=TITLE_SCROLL[0], scy=TITLE_SCROLL[1],
+                    source='src/dv/stackdrop/screen.py TITLE_IMAGE; regenerate with python src/dv/stackdrop/screen.py --write-title-fixture')
+    (folder/'title.json').write_text(json.dumps(metadata, indent=1)+'\n')
+    print(metadata['crc32'])

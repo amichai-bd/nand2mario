@@ -1,0 +1,14 @@
+{
+ "schema_version": 1,
+ "program": "stackdrop",
+ "state": "title",
+ "width": 160,
+ "height": 144,
+ "packing": "snapshot: four 2-bit shades per byte, first pixel in the low bits; title-frame.txt holds the bytes as hex text, 64 per line",
+ "bytes": 5760,
+ "crc32": "8772027f",
+ "sha256": "c531c55e3ada9ad8039b2819d950fb92157c20d7e99edb4c0f27416cd6ef9724",
+ "scx": 160,
+ "scy": 128,
+ "source": "src/dv/stackdrop/screen.py TITLE_IMAGE; regenerate with python src/dv/stackdrop/screen.py --write-title-fixture"
+}

@@ -540,8 +540,9 @@ committed SVG reproduction. These checks do not qualify gameplay integration.
 [v0.5](../../src/dv/v05/SPEC.md#previews) previews under
 `workdir/builds/<tag>/program-art/<program>/`. It assembles, links and packages
 each registered target in memory, then reads the data the program displays:
-Stackdrop's tile, map and shape tables at their linked symbols plus the BGP, SCX
-and SCY values from its listing; the v0.5 tiles, map and registers from the
+Stackdrop's tile, map and shape tables at their linked symbols plus the BGP
+value and both SCX/SCY writes from its listing, the first for the title page and
+the second for play; the v0.5 tiles, map and registers from the
 program writes of the literal instruction recipe in `src/dv/v05/reference.py`,
 after checking that recipe against the built ROM bytes. Stackdrop frames mirror
 `Prepare` and `Render` for the fresh-game title and, from the independent rules

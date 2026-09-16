@@ -8,6 +8,7 @@ Gravity EQU $C006
 Edges EQU $C007
 Buttons EQU $C008
 Score EQU $C009
+Page EQU $C00D
 Cell EQU $C020
 Rows EQU $C021
 SourceRow EQU $C022

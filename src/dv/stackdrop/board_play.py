@@ -49,6 +49,8 @@ from ci.storage import machine_lock  # noqa: E402
 import frame_png  # noqa: E402
 from screen import decode  # noqa: E402
 
+FIXTURES = Path(__file__).resolve().parent / 'fixtures'
+
 FRAME = 70224
 # Frozen script: (button, repeats, note). One action per press, because the game
 # acts on released-to-pressed edges sampled once per VBlank.
@@ -124,6 +126,15 @@ class Driver:
         except ValueError as error:
             # A frame the decoder rejects is retained and reported, not hidden.
             entry['decode_error'] = repr(error)
+        if entry.get('decoded', {}).get('status') == 0 or label == 'title':
+            # Pixel-for-pixel comparison with the frozen independent title fixture.
+            reference = FIXTURES / 'title-frame.txt'
+            frozen = bytes.fromhex(reference.read_text().replace('\n', ''))
+            entry['title_reference'] = {
+                'fixture': reference.relative_to(ROOT).as_posix(),
+                'crc32': f'{zlib.crc32(frozen) & 0xffffffff:08x}',
+                'matches': packed == frozen,
+                'pixels_different': sum(1 for a, b in zip(frame_png.unpack(frozen), pixels) if a != b)}
         if self.last_pixels is not None:
             entry['pixels_changed_from_previous'] = sum(
                 1 for a, b in zip(self.last_pixels, pixels) if a != b)
@@ -154,7 +165,7 @@ def action(d, label, mask, hold, gap, mode):
 
 def play(d, args):
     title = to_title(d, args)
-    if title.get('decoded', {}).get('status') != 0:
+    if title.get('decoded', {}).get('status') != 0 or not title['title_reference']['matches']:
         raise ValueError('the free-run capture is not the Stackdrop title screen')
     if args.title_only:
         # Boot to the title and stop, leaving the board paused on it.
