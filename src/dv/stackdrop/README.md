@@ -18,13 +18,14 @@ same load, terminal marker, HALT, END and artifact path before the full run.
 ## Bounds fixed before runtime
 
 Instruction-count upper bounds, rounded upward: Shape116 dots, Address220,
-Valid1800 (four cells), Prepare6500 (96 board cells, four active cells,16 preview
-clears, four preview cells and six HUD cells), ClearRows12600 (12 eight-cell
+Valid1800 (four cells), Prepare12700 (96 board cells through the face table at
+108 dots each, four active cells,16 preview clears, four preview cells and six
+HUD cells), ClearRows12600 (12 eight-cell
 scans/copies, at most96 top clears and four score increments), Lock17000 including
 spawn. One hard drop performs at most13 Valid calls, followed by Lock; including
-update dispatch,42000 bounds any selected update. Combined with Prepare6500,
-ReadButtons/Render4472 and loop/wake overhead below256, this is below53204,
-leaving over17000 of70224 dots. These are conservative source bounds, not
+update dispatch,42000 bounds any selected update. Combined with Prepare12700,
+ReadButtons/Render4472 and loop/wake overhead below256, this is below59400,
+leaving over10800 of70224 dots. These are conservative source bounds, not
 measured timing claims.
 
 For the fixed73 calls, at most40 ordinary collision checks plus13 hard-drop
@@ -71,8 +72,8 @@ Simulated time is deterministic and separate from the wall budget.
 own dot bound: dots at the exact 4194304 Hz `gb_tick` rate, plus a 25 percent
 margin, plus a 10 ms host allowance for identify, preload adoption, RUN and
 HALT over the simulated UART (5.69 ms measured in every target). The game's
-bound is `FINAL` = `END` + 2000 = 393876 dots (93.9 ms), the latest pause its
-checker accepts, giving 128 ms; the run simulates 99.2 ms. The unit's bound is
+bound is `FINAL` = `END` + 2000 = 405012 dots (96.6 ms), the latest pause its
+checker accepts, giving 131 ms; the run simulates 101.9 ms. The unit's bound is
 its 500000-dot `STACKDROP_PROGRESS` limit (119.2 ms), giving 160 ms; the run
 simulates 91.4 ms. The game loop leaves at `END` and the unit's progress check
 fires at its bound, both before the derived timeout, so a scenario failure is
@@ -86,14 +87,15 @@ No product RTL behavior or positive stimulus changes for the fault.
 
 ## Whole-game timing
 
-The instruction-derived LCD enable commit is185948 dots. The prefix is148 dots
+The instruction-derived LCD enable commit is197084 dots. The prefix is148 dots
 through setting the768-byte clear count, including the title-page SCY/SCX
-writes and re-zeroing A for the clear,36852 for that clear,36 setup+85692 for1648 tile bytes,36 setup+53244
-for1024 map bytes,5564 for the initial title Prepare call,4312 for Render, then
+writes and re-zeroing A for the clear,36852 for that clear,36 setup+90684 for1744 tile bytes,36 setup+53244
+for1024 map bytes,11708 for the initial title Prepare call with its 96 face
+lookups,4312 for Render, then
 64 for palette/IE/LCDC setup. The checker rejects a different LCD commit
 immediately; the observed value never selects its oracle.
 
-Drive one real UART Start128 at171000..173000, safely before the first VBlank.
+Drive one real UART Start128 at227084..229084, safely before the first VBlank.
 Check all69120 pixels of startup white, the title page and the first playing
 image. The first VBlank copies the prepared title-state image into the hidden
 play page and computes NewGame; the second copies that prepared playing image

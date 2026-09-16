@@ -8,7 +8,10 @@ or the hardware milestone criteria. The following rules are frozen for implement
 ## Board and pieces
 
 The well is eight columns by twelve rows, with no hidden rows. Coordinates start
-at the upper left. Empty and occupied cells are binary; pieces cannot overlap
+at the upper left. An empty cell is zero; an occupied cell records the piece
+that locked there as 1 plus its index in the cycle below, so the settled board
+shows which pieces formed it. Collision, row clearing and the reference model
+treat every nonzero cell alike; pieces cannot overlap
 occupied cells or cross any edge. The fixed repeating cycle is I, O, T, L, J,
 S, Z. These are mathematical four-cell shapes, with original art and layout.
 Each uses a 4-by-4 local grid:
@@ -56,19 +59,25 @@ host HALT is separate and freezes emulated time through the existing interface.
 
 ## Visible encoding
 
-Use original background tiles with identity palette E4. The 103-tile atlas in
+Use original background tiles with identity palette E4. The 109-tile atlas in
 [assets/tiles.json](../../../../src/sw/stackdrop/assets/tiles.json) is the
 editable source; `ASSET "Tiles"` emits it at `Tiles`, and initialization copies
-all 1648 bytes to $8000 before enabling the LCD. Every frame rule, corner, label,
+all 1744 bytes to $8000 before enabling the LCD. Every frame rule, corner, label,
 marquee letter, title letter and panel box belongs to the one 1024-byte
 background map copied at the same time, so decoration costs no per-frame work
 and the prepared image stays118 bytes.
 
-The well begins at pixel (48,24); each cell is one 8-by-8 tile. Empty cells have
-shade0 interiors, locked cells shade2 interiors, and active cells shade3
-interiors. Locked cells add a shade3 outline and active cells a shade1 top-left
-bevel; both lie in the outer ring, so the center 4-by-4 classification region
-stays one shade. Borders and original tile details must not obscure that region.
+The well begins at pixel (48,24); each cell is one 8-by-8 tile drawn from nine
+well tiles: empty (0), the active block (3) and seven locked faces. An empty
+cell is shade0. The active cell is a shade3 block with a shade1 top-left bevel
+in every state. Each locked face is a shade3 outline around a shade2 face, and
+the piece shows as a shade1 motif on the 4-by-4 interior: I plain (tile 2), O a
+centre 2-by-2 dot (103), T a horizontal bar (104), L a vertical bar (105), J
+four corner dots (106), S a diagonal (107) and Z a checker (108). `Prepare`
+maps each board cell code through the `Faces` table, `0,2,103..108`, at 108
+dots per cell in visible time; the VBlank copy is unchanged. The decoder
+matches every well cell against exactly these nine tiles and rejects any other
+pixels, reporting the cell code per occupied cell.
 The well's fixed rectangle is the public visual coordinate system.
 
 A heavy double-ruled frame encloses the well from tile (5,2) to (14,15): each
@@ -140,8 +149,9 @@ The game draws only background tiles; it has no object tiles or window.
 
 The bank sheet shows shade 0 as the review checkerboard; on screen it is
 BGP colour 0. Tiles 1, 7, 8, 9 and 20 to 23 rule the frames, 24 to 30 spell the
-panel labels, 31 to 48 carry the marquee halves and 49 to 102 the six tiles of
-each title letter; tiles 4, 5 and 6 are the status letters and double as label
+panel labels, 31 to 48 carry the marquee halves, 49 to 102 the six tiles of
+each title letter and 103 to 108 the locked faces of O, T, L, J, S and Z; tile 2
+is the I face and tiles 4, 5 and 6 are the status letters and double as label
 letters.
 
 ![Seven pieces in four rotations](previews/pieces.svg)
@@ -159,8 +169,8 @@ holds the same image in snapshot packing with its CRC32 and SHA-256, so a board
 capture compares pixel for pixel; `test_screen` proves it equals the
 independent composition. The play screen shows the
 state the [independent rules model](../../../../src/dv/stackdrop/reference.py)
-reaches after the input script recorded in the generator: six locked pieces,
-a falling Z, the I preview and no cleared rows. The game-over screen continues
+reaches after the input script recorded in the generator: six locked pieces
+each wearing its own face, a falling Z, the I preview and no cleared rows. The game-over screen continues
 that script with four more hard drops until a spawn fails. Regenerate with a fresh tag
 from the worktree root:
 

@@ -44,7 +44,24 @@ RULE = (2, 5, 6)  # Ink offsets from a frame tile's outer edge: thin line, heavy
 FRAME = {1: 'T', 7: 'B', 8: 'L', 9: 'R', 20: 'TL', 21: 'TR', 22: 'BL', 23: 'BR'}
 MARQUEE = 8  # First marquee column; centred over the frame and panels at 5..19.
 TITLE_TILE = 49  # Six tiles per title letter: top, middle, foot; left, right.
-TILES = TITLE_TILE+6*len(WORD)
+FACE_TILE = TITLE_TILE+6*len(WORD)  # Locked faces for O, T, L, J, S, Z follow the title letters.
+TILES = FACE_TILE+6
+# Locked face tile per board cell code: 0 empty, then I, O, T, L, J, S, Z. Tile
+# 2 stays the I face so every earlier tile keeps its number and the title page
+# its pixels. The ROM `Faces` table holds the same bytes; `test_program_art`
+# compares them and `cases.buffer` builds the image oracle from this tuple.
+FACES = (0, 2)+tuple(range(FACE_TILE, TILES))
+# Shade-1 motif inside the shade-2 face of each locked piece, on the 4x4
+# interior at 2..5; the shade-3 outline at 1 and 6 is shared by all seven.
+MOTIF = dict(zip(FACES[1:], (
+    (),                                                          # I: plain
+    ((3, 3), (4, 3), (3, 4), (4, 4)),                            # O: centre dot
+    tuple((x, y) for y in (3, 4) for x in range(2, 6)),          # T: horizontal bar
+    tuple((x, y) for y in range(2, 6) for x in (3, 4)),          # L: vertical bar
+    ((2, 2), (5, 2), (2, 5), (5, 5)),                            # J: four corner dots
+    ((2, 2), (3, 3), (4, 4), (5, 5)),                            # S: diagonal
+    tuple((x, y) for y in range(2, 6) for x in range(2, 6) if (x+y) % 2 == 0),  # Z: checker
+)))
 # The title page: SCX/SCY the ROM stores before LCD enable. Screen cell (s, r)
 # shows map cell ((20+s) % 32, (16+r) % 32). The two views intersect only at
 # map rows 16..17, columns 0..7, which both keep zero; the play page's STATE
@@ -61,10 +78,10 @@ def tile(number):
     result = bytearray(64)
     def put(x, y, value):
         result[y*8+x] = value
-    if number == 2:  # Locked: dark outline around a grey face.
+    if number in MOTIF:  # Locked: dark outline around a grey face with the piece motif.
         for y in range(1, 7):
             for x in range(1, 7):
-                put(x, y, 3 if x in (1, 6) or y in (1, 6) else 2)
+                put(x, y, 3 if x in (1, 6) or y in (1, 6) else 1 if (x, y) in MOTIF[number] else 2)
     elif number == 3:  # Active: solid block with a light top-left bevel.
         for y in range(1, 7):
             for x in range(1, 7):
@@ -210,8 +227,8 @@ def decode(pixels):
     board, active = [], []
     for y in range(12):
         for x in range(8):
-            value = read(48+x*8, 24+y*8, (0, 2, 3))
-            board.append(int(value == 2))
+            value = read(48+x*8, 24+y*8, FACES+(3,))
+            board.append(FACES.index(value) if value != 3 else 0)
             if value == 3:
                 active.append((x, y))
     preview = ''.join('#' if read(120+x*8, 32+y*8, (0, 3)) == 3 else '.'

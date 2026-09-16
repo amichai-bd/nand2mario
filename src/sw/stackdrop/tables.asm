@@ -1,5 +1,8 @@
 ; Original literal shapes, tile atlas asset and background layout.
 SECTION "tables",ROM
+; Locked face tile per board cell code: empty, then I, O, T, L, J, S, Z.
+Faces:
+DB 0,2,103,104,105,106,107,108
 Shapes:
 DB $10,$11,$12,$13,$02,$12,$22,$32,$23,$22,$21,$20,$31,$21,$11,$01
 DB $01,$02,$11,$12,$01,$02,$11,$12,$01,$02,$11,$12,$01,$02,$11,$12

@@ -44,8 +44,9 @@ class Game:
             self.status = 2
 
     def lock(self):
+        # An occupied cell records its piece: 1+index in the I, O, T, L, J, S, Z cycle.
         for dx, dy in cells(self.piece, self.rotation):
-            self.board[(self.y+dy)*8+self.x+dx] = 1
+            self.board[(self.y+dy)*8+self.x+dx] = 1+self.piece
         rows = [self.board[i:i+8] for i in range(0, 96, 8)]
         kept = [row for row in rows if not all(row)]
         count = 12-len(kept)

@@ -30,7 +30,8 @@ def state(game):
 
 def buffer(game):
     from reference import cells
-    values = [2*v for v in game.board]+[0]*16
+    from screen import FACES
+    values = [FACES[v] for v in game.board]+[0]*16
     if game.status == 1:
         for x, y in cells(game.piece, game.rotation):
             values[(game.y+y)*8+game.x+x] = 3
