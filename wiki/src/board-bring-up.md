@@ -509,7 +509,7 @@ device fifteen lines per `SDRAM_WRITE`, reads it back fifteen lines per
 | Run | Design | Record | Result |
 |---|---|---|---|
 | Partial (stopped) | session 4 image, wire build id `27e5af2d…` | tag `694-sweep`, `sdram-test/2895a7af46e74a218e03297a8f882593`, `PROVENANCE-partial.txt` | started 06:00 UTC right after session 4; stopped by the owner's decision at 11:36 UTC to free the board for session 5, after sequence 453,662 of about 559k transactions (about 81%, into the read-back phase); 0 mismatching lines, every logged response status 0; no `result.json` because the run did not complete |
-| Full, unattended | session 5 image, wire build id `032e35ef…` | tag `712-sweep`, `sdram-test/9596bf11ae5f474fb91962b9338c53ac` | **PENDING — root fills from `result.json`**: `lines` (expected 4,194,304), `mismatch_count`, `status`, elapsed from the first and last `transactions.jsonl` timestamps (started 12:03 UTC) |
+| Full, unattended | session 5 image (the ten-game flash-boot design), wire build id `032e35ef…`, records at `894059c` | tag `712-sweep`, `sdram-test/9596bf11ae5f474fb91962b9338c53ac` | `PASS`: seed 1, start 0, length 67,108,864 bytes, `lines` 4,194,304, `mismatch_count` 0; first transaction 12:03:45 UTC, last 18:35:20 UTC, elapsed 23,494.6 s (6 h 31 m) at 115200 baud, against the about 4 h estimate |
 
 The sweep overwrites the SDRAM library; the boot copier restores it from flash
 at the next power cycle.
@@ -521,7 +521,7 @@ at the next power cycle.
 | Recorded `.pof` programming with the measured ISP time | session 4 `fpga-program/50fffc44e68d`, `isp_seconds` 47.219 (and session 5 `fpga-program/f6e628cacddf`, 47.562) | proven |
 | Power-up to the menu with the UART disconnected | session 4: owner power cycle with the adapter disconnected and no host attached, menu reported on the monitor; after reconnecting, `flash_boot` set and epoch 1 | proven, owner report for the picture, UART readback for the state |
 | Pixel-exact menu frame read back afterwards | session 4 `snapshot/b56d974a…`, CRC32 `03f6afad` (and session 5 `snapshot/53c2483c…`, CRC32 `f75484e7`) | proven |
-| `host sdram-test --full`: 4,194,304 lines, zero mismatches, elapsed time | `712-sweep` `sdram-test/9596bf11…` | **PENDING — root fills from `result.json`** (partial `694-sweep` run: 0 mismatches to sequence 453,662) |
+| `host sdram-test --full`: 4,194,304 lines, zero mismatches, elapsed time | `712-sweep` `sdram-test/9596bf11…`: `lines` 4,194,304, `mismatch_count` 0, `PASS`, 23,494.6 s (after the partial `694-sweep` run on the session 4 design: 0 mismatches to sequence 453,662) | proven on the session 5 design |
 
 ## Display observation
 
