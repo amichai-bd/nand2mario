@@ -1752,11 +1752,10 @@ letters, digits, spaces and dashes, at most 16) stands in, under the
 [catalogue entry rule](../../src/rtl/cartridge/MAS_loader_profile.md#boot-source)
 that only an all-zero header takes the fallback and a named header is never
 overridden. Four of the images (Libbet, Airaki, GB Wordyl, Unstoppable Knight)
-set the CGB-compatible flag `0x80` at `0x143`, the last title byte, which the
-[menu](../../src/sw/menu/SPEC.md) draws as a dash in the last title column;
-that rendering limit is tracked in
-[#708](https://github.com/amichai-bd/nand2mario/issues/708). Every other title
-byte of the seven images is a letter, digit, dash, space or zero, so the
+set the CGB-compatible flag `0x80` at `0x143`, the last title byte; the
+[menu](../../src/sw/menu/SPEC.md) draws `0x80` and `0xC0` in that cell as
+blank, so the flag never shows. Every other title byte of the seven images is
+a letter, digit, dash, space or zero, so the
 [menu reference](../../../src/dv/menu/reference.py) draws them as written.
 
 Capacity: the ten registered images and the catalogue define 90,368 words of
