@@ -108,8 +108,9 @@ exclusive board lock:
    loaded library and the flash-resident one carry the same catalogue.
 5. Record the session under [Run record](#run-record): the attempt commit,
    the `.pof` hash, `isp_seconds`, the observed picture and whether the
-   flash content changed. No session has run yet
-   ([#694](https://github.com/amichai-bd/nand2mario/issues/694)).
+   flash content changed. The
+   [flash-resident boot sessions](#flash-resident-boot-and-sdram-sweep-sessions)
+   below are the sessions run so far.
 
 Programming the flash changes the board's power-up configuration: the next
 `fpga program --sof` still configures the device volatile for that power
@@ -390,6 +391,158 @@ to the menu on the viewer; that observation carries the same limits as the
 | Started game title frame pixel-exact | `snapshot/72199545…`, CRC32 `4a3bad02` (Springtrail, the accepted reference game; stackdrop and v05 frames retained without a reference) | proven |
 | Return to the menu with a pixel-exact menu frame | host return `write/9ab81d26…` then `snapshot/58a8f84a…`, and the final return `snapshot/6770ea06…` | proven through the host return |
 | Physical KEY1 hold returns to the menu with a pixel-exact menu frame | session 3 `snapshot/357c2afe…` (Stackdrop running, epoch 21) then the owner's 0.5 s hold and `snapshot/b3700193…` (menu, epoch 22, result `OK`, CRC32 `c3753fdc`); earlier presses `snapshot/15d571db…` | proven, owner present |
+
+## Flash-resident boot and SDRAM sweep sessions
+
+Two owner-authorized sessions on 2026-09-16 wrote the MAX 10 configuration
+flash for the first time on this board with `fpga program --pof`, following the
+[flash programming procedure](#flash-programming-procedure), and proved that
+the board powers up into the menu from the flash-resident library with no PC
+attached. The full 64 MiB `host sdram-test --full` sweep ran afterwards on the
+flash-booted design. Menu frames are compared with
+[`reference.py`](../../src/dv/menu/reference.py) against the catalogue bytes
+that `host library status` retains, as in the
+[game library sessions](#game-library-sessions). The
+[acceptance table](#flash-and-sweep-acceptance) maps each criterion to its
+record; the concise records (fit, dry-run, program, status, library status,
+snapshot and compare results, sweep provenance) are retained with a provenance
+note and linked from the closing PR.
+
+Authorization. Every earlier board session was volatile `.sof` only. In the
+morning of 2026-09-16 the owner authorized both parts: "I authorize the flash
+programming session, and if needed a four-hour SDRAM sweep — that's fine",
+then, after the staged `.pof` and its dry run were shown, gave the explicit go
+for the write ("yes and yes"). In the evening the owner, present at the board,
+authorized a second flash write with the fitted ten-game library and
+power-cycled the board after each write.
+
+### Session 4: first flash write and power-up to the menu
+
+- Git commit: `main` `862c2051929c4eed5ab40a5a07145c4c5075f2dd`; the flash
+  library packed into the image is the three-game registry set (Springtrail
+  slot 0 `8b564649`, Stackdrop slot 1 `619fa99f`, V05 slot 2 `718b0dcb`, menu
+  at index 16 profile 2 `ec9c63fe`), `library.hex` SHA-256 `3a9b04d3…`,
+  packed `catalogue.bin` SHA-256 `7e1d0aad…`.
+- Fit: `v05-board` attempt `fcaa7349c241` (tag `694-fit`), status `PASS`,
+  05:30 to 05:33 UTC, build id `2a9a70b4bedaeea2877af6c52dafe527`, wire build
+  id `27e5af2dc5f67a87a2eedabeb4709a2a` reported by every host record;
+  configuration mode `Single Comp Image`, `.pof` SHA-256
+  `5131503ded3daf242320e41b70cf3674ffcfa8d8b82c30d4d31d4117f223163e`, user
+  range matched, CFM0 used 367,699 of 688,128 bytes; unconstrained clocks: the
+  On-Chip Flash IP sense-enable strobe only, ignored constraints none, worst
+  slack 0.148 ns (fast-corner hold on `clk_reference`).
+- Quartus version: Prime 25.1std.0 Build 1129 SC Lite Edition, for fit and
+  programmer.
+- Dry run: `fpga-program/b7bbf7e13a62` (tag `694-program-dryrun`), `PASS`,
+  `dry-run.log` line `quartus_pgm -c <cable> -m jtag -o pvb;<pof>`, no JTAG
+  access.
+- Flash programming: `fpga-program/50fffc44e68d` (tag `694-program`),
+  `quartus_pgm -c 1 -m jtag -o pvb;<pof>` against the one `USB-Blaster [USB-1]`
+  chain with `10M50DA(.|ES)/10M50DC` (IDCODE `031050DD`), "Quartus Prime
+  Programmer was successful. 0 errors, 0 warnings", processing 05:42:01 to
+  05:42:48 UTC, `isp_seconds` 47.219 for program, verify and blank-check;
+  `pof_sha256` equal to the fit's. The flash content changed: this was the
+  first CFM write on this board.
+- Power cycle: the owner power-cycled the board with the UART adapter
+  disconnected and no host attached, and reported the menu on the monitor.
+  That report is the owner's observation; the records below are the UART
+  readback after the adapter was reconnected.
+- Wiring: the documented UART and JTAG connections above; nothing was rewired.
+
+| Step | Record (tag `694-boot`) | Result |
+|---|---|---|
+| `host status` after reconnecting, 05:59 UTC | `status/12042b21eeb64c71b8cca70ba64055f1` | endpoint build id `27e5af2d…` (the byte-reversed fit build id); `IMAGE_VALID` 1, `PROFILE` 2, `STATE` running, `INPUT` 0 |
+| `host library status` | `library-status/d8cb43fcad654bdab206f3a12ce8c95b` | `LIBRARY_STATUS` `$A000` 0x68: `window_ready`, `sdram_ready`, `flash_boot`; result `OK`; catalogue read from SDRAM SHA-256 `7e1d0aad…`, byte-identical to the fit's packed catalogue (slots 0 to 2 and the menu at 16 with the CRC32s above) |
+| Menu frame | `snapshot/b56d974a70a54df0b790f2e0c48116d1` | epoch 1 (the boot copier's single reset), seq 60809; pixel-exact `expected('menu')` for that catalogue: 23040 pixels, 0 mismatches, CRC32 `03f6afad`, frame SHA-256 `c254127c2af3a7ddc7fe713e6ba3c6a12ace147b0c62fd4a6321db314370d069`; cursor 0 |
+
+Board state after the session: flash holds the three-game library image,
+menu running from the SDRAM copy the boot copier made.
+
+### Session 5: second flash write with the ten-game library
+
+The owner was present. This write replaced the session 4 image with the
+`v05-board` fit that carries the ten-game flash library; its purpose was the
+MBC1 board proof, and it repeated the flash-boot proof on the new image.
+
+- Git commit: the fit was built at `3ab8f2066c92f4646daeb450f81b79b8c6c88063`
+  on the branch squashed into `main` as `b2f8169`; the program and host records
+  below were taken from the same clone at that branch's final head
+  `894059ceb9654d52d598d58b67dc8e6129178c36` (host-tool and documentation
+  commits after the fit; no `src/` change). `library.hex` SHA-256 `7e1da81c…`, packed
+  `catalogue.bin` SHA-256 `1d274b38…`, ten games in slots 0 to 9 and the menu
+  at 16.
+- Fit: `v05-board` attempt `98d391b31e04` (tag `712r-fit`), status `PASS`,
+  11:09 to 11:14 UTC, build id `616f1184903b78558b6f449fef352e03`, wire build
+  id `032e35ef9f446f8b55783b9084116f61` reported by every host record;
+  `Single Comp Image`, `.pof` SHA-256
+  `b34d39a67367d83e1e63c7c17b390bde98d0d3ffa4843c865bf5bd4a34b9c50d`, user
+  range matched, CFM0 used 370,683 of 688,128 bytes; unconstrained clocks: the
+  flash IP strobe only, ignored constraints none, worst slack 0.049 ns
+  (fast-corner hold on the system PLL clock).
+- Quartus version: Prime 25.1std.0 Build 1129 SC Lite Edition.
+- Flash programming: `fpga-program/f6e628cacddf` (tag `712r-program`), the
+  same command and chain, `PASS`, `device_state` `changed`, `isp_seconds`
+  47.562, `pof_sha256` equal to the fit's; about 11:37 UTC. The flash content
+  changed from the session 4 image to this one.
+- Power cycle: the owner power-cycled the board and reported "menu is up".
+  The records do not state whether the UART adapter was disconnected during
+  this power cycle; the no-PC power-up proof rests on session 4.
+
+| Step | Record | Result |
+|---|---|---|
+| `host status`, 11:45 UTC | `712-board-status`, `status/58ee6250cbf04ad2b133f94ae5294a67` | endpoint build id `032e35ef…` equals the program record's `wire_build_id`; `IMAGE_VALID` 1, `PROFILE` 2, running |
+| `host library status` | `712-board-libstatus`, `library-status/af9a82cfed9f4ce485a866b83c1e7fa3` | `$A000` 0x68: `window_ready`, `sdram_ready`, `flash_boot`; result `OK`; catalogue SHA-256 `1d274b38…`, byte-identical to the fit's packed catalogue; ten titles in slots 0 to 9 |
+| Menu frame | `712-board-menu`, `snapshot/53c2483c34b048dfb9ca365e8d270888` | epoch 1, seq 29840; pixel-exact `expected('menu')` for that catalogue: 23040 pixels, 0 mismatches, CRC32 `f75484e7`, frame SHA-256 `9bda2c43…`; cursor 0 |
+
+The MBC1 selection and gameplay frames that followed in this session belong to
+the [MBC1 board proof](rtl/cartridge/MAS_loader_profile.md#verification), not
+to this record. Board state after the session: flash holds the ten-game
+library image.
+
+### Session 6: flash reconfiguration restores the library without a power cycle
+
+After the host library loads and the full sweep had overwritten the SDRAM, the
+board returned to the flash-resident menu twice without a power cycle, on the
+eleven-game `v05-board` fit of the PostBot slice (attempt `d3352b4ff0fb`, tag
+`738-fit`, build id `2f671a6f2216860496e024e2954b712b`, wire build id
+`2b714b95e224e096048616226f1a672f`, `.pof` SHA-256 `36ba5d0f…`, CFM0 used
+369,711 of 688,128 bytes, packed `catalogue.bin` SHA-256 `b4b5b3f7…`). Records
+from 18:42 to 18:51 UTC; the owner was present.
+
+| Step | Record | Result |
+|---|---|---|
+| Flash programming over JTAG, `pvb` | `738-program`, `fpga-program/13fa692a5b8d` | `PASS`, `isp_seconds` 49.313, `device_state` changed; the MAX 10 reconfigured from CFM0 at the end of programming with no power cycle |
+| `host status`, `host library status` after programming | `738-status-after-program`, `status/fe26b95b…`; `738-board-libstatus`, `library-status/e8c2da6e…` | wire build id `2b714b95…` equals the program record's; `PROFILE` 2, running; `$A000` 0x68 with `flash_boot`, result `OK`, twelve valid entries (slots 0 to 10 and the menu), catalogue SHA-256 `b4b5b3f7…` equal to the fit's |
+| Menu frame | `738-board-menu`, `snapshot/e16d8d5c…` | epoch 1; pixel-exact, 23040 pixels, 0 mismatches, CRC32 `c625db9f` |
+| Owner pressed and released KEY0 (`PIN_B8`) after a menu session had selected slot 10 | `512-before`: `status/60dd7a3f…`, `library-status/008b6830…`, `snapshot/0f0b4859…`; `512-after1`: `status/20dbb8fc…`, `library-status/07bee945…`, `snapshot/4eca1745…` | before: epoch 5, selected index `$A003` 10; after: same wire build id, epoch 1, selected index cleared to 255, `flash_boot` set, result `OK`; menu frame pixel-exact, CRC32 `c625db9f` |
+
+Both paths ran the boot copier again: the library came back from flash with
+the same catalogue and the same menu frame as at power-up. The KEY0 wiring and
+asserted-direction record belongs to the reset section of this page, not here.
+
+### Full SDRAM sweep
+
+`host sdram-test --full` writes the seeded pattern over the whole 64 MiB
+device fifteen lines per `SDRAM_WRITE`, reads it back fifteen lines per
+`SDRAM_READ` and compares every line
+([storage contract](rtl/storage/MAS_sdram.md#verification)). Two runs:
+
+| Run | Design | Record | Result |
+|---|---|---|---|
+| Partial (stopped) | session 4 image, wire build id `27e5af2d…` | tag `694-sweep`, `sdram-test/2895a7af46e74a218e03297a8f882593`, `PROVENANCE-partial.txt` | started 06:00 UTC right after session 4; stopped by the owner's decision at 11:36 UTC to free the board for session 5, after sequence 453,662 of about 559k transactions (about 81%, into the read-back phase); 0 mismatching lines, every logged response status 0; no `result.json` because the run did not complete |
+| Full, unattended | session 5 image (the ten-game flash-boot design), wire build id `032e35ef…`, records at `894059c` | tag `712-sweep`, `sdram-test/9596bf11ae5f474fb91962b9338c53ac` | `PASS`: seed 1, start 0, length 67,108,864 bytes, `lines` 4,194,304, `mismatch_count` 0; first transaction 12:03:45 UTC, last 18:35:20 UTC, elapsed 23,494.6 s (6 h 31 m) at 115200 baud, against the about 4 h estimate |
+
+The sweep overwrites the SDRAM library; the boot copier restores it from flash
+at the next power cycle.
+
+### Flash and sweep acceptance
+
+| Criterion | Evidence | State |
+|---|---|---|
+| Recorded `.pof` programming with the measured ISP time | session 4 `fpga-program/50fffc44e68d`, `isp_seconds` 47.219 (and session 5 `fpga-program/f6e628cacddf`, 47.562) | proven |
+| Power-up to the menu with the UART disconnected | session 4: owner power cycle with the adapter disconnected and no host attached, menu reported on the monitor; after reconnecting, `flash_boot` set and epoch 1 | proven, owner report for the picture, UART readback for the state |
+| Pixel-exact menu frame read back afterwards | session 4 `snapshot/b56d974a…`, CRC32 `03f6afad` (and session 5 `snapshot/53c2483c…`, CRC32 `f75484e7`) | proven |
+| `host sdram-test --full`: 4,194,304 lines, zero mismatches, elapsed time | `712-sweep` `sdram-test/9596bf11…`: `lines` 4,194,304, `mismatch_count` 0, `PASS`, 23,494.6 s (after the partial `694-sweep` run on the session 4 design: 0 mismatches to sequence 453,662) | proven on the session 5 design |
 
 ## Display observation
 

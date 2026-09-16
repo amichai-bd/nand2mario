@@ -12,10 +12,10 @@ and [`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv)
 fixtures, the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit,
 the copier in the `v05-board` image and the builder's
 [library image and `.pof` path](../../../tools/n2m/SPEC.md#flash-library-image).
-The flash board session ([#694](https://github.com/amichai-bd/nand2mario/issues/694))
-remains open under
-[#658](https://github.com/amichai-bd/nand2mario/issues/658); the programming
-section below is the contract those slices derive from.
+The [flash-resident boot sessions](../../board-bring-up.md#flash-resident-boot-and-sdram-sweep-sessions)
+record the programmed `.pof`, the power-up to the menu and the read-back
+library state on the board; the programming section below is the contract
+those slices derive from.
 
 ## Scope
 
@@ -294,9 +294,9 @@ The flash is programmed only through JTAG with the Quartus Programmer:
    Programming replaces the CFM0 image and the user range; the in-system
    programming time from the MAX 10 configuration guide is 52.9 s for CFM0,
    22.7 s for CFM1 and 30.2 s for CFM2 on the 10M50 before verify and system
-   overhead. The tool records the measured time; the board session
-   ([#694](https://github.com/amichai-bd/nand2mario/issues/694)) has not
-   run yet, so no measured value exists.
+   overhead. The tool records the measured time as `isp_seconds`; the
+   [board sessions](../../board-bring-up.md#flash-resident-boot-and-sdram-sweep-sessions)
+   hold the measured values.
 4. A host command that writes flash through the IP's program path is
    deferred: the IP is instantiated read-only, and every sector keeps its
    write protection. Reopening this needs an owner decision.
@@ -364,12 +364,19 @@ with the same staging, mode assignment and classified diagnostics, and the
 builder feeds the reader's `INIT_FILENAME` and checks the `.pof` for them as
 for `flash-proof`; their audit reports the IP's strobe clock once per timing
 netlist update (seven, against one for `flash-proof`), which the builder
-counts from the audit script. A board check, authorized per slice
-([#694](https://github.com/amichai-bd/nand2mario/issues/694)): program the
-`.pof`, power-cycle without a host, observe the menu; then a host load, then a
-power cycle restoring the flash menu. Until it runs, the copier's and reader's
-evidence is simulation against the double plus the fit; the flash contents
-have not been read on the board.
+counts from the audit script. The board check, program the `.pof`,
+power-cycle without a host, observe the menu and read the library state back,
+ran on `v05-board` in the
+[flash-resident boot sessions](../../board-bring-up.md#flash-resident-boot-and-sdram-sweep-sessions):
+the copier set `flash_boot`, the catalogue read from SDRAM equalled the packed
+catalogue and the menu frame was pixel-exact. After host library loads and a
+full SDRAM sweep had overwritten the SDRAM, both a JTAG flash programming
+(the device reconfigures from CFM0 without a power cycle) and a KEY0 press ran
+the copier again and restored the flash menu with the same catalogue and a
+pixel-exact frame
+([session 6](../../board-bring-up.md#session-6-flash-reconfiguration-restores-the-library-without-a-power-cycle)).
+The copier's and reader's timing evidence remains simulation against the
+double plus the fit.
 
 ### Measured facts
 

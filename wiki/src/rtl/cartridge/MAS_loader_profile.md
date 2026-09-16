@@ -474,7 +474,7 @@ returned from a running game to the menu with the epoch change, result `OK`
 and a pixel-exact menu frame.
 Board proof of the [game exit register](#game-exit-register) (a game returns
 to the menu through the write) is pending a later authorized board session
-([#694](https://github.com/amichai-bd/nand2mario/issues/694)).
+([#739](https://github.com/amichai-bd/nand2mario/issues/739)).
 
 ## References
 
