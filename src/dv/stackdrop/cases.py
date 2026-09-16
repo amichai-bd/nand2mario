@@ -2,6 +2,12 @@
 from copy import deepcopy
 from reference import Game
 
+# Locked face tile per board cell code: 0 empty, then I, O, T, L, J, S, Z.
+# The ROM's `Faces` table and the atlas own the same order; `test_screen`
+# compares both. Tile 2 is the I face; the six other faces follow the title
+# letters so every earlier tile keeps its number and the title page its pixels.
+FACES = (0, 2, 103, 104, 105, 106, 107, 108)
+
 
 def groups():
     yield 'new', Game(), [128, 128, 0]
@@ -30,7 +36,7 @@ def state(game):
 
 def buffer(game):
     from reference import cells
-    values = [2*v for v in game.board]+[0]*16
+    values = [FACES[v] for v in game.board]+[0]*16
     if game.status == 1:
         for x, y in cells(game.piece, game.rotation):
             values[(game.y+y)*8+game.x+x] = 3

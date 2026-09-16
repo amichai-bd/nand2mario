@@ -44,6 +44,8 @@ class ProgramArtTests(unittest.TestCase):
     def test_stackdrop_frames_match_the_independent_oracle(self):
         rom, symbols, _ = build(ROOT, 'stackdrop')
         shapes = rom[symbols['Shapes']:symbols['Shapes'] + 112]
+        faces = rom[symbols['Faces']:symbols['Faces'] + 8]
+        self.assertEqual(tuple(faces), cases.FACES)
         play = Game()
         for buttons in PLAY_SCRIPT:
             play.update(buttons)
@@ -52,7 +54,7 @@ class ProgramArtTests(unittest.TestCase):
             over.update(buttons)
         for name, game in (('title', Game()), ('play', play), ('over', over)):
             with patch.dict(sys.modules, {'cases': cases, 'reference': reference}):
-                self.assertEqual(bytes(stackdrop_prepare(shapes, game)), cases.buffer(game), name)
+                self.assertEqual(bytes(stackdrop_prepare(shapes, faces, game)), cases.buffer(game), name)
             self.assertEqual(self.frame('stackdrop', name), image(game), name)
         self.assertEqual(screen.decode(self.frame('stackdrop', 'title'))['status'], 0)
         self.assertEqual(screen.decode(self.frame('stackdrop', 'play'))['status'], 1)

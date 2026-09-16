@@ -3,7 +3,7 @@ from reference import Game
 from screen import image, TITLE_SCROLL
 from cases import buffer
 
-LCD = 185948  # 1648 atlas bytes at 52 dots each, plus the fixed prefix.
+LCD = 197084  # 1744 atlas bytes at 52 dots each, plus the fixed prefix and the face-lookup Prepare.
 # SCY, SCX: the title page before LCD enable, then the play page once, in the
 # VBlank that copies the first playing image.
 SCROLL = ((0xff42, TITLE_SCROLL[1]), (0xff43, TITLE_SCROLL[0]), (0xff42, 0), (0xff43, 0))

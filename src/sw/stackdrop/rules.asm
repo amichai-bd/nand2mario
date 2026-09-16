@@ -189,6 +189,7 @@ RET NC
 DEC [HL]
 JP Lock
 
+; A locked cell records its piece as 1+index so the face can name the shape.
 Lock:
 CALL Shape
 LD D,H
@@ -199,7 +200,9 @@ LockLoop:
 LD A,[DE]
 INC DE
 CALL Address
-LD [HL],1
+LD A,[Piece]
+INC A
+LD [HL],A
 LD A,[Saved]
 DEC A
 LD [Saved],A
@@ -230,15 +233,14 @@ LD L,A
 LD H,$C1
 PUSH HL
 LD B,8
-LD C,1
 RowCheck:
 LD A,[HL+]
-AND A,C
-LD C,A
+OR A,A
+JR Z,RowOpen
 DEC B
 JR NZ,RowCheck
+RowOpen:
 POP HL
-LD A,C
 OR A,A
 JR Z,KeepRow
 LD A,[Rows]

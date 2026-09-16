@@ -8,11 +8,15 @@ font, code or asset source is used. Build with:
 The [game contract](../../../wiki/src/sw/stackdrop/SPEC.md) owns the rules.
 `rules.asm` operates on ordinary WRAM, `render.asm` prepares a tile buffer and
 copies it in VBlank, and `tables.asm` contains the literal seven shape tables,
-the 103-tile atlas asset and the initial background map holding both the play
-page and the [title page](../../../wiki/src/sw/stackdrop/SPEC.md#title-page).
-Tiles0/1/2/3 are empty/rule/locked/active;4/5/6 are the status letters T/P/O;
+the `Faces` table, the 109-tile atlas asset and the initial background map
+holding both the play page and the
+[title page](../../../wiki/src/sw/stackdrop/SPEC.md#title-page).
+Tiles0/1/2/3 are empty/rule/locked I/active;4/5/6 are the status letters T/P/O;
 10..19 are decimal digits; 20..23 corners, 24..30 label letters, 31..48 marquee
-halves and 49..102 the six tiles of each title letter.
+halves, 49..102 the six tiles of each title letter and 103..108 the locked faces
+of O, T, L, J, S, Z. A board cell holds 0 or 1+piece; `Lock` stores it and
+`Prepare` reads the face tile through `Faces` at 108 dots per cell, 10364 for
+the well, in visible time.
 
 The copy's instruction-derived cost is4288 dots including its RET: well rows
 3340, preview736, score/status212. ReadButtons plus its CALL costs160; Render's

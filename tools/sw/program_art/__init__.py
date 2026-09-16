@@ -18,13 +18,14 @@ from tools.sw.assets import load_shades, validate_shades, encode_shades
 
 SCREEN_SCALE = 4
 STACKDROP_WORD = 'STACKDROP'
-STACKDROP_TILE_NAMES = (['EMPTY', 'RULE T', 'LOCKED', 'ACTIVE', 'STATUS T', 'STATUS P', 'STATUS O',
+STACKDROP_TILE_NAMES = (['EMPTY', 'RULE T', 'LOCKED I', 'ACTIVE', 'STATUS T', 'STATUS P', 'STATUS O',
                          'RULE B', 'RULE L', 'RULE R'] + [f'DIGIT {d}' for d in range(10)]
                         + ['CORNER TL', 'CORNER TR', 'CORNER BL', 'CORNER BR']
                         + [f'LABEL {c}' for c in 'NEXSCRA']
                         + [f'{c} {half}' for c in STACKDROP_WORD for half in ('TOP', 'FOOT')]
                         + [f'TITLE {c} {part}' for c in STACKDROP_WORD
-                           for part in ('TL', 'TR', 'ML', 'MR', 'BL', 'BR')])
+                           for part in ('TL', 'TR', 'ML', 'MR', 'BL', 'BR')]
+                        + [f'LOCKED {c}' for c in 'OTLJSZ'])
 STACKDROP_TILES = len(STACKDROP_TILE_NAMES)
 PIECE_NAMES = 'IOTLJSZ'
 # Button bits follow JOYP packing in both programs: Right, Left, Up, Down, A, B, Select, Start.
@@ -155,9 +156,9 @@ def bank_sheet(bank, names, cols):
     return grid([card(t, f'{i:02} {n}', True) for i, (t, n) in enumerate(zip(tiles, names))], cols)
 
 
-def stackdrop_prepare(shapes, game):
-    """Mirror Prepare: the 118 tile IDs the game writes each VBlank, from the ROM shape table."""
-    image = [2 * v for v in game.board] + [0] * 16
+def stackdrop_prepare(shapes, faces, game):
+    """Mirror Prepare: the 118 tile IDs the game writes each VBlank, from the ROM shape and face tables."""
+    image = [faces[v] for v in game.board] + [0] * 16
     if game.status == 1:
         for cell in shapes[game.piece * 16 + game.rotation * 4:][:4]:
             image[(game.y + (cell >> 4)) * 8 + game.x + (cell & 15)] = 3
@@ -184,6 +185,7 @@ def stackdrop(root, out):
     rom, symbols, lines = build(root, 'stackdrop')
     bank = decode_tiles(rom[symbols['Tiles']:symbols['Tiles'] + 16 * STACKDROP_TILES])
     shapes = rom[symbols['Shapes']:symbols['Shapes'] + 112]
+    faces = rom[symbols['Faces']:symbols['Faces'] + 8]
     # LCDC's last write enables the LCD and BGP is written once; SCY/SCX first
     # select the title page before LCD enable and then, once at the
     # title-to-play transition, the play page.
@@ -214,7 +216,7 @@ def stackdrop(root, out):
              'pieces': (grid(pieces, 7), 4)}
     frames = {}
     for index, (name, game) in enumerate((('title', title), ('play', play), ('over', over))):
-        image = stackdrop_prepare(shapes, game)
+        image = stackdrop_prepare(shapes, faces, game)
         frames[name] = screen(bank, stackdrop_map(rom, symbols, image), registers[0x40][-1],
                               registers[0x43][min(index, 1)], registers[0x42][min(index, 1)], registers[0x47][0])
         views[name] = ([[PALETTE[v] for v in row] for row in frames[name]['pixels']], SCREEN_SCALE)

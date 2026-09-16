@@ -16,13 +16,22 @@ OR A,B
 LD [Buttons],A
 RET
 
+; Each board cell holds 0 or 1+piece; Faces maps it to the locked face tile.
 Prepare:
 LD HL,Board
 LD DE,Image
 LD B,96
 PrepareBoard:
 LD A,[HL+]
-ADD A,A
+PUSH HL
+LD HL,Faces
+ADD A,L
+LD L,A
+ADC A,H
+SUB A,L
+LD H,A
+LD A,[HL]
+POP HL
 LD [DE],A
 INC DE
 DEC B
