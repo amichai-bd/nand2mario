@@ -14,7 +14,9 @@ The focused `python tools/stackdrop_player.py` entrypoint uses this same Client,
 package validator and durable session for the
 [frozen Stackdrop comparison](../../../src/sw/stackdrop/SPEC.md#pixel-player-comparison).
 Its explicit private setup/state files bind the verified device, board build,
-prior paused dots, frame identity and durable sequence. Run baseline once, then
+prior paused dots, frame identity and durable sequence. The package must be a
+build of the checked-out Stackdrop source: a record naming another target or a
+stale input hash is rejected, so no ROM hash is pinned in the tool. Run baseline once, then
 strategy once; an attempted or uncertain run cannot be silently restarted.
 Each invocation uses the existing300-second supervisor and canonical machine
 lock. Pixel observations and packet journals are retained under its build tag.

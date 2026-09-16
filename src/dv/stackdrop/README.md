@@ -24,8 +24,8 @@ HUD cells), ClearRows12600 (12 eight-cell
 scans/copies, at most96 top clears and four score increments), Lock17000 including
 spawn. One hard drop performs at most13 Valid calls, followed by Lock; including
 update dispatch,42000 bounds any selected update. Combined with Prepare12700,
-ReadButtons/Render4472 and loop/wake overhead below256, this is below59400,
-leaving over10800 of70224 dots. These are conservative source bounds, not
+ReadButtons/Render4472 and loop/wake overhead of232 (below256), this totals
+59404, leaving10820 of70224 dots. These are conservative source bounds, not
 measured timing claims.
 
 For the fixed73 calls, at most40 ordinary collision checks plus13 hard-drop
@@ -46,9 +46,11 @@ of the [test wall budget](../../../wiki/tools/n2m/SPEC.md#test-wall-budget);
 none of the four targets declares a wall allowance, so 300 seconds stays the
 default and 288 remain for execution. The margins are ample under Verilator
 5.052, the backend every `python-stackdrop-*` row has declared since the cocotb
-migration. Measured on the WSL2 development host with another Verilator
-compile active throughout (load average 3.8 to 6.3); `build` and `run` are the
-`timing` fields of each `result.json`, wall is the whole `sim test` process:
+migration. Measured at commit `5fa3596`, whose image has the title screen but
+predates the settled-board piece faces, on the WSL2 development host with
+another Verilator compile active throughout (load average 3.8 to 6.3); `build`
+and `run` are the `timing` fields of each `result.json`, wall is the whole
+`sim test` process:
 
 | Target | Condition | Build s | Run s | Wall s | Margin below 288 s |
 |---|---|---|---|---|---|
@@ -62,8 +64,8 @@ compile active throughout (load average 3.8 to 6.3); `build` and `run` are the
 Run-to-run noise of about ten seconds exceeds the effect of the added
 contention. The `tests run --label stackdrop` selection, whose walls the
 catalogue records, measured 68.4 (game), 59.6 (unit), 14.2 (short) and 12.2
-(unit-x) seconds inside a 156 second aggregate at load average 7, still under
-the 120 second per-simulation target. The earlier 274 and 278 second walls against the same 288 second
+(unit-x) seconds inside a 156 second aggregate at load average 7 on the same
+commit, still under the 120 second per-simulation target. The earlier 274 and 278 second walls against the same 288 second
 limit were Questa measurements taken when Questa was the only registered
 backend; they do not describe the current targets.
 
@@ -157,13 +159,17 @@ gravity alone at native rate. **Stepped** executes exact whole frames with
 `RUN_DOTS 70224`, so each press lands on its own released-to-pressed edge and
 one-row-per-second gravity never runs ahead of a capture.
 
-### Recorded scripted session, current image
+### Recorded scripted session, restyled image
 
-The same script against the **current** restyled image, ROM SHA-256
+The same script against the **restyled** image, ROM SHA-256
 `f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927`, built from
 commit `8387c622`, fingerprint
-`e6e16e924d953f6e2c3a1858638657af2e3789b312489177b3e2bd5545101b54`. This is the
-first hardware run of `screen.decode` as the restyle rewrote it: it accepted
+`e6e16e924d953f6e2c3a1858638657af2e3789b312489177b3e2bd5545101b54`. That hash is
+historical evidence of the image this session ran, not the current pin: the
+title screen and the settled-board piece faces have since changed the image, and
+the current identity is the `rom_sha256` of the current `sw build stackdrop`
+record. These CRC32 values are not reproducible from the current source. This
+is the first hardware run of `screen.decode` as the restyle rewrote it: it accepted
 every one of the sixteen frames and rejected no tile. `board_play.py --package`
 loaded the image and read back all 32768 bytes before playing. The session began
 and ended PAUSED with `INPUT` 0,
@@ -199,7 +205,7 @@ keeps for the wiki showcase.
 This earlier session ran against the **pre-restyle** Stackdrop image, built
 before the artwork was redrawn. Its frame CRC32 values belong to that earlier
 tile atlas and are not reproducible from the current source. Nothing in it is
-evidence about the current image, and nothing in the current session is evidence
+evidence about any later image, and nothing in the restyled session is evidence
 about it.
 
 Wire build `87d5f0280a2afad8be6b85dc601141cc`, ABI 1. The image is the
@@ -252,9 +258,10 @@ were played, and they are separate claims:
 
 - the **pre-restyle** image the earlier scripted session loaded, ROM SHA-256
   `af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74`;
-- the **current** image, ROM SHA-256
+- the **restyled** image, ROM SHA-256
   `f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927`, rebuilt
-  from the restyled source and loaded with all 32768 bytes verified on readback.
+  from the restyled source and loaded with all 32768 bytes verified on readback;
+  the scripted session above records how later source changes superseded it.
 
 Nothing about one image's play is evidence about the other. Both sessions show
 the same thing and nothing more: the image loads, boots, renders and answers
@@ -267,7 +274,7 @@ or programs the board.
 came from the scripted host session above, which is not the viewer path. The
 owner's viewer play has no retained frames: it rests on the owner's own report of
 what he did and saw, not on a stored artifact. One viewer run record is retained,
-for the run that served the current image to him: `status` PASS, `released` true,
+for the run that served the restyled image to him: `status` PASS, `released` true,
 `uncertain` false, 216 captures over 436.3 s in free-run mode, stopped cleanly
 through its STOP file. That record is the operator run that put the restyled
 image on the page, and it is not a record of the owner's own tapping. So the
