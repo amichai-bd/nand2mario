@@ -40,7 +40,35 @@ actual VBlank start to last VRAM write, including HALT wake/dispatch, and that
 Update/Prepare finishes before the following VBlank. A local bracket alone does
 not establish that whole-frame schedule.
 
-Each simulation targets120 seconds and retains the300-second whole-process cap.
+Each simulation targets120 seconds and retains the300-second whole-process cap
+of the [test wall budget](../../../wiki/tools/n2m/SPEC.md#test-wall-budget);
+none of the four targets declares a wall allowance, so 300 seconds stays the
+default and 288 remain for execution. The margins are ample under Verilator
+5.052, the backend every `python-stackdrop-*` row has declared since the cocotb
+migration. Measured on the WSL2 development host with another Verilator
+compile active throughout (load average 3.8 to 6.3); `build` and `run` are the
+`timing` fields of each `result.json`, wall is the whole `sim test` process:
+
+| Target | Condition | Build s | Run s | Wall s | Margin below 288 s |
+|---|---|---|---|---|---|
+| `python-stackdrop-short` | sequential | 11.5 | 5.1 | 18.9 | 269 |
+| `python-stackdrop-unit-x` | sequential | 3.1 | 5.9 | 11.1 | 277 |
+| `python-stackdrop-game` | sequential | 3.1 | 57.8 | 64.1 | 224 |
+| `python-stackdrop-unit` | sequential | 2.7 | 45.6 | 50.6 | 237 |
+| `python-stackdrop-game` | concurrent with `unit` and `build.py check` | 2.9 | 45.8 | 51.6 | 236 |
+| `python-stackdrop-unit` | concurrent with `game` and `build.py check` | 2.8 | 42.7 | 47.9 | 240 |
+
+Run-to-run noise of about ten seconds exceeds the effect of the added
+contention. The `tests run --label stackdrop` selection, whose walls the
+catalogue records, measured 68.4 (game), 59.6 (unit), 14.2 (short) and 12.2
+(unit-x) seconds inside a 156 second aggregate at load average 7, still under
+the 120 second per-simulation target. The earlier 274 and 278 second walls against the same 288 second
+limit were Questa measurements taken when Questa was the only registered
+backend; they do not describe the current targets. The game simulates 99.2 ms
+(`END` at391876 dots) against its cocotb `timeout_time` of100 ms; that
+simulated-time bound is deterministic and is not a wall-budget matter, but it
+leaves under one percent for further initialization growth; widening it is
+tracked in [#722](https://github.com/amichai-bd/nand2mario/issues/722).
 Run the short complete target first, then the full unit and its one intended
 fault. The fault changes one actual WRAM store after the first update marker;
 subsequent CPU reads preparing the image must fail the unchanged image oracle.
