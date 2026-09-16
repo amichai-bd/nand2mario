@@ -404,7 +404,7 @@ mismatch listed by address; it is authorized per session and does not replace
 the simulation bounds. At 115200 baud the full sweep needs about 1.9 hours
 per direction (4,194,304 lines, 279,621 commands of about 273 wire bytes
 each way), about 4 hours in all; the full-device board result belongs to the
-[board acceptance session](https://github.com/amichai-bd/nand2mario/issues/681).
+[board sessions issue](https://github.com/amichai-bd/nand2mario/issues/694).
 Simulation results, including the reproduction fixtures above, are
 preliminary evidence only: the storage contract counts as met on the board
 only when the corrected volatile bitstream has run on the DE10-Lite and the
