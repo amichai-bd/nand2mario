@@ -62,7 +62,9 @@ choices where the reference is silent. These choices are the contract:
 - `PowerUp` from small sets large and GROW 32, replacing any HURT or SAFE
   window; from large it sets thrower without animation; from thrower it does
   nothing. `GrantStar` sets the invincibility timer to 248. Item ownership,
-  spawning and pickup remain with #303; these routines are its entry points.
+  spawning and pickup belong to [the block contract](BLOCKS.md#contents).
+  Its coin-block release additionally promotes an already-large player to
+  thrower; this does not change either entry point or reset behavior.
 - Crouch: Down held while the state is large or thrower, grounded and jump
   state 0, decided before motion. Crouching masks Left and Right for that
   update's motion, so movement coasts or stops under the movement contract,

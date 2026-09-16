@@ -103,7 +103,9 @@ The [interactive block contract](BLOCKS.md) adds four 16-by-16 blocks over the
 unchanged terrain: an ascending head hit uses one block per update, an item or
 hidden block releases its content once, a brick breaks only under a large or
 thrower player, and the consumed state survives scrolling and pause until a
-restart. Coins increment an undisplayed counter, not the score.
+restart. Coins increment an undisplayed counter, not the score; the coin
+block's once-only release also promotes a large player to thrower, so the
+shot is reachable in ordinary play.
 
 Each collectible increments the visible counter once and disappears until the
 next stage entry. Touching the finish marker while alive clears the stage;

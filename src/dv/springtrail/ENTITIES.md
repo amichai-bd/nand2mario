@@ -99,44 +99,78 @@ entity fixtures do not claim universal combinations or game compatibility.
 ## Timing
 
 The unchanged VBlank publication path takes at most4412 dots within4480.
-The reachable visible preparation below takes at most65652 of65664 dots.
-These are source bounds, not inferred from the largest observed test case.
-Component costs include RET and exclude each outer CALL; Main includes all
-five outer CALLs. Other is HUD388 + Progress640 + STAT512 + Main256, or320
-for title/reset transitions. Requalify this bound when changing source paths, state reachability, stage
-geometry or approved piece positions.
+The reachable visible preparation below takes at most65328 of65664 dots with
+a live shot. These are source bounds, not inferred from the largest observed
+test case. [`visible_bound.py`](visible_bound.py) derives the scene and shot
+columns by running the actual routines on the independent SM83 timing model
+over exhaustive branch operands, and `test_visible_bound.py` fails at level1
+when any row no longer fits; `python src/dv/springtrail/visible_bound.py`
+prints the table. The update, map and other columns are the source partitions
+below. Component costs include RET and exclude each outer CALL; Main includes
+all five outer CALLs. Other is HUD388 + Progress640 + STAT512 + Main256, or320
+for title/reset transitions. Requalify this bound when changing source paths,
+state reachability, stage geometry or approved piece positions.
 
-| Reachable profile | Update | Scene | Map | Other | Total | Margin |
-|---|---:|---:|---:|---:|---:|---:|
-| stage0 air ascent without ceiling | 24292 | 34368 | 2412 | 1796 | 62868 | 2796 |
-| stage0 air descent | 25260 | 34368 | 2412 | 1796 | 63836 | 1828 |
-| stage0 interactive underside hit | 24096 | 34368 | 4108 | 1796 | 64368 | 1296 |
-| stage0 noninteractive terrain ceiling | 26744 | 34368 | 2412 | 1796 | 65320 | 344 |
-| stage0 terrain supported | 27036 | 34368 | 2412 | 1796 | 65612 | 52 |
-| stage0 groundloss topRow8 | 25932 | 34368 | 2412 | 1796 | 64508 | 1156 |
-| stage0 groundloss topRow9 | 26208 | 32688 | 2412 | 1796 | 63104 | 2560 |
-| stage0 groundloss topRow10 | 24596 | 34368 | 2412 | 1796 | 63172 | 2492 |
-| stage0 groundloss topRow14 | 26916 | 34368 | 2412 | 1796 | 65492 | 172 |
-| stage0 moving supported | 26536 | 33528 | 2412 | 1796 | 64272 | 1392 |
-| stage0 falling supported | 26536 | 33864 | 2412 | 1796 | 64608 | 1056 |
-| stage0 moving supportloss | 27376 | 33528 | 2412 | 1796 | 65112 | 552 |
-| stage0 falling successfulcarry supportloss | 26928 | 33864 | 2412 | 1796 | 65000 | 664 |
-| stage0 falling failedcarry | 27580 | 33864 | 2412 | 1796 | 65652 | 12 |
-| later-stage ordinary noncarrier | 29956 | 31060 | 2412 | 1796 | 65224 | 440 |
-| later-stage ordinary carrier upper | 27952 | 31060 | 2412 | 1796 | 63220 | 2444 |
-| early stage restoration/title transition | 29956 | 29380 | 4108 | 1860 | 65304 | 360 |
-| idle/reset/next-stage modes | 5400 | 34536 | 4108 | 1860 | 45904 | 19760 |
+| Reachable profile | Update | Shot | Scene | Map | Other | Total | Margin |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| stage0 air ascent without ceiling | 24292 | 5544 | 27996 | 2412 | 1796 | 62040 | 3624 |
+| stage0 air descent | 25260 | 5544 | 27996 | 2412 | 1796 | 63008 | 2656 |
+| stage0 interactive underside hit | 24096 | 5544 | 27996 | 4108 | 1796 | 63540 | 2124 |
+| stage0 noninteractive terrain ceiling | 26744 | 5544 | 27996 | 2412 | 1796 | 64492 | 1172 |
+| stage0 terrain supported | 27036 | 5544 | 27996 | 2412 | 1796 | 64784 | 880 |
+| stage0 groundloss topRow8 | 25932 | 5544 | 27996 | 2412 | 1796 | 63680 | 1984 |
+| stage0 groundloss topRow9 | 26208 | 5544 | 27996 | 2412 | 1796 | 63956 | 1708 |
+| stage0 groundloss topRow10 | 24596 | 5544 | 27996 | 2412 | 1796 | 62344 | 3320 |
+| stage0 groundloss topRow14 | 26916 | 5544 | 27996 | 2412 | 1796 | 64664 | 1000 |
+| stage0 moving supported | 26536 | 5544 | 27996 | 2412 | 1796 | 64284 | 1380 |
+| stage0 falling supported | 26536 | 5544 | 27996 | 2412 | 1796 | 64284 | 1380 |
+| stage0 moving supportloss | 27376 | 5544 | 27996 | 2412 | 1796 | 65124 | 540 |
+| stage0 falling successfulcarry supportloss | 26928 | 5544 | 27996 | 2412 | 1796 | 64676 | 988 |
+| stage0 falling failedcarry | 27580 | 5544 | 27996 | 2412 | 1796 | 65328 | 336 |
+| later-stage ordinary noncarrier | 29956 | 0 | 23320 | 2412 | 1796 | 57484 | 8180 |
+| later-stage ordinary carrier upper | 27952 | 0 | 23320 | 2412 | 1796 | 55480 | 10184 |
+| early stage restoration/title transition | 29956 | 0 | 23320 | 4108 | 1860 | 59244 | 6420 |
+| idle/reset/next-stage modes | 5400 | 0 | 27996 | 4108 | 1860 | 39364 | 26300 |
 
-### Scope and source invariants
+### Scope and shot reachability
 
-The current reset-reachable layout has one once-only mushroom block. The ordinary thrower acquisition gap is owned by [#515](https://github.com/amichai-bd/nand2mario/issues/515); any change to that layout must requalify this bound. ResolveMushroom marks it used before the sole PowerUp call. EnterStage clears power and block state together. Thus live power is at most1 and ShotTTL remains0. Later stages have no matching interactive block columns and remain small with no effect or invincibility. Seeded thrower/shot fixtures remain supported and required; this live-frame proof does not replace their routine budgets.
+Stage0 reaches the thrower in ordinary play: the once-only mushroom block makes
+the player large and the once-only coin block then promotes a large player, as
+[BLOCKS.md](../../../wiki/src/sw/springtrail/BLOCKS.md#contents) specifies. A
+live shot is therefore reachable in every stage0 play profile, including a
+rider on either platform, and the Shot column charges each of them. Its value is
+the exhaustive `StepShot` maximum5136 over every stage0 cell, tile-crossing
+offset, velocity sign and block state, less the40-dot no-shot return, plus the
+`PowerInput` spread424 between its cheapest path and the spawn path and the
+24-dot throw-timer decrement: 5544. Later stages keep no block on their pages
+(every block column lies below the stage1 base), stage entry clears power and
+shot state, so they stay small with no shot or effect. A reset clears the same
+bytes before any restoration frame, and no block is reachable while the ring
+restores, so the restoration and title rows use the small population. Idle
+modes run no world update; a frozen shot only adds its piece to the scene.
+Seeded thrower/shot fixtures remain supported and required.
 After ordinary publication, BlockDirty is clear. A fresh interactive head hit may request two columns and uses Map4108; ordinary profiles use the one-column Map2412. Restoration is a separate profile. At most17 ordinary updates complete32 columns, so resetX24 plus2px per update stays<=58 and Camera0; no block or entity platform is reachable during that interval.
-New scene source CFG caps before X savings are36048 for stage0 (34pieces/noShot) and32572 later (28pieces/small/noShot/noEffect). Current approved offsets and all legal integer cameras give at least10/10/9 fixed X-hidden pieces by stage. Each such piece reduces528 to360, saving168. Carrier-specific hidden counts are15/13,15/11,17/9 for moving/falling. Ground-loss row9 atX630..682 has20 hidden pieces. At Camera0 the stages have22/20/19 hidden pieces.
 Five outer CALLs are120 dots. Active main overhead256 also includes visibility polling, mode dispatch, JP WaitFrame and DI/token/EI/HALT. ReadButtons occurs before publication and outside this visible interval. Title transition uses320. The existing single STAT IRQ allowance512 is separate. HUD388 and Progress640 include their RETs.
 
-### Population and tail monotonicity
+### Scene population
 
-Every admitted EmitPiece takes at least308dots including RET but excluding the caller: nonreturning capacity checks40, X calculation104, the shortest SceneHidden branch32, XOR4, four ordered stores/loads/DE advances plus RET128. Omitting one piece therefore removes at least308dots (plus any caller/setup cost) and adds at most four ClearSceneByte iterations,4*52=208dots. The maximum34/28-piece populations safely bound smaller courier/effect populations with longer zero tails. Capacity refusal is inapplicable below40. Hidden deductions apply only to the24 always-emitted fixed slots, not optional courier extras, effects or shots.
+`PrepareScene` is a fixed sequence of composers whose costs add. The scene cap
+is the base composition11168 plus each composer's largest branch delta
+(courier568 for the large mirrored hidden record walk, shot1096, effect848,
+patrol36, CURL28, falling52), plus every emitted piece at the exhaustive
+`EmitPiece` maximum388, the zero tail for that population and the248-dot
+spread of pose selection. The full population is35 pieces: large courier6,
+patrol4, items8, goal2, shot1, effect4, CURL4 and two platforms of3, giving
+27996. The small population is28 pieces with no shot or effect, giving23320.
+`EmitPiece` takes its x and y offsets in B and C, keeps HL for the record and
+tile walkers, refuses entry40 before any write, and still publishes X, tile and
+flags for a hidden piece with Y0; every branch of its clipping tests is inside
+the388-dot maximum. The tail clears four bytes per68-dot iteration and returns
+DE at C1A0 as before. The OAM byte order and every shadow byte are unchanged:
+`test_visible_bound` composes the ordinary acquisition route and the OAM
+maximum, mirrored and clipped operands on the timing model and compares all160
+bytes with the independent scene model, and the OAM, courier, renderer and CPU
+fixtures prove the same bytes on the RTL.
 
 ### StepPlayer and contact partitions
 

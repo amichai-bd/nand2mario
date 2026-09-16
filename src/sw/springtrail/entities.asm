@@ -769,41 +769,39 @@ SBC A,0
 LD [SceneBaseY+1],A
 RET
 
+; HL = four tiles: top-left, top-right, bottom-left, bottom-right. A mirrored
+; entity swaps its columns, so PieceX holds the left column's x offset.
 EntityQuad:
-LD A,4
-LD [PieceCount],A
-EntityQuadPiece:
-LD A,[PieceCount]
-DEC A
-XOR A,3
-PUSH AF
-AND A,2
-RLCA
-RLCA
-LD [PieceY],A
-POP AF
-AND A,1
-RLCA
-RLCA
-RLCA
-LD B,A
 LD A,[PieceFlags]
-BIT 5,A
-LD A,B
-JR Z,EntityQuadX
-XOR A,8
-EntityQuadX:
+AND A,$20
+RRCA
+RRCA
 LD [PieceX],A
+LD B,A
+LD C,0
 LD A,[HL+]
 LD [SceneTile],A
-PUSH HL
 CALL EmitPiece
-POP HL
-LD A,[PieceCount]
-DEC A
-LD [PieceCount],A
-JR NZ,EntityQuadPiece
-RET
+LD A,[PieceX]
+XOR A,8
+LD B,A
+LD C,0
+LD A,[HL+]
+LD [SceneTile],A
+CALL EmitPiece
+LD A,[PieceX]
+LD B,A
+LD C,8
+LD A,[HL+]
+LD [SceneTile],A
+CALL EmitPiece
+LD A,[PieceX]
+XOR A,8
+LD B,A
+LD C,8
+LD A,[HL]
+LD [SceneTile],A
+JP EmitPiece
 
 ComposeOtherEntities:
 LD HL,CurlX
@@ -853,27 +851,25 @@ CP A,9
 LD HL,EntityCrack1
 JR NC,EntityThree
 LD HL,EntityCrack2
+; HL = three tiles left to right on one row; platforms are never mirrored.
 EntityThree:
 XOR A,A
-LD [PieceX],A
-LD [PieceY],A
 LD [PieceFlags],A
-LD A,3
-LD [PieceCount],A
-EntityThreePiece:
+LD B,A
+LD C,A
 LD A,[HL+]
 LD [SceneTile],A
-PUSH HL
 CALL EmitPiece
-POP HL
-LD A,[PieceX]
-ADD A,8
-LD [PieceX],A
-LD A,[PieceCount]
-DEC A
-LD [PieceCount],A
-JR NZ,EntityThreePiece
-RET
+LD B,8
+LD C,0
+LD A,[HL+]
+LD [SceneTile],A
+CALL EmitPiece
+LD B,16
+LD C,0
+LD A,[HL]
+LD [SceneTile],A
+JP EmitPiece
 
 EntityWalk1:
 DB 149,150,151,152

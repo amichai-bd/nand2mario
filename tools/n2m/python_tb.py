@@ -16,7 +16,7 @@ from .records import file_hash
 IMPORT_SCOPE = ("src/dv/springtrail", "tools", "src/dv/python/integration")
 # The module the builder executes to produce each preload image; see prepare().
 FIXTURE_BUILDERS = {
-    **dict.fromkeys(("interaction494-s", "interaction494-a", "interaction494-b", "interaction494-c", "interaction494-d"), "src/dv/springtrail/motion_program.py"),
+    **dict.fromkeys(("acquisition515-s", "acquisition515-a", "acquisition515-b", "acquisition515-c", "interaction494-s", "interaction494-a", "interaction494-b", "interaction494-c", "interaction494-d"), "src/dv/springtrail/motion_program.py"),
     **dict.fromkeys(('hud493-s', 'hud493-a', 'hud493-b', 'hud493-c', 'hud493-d', 'hud493-e'), "src/dv/springtrail/hud_current_program.py"),
     **dict.fromkeys(("courier492-s", "courier492-a", "courier492-b", "courier492-c", "courier492-d", "courier492-e", "courier492-f", "courier492-g"), "src/dv/springtrail/courier_program.py"),
     "integration": "src/dv/integration/image.py",
@@ -105,7 +105,7 @@ def fixture_inputs(root, preload):
     required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                 "src/dv/integration/program.json", "src/dv/integration/retirement.json",
                 "src/sw/generated/interfaces.inc"}
-    if preload in ('interaction494-s', 'interaction494-a', 'interaction494-b', 'interaction494-c', 'interaction494-d', 'motion301', 'motion301-s', 'power302', 'power302-s', 'power302-a', 'power302-b', 'blocks303-s', 'blocks303-a', 'blocks303-b',
+    if preload in ('acquisition515-s', 'acquisition515-a', 'acquisition515-b', 'acquisition515-c', 'interaction494-s', 'interaction494-a', 'interaction494-b', 'interaction494-c', 'interaction494-d', 'motion301', 'motion301-s', 'power302', 'power302-s', 'power302-a', 'power302-b', 'blocks303-s', 'blocks303-a', 'blocks303-b',
                               'progress304-s', 'progress304-a', 'progress304-b', 'entities305-s', 'entities305-a', 'entities305-b', 'entities305-c', 'entities305-d', 'entities305-e', 'entities305-f', 'entities305-g', 'entities305-h', 'entities305-i', 'entities-oam305-s', 'entities-oam305-a', 'entities-oam305-b', 'entities-oam305-c'):
         required = {'src/dv/springtrail/motion_program.py', 'src/dv/springtrail/motion_cases.py',
                     'src/dv/springtrail/motion_reference.py', 'src/sw/generated/interfaces.inc',
@@ -116,6 +116,9 @@ def fixture_inputs(root, preload):
             required.update({'src/dv/springtrail/power_cases.py', 'src/dv/springtrail/power_reference.py'})
         if preload.startswith('blocks303'):
             required.update({'src/dv/springtrail/blocks_cases.py', 'src/dv/springtrail/blocks_reference.py'})
+        if preload.startswith('acquisition515'):
+            required.update({'src/dv/springtrail/acquisition_cases.py', 'src/dv/springtrail/thrower_route.py',
+                             'src/dv/springtrail/entities_reference.py', 'src/sw/springtrail/assets/core/enemies-tiles.json'})
         if preload.startswith('interaction494'):
             required.update({'src/dv/springtrail/interaction_current_cases.py', 'src/dv/springtrail/entities_cases.py',
                              'src/dv/springtrail/entities_reference.py', 'src/sw/springtrail/assets/core/enemies-tiles.json'})
@@ -443,12 +446,12 @@ def _prepare(target, attempt, root=None, fixture_tools=None):
             image = (root / report["rom"]).read_bytes()
             expected_sha = report["artifacts"][report["rom"]]
             (attempt / "program.gb").write_bytes(image)
-        elif target['preload'] in ('interaction494-s', 'interaction494-a', 'interaction494-b', 'interaction494-c', 'interaction494-d', 'motion301', 'motion301-s', 'power302', 'power302-s', 'power302-a', 'power302-b', 'blocks303-s', 'blocks303-a', 'blocks303-b',
+        elif target['preload'] in ('acquisition515-s', 'acquisition515-a', 'acquisition515-b', 'acquisition515-c', 'interaction494-s', 'interaction494-a', 'interaction494-b', 'interaction494-c', 'interaction494-d', 'motion301', 'motion301-s', 'power302', 'power302-s', 'power302-a', 'power302-b', 'blocks303-s', 'blocks303-a', 'blocks303-b',
                                   'progress304-s', 'progress304-a', 'progress304-b', 'entities305-s', 'entities305-a', 'entities305-b', 'entities305-c', 'entities305-d', 'entities305-e', 'entities305-f', 'entities305-g', 'entities305-h', 'entities305-i', 'entities-oam305-s', 'entities-oam305-a', 'entities-oam305-b', 'entities-oam305-c'):
             spec=importlib.util.spec_from_file_location('motion301_image',root/'src/dv/springtrail/motion_program.py')
             module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
             name=target['preload']
-            suite=('interaction_current' if name.startswith('interaction494') else 'entities_oam' if name.startswith('entities-oam305') else 'entities' if name.startswith('entities305') else 'progress' if name.startswith('progress304') else 'blocks' if name.startswith('blocks303')
+            suite=('acquisition' if name.startswith('acquisition515') else 'interaction_current' if name.startswith('interaction494') else 'entities_oam' if name.startswith('entities-oam305') else 'entities' if name.startswith('entities305') else 'progress' if name.startswith('progress304') else 'blocks' if name.startswith('blocks303')
                    else 'power' if name.startswith('power302') else 'motion')
             part=name[-1] if name.endswith(('-a','-b','-c','-d','-e','-f','-g','-h','-i')) else None
             image=module.build(root,attempt,name.endswith('-s'),suite,part)

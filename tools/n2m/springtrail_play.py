@@ -350,7 +350,8 @@ def finish(client, result):
 
 
 def play(client, image, binding, strategy=None, *, budget=None, record=None, retain=None,
-         capture=None, require_title=True, start_delay_frames=0, clock=time.monotonic):
+         capture=None, require_title=True, start_delay_frames=0, complete=None,
+         clock=time.monotonic):
     """Run from RESET and the title to WON within the declared budget.
 
     Returns a result record; a failed attempt is reported, never retried
@@ -362,6 +363,8 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
     runs at each boundary after the advance is checked. It is how a caller
     takes the aligned actual frame: the snapshot available at this boundary is
     the one drawn from `previous`.
+    A supplied `complete` predicate checks a caller's explicit bounded goal;
+    otherwise the existing goal remains WON. Predicate failures fail the run.
     """
     limits = dict(BUDGET, **(budget or {}))
     if (type(start_delay_frames) is not int or start_delay_frames < 0
@@ -440,9 +443,10 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
                 best_x, progress_frame = observation['player']['x'], result['frames']
             elif result['frames'] - progress_frame > limits['no_progress_frames']:
                 raise PlayFailure('STATE_NO_PROGRESS')
-            if observation['mode'] == WON:
+            reached = complete(observation) if complete is not None else observation['mode'] == WON
+            if reached:
                 if capture is not None:
-                    # The frame drawn from the winning state completes at the
+                    # The frame drawn from the completed goal state finishes at the
                     # next boundary, so reach it before the run ends.
                     if result['frames'] >= limits['frames']:
                         raise PlayFailure('STATE_BUDGET_FRAMES')

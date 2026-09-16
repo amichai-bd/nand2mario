@@ -101,16 +101,28 @@ added itself. Collision and appearance therefore read the same state byte.
 
 | Content | Effect on release |
 | --- | --- |
-| coin | `Coins` increases by one and saturates at 255 |
+| coin | `Coins` increases by one and saturates at 255; a large player also becomes thrower |
 | mushroom | `CALL PowerUp` |
 | star | `CALL GrantStar` |
 | none | nothing |
 
 Coins do not change the displayed score. The HUD's approved glyph set has no
 digit above 4, so the displayed score stays the four legacy collectibles and
-`Coins` is an undisplayed counter. No coin threshold grants a reward: the
-reference's bonus count and its reward are inside the missing dispatcher, and
-this game has no lives, so inventing one would not be reference-backed.
+`Coins` is an undisplayed counter. No coin threshold grants a reward.
+
+The original acquisition rule adds promotion only when the intact coin block releases its content while the
+player is large. Small players receive only the coin; throwers keep their
+power. Saturation at 255 does not prevent promotion. The block becomes used
+before either reward, and its coin effect is unchanged. Consuming it while
+small spends that opportunity until the ordinary stage reset; later growth
+does not grant power retroactively. Damage still removes power, and retry,
+full reset and stage entry still clear power and block state together.
+`PowerUp` and `GrantStar` retain their separate contracts. The ordinary
+route from reset through the mushroom and the coin to a fired shot is
+`src/dv/springtrail/thrower_route.py`; `test_thrower_acquisition.py` runs it
+against the actual source state every update, and the
+[entity timing plan](../../../../src/dv/springtrail/ENTITIES.md#timing) bounds
+the live shot's visible preparation.
 
 ### Release effect
 

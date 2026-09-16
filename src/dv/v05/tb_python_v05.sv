@@ -388,6 +388,23 @@ module tb_python_v05 #(
         end
     end
 
+    // Suppress the actual coin promotion after the supplementary call marker.
+    // Memory and the passive trace observe the same changed byte.
+    initial begin
+        if ($test$plusargs("acquisition_output_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.request_valid && write_enable && address == 16'hc06a));
+            if (write_data !== 8'd2) $fatal(1, "ACQUISITION515_FAULT_SOURCE");
+            $display("ACQUISITION515_OUTPUT_MUTATION power2->1 dot=%0d", dot_count);
+            force dut.write_data = 8'd1;
+            wait(bus_commit);
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.write_data;
+        end
+    end
+
     // Corrupt one actual Score output after ordinary interaction operands.
     // Both WRAM and the passive bus ledger consume the same changed CPU byte.
     initial begin

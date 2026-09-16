@@ -71,8 +71,9 @@ HALT and exact END count; the shared runner supplies the settled pause.
 The current source gives conservative call terms: at most six pieces, each
 with EmitPiece620 plus courier overhead296; setup220; projection500; zero-tail
 at most144 bytes times52; marker/dispatch200. Sum13904 is below16000 dots per
-marked call. The 620-dot reservation exceeds the current maximum of 528, including capacity
-checking. The three initialization loops and their setup fit 12,000 dots.
+marked call. The 620-dot reservation exceeds the current exhaustive maximum of
+388, including capacity checking, and the current tail clears four bytes per
+68-dot iteration. The three initialization loops and their setup fit 12,000 dots.
 Per-case input/setup is below 600; terminal/control reserve is 1,000. Eight
 calls fit 12000+8*(16000+600)+1000=145800 below150000 dots; the tighter
 13904-dot call bound gives129032 dots, about256 seconds at measured short
@@ -84,7 +85,7 @@ These are source ceilings, not elapsed-time forecasts or observed results.
 The merged entity profile retains all 50 rows. Each fixture links all 21 shared
 sections against the current game and initializes the 56 persistent entity bytes
 at C300..C337 as additional unrelated-state operands. The checker rejects writes
-to those bytes during composition. EmitPiece's current maximum of 528 dots fits
+to those bytes during composition. EmitPiece's current maximum of 388 dots fits
 the conservative 620-dot reservation above. The extra initialization costs 1368
 dots and remains inside the 12,000-dot setup reservation.
 
