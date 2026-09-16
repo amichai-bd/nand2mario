@@ -75,6 +75,12 @@ dialog header { display: flex; align-items: center; justify-content: space-betwe
 @media (max-width: 760px) {
   .masthead { padding: 0 18px; height: 62px; } .edition { display: none; }
   #tabs { padding: 0 8px; gap: 0; } #tabs button { padding: 12px; }
+  /* The strip scrolls at this width. A gradient pinned over its right edge shows
+     there is more without script; it lifts as the strip reaches its end so the
+     last tab reads clean. Browsers without scroll-driven animation keep it on. */
+  #tabs::after { content: ""; flex: none; position: sticky; right: 0; width: 44px; margin-left: -44px; pointer-events: none;
+    background: linear-gradient(to right, transparent, var(--panel) 75%); animation: tabs-more linear both; animation-timeline: scroll(nearest inline); }
+  @keyframes tabs-more { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
   .workspace { grid-template-columns: 1fr; } aside { position: static; max-height: 240px; border-right: 0; border-bottom: 1px solid var(--border); padding: 13px 18px; }
   .explorer-label { display: none; } #filter { margin-bottom: 7px; }
   #document { padding: 24px 20px 40px; } #home-toggle { padding: 0 20px; }

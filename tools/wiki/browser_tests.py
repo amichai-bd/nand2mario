@@ -117,11 +117,27 @@ def interactions(browser, base):
         # The strip is narrower than its tabs at this width, so it must scroll
         # rather than clip: the last tab is still reachable.
         assert page.locator('#tabs').evaluate('e => e.scrollWidth > e.clientWidth'), 'Tab strip does not scroll at 390'
+        # Discoverable, not only reachable: a CSS gradient pinned over the right
+        # edge shows there is more, and lifts once the strip is scrolled to its end.
+        edge = '''e => new Promise(done => requestAnimationFrame(() => {
+            const s = getComputedStyle(e, '::after');
+            done({width: parseFloat(s.width), image: s.backgroundImage, opacity: parseFloat(s.opacity)});
+        }))'''
+        fade = page.locator('#tabs').evaluate(edge)
+        assert fade['width'] >= 24 and 'gradient' in fade['image'], f'No right-edge fade on the tab strip at 390: {fade}'
+        assert fade['opacity'] == 1, f'Right-edge fade is not shown at the start of the strip: {fade}'
+        page.locator('#tabs').evaluate('e => { e.scrollLeft = e.scrollWidth; }')
+        page.wait_for_function('e => parseFloat(getComputedStyle(e, "::after").opacity) === 0',
+                               arg=page.locator('#tabs').element_handle(), timeout=5000)
+        page.locator('#tabs').evaluate('e => { e.scrollLeft = 0; }')
         page.locator('#tabs').get_by_role('button', name='Stats', exact=True).click()
         expect(page.locator('#path')).to_have_text('wiki/statistics.html')
         page.locator('#tabs').get_by_role('button', name='Blog', exact=True).click()
         expect(page.locator('#path')).to_have_text('wiki/blogs/index.md')
         page.set_viewport_size({'width': 1440, 'height': 1000})
+        # Desktop is unchanged: all eight tabs fit, so there is nothing to scroll and no fade.
+        assert page.locator('#tabs').evaluate('e => e.scrollWidth <= e.clientWidth'), 'Tab strip overflows at 1440'
+        assert page.locator('#tabs').evaluate('e => getComputedStyle(e, "::after").content') == 'none', 'Tab strip fade shown at 1440'
         page.locator('#tabs').get_by_role('button', name='Home', exact=True).click()
         assert not [name for name in page.evaluate(tops) if 'blog' in name.lower()], 'A blog entry remains under Home'
         page.locator('#tabs').get_by_role('button', name='Cfg', exact=True).click()
