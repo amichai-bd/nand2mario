@@ -20,6 +20,8 @@ FRAME_DOTS = 70224  # One whole DMG frame; the step unit in stepped mode.
 MAX_STEP_FRAMES = 60
 SYSTEM_CLOCK_HZ = 25_000_000  # wiki/src/clocks-resets-cdc.md system domain.
 LOADER_SWAP_SECONDS = abi.LIBRARY_SWAP_BOUND_MBC1_EDGES / SYSTEM_CLOCK_HZ
+CONTROL_HEALTH_SECONDS = 1.0
+CONTROL_POLL_SECONDS = .02
 
 PAGE = b'''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FPGA live view</title><style>
@@ -290,15 +292,15 @@ def state_for(mode):
 class LoaderTransition:
     """Keep one viewer input owner safe across the loader's bounded reset.
 
-    A menu selection can reset the core after WRITE_HOST accepts a mask but
-    before its effective-input readback. That reset is an accepted press, not a
-    failed UART exchange, and it clears the host mask. Never replay it into the
-    newly selected image. A write that was explicitly rejected before taking
-    effect may be retried once after the transition instead.
+    A menu selection can reset the core after COMMAND_INPUT acknowledges a mask.
+    That is an accepted press, not a failed UART exchange, and the reset clears
+    the host mask. Never replay it into the newly selected image. A command that
+    was explicitly rejected before taking effect may be retried once instead.
     """
     def __init__(self, client, mode, *, profile, clock=time.monotonic, pause=time.sleep):
         self.client, self.mode, self.profile = client, mode, profile
         self.clock, self.pause = clock, pause
+        self.loader_candidate = False
 
     def _ready(self, state=None):
         """Wait once for the generated worst-case swap bound, then verify."""
@@ -339,9 +341,8 @@ class LoaderTransition:
         return self._ready(state)
 
     def _apply_ready(self, mask, *, retry):
-        prior_profile = self.profile
         try:
-            self.client.write_host(abi.HOST_REG_INPUT,mask)
+            self.client.control('INPUT',mask)
         except RejectedCommand as error:
             if error.status != abi.STATUS_BAD_STATE or self.client.uncertain:
                 raise
@@ -350,43 +351,100 @@ class LoaderTransition:
                 raise
             transition = self._ready(state)
             if mask == 0:
+                self.loader_candidate = False
                 return transition
             if retry:
                 raise
-            # The endpoint explicitly rejected this write, so no press was
+            # The endpoint explicitly rejected this command, so no press was
             # applied. Apply it once to the selected image after verification.
             return self._apply_ready(mask,retry=True) or transition
-        effective = self.client.read_host(abi.HOST_REG_INPUT_EFFECTIVE)
-        if effective == mask:
-            return None
-        state = self.client.read_host(abi.HOST_REG_STATE)
-        profile = self.client.read_host(abi.HOST_REG_PROFILE)
-        if mask and (state == abi.STATE_LOADING or profile != prior_profile):
-            # WRITE_HOST was accepted. The reset consumed and cleared this tap;
-            # settling it is safe, replaying it into the game is not.
-            return self._ready(state)
-        raise PlayFailure('STATE_INPUT')
+        # The reply is the endpoint's acknowledgement that the complete mask
+        # was applied. Do not add state/profile/effective reads to this latency
+        # path. A later loader rejection or the rate-limited health pass settles
+        # a reset without ever replaying an acknowledged press.
+        if mask:
+            self.loader_candidate = (self.profile == abi.PROFILE_LOADER_ID and
+                                     bool(mask & abi.BUTTON_A))
+        elif self.loader_candidate:
+            # A is the menu's specified selection control. Its acknowledged
+            # release can arrive after a short swap already finished, so make
+            # this exceptional boundary explicit before the next queued tap.
+            self.loader_candidate = False
+            return self.health()
+        return None
 
     def apply(self, client, mask):
         if client is not self.client:
             raise ValueError('loader transition client changed')
-        state = client.read_host(abi.HOST_REG_STATE)
+        return self._apply_ready(mask,retry=False)
+
+    def health(self):
+        """Rate-limited two-read check, escalating only across a transition."""
+        state = self.client.read_host(abi.HOST_REG_STATE)
         if state == abi.STATE_LOADING:
-            transition = self._ready(state)
-            if mask == 0:
-                return transition
-            return self._apply_ready(mask,retry=False) or transition
+            return self._ready(state)
+        profile = self.client.read_host(abi.HOST_REG_PROFILE)
+        if profile != self.profile:
+            return self._ready(state)
         if state != state_for(self.mode()):
             raise PlayFailure('STATE_LOADER_MODE')
-        profile = client.read_host(abi.HOST_REG_PROFILE)
-        if profile != self.profile:
-            # The short transition may have completed between two host reads.
-            # A changed generated profile is the durable witness in that case.
-            transition = self._ready(state)
-            if mask == 0:
-                return transition
-            return self._apply_ready(mask,retry=False) or transition
-        return self._apply_ready(mask,retry=False)
+        return None
+
+
+class CameraPublisher:
+    """Read and publish camera frames without ever owning the UART client."""
+    def __init__(self, camera, latest, out, stop, *, clock=time.monotonic):
+        self.camera, self.latest, self.out, self.stop = camera, latest, out, stop
+        self.clock = clock
+        self.stopping = threading.Event()
+        self.thread = threading.Thread(target=self._run,daemon=True)
+        self.lock = threading.Lock()
+        self.captures = []
+        self.capture_count = 0
+        self.error = None
+        self.closed = False
+
+    def start(self):
+        self.thread.start()
+
+    def _run(self):
+        try:
+            while not self.stopping.is_set() and not self.stop.is_set():
+                tick = self.clock()
+                meta,image = self.camera.read()
+                if self.stopping.is_set():
+                    break
+                self.latest.publish(image,meta,self.clock()-tick)
+                row = self.latest.read()[0]
+                from .records import atomic_json
+                atomic_json(self.out/'latest.json',row)
+                with self.lock:
+                    self.capture_count += 1
+                    self.captures.append(row)
+                    self.captures = self.captures[-32:]
+                    count = self.capture_count
+                if count <= 2:
+                    (self.out/f"capture-{count}.jpg").write_bytes(image)
+        except Exception as error:
+            if not self.stopping.is_set():
+                with self.lock:
+                    self.error = error
+                self.latest.mark('STALE' if isinstance(error,SourceStale) else 'ERROR',
+                                 type(error).__name__)
+
+    def snapshot(self):
+        with self.lock:
+            return self.capture_count,list(self.captures),self.error
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        self.stopping.set()
+        self.camera.close()  # Terminates the source and unblocks camera.read().
+        self.thread.join(timeout=2)
+        if self.thread.is_alive():
+            raise RuntimeError('camera publisher did not stop')
 
 
 def return_main_menu(client, transition):
@@ -429,7 +487,8 @@ def combine(reports, step_frames):
 
 def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                  seconds=30, interval=2, clock=time.monotonic, wait=None, buttons=None,
-                 step_frames=1, camera=None, transition_pause=time.sleep):
+                 step_frames=1, camera=None, transition_pause=time.sleep,
+                 health_interval=CONTROL_HEALTH_SECONDS):
     """Publish one source while optional UART controls retain their contract.
 
     UART framebuffer mode remains the default. A camera may instead provide the
@@ -449,7 +508,10 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
               'captures':[],'capture_count':0,
               'image_source':'camera' if camera is not None else 'uart',
               'controls_enabled':controls}
+    if health_interval <= 0:
+        raise ValueError('health interval must be positive')
     started = clock()
+    camera_publisher = None
     try:
         if controls:
             identity = client.identify()
@@ -485,7 +547,18 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             result['mode'] = active
             transition = LoaderTransition(client,lambda:active,profile=profile,
                                           clock=clock,pause=transition_pause)
+        if camera is not None and controls:
+            # The camera publisher owns no Client reference. Camera stalls and
+            # frame publication therefore cannot hold the sole UART owner.
+            latest.describe(core_state='RUNNING')
+            camera_publisher = CameraPublisher(camera,latest,out,stop,clock=clock)
+            camera_publisher.start()
+            # Give a ready source one scheduling opportunity without waiting
+            # for a first frame. A blocked source never gates UART controls.
+            time.sleep(0)
         steps = []
+        last_health = clock()
+        stepped_camera_sequence = 0
 
         def sync_mode():
             """Enter the selected mode; RUN_DOTS needs a paused core."""
@@ -500,7 +573,8 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             if client.read_host(abi.HOST_REG_STATE) != state_for(active):
                 raise ValueError('core did not enter '+active+' mode')
             result['mode'] = active
-            latest.describe(mode=active)
+            latest.describe(mode=active,
+                            core_state='PAUSED' if active=='stepped' else 'RUNNING')
 
         def hold():
             """Advance the step with the press still applied, or keep wall time."""
@@ -521,6 +595,7 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             # A mode selected in an earlier cycle applies before this batch, so a
             # press in stepped mode is held across its own step.
             sync_mode()
+            batch = []
             if buttons is not None:
                 batch = buttons.batch()
                 if batch:
@@ -539,11 +614,35 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                 # A mode change inside this batch takes effect after its presses.
                 sync_mode()
                 expected_state = state_for(active)
-                if active == 'stepped' and not steps:
+                camera_sequence = (camera_publisher.snapshot()[0]
+                                   if camera_publisher is not None else 0)
+                camera_step_due = (camera_publisher is None or
+                                   camera_sequence > stepped_camera_sequence)
+                if active == 'stepped' and not steps and camera_step_due:
                     steps.append(advance(client,step_frames*FRAME_DOTS))
+                if camera_publisher is not None and active == 'stepped' and steps:
+                    stepped_camera_sequence = camera_sequence
                 if steps:
                     step = combine(steps,step_frames)
                     result['step'] = step
+                    if camera_publisher is not None:
+                        latest.describe(step=step)
+                if camera_publisher is not None:
+                    count,captures,error = camera_publisher.snapshot()
+                    if error is not None:
+                        raise error
+                    # Health is driven by elapsed control-owner time, never by
+                    # camera frames. Commands always take priority over it.
+                    if not batch and clock()-last_health >= health_interval:
+                        transition.health()
+                        last_health = clock()
+                        latest.describe(core_state=('PAUSED' if active=='stepped'
+                                                    else 'RUNNING'))
+                    if client.uncertain:
+                        raise RuntimeError('uncertain session')
+                    wait(CONTROL_POLL_SECONDS)
+                    time.sleep(0)  # Let the independent publisher run in fake-clock tests too.
+                    continue
                 tick = clock()
                 packed = None
                 if camera is not None:
@@ -588,6 +687,11 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             # UART snapshot interval; every complete camera frame is published.
             if camera is None:
                 wait(max(0,interval-(clock()-tick)))
+        if camera_publisher is not None:
+            count,captures,error = camera_publisher.snapshot()
+            result['capture_count'],result['captures'] = count,captures
+            if error is not None:
+                raise error
         if not result['captures'] or failures:
             raise ValueError('capture did not end successfully')
         result['status'] = 'PASS'
@@ -598,7 +702,18 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         latest.mark('STALE' if isinstance(error,SourceStale) else 'ERROR',type(error).__name__)
     finally:
         camera_cleanup_error = None
-        if camera is not None:
+        if camera_publisher is not None:
+            try:
+                camera_publisher.close()
+            except Exception as error:
+                camera_cleanup_error = type(error).__name__
+                result.update(status='FAIL',camera_cleanup_error=camera_cleanup_error)
+            count,captures,error = camera_publisher.snapshot()
+            result['capture_count'],result['captures'] = count,captures
+            if error is not None and 'reason' not in result:
+                result.update(status='FAIL',reason=type(error).__name__)
+                result.update(describe_failure('capture',error))
+        elif camera is not None:
             try:
                 camera.close()
             except Exception as error:
@@ -621,4 +736,5 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         core_state = ('NOT OPENED' if not controls else
                       ('PAUSED' if result.get('released') else 'UNKNOWN'))
         latest.mark(terminal,core_state=core_state)
+        latest.describe(core_state=core_state)
     return result
