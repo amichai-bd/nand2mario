@@ -32,9 +32,9 @@ def required_reports():
     return ["metastability.rpt", "clock_transfers.rpt"] + [f"chain_{name}_{check}.rpt" for name in CHAINS for check in ("setup", "hold")]
 
 
-def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False):
+def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, extra_rows=()):
     checker = fpga_lock.verify_parallel if parallel else fpga_lock.verify
-    return checker((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
+    return checker((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top, extra_rows=extra_rows)
 
 
 MERGE_PAIR = ("n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll1",

@@ -1,0 +1,145 @@
+"""On-Chip Flash IP staging, diagnostics and evidence contracts with fixture files; no Quartus needed."""
+from pathlib import Path
+import hashlib
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from n2m import fpga, fpga_flash, fpga_lock
+
+TARGET = {"top": "flash_proof", "sources": [fpga_flash.READER]}
+STROBE = fpga_flash.strobe_node("flash_proof")
+
+
+class FlashIpTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="flash ip ")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.quartus = self.root / "quartus"
+        self.ip = self.root / "ip/altera/altera_onchip_flash"
+        self.attempt = self.root / "attempt"
+        self.attempt.mkdir()
+        (self.quartus / "bin64").mkdir(parents=True)
+        (self.quartus / "eda/sim_lib").mkdir(parents=True)
+        (self.quartus / "eda/sim_lib/fiftyfivenm_atoms.v").write_text("atoms\n")
+        for name, (folder, _) in fpga_flash.SOURCES.items():
+            path = self.ip / folder / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"// {name}\n")
+        for name in fpga_flash.DEFINITIONS:
+            (self.ip / "altera_onchip_flash" / name).write_text(f"# {name}\n")
+
+    def sources(self):
+        """An identity record whose hashes match the pins, as identity() would return for the real files."""
+        return {name: {"path": str(self.ip / folder / name), "sha256": sha}
+                for name, (folder, sha) in fpga_flash.SOURCES.items()}
+
+    def test_identity_refuses_an_unpinned_vendor_file(self):
+        with self.assertRaisesRegex(ValueError, "unsupported Intel On-Chip Flash IP source"):
+            fpga_flash.identity(self.quartus / "bin64")
+        (self.ip / "rtl/altera_onchip_flash_block.v").unlink()
+        with self.assertRaisesRegex(ValueError, "missing installed Intel On-Chip Flash IP"):
+            fpga_flash.identity(self.quartus / "bin64")
+
+    def test_stage_copies_only_unchanged_pinned_files(self):
+        sources = self.sources()
+        with self.assertRaisesRegex(ValueError, "changed before staging"):
+            fpga_flash.stage(self.attempt, sources)
+        for name, entry in sources.items():
+            entry["sha256"] = hashlib.sha256(Path(entry["path"]).read_bytes()).hexdigest()
+        fpga_flash.stage(self.attempt, sources)
+        self.assertEqual(sorted(p.name for p in self.attempt.iterdir()), sorted(fpga_flash.SOURCES))
+
+    def test_assignments_name_the_four_files_and_the_compressed_image_mode(self):
+        lines = fpga_flash.assignments()
+        self.assertEqual(lines[:4], [f"set_global_assignment -name VERILOG_FILE {n}" for n in fpga_flash.SOURCES])
+        self.assertEqual(lines[4], fpga_flash.CONFIGURATION_MODE)
+        self.assertTrue(fpga_flash.flash_target(TARGET))
+        self.assertFalse(fpga_flash.flash_target({"top": "sdram_proof", "sources": ["src/rtl/storage/n2m_sdram_ctrl.sv"]}))
+
+    def test_verify_requires_the_ufm_block_and_the_mode_assignment(self):
+        output = self.attempt / "output"
+        output.mkdir()
+        for name in fpga_flash.SOURCES:
+            (self.attempt / name).write_text("copy\n")
+        (self.attempt / "design.qsf").write_text(fpga_flash.CONFIGURATION_MODE + "\n")
+        (output / "design.fit.summary").write_text("UFM blocks : 1 / 1 ( 100 % )\n")
+        evidence = fpga_flash.verify(self.attempt)
+        self.assertEqual((evidence["ufm_blocks"], evidence["configuration_mode"]), (1, "Single Comp Image"))
+        self.assertEqual(set(evidence["sources"]), set(fpga_flash.SOURCES))
+        (output / "design.fit.summary").write_text("UFM blocks : 0 / 1 ( 0 % )\n")
+        with self.assertRaisesRegex(ValueError, "UFM block"):
+            fpga_flash.verify(self.attempt)
+        (output / "design.fit.summary").write_text("UFM blocks : 1 / 1 ( 100 % )\n")
+        (self.attempt / "design.qsf").write_text("")
+        with self.assertRaisesRegex(ValueError, "configuration mode"):
+            fpga_flash.verify(self.attempt)
+
+    def compile_log(self):
+        path = (self.attempt / fpga_flash.CONTROLLER).resolve().as_posix()
+        lines = [f'Warning (10036): Verilog HDL or VHDL warning at {fpga_flash.CONTROLLER}({line}): object "{name}" '
+                 f'assigned a value but never read File: {path} Line: {line}' for line, name in fpga_flash.UNUSED_OBJECTS]
+        lines += [fpga_flash.STROBE_WARNING.format(node=STROBE)] * 4
+        return "Info: fitting\n" + "\n".join(lines) + "\n"
+
+    def staged_sources(self):
+        sources = {}
+        for name, (_, sha) in fpga_flash.SOURCES.items():
+            sources[name] = {"path": str(self.attempt / name), "sha256": sha}
+        return sources
+
+    def test_explained_diagnostics_are_exact_and_pinned(self):
+        sources = self.staged_sources()
+        for name in fpga_flash.SOURCES:
+            (self.attempt / name).write_text("copy\n")
+        text = self.compile_log()
+        # The staged copy must carry the pinned hash before any line is explained.
+        with self.assertRaisesRegex(ValueError, "unsupported Intel On-Chip Flash IP source"):
+            fpga_flash.explained_diagnostics(text, self.attempt, sources, "flash_proof", "compile.log")
+        with unittest.mock.patch.object(fpga_flash, "file_hash", side_effect=lambda p: fpga_flash.SOURCES[Path(p).name][1]):
+            explained = fpga_flash.explained_diagnostics(text, self.attempt, sources, "flash_proof", "compile.log")
+            self.assertEqual([item["code"] for item in explained], ["10036"] * 20 + ["332060"])
+            self.assertEqual([item["code"] for item in fpga.diagnostics(text, explained)], ["10036"] * 20 + ["332060"] * 4)
+            strobe = fpga_flash.STROBE_WARNING.format(node=STROBE)
+            audit = fpga_flash.explained_diagnostics(strobe + "\n", self.attempt, sources, "flash_proof", "audit.log")
+            self.assertEqual([item["code"] for item in audit], ["332060"])
+            for broken in (text.replace("write_count", "read_count", 1), text + strobe + "\n",
+                           text.replace(strobe + "\n", "", 1), text.replace("(201)", "(202)", 1)):
+                with self.subTest(broken=broken[-80:]):
+                    with self.assertRaises(ValueError):
+                        fpga_flash.explained_diagnostics(broken, self.attempt, sources, "flash_proof", "compile.log")
+            with self.assertRaisesRegex(ValueError, "unsupported flash reader top"):
+                fpga_flash.explained_diagnostics(text, self.attempt, sources, "v05_proof", "compile.log")
+        with self.assertRaises(ValueError):
+            fpga.diagnostics(text)
+
+    def test_unconstrained_clock_exception_names_only_the_strobe(self):
+        report = f"; {STROBE} ;  ; Base ; Unconstrained ;\n; clk_reference ; clk_reference ; Base ; Constrained ;\n"
+        self.assertTrue(fpga_flash.accepted_unconstrained_clock(1, TARGET, report))
+        for count, target, text in ((2, TARGET, report), (1, {"top": "sdram_proof", "sources": []}, report),
+                                    (1, TARGET, report.replace("flash_se_neg_reg", "flash_drclk")),
+                                    (1, TARGET, report + report), (1, TARGET, "")):
+            with self.subTest(count=count, top=target["top"], text=text[:30]):
+                self.assertFalse(fpga_flash.accepted_unconstrained_clock(count, target, text))
+
+    def test_no_clock_rows_extend_the_parallel_lock_inventory(self):
+        rows = fpga_flash.no_clock_rows("flash_proof")
+        self.assertEqual(rows[0], STROBE)
+        self.assertTrue(rows[1].endswith("ufm_block~XE_YE_TO_SE_FF"))
+        checks = "".join(f"; {row} ; No clock feeds this register's clock port. ;\n" for row in
+                         (fpga_lock.ROW, "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|"
+                          "n2m_system_pll_altpll:auto_generated|pll_lock_sync", rows[1]))
+        with self.assertRaisesRegex(ValueError, "parallel lock event inventory differs"):
+            fpga_lock.verify_parallel("module flash_proof (a);\ninput a;\nendmodule\n", checks, "flash_proof")
+        # With the atom row accounted for, the inventory matches and the netlist checks proceed.
+        with self.assertRaises(ValueError) as caught:
+            fpga_lock.verify_parallel("module flash_proof (a);\ninput a;\nendmodule\n", checks, "flash_proof", extra_rows=rows[1:])
+        self.assertNotIn("inventory", str(caught.exception))
+
+
+import unittest.mock  # noqa: E402
+
+if __name__ == "__main__":
+    unittest.main()

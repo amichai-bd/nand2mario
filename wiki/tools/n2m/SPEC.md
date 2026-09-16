@@ -1039,8 +1039,9 @@ and never falls back between the two. The compile set is fixed by the tree:
 3. the elaboration stand-ins
    [`questa_lint_vendor.sv`](../../../src/dv/builder/questa_lint_vendor.sv):
    port- and parameter-compatible empty modules for exactly `n2m_system_pll`,
-   `n2m_pixel_pll`, `n2m_adc_pll`, `altera_modular_adc_control` and
-   `altsyncram`, the units Quartus generates or installs during `fpga build`.
+   `n2m_pixel_pll`, `n2m_adc_pll`, `altera_modular_adc_control`, `altsyncram`
+   and `altera_onchip_flash`, the units Quartus generates or installs during
+   `fpga build`.
    They are elaboration stand-ins, not models: no behavior, no vendor
    parameter checking. Only this command compiles them; they belong to no
    synthesis source set and are not the `VERILATOR` doubles. The result
@@ -1495,6 +1496,19 @@ programs only an `output/design.sof` still in place beside a readable attempt
 refuses a record that carries the override. A copied, moved or altered `.sof`,
 or one without a record, is refused. Other targets reject the option.
 
+An image that lists the [flash reader](../../src/rtl/storage/MAS_flash_library.md#on-chip-flash-ip-boundary)
+resolves the installed Intel On-Chip Flash IP through
+[`fpga_flash.py`](../../../tools/n2m/fpga_flash.py): the four synthesis files
+of `ip/altera/altera_onchip_flash/` and its two hw.tcl definitions must match
+the pinned SHA-256 values, the four files are copied beside the generated
+project and named as `VERILOG_FILE` assignments, and the QSF carries
+`INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"`. No generator runs: the
+reader instantiates `altera_onchip_flash` with the derived parameters itself.
+The record keeps the IP identity under `tools.onchip_flash`, the cache
+requires the staged copies, and the evidence checks `UFM blocks : 1 / 1` and
+the configuration mode assignment under `onchip_flash`. `flash-proof` is the
+bounded fit of that path.
+
 The `v05-board` target uses the existing composed system with the physical pins
 in the [system contract](../../src/rtl/system/MAS_system.md). It requires a
 nonzero producing fingerprint identity through `N2M_V05_BUILD_ID`; generated
@@ -1643,6 +1657,8 @@ bounded build flow; different text under the same number fails:
 | Exact `TBBmalloc` `_msize` replacement notice | The installed allocator cannot replace that CRT allocation hook. It is not a failed compilation or timing check; retain the notice and require all execution/report evidence. The [allocator override](#quartus-allocator-override) keeps this condition from aborting a launch. |
 | 15064, exact system PLL `clk[0]` feeding `DRAM_CLK~output` via non-dedicated routing, `sdram-proof` only | The [SDRAM contract](../../src/rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) drives `DRAM_CLK` as the inverted system clock through the fabric to a pin that is not a dedicated PLL output. Exactly one line naming that PLL, that pin and the attempt's generated PLL file is accepted; the routed-clock jitter is inside the contract's 20 ns half-period I/O budget and the board memory test is the acceptance. |
 | `check_timing` no_output_delay = 1, `sdram-proof` only | `DRAM_CLK` is the target of the `sdram_clk` generated clock and has no data path, so it is the one output port without an output delay; giving it one makes TimeQuest time the clock network as a data path. The unconstrained-path summary must still show zero output ports and paths, and the clock inventory binds the port to `sdram_clk`. |
+| 10036, exactly the 20 vendor data-controller objects `fpga_flash.UNUSED_OBJECTS` in the staged `altera_onchip_flash_avmm_data_controller.v`, images that list the flash reader only | The read-only configuration of the pinned On-Chip Flash IP leaves its write and erase registers assigned but unread. The staged copy must carry the pinned hash and every line, name and line number must match once; any other 10036 fails. |
+| 332060, exactly the IP's `flash_se_neg_reg` strobe under the registered reader instance, four lines in `compile.log` and one in `audit.log`, flash images only | The IP's sense-enable strobe register clocks one register inside the UFM atom (`ufm_block~XE_YE_TO_SE_FF`) without a clock assignment; the vendor's own generated project suppresses this message with `MESSAGE_DISABLE 332060`. Here it is classified by exact node and count and never suppressed. The same strobe is the one accepted `Unconstrained Clocks` row (setup and hold both 1) when `report_ucp` names it as the only unconstrained target, and it and the atom register are two accepted `no_clock` rows named exactly beside the PLL lock events. |
 | `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
 
 The installed Quartus messages and `report_ucp`, `check_timing`, `report_sdc`

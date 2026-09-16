@@ -54,6 +54,19 @@ reference sources for pins and timing in the
 [SDRAM contract](../src/rtl/storage/MAS_sdram.md); they are vendor documents,
 consulted and cited, not redistributed.
 
+The [flash reader](../src/rtl/storage/MAS_flash_library.md#on-chip-flash-ip-boundary)
+instantiates the installed Intel On-Chip Flash IP, `altera_onchip_flash`, from
+the user's Quartus Prime 25.1std Lite installation. The
+[index](../../tools/provenance.json) records the IP name, the Quartus build and
+the SHA-256 of the four synthesis files the builder copies into an attempt and
+of the two hw.tcl definitions the instance parameters were derived from;
+[`fpga_flash.py`](../../tools/n2m/fpga_flash.py) refuses a different file.
+The files are vendor-licensed, never committed and never redistributed; the
+repository holds only the original double
+[`n2m_sim_onchip_flash.sv`](../../src/rtl/storage/n2m_sim_onchip_flash.sv),
+written against the IP's RTL cadence, and the empty Questa stand-in. UG-M10UFM
+and UG-M10CONFIG are the consulted vendor documents behind the contract.
+
 `frog-bui` is a process and behavioral research reference only. Its inspected
 revision and absent root license are recorded in the
 [wiki dependency notes](../../tools/wiki/THIRD_PARTY.md). Do not copy its source

@@ -52,6 +52,15 @@
       "storage": "User Quartus installation only; compiled model library stays under ignored build tags; no redistribution"
     },
     {
+      "name": "Installed Intel On-Chip Flash IP (altera_onchip_flash)",
+      "record": "n2m/fpga_flash.py",
+      "purpose": "Read-only Avalon-MM access to the MAX 10 internal flash for the game library; instantiated directly by src/rtl/storage/n2m_flash_reader.sv with the parameters altera_onchip_flash_hw_proc.tcl derives for the 10M50DAF484C7G; contract in wiki/src/rtl/storage/MAS_flash_library.md",
+      "source": "Quartus Prime 25.1std.0 Build 1129 Lite, ip/altera/altera_onchip_flash/: altera_onchip_flash/altera_onchip_flash.v sha256 03a088deb2baaef6b33229b2bf3717d659efceac30043a1243066672195db316, altera_onchip_flash/altera_onchip_flash_avmm_data_controller.v a87a4f86b581ba3b78fb9189bf6215bf1722bc56757fc5cd30a1853787d8f517, altera_onchip_flash/altera_onchip_flash_util.v 4091b0255ebe2b534f87b6af95ee0d4dda965c975b9a0457c7e6f36d38b2e301, rtl/altera_onchip_flash_block.v 6afaeaf53c8596647ee4e56b7d79193970c79efd7c774584a84b0e444a88dfb1; definitions altera_onchip_flash_hw.tcl d4a832155d41eaf776d3fea061e22bc09ffc1050d2e7048c6e2e84c0b914f613 and altera_onchip_flash_hw_proc.tcl bd6465a1f3cb08e65888ed5a7d5f085b5979bc8073d8878844bd8f422ac29a2c",
+      "license": "Altera Program License Subscription Agreement / Altera IP License Agreement (use limited to programming Altera devices)",
+      "local_changes": "none; the builder copies the four synthesis files unchanged into the build attempt",
+      "storage": "User Quartus installation only; copies live under ignored workdir/builds/<tag>/fpga/<target>/attempts/<id>/; the Questa compile gate binds to the empty stand-in in src/dv/builder/questa_lint_vendor.sv and Verilator to the original double src/rtl/storage/n2m_sim_onchip_flash.sv; no redistribution"
+    },
+    {
       "name": "RGBDS",
       "record": "n2m/dependencies.json",
       "notices": "sw/THIRD_PARTY.md",

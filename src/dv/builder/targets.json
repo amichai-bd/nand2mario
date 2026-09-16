@@ -30148,6 +30148,57 @@
     "expected_exit": "nonzero",
     "signature": "SDRAM_MODEL_REFRESH_DEADLINE"
   },
+  "flash-reader": {
+    "sources": [
+      "src/rtl/storage/n2m_flash_pkg.sv",
+      "src/rtl/storage/n2m_flash_reader.sv",
+      "src/rtl/storage/n2m_sim_onchip_flash.sv",
+      "src/dv/storage/tb_flash_reader.sv"
+    ],
+    "top": "tb_flash_reader",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=reader"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS flash-reader lines=168 words=672 erased=4 back_to_back=63 image_words=392"
+  },
+  "flash-reader-fault-misaligned": {
+    "sources": [
+      "src/rtl/storage/n2m_flash_pkg.sv",
+      "src/rtl/storage/n2m_flash_reader.sv",
+      "src/rtl/storage/n2m_sim_onchip_flash.sv",
+      "src/dv/storage/tb_flash_reader.sv"
+    ],
+    "top": "tb_flash_reader",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=fault-misaligned"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT FLASH_LINE_ALIGNED"
+  },
+  "flash-reader-fault-range": {
+    "sources": [
+      "src/rtl/storage/n2m_flash_pkg.sv",
+      "src/rtl/storage/n2m_flash_reader.sv",
+      "src/rtl/storage/n2m_sim_onchip_flash.sv",
+      "src/dv/storage/tb_flash_reader.sv"
+    ],
+    "top": "tb_flash_reader",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=fault-range"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT FLASH_LINE_RANGE"
+  },
   "uart-sdram": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
