@@ -13,10 +13,13 @@ tilemap or DUT state.
 [`fixture.py`](fixture.py) is the `menu` preload builder. Before each run it
 builds the image through `sw build menu`, writes the seventeen-image SDRAM
 library (`menu-library.hex`) and the scripted reference frames
-(`menu-frames.hex`) into the attempt directory. Slots 0, 1, 2 and 5 hold stub
-games titled `SPRINGTRAIL`, `STACKDROP`, `TRAIL UNIT` and `ABC-123 XYZ 789`;
-slot 3 is empty; slot 4 is valid to the menu but its entry length is 16384,
-so the engine refuses it; slot 16 is the menu.
+(`menu-frames.hex`) into the attempt directory. Slots 0, 1, 2, 5, 7 and 15
+hold stub games titled `SPRINGTRAIL`, `STACKDROP`, `V05 BUTTONS`,
+`ABC-123 XYZ 789`, `SIXTEEN CHAR ROW` and `LAST SLOT`; slot 3 is empty; slot 4
+is valid to the menu but its entry length is 16384, so the engine refuses it;
+slot 16 is the menu. Seven of the sixteen rows are therefore valid, more than
+the three-game registry, and the titles cover digits, dashes, the full
+sixteen-cell width and the last row.
 
 [`tb_menu_system`](tb_menu_system.sv) preloads the device model from the hex
 file, swaps the menu in with `WRITE_HOST(LIBRARY_CONTROL)`, selects the board
@@ -28,7 +31,7 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 
 | Requirement | Independent check |
 |---|---|
-| Boot frame | The first display-eligible frame equals reference frame 0: header, sixteen numbered rows, four titles, blank rows for slots 3 and 6..15, the `SHORT IMAGE` title of slot 4, cursor on slot 0, blank status row; `LIBRARY_STATUS` shows bank 34 and result `OK` |
+| Boot frame | The first display-eligible frame equals reference frame 0: header, sixteen numbered rows, six titles, blank rows for slots 3, 6 and 8..14, the `SHORT IMAGE` title of slot 4, cursor on slot 0, blank status row; `LIBRARY_STATUS` shows bank 34 and result `OK` |
 | Cursor | Down, Down, Up show the cursor on slots 1, 2, 1; Up at slot 0 and a repeated Up leave frame 0 unchanged; every frame is 23040 pixels in source order |
 | Select | Down then A: the only write into `$6000`-`$7FFF` carries 1; the core boots in `DIRECT_ID` with epoch + 1, `LIBRARY_STATUS` result `OK` index 1 |
 | Refused select | Cursor on the empty slot 3, A: `LIBRARY_STATUS` result `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up moves the cursor while the message stays; A on slot 2 starts that game with select data 2; `window_ready` stays set across the refused select |

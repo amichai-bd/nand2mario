@@ -94,7 +94,11 @@ exclusive board lock:
 4. Power-cycle the board with no host attached and observe the monitor. A
    bitstream that carries the [boot copier](rtl/storage/MAS_flash_library.md#boot-copier)
    (`v05-board`) shows the menu from flash; the `flash-proof` image itself holds the library and the
-   reader only.
+   reader only. The session's UART input is
+   [`host library load`](../tools/n2m/host/SPEC.md#commands) of every image
+   the [registry](../tools/n2m/SPEC.md#flash-library-image) builds, the
+   `sw library` attempt's package results with the menu as `--menu`, so the
+   loaded library and the flash-resident one carry the same catalogue.
 5. Record the session under [Run record](#run-record): the attempt commit,
    the `.pof` hash, `isp_seconds`, the observed picture and whether the
    flash content changed. No session has run yet

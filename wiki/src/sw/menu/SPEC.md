@@ -149,8 +149,8 @@ with `host library status` and passes its rows.
 
 [`fixture.py`](../../../../src/dv/menu/fixture.py) is the registered `menu`
 preload builder: it builds the image, lays out a library with stub games in
-slots 0, 1, 2 and 5, an empty slot 3, a valid entry with a foreign length in
-slot 4 and the menu at 16, and writes `menu-library.hex` and the scripted
+slots 0, 1, 2, 5, 7 and 15, an empty slot 3, a valid entry with a foreign
+length in slot 4 and the menu at 16, and writes `menu-library.hex` and the scripted
 `menu-frames.hex` for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 runs the real `n2m_v05_system` with the SDRAM controller and device model,
 swaps the menu in through the host return, selects the board joypad and

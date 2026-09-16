@@ -1680,6 +1680,23 @@ validity rule), a package may occupy one index only, and each built image must
 be exactly one 32 KiB slot. Today it lists `springtrail`, `stackdrop` and `v05`
 in slots 0-2 and `menu` at 16.
 
+A package is registrable when its image turns the LCD on and is an original
+game or interactive demo: today Springtrail, Stackdrop and the v05 button
+demo, which is every playable image the repository builds. The other
+`src/sw/targets.json` packages are verification inputs, not games, and stay
+out of the registry: `flow`, `flow-s`, `render`, `render-s` and
+`springtrail-unit` are Springtrail CPU unit fixtures whose builds
+[`rom_build.py`](../../../tools/sw/rom_build.py) refuses on purpose
+(`require_legacy_movement`, `require_legacy_scene`) because they encode the
+movement and scene code that predates the current implementation, and
+[`test_historical_motion.py`](../../../src/dv/springtrail/test_historical_motion.py)
+and [`test_legacy_renderer.py`](../../../src/dv/springtrail/test_legacy_renderer.py)
+assert that refusal; `stackdrop-unit` and `stackdrop-short` are routine
+runners that keep the LCD off; `linker-basic` and `assets-basic` are toolchain
+fixtures. The registry grows only with new game content, which arrives through
+its own issues such as the Stackdrop title screen
+([#553](https://github.com/amichai-bd/nand2mario/issues/553)).
+
 `python tools/build.py sw library --tag <tag> --json` builds every registered
 package through the same `sw build` stages under that tag (cached as usual;
 `--rebuild` forces them), assembles the words with the host loader's own
