@@ -42,9 +42,12 @@ The LDH view intentionally overlaps I/O, HRAM and IE; views are not new decoders
 Register constants identify addresses only. They do not define read masks,
 write effects, bus blocking, timer edges or undocumented behavior. The direct
 profile has no mapper or cartridge RAM. Other profiles require new reviewed
-contracts before loading; the [loader profile](../cartridge/MAS_loader_profile.md)
-is the one such contract, identified by `PROFILE_LOADER_ID` in the generated
-profile table beside its `LIBRARY_*` host registers and `library` constants. The original [Springtrail platformer](../../sw/springtrail/SPEC.md) uses this same
+contracts before loading. The [loader profile](../cartridge/MAS_loader_profile.md)
+is identified by `PROFILE_LOADER_ID` in the generated profile table beside its
+`LIBRARY_*` host registers and `library` constants. The
+[MBC1 profile](../cartridge/MAS_mbc1_profile.md) is identified by
+`PROFILE_MBC1_ID` beside its `mbc1` constants; its image is `MBC1_ROM_BYTES`,
+and `PROFILE_STORE_BYTES` is the store capacity every profile shares. The original [Springtrail platformer](../../sw/springtrail/SPEC.md) uses the direct
 profile; loading and execution preserve the exact built image bytes.
 
 ## Direct entry and reset

@@ -54,6 +54,12 @@ class InterfaceTests(unittest.TestCase):
             lambda d: d['commands'][0].update(request='unknown'),
             lambda d: d['groups']['frame'][-1].update(value=5761),
             lambda d: d['references'][0].update(revision='main'),
+            lambda d: d['groups']['profile'][2].update(value=1),
+            lambda d: d['groups']['mbc1'][0].update(value=32768),
+            lambda d: d['groups']['mbc1'][2].update(value=1),
+            lambda d: d['groups']['mbc1'][5].update(value=0),
+            lambda d: d['groups']['profile'][4].update(value=32768),
+            lambda d: d['groups']['mbc1'][-1].update(value=32766),
         ]
         for mutate in mutations:
             data = copy.deepcopy(original)

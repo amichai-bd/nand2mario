@@ -2247,7 +2247,9 @@ The source uses exact integer values, closed object keys, nonempty constant
 groups, unique uppercase names and explicit unsigned widths. Record fields are
 ordered byte multiples with unique lowercase names. Unknown keys, duplicate
 JSON keys, booleans/floats as integers, overflow, invalid references, duplicate
-addresses/command IDs, map overlap/gaps and inconsistent ROM/frame sizes fail.
+addresses/command IDs, map overlap/gaps, inconsistent ROM/frame sizes,
+duplicate or zero profile IDs, an MBC1 bank geometry that does not tile the ROM
+range, and a ROM store smaller than a profile image fail.
 The generator's `validate` function is the executable schema v1. Changing an
 existing wire layout or meaning requires a new ABI version, even if the source
 schema can still represent it. Unsupported versions fail; no implicit downgrade.
