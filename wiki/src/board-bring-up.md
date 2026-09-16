@@ -398,7 +398,7 @@ pixel rows 64..71 shade 3, the rest shade 0), the menu frames with
 [`reference.py`](../../src/dv/menu/reference.py) against the catalogue bytes
 of the `host library status` record, as in session 2. The flash-resident
 session 6 bitstream stayed programmed; no flash or Quartus action was needed
-because the image is loaded over UART, and #739 changed no RTL. No monitor
+because the image is loaded over UART, and this change touched no RTL. No monitor
 observation was recorded; nobody was at the board.
 
 - Git commit: branch `739-exit-register-board` at
@@ -416,8 +416,8 @@ observation was recorded; nobody was at the board.
 - Wiring: unchanged; the owner's display viewer released COM7 before the
   session and the host records were taken with no hands at the board.
 
-Records under tags `739-board-*` on 2026-09-17, about 00:15 to 00:30 board
-clock. The owner's viewer had left the endpoint `PAUSED`, so the first
+Records under tags `739-board-*`, transaction stamps 2026-09-16 20:45:04 to
+20:54:16 UTC (23:45 to 23:54 board clock, UTC+3). The owner's viewer had left the endpoint `PAUSED`, so the first
 scripted attempt stopped at its menu snapshot (`739-board-menu0`, `SNAPSHOT`
 rejected with status 7: no frame while paused) with no board state changed,
 and the baseline `host status`/`host library status` attempts
