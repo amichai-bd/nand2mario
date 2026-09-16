@@ -2715,7 +2715,8 @@ fails by the unit's name. One row is also applied for real: a shared clone of
 it and must equal the in-process decision for every unit. The harness runs
 under `check` and costs about 25 s (closure derivation about 9 s, the real
 report about 14 s). `tests validate` and `check` also reject a manifest row
-that names an unknown unit or an untracked path. `python tools/build.py tests
+that names an unknown unit or an untracked path; the harness fails when the
+manifest is absent. `python tools/build.py tests
 mutations [--name N] --tag TAG --json` runs the same selection proof as a
 command; its record lists `mutations` and `misses`.
 

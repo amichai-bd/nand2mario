@@ -357,12 +357,14 @@ def coverage(root, model):
     for path in sorted(files):
         if (root / path).is_file():
             problems += host_closure.check(root, path, units[path], model["external_imports"], cache)
-    # The recorded mutations name catalogue units and tracked paths; a stale row is a coverage failure.
+    # The recorded mutations name catalogue units and tracked paths; a stale row is a
+    # coverage failure. Fixture trees carry no manifest; the proof harness requires the real one.
     from . import mutations
-    try:
-        mutations.load(root, model)
-    except (OSError, ValueError) as error:
-        problems.append(f"{mutations.MANIFEST}: {error}")
+    if (root / mutations.MANIFEST).is_file():
+        try:
+            mutations.load(root, model)
+        except (OSError, ValueError) as error:
+            problems.append(f"{mutations.MANIFEST}: {error}")
     return problems
 
 
