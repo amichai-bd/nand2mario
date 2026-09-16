@@ -387,9 +387,10 @@ title, input and world frames with deliberate output faults. Movement and
 interactions are implemented; expanded features are explicitly planned in the
 game specification. The current [UART endurance fixture](../src/dv/springtrail/ENDURANCE.md#retained-script)
 uses source-qualified lives/countdown and complete-frame expectations. A new
-current-image continuous physical run remains separate from those host checks;
-physical-presence verification remains open in the charter's
-[remote acceptance](src/project-charter.md#remote-acceptance) split.
+current-image continuous physical run remains separate from those host checks
+and, with supply voltage and display tolerance, is the physical work the
+charter's [remote acceptance](src/project-charter.md#remote-acceptance) split
+still names as unmeasured; the KEY0 reset and the monitor picture are observed.
 
 **Risk**
 
@@ -568,9 +569,8 @@ ping, build ID and CRC rejection.
 The monitor picture is confirmed: on 2026-09-13 the owner was at the board and
 observed it, recorded in
 [board bring-up](src/board-bring-up.md#display-observation). The KEY0 board
-reset still needs hands at the board, under
-[#512](https://github.com/amichai-bd/nand2mario/issues/512). That gates physical
-release claims only; it does not block UART-observable, simulation or host work.
+reset was observed on 2026-09-16, recorded in
+[board bring-up](src/board-bring-up.md#key0-board-reset).
 Reopen the closed issues if the board becomes routinely physically reachable or
 a runner can be hosted.
 

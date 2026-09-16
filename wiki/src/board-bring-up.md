@@ -43,8 +43,11 @@ share a common ground through that connection and through USB to the same
 host. `board_reset_n` uses the DE10-Lite's onboard Schmitt-trigger KEY0 input,
 so no external reset wiring is used and no reset polarity inversion exists
 outside the FPGA fabric. The design released from reset and answered over UART,
-which shows the released level is not inverted; nobody pressed KEY0, so its
-asserted direction is unverified and needs physical presence.
+which shows the released level is not inverted. The asserted direction was
+observed on 2026-09-16 with the owner at the board: pressing KEY0 reset the
+whole design and releasing it brought the design back, answering over UART
+with the same build identity, twice
+([KEY0 board reset](#key0-board-reset)).
 UART RX/TX direction was confirmed by the adapter's
 own TX/RX labeling and by a successful `PING` round trip (below); a swapped
 pair produces silence, not a false pass, because `PING` requires a matching
@@ -514,11 +517,41 @@ from 18:42 to 18:51 UTC; the owner was present.
 | Flash programming over JTAG, `pvb` | `738-program`, `fpga-program/13fa692a5b8d` | `PASS`, `isp_seconds` 49.313, `device_state` changed; the MAX 10 reconfigured from CFM0 at the end of programming with no power cycle |
 | `host status`, `host library status` after programming | `738-status-after-program`, `status/fe26b95b…`; `738-board-libstatus`, `library-status/e8c2da6e…` | wire build id `2b714b95…` equals the program record's; `PROFILE` 2, running; `$A000` 0x68 with `flash_boot`, result `OK`, twelve valid entries (slots 0 to 10 and the menu), catalogue SHA-256 `b4b5b3f7…` equal to the fit's |
 | Menu frame | `738-board-menu`, `snapshot/e16d8d5c…` | epoch 1; pixel-exact, 23040 pixels, 0 mismatches, CRC32 `c625db9f` |
-| Owner pressed and released KEY0 (`PIN_B8`) after a menu session had selected slot 10 | `512-before`: `status/60dd7a3f…`, `library-status/008b6830…`, `snapshot/0f0b4859…`; `512-after1`: `status/20dbb8fc…`, `library-status/07bee945…`, `snapshot/4eca1745…` | before: epoch 5, selected index `$A003` 10; after: same wire build id, epoch 1, selected index cleared to 255, `flash_boot` set, result `OK`; menu frame pixel-exact, CRC32 `c625db9f` |
+| Owner pressed and released KEY0 | [KEY0 board reset](#key0-board-reset) records | the boot copier ran again: epoch back to 1, selection cleared, `flash_boot` set, menu frame pixel-exact with the same CRC32 `c625db9f` |
 
 Both paths ran the boot copier again: the library came back from flash with
-the same catalogue and the same menu frame as at power-up. The KEY0 wiring and
-asserted-direction record belongs to the reset section of this page, not here.
+the same catalogue and the same menu frame as at power-up.
+
+### KEY0 board reset
+
+The owner pressed and released KEY0 (`PIN_B8`, `board_reset_n`, active low)
+twice while root read the board over COM7. Image: the session 6 flash-resident
+eleven-game fit, wire build id `2b714b95e224e096048616226f1a672f`, unchanged
+throughout; no reprogramming. Records 18:50 to 18:52 UTC on 2026-09-16 under
+tags `512-before`, `512-after1` and `512-after2` (each with `-lib` and `-snap`
+tags for the library status and snapshot). The dot counter runs at 4,194,304
+dots per second, so a dot value dates the last reset.
+
+Two facts differ from the issue text that requested this record. The board was
+running the menu, not paused at input 0: the flash-boot design starts the menu
+on every reset, so "paused at input 0" is not a state this image rests in
+(`INPUT` was 0 throughout). And the image is the current flash-resident fit,
+not the superseded `87d5f028…` wire build the issue named, which later
+qualified fits replaced.
+
+| Step | Records | Result |
+|---|---|---|
+| Before, 18:50 UTC | `status/60dd7a3f…`, `library-status/008b6830…`, `snapshot/0f0b4859…` | wire build id `2b714b95…`; `IMAGE_VALID` 1, `PROFILE` 2, running, `INPUT` 0; `flash_boot`, result `OK`, selected index `$A003` 10 (PostBot had been selected earlier in the session); dot 72,866,935, epoch 5, seq 1035 |
+| Press and release 1; the owner saw the VGA picture go dark, then the menu return | `status/20dbb8fc…`, `library-status/07bee945…`, `snapshot/4eca1745…` (18:51 UTC) | same wire build id; `IMAGE_VALID` 1, `PROFILE` 2, running; `flash_boot` set again, `$A003` 255 (no selection), result `OK`; dot 94,917,271 (about 22.6 s since reset), epoch 1 (was 5), seq 1349; menu frame pixel-exact against the eleven-entry reference, 23040 pixels, 0 mismatches, CRC32 `c625db9f` |
+| Press and release 2 | `status/dead953a…`, `library-status/d157182f…`, `snapshot/6f70855f…` (18:52 UTC) | same wire build id, running, `flash_boot`, `$A003` 255; dot 168,652,471 (about 40.2 s since reset), where 64.5 s of uninterrupted running since the previous snapshot would have read about 365 million, so the counter restarted; epoch 1 because a full reset re-initialises it; seq 2399; menu frame pixel-exact, CRC32 `c625db9f` |
+
+Pressing KEY0 resets the whole design: the picture blanks, the boot copier
+reruns from flash, the library epoch and selection clear, and the dot counter
+restarts. Releasing it lets the design come back and answer with the same
+build identity. Board state after: flash-resident menu running, cursor 0, no
+selection. The comparison uses the same
+[`reference.py`](../../src/dv/menu/reference.py) path as the other menu frames
+on this page.
 
 ### Full SDRAM sweep
 
@@ -575,5 +608,5 @@ stays with [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing).
 
 ## Open items
 
-Pressing KEY0 and recording the board reset still needs hands at the board,
-tracked by [#512](https://github.com/amichai-bd/nand2mario/issues/512).
+None. The last physical-presence item on this page, the KEY0 board reset, is
+recorded [above](#key0-board-reset).

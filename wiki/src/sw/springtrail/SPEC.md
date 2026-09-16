@@ -1,9 +1,11 @@
 # Springtrail
 
 The [original game source](../../../../src/sw/springtrail/main.asm) implements
-title/start, movement, scrolling, interactions and game flow. Physical-presence
-release acceptance remains in the charter's
-[remote acceptance](../../project-charter.md#remote-acceptance) split.
+title/start, movement, scrolling, interactions and game flow. Physical release
+acceptance is the charter's
+[remote acceptance](../../project-charter.md#remote-acceptance) split: the KEY0
+reset and the monitor picture are observed; supply voltage, display tolerance
+and a current-image continuous physical run stay unmeasured.
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 
