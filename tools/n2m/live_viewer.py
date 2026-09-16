@@ -11,11 +11,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import generated_interfaces as abi
 from .host.client import RejectedCommand
-from .springtrail_play import finish
+from .profiles import PROFILE_IMAGE_BYTES
+from .springtrail_play import PlayFailure, finish
 from .viewer_buttons import DEFAULT_MODE, MODES
 
 FRAME_DOTS = 70224  # One whole DMG frame; the step unit in stepped mode.
 MAX_STEP_FRAMES = 60
+SYSTEM_CLOCK_HZ = 25_000_000  # wiki/src/clocks-resets-cdc.md system domain.
+LOADER_SWAP_SECONDS = abi.LIBRARY_SWAP_BOUND_MBC1_EDGES / SYSTEM_CLOCK_HZ
 
 PAGE = b'''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{display:block;margin:20px auto;background:#333;max-width:100%;height:auto}.uart{image-rendering:pixelated}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}#commands{text-align:left;font:14px system-ui;padding-left:20px}#commands li{padding:6px}.QUEUED{color:#77baff}.EXECUTING{color:#ffd166}.RETIRED{color:#84df9b}.FAILED,.UNCERTAIN{color:#ff9393}.CANCELLED{color:#aaa}</style>
@@ -275,6 +278,104 @@ def state_for(mode):
     return abi.STATE_PAUSED if mode=='stepped' else abi.STATE_RUNNING
 
 
+class LoaderTransition:
+    """Keep one viewer input owner safe across the loader's bounded reset.
+
+    A menu selection can reset the core after WRITE_HOST accepts a mask but
+    before its effective-input readback. That reset is an accepted press, not a
+    failed UART exchange, and it clears the host mask. Never replay it into the
+    newly selected image. A write that was explicitly rejected before taking
+    effect may be retried once after the transition instead.
+    """
+    def __init__(self, client, mode, *, profile, clock=time.monotonic, pause=time.sleep):
+        self.client, self.mode, self.profile = client, mode, profile
+        self.clock, self.pause = clock, pause
+
+    def _ready(self, state=None):
+        """Wait once for the generated worst-case swap bound, then verify."""
+        if self.client.uncertain:
+            raise RuntimeError('uncertain session')
+        state = self.client.read_host(abi.HOST_REG_STATE) if state is None else state
+        if state == abi.STATE_LOADING:
+            # The accepted mask may take arbitrary game time to reach the menu
+            # commit. The hardware bound begins at that commit, so give it one
+            # whole bound from this first conservative LOADING observation.
+            self.pause(LOADER_SWAP_SECONDS)
+            if self.client.uncertain:
+                raise RuntimeError('uncertain session')
+            # The supplied LOADING sample may itself have taken most of the
+            # bound to reach the host. Judge the fresh post-deadline sample.
+            state = self.client.read_host(abi.HOST_REG_STATE)
+            if state == abi.STATE_LOADING:
+                raise PlayFailure('STATE_LOADER_BOUND')
+        if self.client.read_host(abi.HOST_REG_IMAGE_VALID) != 1:
+            raise PlayFailure('STATE_LOADER_IMAGE')
+        profile = self.client.read_host(abi.HOST_REG_PROFILE)
+        if profile not in PROFILE_IMAGE_BYTES:
+            raise PlayFailure('STATE_LOADER_PROFILE')
+        if self.client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
+            raise PlayFailure('STATE_LOADER_SOURCE')
+        if self.client.read_host(abi.HOST_REG_INPUT) != 0 or \
+                self.client.read_host(abi.HOST_REG_INPUT_EFFECTIVE) != 0:
+            raise PlayFailure('STATE_LOADER_INPUT')
+        expected = state_for(self.mode())
+        if state != expected or self.client.read_host(abi.HOST_REG_STATE) != expected:
+            raise PlayFailure('STATE_LOADER_MODE')
+        self.profile = profile
+        return {'profile':profile,'state':state,
+                'bound_edges':abi.LIBRARY_SWAP_BOUND_MBC1_EDGES}
+
+    def _apply_ready(self, mask, *, retry):
+        prior_profile = self.profile
+        try:
+            self.client.write_host(abi.HOST_REG_INPUT,mask)
+        except RejectedCommand as error:
+            if error.status != abi.STATUS_BAD_STATE or self.client.uncertain:
+                raise
+            state = self.client.read_host(abi.HOST_REG_STATE)
+            if state != abi.STATE_LOADING:
+                raise
+            transition = self._ready(state)
+            if mask == 0:
+                return transition
+            if retry:
+                raise
+            # The endpoint explicitly rejected this write, so no press was
+            # applied. Apply it once to the selected image after verification.
+            return self._apply_ready(mask,retry=True) or transition
+        effective = self.client.read_host(abi.HOST_REG_INPUT_EFFECTIVE)
+        if effective == mask:
+            return None
+        state = self.client.read_host(abi.HOST_REG_STATE)
+        profile = self.client.read_host(abi.HOST_REG_PROFILE)
+        if mask and (state == abi.STATE_LOADING or profile != prior_profile):
+            # WRITE_HOST was accepted. The reset consumed and cleared this tap;
+            # settling it is safe, replaying it into the game is not.
+            return self._ready(state)
+        raise PlayFailure('STATE_INPUT')
+
+    def apply(self, client, mask):
+        if client is not self.client:
+            raise ValueError('loader transition client changed')
+        state = client.read_host(abi.HOST_REG_STATE)
+        if state == abi.STATE_LOADING:
+            transition = self._ready(state)
+            if mask == 0:
+                return transition
+            return self._apply_ready(mask,retry=False) or transition
+        if state != state_for(self.mode()):
+            raise PlayFailure('STATE_LOADER_MODE')
+        profile = client.read_host(abi.HOST_REG_PROFILE)
+        if profile != self.profile:
+            # The short transition may have completed between two host reads.
+            # A changed generated profile is the durable witness in that case.
+            transition = self._ready(state)
+            if mask == 0:
+                return transition
+            return self._apply_ready(mask,retry=False) or transition
+        return self._apply_ready(mask,retry=False)
+
+
 def advance(client, dots):
     """Execute exactly `dots` emulated dots through bounded RUN_DOTS calls.
 
@@ -306,7 +407,7 @@ def combine(reports, step_frames):
 
 def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                  seconds=30, interval=2, clock=time.monotonic, wait=None, buttons=None,
-                 step_frames=1, camera=None):
+                 step_frames=1, camera=None, transition_pause=time.sleep):
     """Publish one source while optional UART controls retain their contract.
 
     UART framebuffer mode remains the default. A camera may instead provide the
@@ -335,8 +436,13 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             result['identity'] = identity
             if client.read_host(abi.HOST_REG_IMAGE_VALID) != 1:
                 raise ValueError('no valid existing image')
+            profile = client.read_host(abi.HOST_REG_PROFILE)
+            if profile not in PROFILE_IMAGE_BYTES:
+                raise ValueError('existing image profile is unsupported')
             if client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
                 raise ValueError('UART input authority required')
+            if client.read_host(abi.HOST_REG_INPUT) != 0:
+                raise ValueError('neutral UART input required')
             if client.read_host(abi.HOST_REG_INPUT_EFFECTIVE) != 0:
                 raise ValueError('neutral effective input required')
             state = client.read_host(abi.HOST_REG_STATE)
@@ -355,6 +461,8 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                         image_source=result['image_source'],controls_enabled=controls)
         if controls:
             result['mode'] = active
+            transition = LoaderTransition(client,lambda:active,profile=profile,
+                                          clock=clock,pause=transition_pause)
         steps = []
 
         def sync_mode():
@@ -393,7 +501,8 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                 for path in batch:
                     if stop.is_set():
                         break
-                    receipt = buttons.one(client,stop,clock=clock,wait=wait,path=path,hold=hold)
+                    receipt = buttons.one(client,stop,clock=clock,wait=wait,path=path,
+                                          hold=hold,apply=transition.apply)
                     result.setdefault('inputs',[]).append(receipt)
                     result['inputs'] = result['inputs'][-32:]
                 if stop.is_set():

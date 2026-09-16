@@ -140,7 +140,8 @@ class Buttons:
         with producer(self.inbox,wait=True):
             return sorted(self.inbox.glob('*.json'))[:CAPACITY]
 
-    def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None, hold=None):
+    def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None, hold=None,
+            apply=apply_mask):
         """Claim once, complete/release before returning to capture.
 
         `hold` replaces the wall-clock press duration when the caller advances
@@ -181,7 +182,9 @@ class Buttons:
                 receipt['status'] = 'APPLIED'
                 return receipt
             pressed = True
-            apply_mask(client,record['mask'])
+            transition = apply(client,record['mask'])
+            if transition is not None:
+                receipt['loader_transition'] = transition
             started = clock()
             # Stepped mode holds the mask across the step, so the core actually
             # observes the press; wall time alone would execute no dots.
@@ -201,7 +204,9 @@ class Buttons:
             # Safety precedes persistence: history failure can never skip release.
             try:
                 if pressed and not client.uncertain:
-                    apply_mask(client,0)
+                    transition = apply(client,0)
+                    if transition is not None:
+                        receipt['loader_transition'] = transition
                     receipt['released'] = True
                 else:
                     receipt['released'] = not pressed

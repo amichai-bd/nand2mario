@@ -157,6 +157,25 @@ nothing interleaves with one. Arrivals during a batch or capture wait for the
 next batch.
 At most 16 requests can be pending; a finite batch prevents capture starvation.
 
+A loader-profile menu selection is the one bounded exception to an immediate
+input readback. The accepted mask can make the menu start an image swap; that
+swap resets the core and clears host and effective input before the viewer reads
+them back. `STATE == LOADING`, or a changed supported `PROFILE` after that short
+state has already passed, identifies this transition. The viewer does not replay
+the accepted tap into the selected game. It waits for the generated worst-case
+64 KiB swap bound (`LIBRARY_SWAP_BOUND_MBC1_EDGES`, 120,000 system edges), then
+requires `IMAGE_VALID == 1`, a generated supported profile, UART input authority,
+host and effective input 0, and RUNNING in free-run or PAUSED in stepped mode.
+Only then does it retire the tap and process the next request. A mask write that
+the endpoint certainly rejected with `BAD_STATE` before applying it may be sent
+once after the same verification; an accepted write is never replayed.
+
+An image still loading after the bound, an invalid or unsupported image, a
+non-neutral input, the wrong selected-mode state, or protocol uncertainty stops
+the worker. Uncertainty permits no recovery traffic. Certain failures retain
+the normal verified-neutral cleanup attempt when the endpoint state still makes
+that traffic safe.
+
 A local operator can also submit a mask from the generated eight-button contract
 with a duration from 1 to 1000 ms, without opening a second UART connection:
 
