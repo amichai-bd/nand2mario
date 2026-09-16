@@ -3,7 +3,7 @@ import contextlib
 import io
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,7 +11,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
-from n2m.fpga_program import attempt_record, program, program_flash
+from n2m import fpga_program
+from n2m.fpga_program import attempt_record, device_state_after, program, program_flash, repository_relative
 from n2m.records import file_hash
 from n2m.progress import Progress
 
@@ -19,6 +20,10 @@ ROOT = Path(__file__).resolve().parents[3]
 VALID_CHAIN = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n"
 AMBIGUOUS_CHAIN = VALID_CHAIN + VALID_CHAIN.replace("1)", "2)")
 SUCCESS = "Info: Quartus Prime Programmer was successful. 0 errors, 0 warnings\n"
+FAILED = "Info: Quartus Prime Programmer failed. 1 error\n"
+# The reported recreation: a Windows PowerShell session inside a WSL checkout reached over UNC.
+UNC_ROOT = PureWindowsPath(r"\\wsl.localhost\Ubuntu\home\abendavid\github\nand2mario")
+UNC_SOF = UNC_ROOT / r"workdir\builds\stackdrop-program-34ed4f\output\design.sof"
 
 
 class FpgaProgramTests(unittest.TestCase):
@@ -161,6 +166,7 @@ class FpgaProgramTests(unittest.TestCase):
         report = json.loads((self.folder / "workdir/builds/program-attempt-refusal/manifest.json").read_text())
         diagnostic = next(name for name in report["artifacts"] if name.endswith("/failure.log"))
         self.assertIn("no readable attempt record", (self.folder / diagnostic).read_text())
+        self.assertEqual(report["device_state"], "unchanged", "quartus_pgm never ran")
         text = output.getvalue()
         self.assertIn("[FAIL] Check FPGA build record", text)
         self.assertIn(f"diagnostic: {diagnostic}", text)
@@ -198,6 +204,150 @@ class FpgaProgramTests(unittest.TestCase):
         self.assertNotIn("Next (Windows PowerShell):", output.getvalue())
 
 
+class PortableRecordPathTests(unittest.TestCase):
+    """Record paths stay repository-relative for the UNC recreation; pure paths, so no Windows host is needed."""
+
+    def test_unc_root_with_windows_separators_records_a_posix_relative_path(self):
+        self.assertEqual(repository_relative(UNC_ROOT, UNC_SOF),
+                         "workdir/builds/stackdrop-program-34ed4f/output/design.sof")
+        self.assertEqual(repository_relative(UNC_ROOT, UNC_ROOT / "workdir/builds/t/output/design.pof"),
+                         "workdir/builds/t/output/design.pof")
+        # Windows resolves both sides through the same share; a differently cased share is the same anchor.
+        upper = PureWindowsPath(r"\\WSL.LOCALHOST\Ubuntu\home\abendavid\github\nand2mario\workdir\builds\t\output\design.sof")
+        self.assertEqual(repository_relative(UNC_ROOT, upper), "workdir/builds/t/output/design.sof")
+
+    def test_components_with_spaces_and_drive_roots_are_recorded_the_same_way(self):
+        root = PureWindowsPath(r"\\wsl.localhost\Ubuntu\home\a b\nand2mario")
+        self.assertEqual(repository_relative(root, root / r"workdir\builds\program x\output\design.pof"),
+                         "workdir/builds/program x/output/design.pof")
+        drive = PureWindowsPath(r"C:\Users\abendavid\n2m 673")
+        self.assertEqual(repository_relative(drive, PureWindowsPath("C:/Users/abendavid/n2m 673/workdir/builds/t/output/design.sof")),
+                         "workdir/builds/t/output/design.sof")
+        posix = Path("/home/abendavid/github/nand2mario")
+        self.assertEqual(repository_relative(posix, posix / "workdir/builds/program x/output/design.sof"),
+                         "workdir/builds/program x/output/design.sof")
+
+    def test_unlocated_or_foreign_paths_are_refused_not_guessed(self):
+        # The reported failure: the Windows-relative input string measured against the UNC root.
+        with self.assertRaises(ValueError):
+            repository_relative(UNC_ROOT, PureWindowsPath(r"workdir\builds\stackdrop-program-34ed4f\output\design.sof"))
+        with self.assertRaises(ValueError):
+            repository_relative(UNC_ROOT, PureWindowsPath(r"\\wsl.localhost\Debian\home\abendavid\github\nand2mario\workdir\x.sof"))
+        with self.assertRaises(ValueError):  # a sibling checkout that merely shares the name prefix
+            repository_relative(UNC_ROOT, PureWindowsPath(r"\\wsl.localhost\Ubuntu\home\abendavid\github\nand2mario-old\workdir\x.sof"))
+        with self.assertRaises(TypeError):  # strings would be re-flavoured by the host; only path objects are accepted
+            repository_relative(str(UNC_ROOT), str(UNC_SOF))
+
+    def test_device_state_reads_the_retained_program_log(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertEqual(device_state_after(folder), "unchanged")
+            (Path(folder) / "program.log").write_text(FAILED)
+            self.assertEqual(device_state_after(folder), "unconfirmed")
+            (Path(folder) / "program.log").write_text(SUCCESS)
+            self.assertEqual(device_state_after(folder), "changed")
+
+
+class PostProgramRecordTests(FpgaProgramTests):
+    """After one affirmative quartus_pgm the record finishes from precomputed paths; failures name the device state."""
+
+    def ordered_calls(self, run_program):
+        """Names of the path derivations and tool runs in the order the program function makes them."""
+        order = []
+        relative = fpga_program.repository_relative
+
+        def traced(root, path):
+            order.append("relative")
+            return relative(root, path)
+
+        def run(argv, cwd, log, timeout=60):
+            order.append(argv[0])
+            return VALID_CHAIN if "jtagconfig" in argv[0] else SUCCESS
+
+        with patch("n2m.fpga_program.repository_relative", side_effect=traced), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=run):
+            result = run_program()
+        return order, result
+
+    def test_sof_record_paths_are_derived_before_quartus_pgm_runs(self):
+        relative = Path(os.path.relpath(self.sof, Path.cwd()))
+        order, result = self.ordered_calls(lambda: program(ROOT, self.folder, relative, quartus_bin="tools"))
+        self.assertEqual(order[-2:], ["jtagconfig", "quartus_pgm"], order)
+        self.assertNotIn("relative", order[order.index("jtagconfig"):], "no path arithmetic after JTAG")
+        self.assertEqual(result["sof"], self.sof.resolve().relative_to(ROOT.resolve()).as_posix())
+        self.assertEqual(result["device_state"], "changed")
+
+    def test_pof_record_paths_are_derived_before_quartus_pgm_runs(self):
+        attempt = FlashProgramTests.write_attempt(self, self.folder)
+        relative = Path(os.path.relpath(attempt, Path.cwd()))
+        order, result = self.ordered_calls(lambda: program_flash(ROOT, self.folder, relative, quartus_bin="tools"))
+        self.assertEqual(order[-2:], ["jtagconfig", "quartus_pgm"], order)
+        self.assertNotIn("relative", order[order.index("jtagconfig"):], "no path arithmetic after JTAG")
+        self.assertEqual(result["pof"], attempt.resolve().relative_to(ROOT.resolve()).as_posix())
+        self.assertEqual(result["attempt_result"], (self.folder / "result.json").resolve().relative_to(ROOT.resolve()).as_posix())
+        self.assertEqual(result["device_state"], "changed")
+
+    def test_post_program_host_failure_records_that_the_device_changed_without_replay(self):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
+            (folder / "chain.log").write_text(VALID_CHAIN)
+            (folder / "program.log").write_text(SUCCESS)
+            raise ValueError(r"'workdir\builds\x\output\design.sof' is not in the subpath of "
+                             r"'\\wsl.localhost\Ubuntu\home\abendavid\github\nand2mario'")
+
+        with patch("n2m.cli.program_fpga", side_effect=fake) as called, \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["fpga", "program", "--sof", str(self.sof), "--quartus-bin", "tools",
+                         "--tag", "program-post-failure"], self.folder)
+        self.assertEqual(code, 1)
+        self.assertEqual(called.call_count, 1, "a failed record never replays the programmer")
+        report = json.loads((self.folder / "workdir/builds/program-post-failure/manifest.json").read_text())
+        self.assertEqual(report["status"], "FAIL")
+        self.assertEqual(report["device_state"], "changed")
+        self.assertTrue(any(name.endswith("/program.log") for name in report["artifacts"]))
+        text = output.getvalue()
+        self.assertIn("Result: FAIL", text)
+        self.assertIn("Device state: changed; no automatic replay", text)
+
+    def test_programmer_failure_records_an_unconfirmed_device_and_runs_once(self):
+        # The CLI treats its root argument as the repository; list the image relative to it.
+        (self.folder / "result.json").write_text(json.dumps(
+            {"status": "PASS", "artifacts": {"output/design.sof": file_hash(self.sof)}}))
+        calls = []
+
+        def run(argv, cwd, log, timeout=60):
+            calls.append(argv[0])
+            (Path(cwd) / log).write_text(VALID_CHAIN if "jtagconfig" in argv[0] else FAILED)
+            return VALID_CHAIN if "jtagconfig" in argv[0] else FAILED
+
+        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=run), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["fpga", "program", "--sof", str(self.sof), "--quartus-bin", "tools",
+                         "--tag", "program-pgm-failure"], self.folder)
+        self.assertEqual(code, 1)
+        self.assertEqual(calls, ["jtagconfig", "quartus_pgm"])
+        report = json.loads((self.folder / "workdir/builds/program-pgm-failure/manifest.json").read_text())
+        self.assertEqual(report["device_state"], "unconfirmed")
+        self.assertIn("did not report a successful configuration", report["error"])
+        self.assertIn("Device state: unconfirmed; no automatic replay", output.getvalue())
+
+    def test_pass_records_carry_no_failure_device_line(self):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
+            (folder / "program.log").write_text(SUCCESS)
+            return {"cable": "1", "devices": ["10M50DA(.|ES)/10M50DC"], "sof": "workdir/x/design.sof",
+                    "device_state": "changed", "scope": "double"}
+
+        with patch("n2m.cli.program_fpga", side_effect=fake), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["fpga", "program", "--sof", str(self.sof), "--quartus-bin", "tools",
+                         "--tag", "program-pass-state"], self.folder)
+        self.assertEqual(code, 0)
+        report = json.loads((self.folder / "workdir/builds/program-pass-state/manifest.json").read_text())
+        self.assertEqual(report["device_state"], "changed")
+        self.assertNotIn("Device state:", output.getvalue())
 
 
 class AttemptRecordRefusalTests(FpgaProgramTests):
@@ -331,7 +481,9 @@ class FlashProgramTests(unittest.TestCase):
                                              "-o", f"pvb;{self.pof.resolve()}"])
         self.assertEqual(result["pof_sha256"], file_hash(self.pof))
         self.assertEqual(result["operation"], "pvb")
+        self.assertEqual(result["device_state"], "unchanged")
         self.assertNotIn("isp_seconds", result)
+        self.assertNotIn("program_log", result, "a dry run retains no programmer log")
         self.assertIn(f"pvb;{self.pof.resolve()}", (self.folder / "dry-run.log").read_text())
         with patch("n2m.fpga_program.execute") as run:
             result = program_flash(ROOT, self.folder, self.pof, quartus_bin="tools", cable="2", dry_run=True)

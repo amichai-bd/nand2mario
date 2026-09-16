@@ -188,7 +188,9 @@ Programming checks the attempt record before JTAG discovery. An early refusal
 writes `failure.log` in the program operation directory and names that retained
 diagnostic on the failed stage and final summary. A valid attempt reports the
 selected cable and device, then reports programming and its explicit success
-check separately. Its final summary gives `program.log`. For a build with a
+check separately. Its final summary gives `program.log`; a failed summary adds
+`Device state: <state>; no automatic replay` from the
+[program record](#program-records). For a build with a
 recorded identity it also gives the UART on-wire identity: the byte reversal of
 the checked FPGA attempt's `build_id`. A checked `v05-board` attempt carries its
 producing target into the program result, and only that playable target places
@@ -1780,18 +1782,38 @@ required. The result records `pof`, `pof_sha256`, `operation`,
 `configuration_mode`, `cfm0_used_bytes`, `attempt_result`, the selected
 `cable`, `devices` and `chain`, the exact `command`, `isp_seconds` measured
 around the `quartus_pgm` call, `build_id` and `wire_build_id` when the
-attempt carries an identity, `program_log` and `next_step`. The text summary
+attempt carries an identity, `program_log`, `device_state` and `next_step`. The text summary
 gives the JTAG chain, the program log, the measured time with the `.pof`
 hash, and the next step: power-cycle the board with no host attached; a
 bitstream with the boot copier shows the menu from flash. It never offers the
 game launcher for a flash image.
 
+### Program records
+
 Both paths write `result.json` into their operation directory
 `fpga-program/<id>/` beside `chain.log`, `program.log` or `dry-run.log`, and
-the tag's `manifest.json` lists every file there with its hash.
+the tag's `manifest.json` lists every file there with its hash. Every recorded
+path is derived before JTAG discovery. The image paths (`sof` or `pof`,
+`attempt_result`) come from the resolved image and the resolved checkout root
+in repository-relative POSIX form
+([`repository_relative`](../../../tools/n2m/fpga_program.py)); `chain_log` and
+`program_log` use `display_path`, repository-relative for the operation
+directory under `workdir/`. An image given
+relative to the shell's directory, a checkout with spaces in its path and a
+Windows UNC checkout such as `\\wsl.localhost\<distro>\...` all record the
+same portable form, and nothing after a successful `quartus_pgm` computes a
+path. The result carries `device_state`: `changed` after the success line,
+`unchanged` for a dry run. A failed command derives it from the retained
+`program.log` (`unchanged` when `quartus_pgm` never ran, `changed` when its
+success line is present and only the host record failed afterwards,
+`unconfirmed` otherwise) and never re-runs the programmer; the operator
+decides on a second pass.
 [`test_fpga_program.py`](../../../tools/n2m/tests/test_fpga_program.py)
 covers each refusal, the dry run, the command line, the measured time, the
-chain and programmer failures and the CLI text with doubled tools; no test
+chain and programmer failures, the CLI text with doubled tools, the portable
+record paths for UNC roots, Windows separators, components with spaces and a
+relative image input (as pure Windows paths, so the check runs on any host),
+the pre-JTAG path derivation and the `device_state` of failed records; no test
 touches hardware. The board session that programs the flash and observes the
 menu at power-up is separate work under the
 [bring-up procedure](../../src/board-bring-up.md#flash-programming-procedure).
