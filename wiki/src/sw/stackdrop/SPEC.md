@@ -103,10 +103,10 @@ tiles per letter, 49..102 in the atlas, laid out in screen columns 1..18, rows
 The page lives in the same 1024-byte map. A 32-by-32 map cannot hold two
 20-by-18 pages, so the title occupies the rows and columns the play view never
 shows: initialization writes SCY128 and SCX160 before enabling the LCD, and
-screen cell (x,y) shows map cell ((20+x) mod 32, (16+y) mod 32). The only cells
-both views could show, map row16 columns 15..19 and rows 0..1 columns 0..16,
-are either scrolled out of the title view or blank, and every map cell outside
-the two views is zero. The independent [layout](../../../../src/dv/stackdrop/screen.py)
+screen cell (x,y) shows map cell ((20+x) mod 32, (16+y) mod 32). The two views
+intersect only at map rows 16..17, columns 0..7, which both keep zero; the STATE
+box bottom (row16, columns 15..19) and the marquee (rows 0..1, columns 8..16)
+lie outside the title view, and every map cell outside the two views is zero. The independent [layout](../../../../src/dv/stackdrop/screen.py)
 `page()` builds the whole map and the ROM table must equal it.
 
 The relaxed constraint is one scroll register write at the title-to-play

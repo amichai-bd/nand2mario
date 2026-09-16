@@ -22,7 +22,7 @@ class Screen(unittest.TestCase):
     def test_title_is_one_static_frozen_image(self):
         self.assertEqual(image(Game()), TITLE_IMAGE)
         self.assertEqual(decode(TITLE_IMAGE), dict(status=0, rotation=0, board=[0]*96, active=[], next_piece=0, score=0))
-        packed = bytes.fromhex((FIXTURES/'title.hex').read_text().replace('\n', ''))
+        packed = bytes.fromhex((FIXTURES/'title-frame.txt').read_text().replace('\n', ''))
         metadata = json.loads((FIXTURES/'title.json').read_text())
         self.assertEqual((len(packed), unpack(packed), pack(TITLE_IMAGE)), (5760, TITLE_IMAGE, packed))
         self.assertEqual(metadata['crc32'], f'{zlib.crc32(TITLE_IMAGE):08x}')

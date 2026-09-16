@@ -128,7 +128,7 @@ class Driver:
             entry['decode_error'] = repr(error)
         if entry.get('decoded', {}).get('status') == 0 or label == 'title':
             # Pixel-for-pixel comparison with the frozen independent title fixture.
-            reference = FIXTURES / 'title.hex'
+            reference = FIXTURES / 'title-frame.txt'
             frozen = bytes.fromhex(reference.read_text().replace('\n', ''))
             entry['title_reference'] = {
                 'fixture': reference.relative_to(ROOT).as_posix(),

@@ -46,9 +46,10 @@ MARQUEE = 8  # First marquee column; centred over the frame and panels at 5..19.
 TITLE_TILE = 49  # Six tiles per title letter: top, middle, foot; left, right.
 TILES = TITLE_TILE+6*len(WORD)
 # The title page: SCX/SCY the ROM stores before LCD enable. Screen cell (s, r)
-# shows map cell ((20+s) % 32, (16+r) % 32), rows and columns the play view
-# never shows except map row 16 columns 15..19 and rows 0..1, columns 0..7 and
-# 8..16, which the title keeps blank or scrolls out of view.
+# shows map cell ((20+s) % 32, (16+r) % 32). The two views intersect only at
+# map rows 16..17, columns 0..7, which both keep zero; the play page's STATE
+# box bottom (row 16, columns 15..19) and marquee (rows 0..1, columns 8..16)
+# lie outside the title view.
 TITLE_SCROLL = (160, 128)
 PROMPT = 'PRESS START'
 PREVIEW = ('....####........', '.##..##.........', '.#..###.........',
@@ -250,9 +251,9 @@ if __name__ == '__main__':
         raise SystemExit('usage: screen.py --write-title-fixture')
     folder = Path(__file__).resolve().parent/'fixtures'
     packed = pack(TITLE_IMAGE)
-    (folder/'title.hex').write_text(''.join(packed[i:i+64].hex()+'\n' for i in range(0, len(packed), 64)))
+    (folder/'title-frame.txt').write_text(''.join(packed[i:i+64].hex()+'\n' for i in range(0, len(packed), 64)))
     metadata = dict(schema_version=1, program='stackdrop', state='title', width=160, height=144,
-                    packing='snapshot: four 2-bit shades per byte, first pixel in the low bits; title.hex holds the bytes as hex, 64 per line',
+                    packing='snapshot: four 2-bit shades per byte, first pixel in the low bits; title-frame.txt holds the bytes as hex text, 64 per line',
                     bytes=len(packed), crc32=f'{zlib.crc32(TITLE_IMAGE):08x}',
                     sha256=hashlib.sha256(packed).hexdigest(), scx=TITLE_SCROLL[0], scy=TITLE_SCROLL[1],
                     source='src/dv/stackdrop/screen.py TITLE_IMAGE; regenerate with python src/dv/stackdrop/screen.py --write-title-fixture')
