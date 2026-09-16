@@ -283,7 +283,9 @@ supersedes the earlier general simulation deferral. Required simulation must com
 and deliberately failing checks, independent review, and passing CI remain
 required for affected delivery; compilation alone is not a simulation pass.
 License-dependent evidence must record the selected tool and successful runtime
-checkout; a license failure is not a `SKIPPED` reason.
+checkout; a license failure is not a `SKIPPED` reason. The
+[simulator policy](tools/n2m/SPEC.md#simulator-policy) owns the split between
+the Questa compile gate and Verilator runtime acceptance.
 
 The [tile runner](tools/sim/SPEC.md) checks normal and deliberately corrupt runs;
 the [doctor](tools/n2m/SPEC.md#environment-doctor) checks smoke observations
