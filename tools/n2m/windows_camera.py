@@ -1,4 +1,4 @@
-"""Bounded, no-audio Windows DirectShow camera frames for the live viewer."""
+"""Bounded, no-audio Windows DirectShow MJPEG frames for the live viewer."""
 import os
 import queue
 import re
@@ -7,8 +7,10 @@ import subprocess
 import threading
 
 
-PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
-MAX_PNG_CHUNK = 32 * 1024 * 1024
+JPEG_SIGNATURE = b'\xff\xd8'
+MJPEG_BOUNDARY = b'--n2m-source-frame'
+MAX_JPEG_FRAME = 32 * 1024 * 1024
+MAX_HEADER_LINE = 1024
 
 
 def _read_exact(stream, size):
@@ -21,24 +23,46 @@ def _read_exact(stream, size):
     return bytes(data)
 
 
-def read_png(stream):
-    """Read one complete PNG from a concatenated image2pipe stream."""
-    signature = _read_exact(stream,len(PNG_SIGNATURE))
-    if signature != PNG_SIGNATURE:
+def _header_line(stream):
+    line = stream.readline(MAX_HEADER_LINE+1)
+    if not line:
+        raise EOFError
+    if len(line) > MAX_HEADER_LINE or not line.endswith(b'\r\n'):
         raise ValueError('camera stream is malformed')
-    image = bytearray(signature)
-    first = True
+    return line[:-2]
+
+
+def read_mjpeg_frame(stream):
+    """Read one length-delimited JPEG part from FFmpeg's MJPEG muxer."""
+    if _header_line(stream) != MJPEG_BOUNDARY:
+        raise ValueError('camera stream is malformed')
+    headers = {}
     while True:
-        header = _read_exact(stream,8)
-        length = int.from_bytes(header[:4],'big')
-        kind = header[4:]
-        if length > MAX_PNG_CHUNK or first and kind != b'IHDR':
+        line = _header_line(stream)
+        if not line:
+            break
+        if b':' not in line:
             raise ValueError('camera stream is malformed')
-        first = False
-        image.extend(header)
-        image.extend(_read_exact(stream,length+4))  # Chunk data and CRC.
-        if kind == b'IEND':
-            return bytes(image)
+        name,value = line.split(b':',1)
+        name = name.strip().lower()
+        if not name or name in headers:
+            raise ValueError('camera stream is malformed')
+        headers[name] = value.strip().lower()
+    raw_length = headers.get(b'content-length',b'')
+    if headers.get(b'content-type') != b'image/jpeg' or not raw_length.isdigit():
+        raise ValueError('camera stream is malformed')
+    length = int(raw_length)
+    if not 4 <= length <= MAX_JPEG_FRAME:
+        raise ValueError('camera stream is malformed')
+    try:
+        image = _read_exact(stream,length)
+        trailer = _read_exact(stream,2)
+    except EOFError as error:
+        raise ValueError('camera stream is malformed') from error
+    if (not image.startswith(JPEG_SIGNATURE) or not image.endswith(b'\xff\xd9')
+            or trailer != b'\r\n'):
+        raise ValueError('camera stream is malformed')
+    return image
 
 
 class DirectShowCamera:
@@ -89,7 +113,8 @@ class DirectShowCamera:
         command = [
             self.executable,'-nostdin','-hide_banner','-loglevel','error',
             '-f','dshow','-rtbufsize','256M','-i','video='+self.device,
-            '-an','-vf','fps=5','-c:v','png','-f','image2pipe','pipe:1',
+            '-an','-vf','fps=10','-c:v','mjpeg','-q:v','5',
+            '-f','mpjpeg','-boundary_tag','n2m-source-frame','pipe:1',
         ]
         self.process = self.popen(
             command,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
@@ -112,7 +137,7 @@ class DirectShowCamera:
     def _reader(self):
         try:
             while True:
-                image = read_png(self.process.stdout)
+                image = read_mjpeg_frame(self.process.stdout)
                 self.sequence += 1
                 self._offer((self.sequence,image))
         except EOFError:

@@ -81,7 +81,7 @@ the game's own reference frames:
 
 The live viewer streams actual FPGA pixels over UART to a password-protected
 phone page through a temporary HTTPS tunnel. It can instead show a no-audio
-Windows camera view of the physical monitor without opening the FPGA or UART.
+continuous Windows MJPEG camera view of the physical monitor without opening the FPGA or UART.
 Camera controls are a separate explicit opt-in that retains the protected UART
 session. Tap Game Boy buttons and see queued, executing and completed commands
 below the image when controls are enabled.

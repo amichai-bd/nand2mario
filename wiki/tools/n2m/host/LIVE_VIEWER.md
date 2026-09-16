@@ -71,7 +71,10 @@ python tools/fpga_viewer.py --credentials workdir/private/viewer.json `
 Open `http://127.0.0.1:8765` and enter the private viewer credentials. The
 camera name must match exactly one enumerated video device. A missing or duplicate
 name is refused. The worker invokes DirectShow with an explicit video input and
-`-an`; it starts no microphone or audio stream.
+`-an`; it starts no microphone or audio stream. The browser receives an
+authenticated multipart MJPEG stream as complete frames arrive from the
+10-frame-per-second capture pipe. The one-second status poll only updates labels;
+it does not pace or fetch the displayed camera frames.
 
 To show camera frames and also operate the loaded FPGA, opt in to the UART
 session explicitly. All reviewed-build, selected-endpoint, exclusive-lock,
@@ -120,8 +123,8 @@ the normal capture interval is about 2 seconds. These are observed timings, not 
 frame-rate guarantee. A static game image can still be fresh when its source
 sequence and completion dot advance.
 
-Camera mode labels the image as a physical camera frame and advances its source
-sequence for each complete PNG read from the capture process. A static scene may
+Camera mode labels the image as a physical camera MJPEG frame and advances its source
+sequence for each complete JPEG read from the capture process. A static scene may
 therefore remain fresh while its camera sequence advances. A stalled, malformed,
 or exited camera stream reports ERROR and never refreshes the last successful
 frame. Camera-only mode hides the controls and command history. Camera with the
@@ -155,6 +158,10 @@ with a duration from 1 to 1000 ms, without opening a second UART connection:
 $ViewerTag = '<reported-running-tag>'
 python tools/fpga_viewer.py --tag $ViewerTag --queue-mask 1 --press-ms 134
 ```
+
+The running service record must say that UART controls are enabled. A camera-only
+tag refuses this command before it creates an inbox item. Camera plus the explicit
+UART-control option accepts it under the same bounded queue as browser taps.
 
 In free-run, durations are approximate monotonic host time after the input
 acknowledgement, not exact emulated frame counts. Stepped mode ignores the
@@ -234,8 +241,11 @@ a press.
 
 ## Access and freshness boundaries
 
-Authenticated GET routes are `/`, `/status.json` and `/frame.png`. The sole write
-route is POST `/input`: one named button or one mode name in at most 64 bytes of
+Authenticated GET routes are `/`, `/status.json`, the UART-only atomic
+`/frame.png`, and the camera-only continuous `/camera.mjpg`. The camera route is
+`multipart/x-mixed-replace` with complete `image/jpeg` parts; it is authenticated
+once when that bounded stream is opened and does not depend on status polling.
+The sole write route is POST `/input`: one named button or one mode name in at most 64 bytes of
 JSON, exact equality with the configured HTTPS Origin, and `X-Viewer-Input: tap`
 are required in addition to Basic authentication. Mode selection carries exactly
 that authentication; an unknown mode, a body naming both a button and a mode, and

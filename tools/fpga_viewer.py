@@ -122,10 +122,14 @@ def worker(args):
         command_history = (lambda:history(out)) if controls else None
         http = server(latest,credentials['username'],credentials['password'],args.port,
                       input_origin=args.input_origin,submit=submit,
-                      submit_mode=submit_mode,command_history=command_history)
+                      submit_mode=submit_mode,command_history=command_history,
+                      camera_stream=camera_source is not None)
         thread = threading.Thread(target=http.serve_forever,daemon=True)
         thread.start()
-        atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})
+        atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1',
+                    'stop_file':str(stop.path),'seconds':args.seconds,
+                    'image_source':'camera' if camera_source is not None else 'uart',
+                    'controls_enabled':controls})
         if controls:
             selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
                                         uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
@@ -254,7 +258,14 @@ def main(argv=None):
     if not args.tag.isalnum():
         parser.error('tag must be alphanumeric')
     if args.queue_mask is not None and not args.gui:
-        index = enqueue(ROOT/'workdir/builds'/args.tag/'live-viewer',args.queue_mask,args.press_ms)
+        runtime = ROOT/'workdir/builds'/args.tag/'live-viewer'
+        try:
+            service = json.loads((runtime/'service.json').read_text(encoding='utf-8'))
+        except (OSError,ValueError):
+            parser.error('running viewer service required for queue submission')
+        if service.get('controls_enabled') is not True:
+            parser.error('running viewer has no UART controls')
+        index = enqueue(runtime,args.queue_mask,args.press_ms)
         print(json.dumps({'status':'QUEUED','id':index}))
         return 0
     if args.gui:
