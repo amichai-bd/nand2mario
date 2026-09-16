@@ -54,7 +54,7 @@
     <section data-slide aria-labelledby="slide-6">
       <p class="eyebrow">04 · Graphics · 06</p>
       <h2 id="slide-6">Source proof and display proof differ</h2>
-      <p class="lead">A correct source CRC does not prove RGB scanout. The source-to-VGA proof checks RGB replicas and corresponding canonical CRCs; the physical monitor gate remains open.</p>
+      <p class="lead">A correct source CRC does not prove RGB scanout. The source-to-VGA proof checks RGB replicas and corresponding canonical CRCs; the owner has observed the monitor picture and KEY0 reset, while the <a href="../../wiki/src/project-charter.md#remote-acceptance" data-source="wiki/src/project-charter.md" data-line="210">charter</a> still names supply voltage, display tolerance and a continuous physical run as unmeasured.</p>
       <div class="comparison"><div><strong>Source</strong><p>Check every expected source shade and its identity.</p></div><div><strong>Adapter</strong><p>Check scale replicas, RGB and matching image identity.</p></div><div><strong>Physical</strong><p>Check the real monitor, pins and tolerances separately.</p></div></div>
       <details><summary>Explore the reasoning</summary><p>A CRC is a compact image identity, not a substitute for a trustworthy expected image. Follow the gap register for the delivered component proof and its explicit physical limits.</p></details>
       <p class="sources"><a href="../../wiki/preflight-gaps.md#gap-012-vga-frame-crossing" data-source="wiki/preflight-gaps.md" data-line="400">Source: GAP-012 source-to-VGA evidence</a></p>
