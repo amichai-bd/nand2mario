@@ -457,8 +457,8 @@ KEY0. COM7 released.
 
 ## Flash-resident boot and SDRAM sweep sessions
 
-Two owner-authorized sessions on 2026-09-16 wrote the MAX 10 configuration
-flash for the first time on this board with `fpga program --pof`, following the
+Sessions 4 and 5, both owner-authorized, first wrote the MAX 10 configuration
+flash on this board on 2026-09-16 with `fpga program --pof`, following the
 [flash programming procedure](#flash-programming-procedure), and proved that
 the board powers up into the menu from the flash-resident library with no PC
 attached. The full 64 MiB `host sdram-test --full` sweep ran afterwards on the
