@@ -161,10 +161,11 @@ Declare broader milestone aggregates before execution and measure FPGA builds
 separately. Reuse qualified evidence and sampled continuous endurance; neither
 3600 frames nor a new multi-hour replay is an automatic child prerequisite.
 
-The physical release gate remains open under the charter's
-[remote acceptance](../../project-charter.md#remote-acceptance) split; the
-monitor picture itself is
-[observed](../../board-bring-up.md#display-observation). It gates its own claims, not independent software, DV or UART work. Physical controls are out
+The charter's [remote acceptance](../../project-charter.md#remote-acceptance)
+split records the KEY0 reset and the monitor picture as observed, with supply
+voltage, display tolerance and a current-image continuous physical run still
+unmeasured. That remaining physical work gates its own claims, not independent
+software, DV or UART work. Physical controls are out
 of scope under the [remote working scope](../../../preflight-gaps.md#remote-working-scope). This contract does not claim
 hardware acceptance, full SML1 coverage or a complete physical release.
 
