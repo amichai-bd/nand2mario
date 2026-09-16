@@ -1,8 +1,25 @@
 # Selected Mooneye acceptance
 
-Issue [103](https://github.com/amichai-bd/nand2mario/issues/103) selects only
-`acceptance/bits/reg_f.s` from the [locked source](pins.json).
-This selection is not full Mooneye or CPU coverage.
+Issue [103](https://github.com/amichai-bd/nand2mario/issues/103) selects
+`acceptance/bits/reg_f.s` from the [locked source](pins.json); the
+[MBC1 profile](../../../wiki/src/rtl/cartridge/MAS_mbc1_profile.md#external-test-material)
+adds `emulator-only/mbc1/rom_512kb.s`, the case that fits a 64 KiB cartridge
+without RAM, as the `mbc1_selections` entry of the same lock. The other
+64 KiB/no-RAM case, `bits_bank1.s`, was built and run the same way: it sweeps
+all 8,192 BANK1 alias addresses with a 16-byte compare each and had not left
+its second round after 1,000,000 dots (116 s of wall), so it needs several
+million dots and stays outside the 300-second ordinary budget and the
+900-second ceiling; it is not selected. This selection is not full Mooneye or
+CPU coverage.
+
+Each selection records its source, profile, image length, the linked
+`quit@serial_dump` bank and address, the completion opcode and the pass tuple.
+The MBC1 selection builds in `dmg-mbc1-v1` (header `01 01 00`, 65,536 bytes),
+loads as an `MBC1_ID` session and runs on `n2m_smoke_system` with its
+`n2m_mbc1` owner; its expected table encodes the same zero-translation and
+masking rules the contract states. Its Windows (MinGW) image hash is unpinned
+(`image_sha256` null, refused as `MOONEYE_HOST_UNPINNED`) until a Windows build
+records it; the locked Ubuntu host hash is pinned.
 
 The unchanged test initializes SP to `e000`, writes both all-one and all-zero
 flag values through PUSH/POP, and checks that the low flag nibble reads zero.
@@ -35,7 +52,9 @@ header differs from the project's original-software packager; do not rewrite it
 or introduce a skip-validation option. No product RTL change is part of 103.
 
 Use the [shared Python builder](../python/README.md) with targets
-`mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing`; all three declare
+`mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing` (the user's bounded
+1500-second allowance) and the ordinary 300-second `mooneye-rom-512kb` under
+the `mbc1` label; all declare
 `simulators: ["verilator"]` and run on WSL. Each builds the locked
 tool and unmodified case before simulation. The declared Python inputs include
 the pins and notices; compiler files and CMake modules enter the stage identity.

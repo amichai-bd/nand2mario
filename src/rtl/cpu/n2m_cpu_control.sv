@@ -55,9 +55,11 @@ module n2m_cpu_control (
     logic hold_address_effect;
 `endif
 
-    // Both console profiles apply the generated direct entry state.
+    // Every console profile applies the generated direct entry state: the
+    // direct, loader and MBC1 profiles (wiki/src/rtl/cartridge/MAS_mbc1_profile.md#reset-and-image-validity).
     function automatic logic profile_known(input logic [7:0] id);
-        return id == n2m_interfaces_pkg::PROFILE_DIRECT_ID || id == n2m_interfaces_pkg::PROFILE_LOADER_ID;
+        return id == n2m_interfaces_pkg::PROFILE_DIRECT_ID || id == n2m_interfaces_pkg::PROFILE_LOADER_ID
+            || id == n2m_interfaces_pkg::PROFILE_MBC1_ID;
     endfunction
     function automatic n2m_cpu_pkg::cpu_registers_t profile_registers;
         n2m_cpu_pkg::cpu_registers_t r;

@@ -239,8 +239,10 @@ class RegistryTests(unittest.TestCase):
         for index, name in EXTERNALS.items():
             self.assertEqual(registry['externals'][index],
                              {'pin': name, 'licence': pins[name]['license'], 'source': pins[name]['url'], 'sha256': pins[name]['sha256']})
-        # The two images that never enable the LCD stay out; the two blank-header images carry a display title.
-        self.assertEqual(sorted(set(pins) - set(EXTERNALS.values())), ['rex-run', 'wyrmhole'])
+        # The two images that never enable the LCD stay out, and the 64 KiB MBC1 pin is not a
+        # one-slot image (#712); the two blank-header images carry a display title.
+        self.assertEqual(sorted(set(pins) - set(EXTERNALS.values())), ['postbot', 'rex-run', 'wyrmhole'])
+        self.assertEqual(pins['postbot'].get('profile'), 'dmg-mbc1-v1')
         self.assertEqual({name: pins[name].get('title') for name in ('alien-invasion', 'square-fall')},
                          {'alien-invasion': 'ALIEN INVASION', 'square-fall': 'SQUARE FALL'})
 

@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
+from n2m import profiles
 from n2m.cli import main
 from n2m.doctor import select_uart
 from n2m.host.external import read_external
@@ -80,7 +81,8 @@ class ExternalRomTests(unittest.TestCase):
             self.assertRegex(name, '[a-z0-9][a-z0-9-]{0,63}')
             self.assertTrue(str(pin['url']).startswith('https://'))
             self.assertRegex(pin['sha256'], '[0-9a-f]{64}')
-            self.assertEqual(pin['size'], abi.PROFILE_ROM_BYTES)
+            # The size is the image length of the pin's profile; the default is the direct profile.
+            self.assertEqual(pin['size'], profiles.IMAGE_BYTES[pin.get('profile', profiles.DIRECT_PROFILE_NAME)])
             self.assertTrue(pin['license'])
             # A pin describes where the image lives; it never carries image bytes.
             self.assertFalse({'data', 'bytes', 'base64', 'hex'} & set(pin))
@@ -116,7 +118,9 @@ class ExternalRomTests(unittest.TestCase):
         self.assertEqual(len(download.calls), 1)
 
     def test_wrong_size_wrong_hash_and_missing_pin_refuse_before_caching(self):
-        cases = [({'size': 16384}, self.image, 'direct-profile image size'),
+        cases = [({'size': 16384}, self.image, 'image size of profile dmg-direct-v1'),
+                 ({'profile': 'dmg-mbc1-v1'}, self.image, 'image size of profile dmg-mbc1-v1'),
+                 ({'profile': 'dmg-mbc2-v1', 'size': 65536}, self.image, 'unknown profile'),
                  ({}, self.image[:-1], 'size mismatch'),
                  ({}, self.image + b'\0', 'size mismatch'),
                  ({'sha256': '0' * 64}, self.image, 'hash mismatch'),
@@ -222,6 +226,28 @@ class ExternalRomTests(unittest.TestCase):
         self.assertEqual(report['result']['verified_bytes'], abi.PROFILE_ROM_BYTES)
         self.assertEqual(report['external']['pin'], self.name)
         self.assertEqual(bytes(endpoint.rom), self.image)
+
+    def test_cli_mbc1_pin_loads_a_64_kib_session_in_the_mbc1_profile(self):
+        image = bytes((index * 31 + index // 256) % 256 for index in range(abi.MBC1_ROM_BYTES))
+        endpoint = Endpoint()
+        command = ['host', 'load', '--external', self.name, '--uart-port', 'COM92', '--json']
+        pins = self.pins(profile='dmg-mbc1-v1', size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        with patch('n2m.host.external.PIN_FILE', str(pins)), \
+             patch('n2m.host.external.urllib.request.urlopen', Download(image)), \
+             patch('n2m.host.command.session', self.fake_session(endpoint)), \
+             redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(command, ROOT), 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(report['status'], 'PASS')
+        self.assertEqual(report['result']['verified_bytes'], abi.MBC1_ROM_BYTES)
+        self.assertEqual((report['external']['profile'], report['external']['profile_id']), ('dmg-mbc1-v1', abi.PROFILE_MBC1_ID))
+        self.assertEqual((endpoint.profile, bytes(endpoint.rom)), (abi.PROFILE_MBC1_ID, image))
+        # The same 64 KiB bytes are refused for a direct-profile pin before the port opens.
+        with patch('n2m.host.external.PIN_FILE', str(self.pins(size=len(image), sha256=hashlib.sha256(image).hexdigest()))), \
+             patch('n2m.host.external.urllib.request.urlopen', Download(image)), \
+             patch('n2m.host.command.session') as opener, redirect_stdout(io.StringIO()):
+            self.assertEqual(main(command, ROOT), 1)
+        opener.assert_not_called()
 
     def test_cli_hash_mismatch_fails_before_the_port_opens(self):
         command = ['host', 'load', '--external', self.name, '--uart-port', 'COM92', '--json']

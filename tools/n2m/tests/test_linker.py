@@ -138,6 +138,49 @@ class LinkerTests(unittest.TestCase):
             with self.subTest(title=title,version=version),self.assertRaises(AssemblyError):package(linked,title,version)
         with self.assertRaises(AssemblyError):package(linked,'OK',0,'unknown')
 
+    def test_mbc1_profile_places_banks_and_packages_the_header(self):
+        objects = [self.obj('main.asm', 'IMPORT Far\nSECTION "code",ROM\nStart: LD HL,Far\nJR Start\nEXPORT Start\n'),
+                   self.obj('bank1.asm', 'SECTION "code",ROM\nDB $11,$11\n'),
+                   self.obj('bank2.asm', 'SECTION "code",ROM\nFar: DB $22,$22,$22\nEXPORT Far\n'),
+                   self.obj('bank3.asm', 'SECTION "code",ROM\nDB $33\n')]
+        layout = {'schema_version': 1, 'sections': [
+            {'unit': 'main.asm', 'section': 'code', 'region': 'ROM0', 'address': 512},
+            {'unit': 'bank1.asm', 'section': 'code', 'region': 'ROM1', 'address': 0x4000},
+            {'unit': 'bank2.asm', 'section': 'code', 'region': 'ROM2', 'address': 0x4000},
+            {'unit': 'bank3.asm', 'section': 'code', 'region': 'ROM3'}]}
+        entry = {'unit': 'main.asm', 'symbol': 'Start'}
+        linked = link(objects, layout, entry, 'dmg-mbc1-v1')
+        image = linked['image']
+        self.assertEqual(len(image), 65536)
+        # Banks 1..3 share the CPU switched window; their bytes land in their own 16 KiB file bank.
+        self.assertEqual(image[0x4000:0x4002], b'\x11\x11')
+        self.assertEqual(image[0x8000:0x8003], b'\x22\x22\x22')
+        self.assertEqual(image[0xC000], 0x33)
+        rows = {(m['unit'], m['section']): m for m in linked['map']['sections']}
+        self.assertEqual((rows[('bank2.asm', 'code')]['address'], rows[('bank2.asm', 'code')]['file_offset']), (0x4000, 0x8000))
+        self.assertEqual((rows[('bank3.asm', 'code')]['address'], rows[('bank3.asm', 'code')]['file_offset']), (0x4000, 0xC000))
+        # The cross-bank reference resolves to the CPU address of the switched window.
+        self.assertEqual(image[0x201:0x203], (0x4000).to_bytes(2, 'little'))
+        rom = package(linked, 'BANKED', 3, 'dmg-mbc1-v1')
+        self.assertEqual((len(rom), rom[0x147], rom[0x148], rom[0x149]), (65536, 1, 1, 0))
+        self.assertTrue(validate_image(rom, linked['entry'], 'BANKED', 3, 'dmg-mbc1-v1'))
+        with self.assertRaises(AssemblyError) as raised:
+            validate_image(rom, linked['entry'], 'BANKED', 3)
+        self.assertEqual(raised.exception.diagnostic['code'], 'IMAGE_SIZE')
+        # Banks 2 and 3 exist only in the MBC1 profile; the direct profile still refuses them.
+        with self.assertRaises(AssemblyError) as raised:
+            link(objects, layout, entry)
+        self.assertEqual(raised.exception.diagnostic['code'], 'LAYOUT_REGION')
+        # Two banked sections at one CPU address in different banks do not overlap; in one bank they do.
+        clash = deepcopy(layout); clash['sections'][3].update(region='ROM2', address=0x4000)
+        with self.assertRaises(AssemblyError) as raised:
+            link(objects, clash, entry, 'dmg-mbc1-v1')
+        self.assertEqual(raised.exception.diagnostic['code'], 'OVERLAP')
+        # A direct-profile image keeps its zero cartridge bytes and 32 KiB length.
+        direct_objects, direct_layout, direct_entry = self.fixture()
+        direct = package(link(direct_objects, direct_layout, direct_entry), 'OK', 0)
+        self.assertEqual((len(direct), direct[0x147:0x14a]), (32768, bytes(3)))
+
     def checkout(self,name):
         root=self.tree/name
         for part in ['tools','src/sw','cfg']:

@@ -45,6 +45,8 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     n2m_memory_pkg::memory_store_t storage_store, raw_store;
     n2m_memory_pkg::memory_destination_t destination;
     logic [14:0] storage_offset, raw_offset;
+    // MBC1 owner: the translated store offset (identity outside MBC1_ID).
+    logic [15:0] store_offset;
     logic [7:0] storage_wdata, storage_rdata;
     logic storage_valid, owner_prepare, owner_commit, owner_write;
     logic [15:0] owner_address;
@@ -133,6 +135,14 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     assign raw_store = video_owner ? (destination == n2m_memory_pkg::MEMORY_VRAM ? n2m_memory_pkg::STORE_VRAM : n2m_memory_pkg::STORE_OAM) : storage_store;
     assign raw_offset = video_owner ? (destination == n2m_memory_pkg::MEMORY_VRAM ? {2'd0,address[12:0]} : {7'd0,address[7:0]}) : storage_offset;
     `DFF_ARST_VAL(video_pending, video_read, clk_sys, reset, 1'b0)
+    // The MBC1 profile owner, as in n2m_v05_system: it decodes the resolved
+    // ROM write commits and translates switched-window reads into the 64 KiB
+    // store (wiki/src/rtl/cartridge/MAS_mbc1_profile.md).
+    n2m_mbc1 u_mbc1 (
+        .clk_sys, .reset_sys, .core_reset, .profile,
+        .rom_commit(raw_write && raw_store == n2m_memory_pkg::STORE_ROM), .commit_offset(raw_offset), .commit_data(write_data),
+        .access_store(raw_store), .access_offset(raw_offset), .store_offset
+    );
     `DFF_EN(video_address, address, clk_sys, video_read)
     always_comb begin
         owner_service = 1;
@@ -166,7 +176,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     n2m_memory_stores u_stores (.oam_request(late_request), .oam_response(late_response),
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
-        .access_address({1'b0, raw_offset}), .access_wdata(write_data),
+        .access_address(store_offset), .access_wdata(write_data),
         .access_rdata(storage_rdata), .access_valid(storage_valid),
         .host_read(rom_read), .host_write(rom_write), .host_offset({16'd0,rom_address}),
         .host_wdata(rom_write_data), .host_rdata(rom_read_data), .host_valid(rom_read_valid),

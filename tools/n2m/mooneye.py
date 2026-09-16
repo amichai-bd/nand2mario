@@ -1,4 +1,4 @@
-"""Build the single locked reg_f fixture; no upstream source or ROM rewriting."""
+"""Build the locked Mooneye fixtures (reg_f and the MBC1 selections); no upstream source or ROM rewriting."""
 import hashlib
 import json
 import os
@@ -16,6 +16,26 @@ from .records import file_hash
 
 def pins(root):
     return json.loads((root / 'src/dv/mooneye/pins.json').read_text())
+
+
+# Package profile of each selection and the cartridge header bytes 0x147-0x149 it must carry.
+PROFILE_HEADERS = {'dmg-direct-v1': bytes(3), 'dmg-mbc1-v1': bytes([1, 1, 0])}
+
+
+def selections(root):
+    """Every locked selection by fixture name: reg_f plus the MBC1 selections."""
+    lock = pins(root)
+    reg_f = dict(lock['selection'], wsl_image_sha256=lock['wsl_host']['image_sha256'],
+                 completion_bank=1)
+    result = {'mooneye-reg-f': reg_f}
+    result.update(lock.get('mbc1_selections', {}))
+    return result
+
+
+def completion_offset(selection):
+    """Image offset of the completion instruction: bank 0/1 at its address, banks 2/3 above."""
+    bank, address = selection['completion_bank'], selection['completion_address']
+    return address if bank <= 1 else bank * 0x4000 + (address - 0x4000)
 
 
 def checked(path, expected):
@@ -106,32 +126,42 @@ def extract(archive, destination, prefix='', *, omit_tests=False):
                 path.write_bytes(source.read(row))
 
 
-def validate_image(root, image, symbols, *, backend='windows'):
-    lock = pins(root)
-    selection = dict(lock['selection'])
+def validate_image(root, image, symbols, *, backend='windows', fixture='mooneye-reg-f'):
+    known = selections(root)
+    if fixture not in known:
+        raise ValueError('MOONEYE_FIXTURE')
+    selection = dict(known[fixture])
     if backend == 'wsl':
-        selection['image_sha256'] = lock['wsl_host']['image_sha256']
+        selection['image_sha256'] = selection['wsl_image_sha256']
     elif backend != 'windows':
         raise ValueError('MOONEYE_BUILD_HOST')
-    if len(image) != 32768 or hashlib.sha256(image).hexdigest() != selection['image_sha256']:
+    if selection['image_sha256'] is None:
+        raise ValueError('MOONEYE_HOST_UNPINNED')
+    if len(image) != selection['image_bytes'] or hashlib.sha256(image).hexdigest() != selection['image_sha256']:
         raise ValueError('MOONEYE_IMAGE_HASH')
-    if image[0x100:0x104] != bytes.fromhex('00c35001') or any(image[a] for a in (0x143, 0x146, 0x147, 0x148, 0x149)):
+    header = PROFILE_HEADERS[selection['profile']]
+    if (image[0x100:0x104] != bytes.fromhex('00c35001') or any(image[a] for a in (0x143, 0x146))
+            or image[0x147:0x14a] != header):
         raise ValueError('MOONEYE_HEADER')
     if image[0x14d] != (-sum(image[0x134:0x14d])-25) & 255:
         raise ValueError('MOONEYE_HEADER_CHECKSUM')
     if int.from_bytes(image[0x14e:0x150], 'big') != (sum(image[:0x14e])+sum(image[0x150:])) & 65535:
         raise ValueError('MOONEYE_GLOBAL_CHECKSUM')
-    matches = re.findall(r'^([0-9a-fA-F]{2}):([0-9a-fA-F]{4}) quit@serial_dump$', symbols, re.M)
-    if matches != [('01', '4a81')] or image[0x4a81] != 0x40:
+    symbol = re.escape(selection['completion_symbol'])
+    matches = re.findall(r'^([0-9a-fA-F]{2}):([0-9a-fA-F]{4}) ' + symbol + '$', symbols, re.M)
+    expected = [(f"{selection['completion_bank']:02x}", f"{selection['completion_address']:04x}")]
+    if [(b.lower(), a.lower()) for b, a in matches] != expected or image[completion_offset(selection)] != selection['completion_opcode']:
         raise ValueError('MOONEYE_COMPLETION_SYMBOL')
     return selection
 
 
-def prepare(root, attempt, identity):
+def prepare(root, attempt, identity, fixture='mooneye-reg-f'):
     from .preload import emit, verify
 
     verify_tools(identity)
     lock = pins(root)
+    selection = selections(root)[fixture]
+    stem = Path(selection['source']).stem
     dependencies = attempt / 'deps'
     dependencies.mkdir()
     commands = []
@@ -199,18 +229,18 @@ def prepare(root, attempt, identity):
     run([tools['cmake'], '--build', build, '--target', 'wla-gb', 'wlalink', '--parallel', '2'], 'mooneye-tools')
     suffix = '' if is_wsl else '.exe'
     assembler, linker = build/('binaries/wla-gb'+suffix), build/('binaries/wlalink'+suffix)
-    run([assembler, '-I', source/'common', '-o', attempt/'reg_f.o', source/lock['selection']['source']], 'mooneye-assemble')
-    object_path = (attempt/'reg_f.o').as_posix()
+    run([assembler, '-I', source/'common', '-o', attempt/(stem+'.o'), source/selection['source']], 'mooneye-assemble')
+    object_path = (attempt/(stem+'.o')).as_posix()
     if is_wsl:
         from .mooneye_wsl import linux_path
-        object_path = linux_path(attempt/'reg_f.o')
-    (attempt/'reg_f.link').write_text('[objects]\n"'+object_path+'"\n')
-    run([linker, '-d', '-S', attempt/'reg_f.link', attempt/'program.gb'], 'mooneye-link')
+        object_path = linux_path(attempt/(stem+'.o'))
+    (attempt/(stem+'.link')).write_text('[objects]\n"'+object_path+'"\n')
+    run([linker, '-d', '-S', attempt/(stem+'.link'), attempt/'program.gb'], 'mooneye-link')
     image = (attempt/'program.gb').read_bytes()
     verify_tools(identity)
     selection = validate_image(root, image, (attempt/'program.sym').read_text(),
-                               backend=identity.get('backend', 'windows'))
-    record = {'selection': selection, 'pins': lock, 'commands': commands,
+                               backend=identity.get('backend', 'windows'), fixture=fixture)
+    record = {'fixture': fixture, 'selection': selection, 'pins': lock, 'commands': commands,
               'extraction': {'wla_dx_omitted': ['tests/'],
                              'reason': 'Unused upstream filename-regression fixtures exceed Windows MAX_PATH; complete archive retained.'},
               'host_tools': identity, 'built_tools': {str(p): file_hash(p) for p in (assembler, linker)},
@@ -218,5 +248,5 @@ def prepare(root, attempt, identity):
                                for p in dependencies.rglob('*') if p.is_file()}}
     (attempt/'mooneye-build.json').write_text(json.dumps(record, indent=2))
     emit(image, attempt, selection['image_sha256'], 0x150,
-         image[0x134:0x144].rstrip(b'\0').decode('ascii'), image[0x14c], fixture='mooneye-reg-f')
+         image[0x134:0x144].rstrip(b'\0').decode('ascii'), image[0x14c], fixture=fixture, profile=selection['profile'])
     verify(attempt)

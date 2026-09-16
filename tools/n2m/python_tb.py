@@ -38,12 +38,14 @@ FIXTURE_BUILDERS = {
     **dict.fromkeys(("vram-read", "vram-write"), "src/dv/ppu/startup204.py"),
     **dict.fromkeys(("palette-fc", "palette-00"), "src/dv/ppu/palette194.py"),
     "mooneye-reg-f": "tools/n2m/mooneye.py",
+    "mooneye-rom-512kb": "tools/n2m/mooneye.py",
     "menu": "src/dv/menu/fixture.py",
 }
 
 # Preloads whose builder produces an original image for preload.prepare; the
 # Mooneye fixture has its own locked validator in mooneye.py.
-IMAGE_PRELOADS = tuple(name for name in FIXTURE_BUILDERS if name != "mooneye-reg-f")
+MOONEYE_FIXTURES = tuple(name for name in FIXTURE_BUILDERS if name.startswith("mooneye-"))
+IMAGE_PRELOADS = tuple(name for name in FIXTURE_BUILDERS if name not in MOONEYE_FIXTURES)
 
 
 def validate(root, target, name=None):
@@ -92,15 +94,15 @@ def validate(root, target, name=None):
         required = fixture_inputs(root, target["preload"])
         if target.get("vendor_model") not in ("intel-memory", "intel-controls") or not required <= set(config["inputs"]):
             raise ValueError("preload requires Intel memory and all software image inputs")
-    if target.get('preload') == 'mooneye-reg-f':
-        if target.get('vendor_model') != 'intel-memory' or not fixture_inputs(root, 'mooneye-reg-f') <= set(config['inputs']):
+    if target.get('preload') in MOONEYE_FIXTURES:
+        if target.get('vendor_model') != 'intel-memory' or not fixture_inputs(root, target['preload']) <= set(config['inputs']):
             raise ValueError('Mooneye preload requires Intel memory and pinned source notices')
     check_imports(root, target, name or config["module"])
 
 
 def fixture_inputs(root, preload):
     """The repository files a preload's image builder reads; every one enters the fingerprint."""
-    if preload == 'mooneye-reg-f':
+    if preload in MOONEYE_FIXTURES:
         return {'src/dv/mooneye/pins.json', 'src/dv/mooneye/THIRD_PARTY.md', 'src/rtl/ppu/GPL-3.0.txt'}
     required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                 "src/dv/integration/program.json", "src/dv/integration/retirement.json",
@@ -428,9 +430,9 @@ def prepare(target, attempt, root=None, fixture_tools=None):
 
 
 def _prepare(target, attempt, root=None, fixture_tools=None):
-    if target.get('preload') == 'mooneye-reg-f':
+    if target.get('preload') in MOONEYE_FIXTURES:
         from .mooneye import prepare as prepare_mooneye
-        prepare_mooneye(root, attempt, fixture_tools)
+        prepare_mooneye(root, attempt, fixture_tools, target['preload'])
     if target.get("preload") in IMAGE_PRELOADS:
         import hashlib
         import importlib.util

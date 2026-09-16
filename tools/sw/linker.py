@@ -6,13 +6,31 @@ from .expressions import AssemblyError, evaluate
 from .objects import validate
 
 # Package profile name to the generated runtime profile ID the image runs in.
-# Both share the direct image format; the loader profile additionally keeps
-# ROM1 free because the hardware maps the banked window there.
-PROFILE_IDS = {hw.PROFILE_NAME: hw.PROFILE_DIRECT_ID, 'dmg-loader-v1': hw.PROFILE_LOADER_ID}
-ROM_REGIONS = ('ROM0', 'ROM1')
+# The direct and loader profiles share the 32 KiB image format; the loader
+# profile additionally keeps ROM1 free because the hardware maps the banked
+# window there. dmg-mbc1-v1 is the 64 KiB MBC1 image: ROM0 is bank 0, ROM1..ROM3
+# are banks 1..3, each a section space over the CPU switched window
+# (wiki/src/rtl/cartridge/MAS_mbc1_profile.md).
+from n2m.profiles import PROFILE_IDS, IMAGE_BYTES, MBC1_PROFILE_NAME, LOADER_PROFILE_NAME
+BANKED_REGIONS = ('ROM2', 'ROM3')
+ROM_REGIONS = ('ROM0', 'ROM1') + BANKED_REGIONS
 RAM_REGIONS = ('VRAM', 'WRAM', 'OAM', 'HRAM')
 REGIONS = {name: (getattr(hw, 'GB_' + name + '_START'), getattr(hw, 'GB_' + name + '_END') + 1)
-           for name in ROM_REGIONS + RAM_REGIONS}
+           for name in ('ROM0', 'ROM1') + RAM_REGIONS}
+REGIONS.update({name: REGIONS['ROM1'] for name in BANKED_REGIONS})
+# Bank of a ROM region: sections in different banks share CPU addresses, so
+# overlap is judged inside one bank; every RAM region and ROM0 live in bank 0.
+BANKS = {'ROM0': 0, 'ROM1': 1, 'ROM2': 2, 'ROM3': 3}
+
+
+def bank_of(region):
+    return BANKS.get(region, 0)
+
+
+def file_offset(region, address):
+    """Image offset of a ROM CPU address: bank 0/1 as the address, banks 2/3 above."""
+    bank = bank_of(region)
+    return address if bank <= 1 else bank * hw.PROFILE_BANK_BYTES + (address - hw.GB_ROM1_START)
 VECTORS = {name.removeprefix('VECTOR_'): value for name, value in vars(hw).items() if name.startswith('VECTOR_')}
 
 
@@ -24,11 +42,14 @@ def fail(code, cause, span=None, **context):
 
 def mapping_profile(profile):
     if profile not in PROFILE_IDS:
-        fail('PROFILE_MISMATCH', 'only dmg-direct-v1 and dmg-loader-v1 are supported')
+        fail('PROFILE_MISMATCH', 'only dmg-direct-v1, dmg-loader-v1 and dmg-mbc1-v1 are supported')
     if not (hw.GB_ROM0_START == 0 and hw.GB_ROM0_END + 1 == hw.GB_ROM1_START == hw.PROFILE_BANK_BYTES
             and hw.GB_ROM1_END + 1 == hw.PROFILE_ROM_BYTES == 2 * hw.PROFILE_BANK_BYTES
             and hw.PROFILE_HEADER_START == 0x100 and hw.PROFILE_HEADER_END == 0x14f):
         fail('PROFILE_MISMATCH', 'generated direct profile has incompatible CPU-to-file mapping')
+    if profile == MBC1_PROFILE_NAME and not (hw.MBC1_BANKS == 4 and hw.MBC1_ROM_BYTES == 4 * hw.PROFILE_BANK_BYTES
+                                             and hw.PROFILE_STORE_BYTES >= hw.MBC1_ROM_BYTES):
+        fail('PROFILE_MISMATCH', 'generated MBC1 profile has incompatible bank geometry')
 
 
 def reserved():
@@ -57,8 +78,10 @@ def validate_layout(layout, objects, profile='dmg-direct-v1'):
         region, address, alignment = row['region'], row['address'], row['alignment']
         if region not in (ROM_REGIONS if section['kind'] == 'ROM' else RAM_REGIONS):
             fail('LAYOUT_REGION', 'absent or incompatible allocation region', section=key[1], unit=key[0])
-        if profile == 'dmg-loader-v1' and region == 'ROM1':
+        if profile == LOADER_PROFILE_NAME and region == 'ROM1':
             fail('LAYOUT_REGION', 'the loader profile maps its banked window over ROM1', section=key[1], unit=key[0])
+        if profile != MBC1_PROFILE_NAME and region in BANKED_REGIONS:
+            fail('LAYOUT_REGION', 'only the dmg-mbc1-v1 profile has ROM banks 2 and 3', section=key[1], unit=key[0])
         if type(alignment) is not int or not 1 <= alignment <= 65536 or alignment & (alignment - 1):
             fail('ALIGNMENT', 'alignment must be a power of two in 1..65536', section=key[1])
         if address is not None and (type(address) is not int or not 0 <= address <= 65535 or address % alignment):
@@ -117,8 +140,9 @@ def link(objects, layout, entry, profile='dmg-direct-v1'):
             if (row['address'] is not None) != fixed:
                 continue
             start, end = REGIONS[row['region']]
-            blocked = [(a, b) for a, b, _ in occupied]
-            if section['kind'] == 'ROM':
+            bank = bank_of(row['region'])
+            blocked = [(a, b) for a, b, _, other in occupied if other == bank]
+            if section['kind'] == 'ROM' and bank == 0:
                 blocked += [(a, b) for a, b, name in reserved() if name != row['vector']]
             size = section['size']; alignment = row['alignment']
             address = row['address'] if fixed else (start + alignment - 1) & -alignment
@@ -132,7 +156,7 @@ def link(objects, layout, entry, profile='dmg-direct-v1'):
                 fail('OVERLAP', 'section overlaps allocation or reservation', section['span'], unit=unit, section=key[1])
             placements[key] = address
             if size:
-                occupied.append((address, address + size, key))
+                occupied.append((address, address + size, key, bank))
     values = {}
     def symbol(unit, name, chain=()):
         key = (unit, name)
@@ -188,14 +212,14 @@ def link(objects, layout, entry, profile='dmg-direct-v1'):
     boundaries = {placements[(unit, line['section'])] + line['offset'] for unit, obj in objects for line in obj['listing'] if line['instruction']}
     if address not in boundaries or any(a <= address < b for a, b, _ in reserved()):
         fail('ENTRY', 'entry must target an emitted instruction boundary outside reservations', symbol=entry['symbol'])
-    image = bytearray([255] * hw.PROFILE_ROM_BYTES)
+    image = bytearray([255] * IMAGE_BYTES[profile])
     maps = []
     for unit, section in order:
         key = (unit, section['name']); start = placements[key]
-        file_offset = start if section['kind'] == 'ROM' else None
-        if file_offset is not None: image[start:start + section['size']] = data[key]
+        offset = file_offset(rows[key]['region'], start) if section['kind'] == 'ROM' else None
+        if offset is not None: image[offset:offset + section['size']] = data[key]
         maps.append({'unit': unit, 'section': key[1], 'kind': section['kind'], 'region': rows[key]['region'],
-                     'address': start, 'size': section['size'], 'file_offset': file_offset})
+                     'address': start, 'size': section['size'], 'file_offset': offset})
     symbols = [{'name': unit + '::' + name, 'unit': unit, 'symbol': name, 'value': value,
                 'visibility': 'export' if name in units[unit]['exports'] else 'local'} for (unit, name), value in sorted(values.items())]
     listing = []

@@ -7,11 +7,15 @@ import urllib.request
 
 from .. import generated_interfaces as abi
 from ..records import atomic_bytes, published_bytes
+from ..profiles import PROFILE_IDS, IMAGE_BYTES, DIRECT_PROFILE_NAME, MBC1_PROFILE_NAME
 
 PIN_FILE = 'tools/n2m/dependencies.json'
 # Ignored private location required by the source and provenance policy.
 CACHE = 'workdir/private/external-roms'
 FIELDS = ('url', 'sha256', 'size', 'license')
+# Package profile name a pin runs in; absent means the 32 KiB direct profile.
+# The loader profile is the menu's own image and never a pin.
+PROFILE_NAMES = {name: (PROFILE_IDS[name], IMAGE_BYTES[name]) for name in (DIRECT_PROFILE_NAME, MBC1_PROFILE_NAME)}
 # A pinned display title stands in for an all-zero header title: the menu
 # font's own alphabet, so the catalogue never carries a byte it cannot draw.
 TITLE = re.compile('[A-Z0-9][A-Z0-9 -]{0,15}')
@@ -76,13 +80,17 @@ def read_external(root, name, pin_file=None, offline=False):
     missing = [field for field in FIELDS if field not in pin]
     if missing:
         raise ValueError(f'external pin is missing {", ".join(missing)}: {name}')
-    if pin['size'] != abi.PROFILE_ROM_BYTES:
-        raise ValueError(f'pinned size differs from the generated direct-profile image size: {name}')
+    profile = pin.get('profile', DIRECT_PROFILE_NAME)
+    if profile not in PROFILE_NAMES:
+        raise ValueError(f'external pin names an unknown profile: {name}')
+    profile_id, image_bytes = PROFILE_NAMES[profile]
+    if pin['size'] != image_bytes:
+        raise ValueError(f'pinned size differs from the generated image size of profile {profile}: {name}')
     cache = root / CACHE / name
     image = fetch(pin, cache / 'image.gb', name, offline)
     for notice, item in pin.get('notices', {}).items():
         if not re.fullmatch('[A-Za-z0-9][A-Za-z0-9._-]{0,63}', notice):
             raise ValueError(f'external notice name is not a plain file name: {name}')
         fetch(item, cache / 'notices' / notice, name + '/' + notice, offline)
-    return image, {'pin': name, **{field: pin[field] for field in FIELDS},
+    return image, {'pin': name, **{field: pin[field] for field in FIELDS}, 'profile': profile, 'profile_id': profile_id,
                    'title': fallback_title(pin, name), 'notices': sorted(pin.get('notices', {}))}

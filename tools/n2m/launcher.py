@@ -27,6 +27,7 @@ from . import generated_interfaces as abi
 from .gui_pad import (Driver, ESCAPE, FACE, HELD, IDLE, KEY, PANEL, PadPanel, TEXT,
                       explain_conflict, own_session, preflight)
 from .host.external import read_external
+from .profiles import DIRECT_PROFILE_NAME
 from .host.package import read_package
 
 PIN_FILE = 'tools/n2m/dependencies.json'
@@ -135,8 +136,11 @@ def game_preview(root, key):
     return {'archive': archive, 'frame': index, 'png': uri, 'width': 160, 'height': 144}
 
 
-def games(root):
-    """The whole catalogue, read from the manifests that already describe it."""
+def games(root, report=None):
+    """The whole catalogue, read from the manifests that already describe it.
+
+    ``report(message)`` receives one line for every pin the launcher leaves out.
+    """
     root = Path(root)
     targets = json.loads((root / TARGET_FILE).read_text(encoding='utf-8'))['targets']
     images = json.loads((root / PIN_FILE).read_text(encoding='utf-8'))['external_roms']['images']
@@ -149,6 +153,13 @@ def games(root):
                        'preview': game_preview(root, key)})
     pinned = []
     for key, pin in images.items():
+        # The launcher lists the 32 KiB direct-profile games with committed board
+        # captures; the 64 KiB MBC1 pins load through `host load --external`
+        # and join this catalogue when a board session has captured them.
+        if pin.get('profile', DIRECT_PROFILE_NAME) != DIRECT_PROFILE_NAME:
+            if report is not None:
+                report(f"launcher leaves out {key}: a {pin['profile']} image with no board capture; load it with host load --external {key}")
+            continue
         pinned.append({'key': key, 'kind': 'external', 'name': pin['name'],
                        'origin': 'third party', 'author': pin['author'], 'license': pin['license'],
                        'pin': key, 'boots': key not in BLANK, 'note': BLANK.get(key),
@@ -243,7 +254,10 @@ class Launcher:
         self.runner = runner or run_build
         self.progress = progress or (lambda text: None)
         self.record = record or (lambda row: None)
-        self.games = games(self.root)
+        # Pins the catalogue leaves out are kept as text, not progress events: the
+        # window shows them once beside the catalogue; the flow's stage sequence stays.
+        self.left_out = []
+        self.games = games(self.root, self.left_out.append)
         self.loaded = None
 
     def game(self, key):

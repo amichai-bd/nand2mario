@@ -175,7 +175,7 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
     if driver:
         options["peer_python"] = {"path": sys.executable, "sha256": file_hash(Path(sys.executable)), "version": sys.version}
     fixture_tools = None
-    if target.get("preload") == "mooneye-reg-f":
+    if str(target.get("preload", "")).startswith("mooneye-"):
         # The locked fixture is built by the host compiler and CMake; their
         # identity shapes the image, so it enters the fingerprint.
         from .mooneye import tool_identity

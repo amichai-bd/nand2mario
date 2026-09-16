@@ -34,6 +34,8 @@
             "enum": [
               "ROM0",
               "ROM1",
+              "ROM2",
+              "ROM3",
               "VRAM",
               "WRAM",
               "OAM",

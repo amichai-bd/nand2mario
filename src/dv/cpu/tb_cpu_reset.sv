@@ -55,6 +55,7 @@ module tb_cpu_reset;
     logic [7:0] held_data;
     logic [63:0] held_dot;
     integer scenario;
+    integer profile_value;
     integer phase_case;
     integer cycle;
     integer item;
@@ -143,6 +144,20 @@ module tb_cpu_reset;
             stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
             retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
             address_effect_phase,instruction_complete);
+        // +profile=<id>: one core reset in that profile. A known profile (the
+        // MBC1 profile applies the direct entry state) initializes without a
+        // fault; an unknown id trips the fatal CPU_PROFILE_ID on the reset edge.
+        if ($value$plusargs("profile=%d", profile_value)) begin
+            profile_id=8'(profile_value);
+            reset_sys=1; edge_cycle(0); reset_sys=0;
+            for (item=0; item<65536; item=item+1) memory[item]=0;
+            memory[16'h100]=8'h76;
+            core_reset=1; edge_cycle(0); core_reset=0;
+            edge_cycle(0);
+            if (!initialized || fault) $fatal(1,"CPU_PROFILE_INIT id=%0d initialized=%b fault=%b",profile_value,initialized,fault);
+            $display("PASS CPU profile id=%0d initialized",profile_value);
+            $finish;
+        end
         for (scenario=0; scenario<10; scenario=scenario+1) begin
             fresh=0; reset_sys=1; edge_cycle(0); reset_sys=0;
             for (item=0; item<65536; item=item+1) memory[item]=0;

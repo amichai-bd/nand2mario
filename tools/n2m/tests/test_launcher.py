@@ -89,7 +89,16 @@ class CatalogueTests(unittest.TestCase):
 
     def setUp(self):
         self.games = gl.games(ROOT)
-        self.pins = json.loads((ROOT / gl.PIN_FILE).read_text(encoding='utf-8'))['external_roms']['images']
+        pins = json.loads((ROOT / gl.PIN_FILE).read_text(encoding='utf-8'))['external_roms']['images']
+        # The launcher lists the direct-profile pins with committed board captures; the
+        # 64 KiB MBC1 pin (dmg-mbc1-v1) loads through `host load --external` until a board
+        # session captures it.
+        self.pins = {key: pin for key, pin in pins.items() if pin.get('profile', 'dmg-direct-v1') == 'dmg-direct-v1'}
+        self.assertEqual({key for key, pin in pins.items() if key not in self.pins}, {'postbot'})
+        left_out = []
+        gl.games(ROOT, left_out.append)
+        self.assertEqual([line.split(':')[0] for line in left_out], ['launcher leaves out postbot'])
+        self.assertTrue(all('host load --external' in line for line in left_out))
         self.targets = json.loads((ROOT / gl.TARGET_FILE).read_text(encoding='utf-8'))['targets']
 
     def test_every_loadable_game_is_listed_once(self):

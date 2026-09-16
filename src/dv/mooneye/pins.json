@@ -76,5 +76,29 @@
       "timeout": "timeout (GNU coreutils) 9.4"
     },
     "image_sha256": "4b193e887ee3ac82b38b796729e1503e9a78da3e1140f8bd5600d0884f2e2627"
+  },
+  "mbc1_selections": {
+    "mooneye-rom-512kb": {
+      "source": "emulator-only/mbc1/rom_512kb.s",
+      "model": "DMG",
+      "profile": "dmg-mbc1-v1",
+      "image_sha256": null,
+      "wsl_image_sha256": "9848621544e7acfade18694bbf430b713a552ce95dd1d59d04c0c49852b78d4b",
+      "image_bytes": 65536,
+      "entry": 256,
+      "completion_symbol": "quit@serial_dump",
+      "completion_bank": 1,
+      "completion_address": 18503,
+      "completion_opcode": 64,
+      "pass_registers": {
+        "b": 3,
+        "c": 5,
+        "d": 8,
+        "e": 13,
+        "h": 21,
+        "l": 34
+      },
+      "host_note": "image_sha256 is the Windows (MinGW) build hash, unpinned until a Windows build records it; wsl_image_sha256 is the locked Ubuntu host build"
+    }
   }
 }

@@ -113,7 +113,8 @@ seconds [declares its own allowance](../../../tools/n2m/SPEC.md#declared-wall-al
 in `src/dv/builder/targets.json`, up to 900 seconds, with a recorded reason;
 `python-mgu`, `python-mr` and `python-pr` declare 420; `python-pgu` and
 `python-pgx` declare 900. Only the user's three named Mooneye
-cases are allowed 1500 seconds each. Neither extension changes a target's
+cases are allowed 1500 seconds each; the MBC1 Mooneye selection
+`mooneye-rom-512kb` is an ordinary 300-second target. Neither extension changes a target's
 simulation-time watchdogs, signatures, fault checks or required evidence.
 Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 after their build and setup gates pass. Required affected simulation and named

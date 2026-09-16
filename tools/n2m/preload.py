@@ -8,11 +8,16 @@ import zlib
 from . import generated_interfaces as abi
 
 
-def prepare(image, expected_sha256, destination):
+from .profiles import IMAGE_BYTES, PROFILE_IDS, DIRECT_PROFILE_NAME
+
+
+def prepare(image, expected_sha256, destination, profile=DIRECT_PROFILE_NAME):
     """The caller supplies the hash recorded by its software build."""
     from sw.package import validate_image
 
-    if not isinstance(image, bytes) or len(image) != abi.PROFILE_ROM_BYTES:
+    if profile not in IMAGE_BYTES:
+        raise ValueError('preload requires a package profile')
+    if not isinstance(image, bytes) or len(image) != IMAGE_BYTES[profile]:
         raise ValueError('preload requires the complete built ROM')
     if not isinstance(expected_sha256, str) or not re.fullmatch('[0-9a-f]{64}', expected_sha256):
         raise ValueError('preload requires a lowercase SHA256 from the software build')
@@ -21,11 +26,11 @@ def prepare(image, expected_sha256, destination):
         raise ValueError('preload ROM SHA256 differs from the software build')
     entry = int.from_bytes(image[0x102:0x104], 'little')
     title = image[0x134:0x144].rstrip(b'\0').decode('ascii')
-    validate_image(image, entry, title, image[0x14c])
-    return emit(image, destination, digest, entry, title, image[0x14c])
+    validate_image(image, entry, title, image[0x14c], profile)
+    return emit(image, destination, digest, entry, title, image[0x14c], profile=profile)
 
 
-def emit(image, destination, digest, entry, title, version, *, fixture=None):
+def emit(image, destination, digest, entry, title, version, *, fixture=None, profile=DIRECT_PROFILE_NAME):
     """Common encoding after the caller's original or named-fixture validation."""
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
@@ -38,10 +43,12 @@ def emit(image, destination, digest, entry, title, version, *, fixture=None):
     rom.write_text(f'DEPTH = {store};\nWIDTH = 8;\nADDRESS_RADIX = HEX;\nDATA_RADIX = HEX;\nCONTENT BEGIN\n'
                    + ''.join(f'{address:04X} : {value:02X};\n' for address, value in enumerate(image))
                    + 'END;\n', encoding='ascii')
+    absent = f'[{len(image):04X}..{store - 1:04X}] : 0;\n' if len(image) < store else ''
     presence.write_text(f'DEPTH = {store};\nWIDTH = 1;\nADDRESS_RADIX = HEX;\nDATA_RADIX = BIN;\n'
-                        f'CONTENT BEGIN\n[0000..{len(image) - 1:04X}] : 1;\n[{len(image):04X}..{store - 1:04X}] : 0;\nEND;\n', encoding='ascii')
+                        f'CONTENT BEGIN\n[0000..{len(image) - 1:04X}] : 1;\n{absent}END;\n', encoding='ascii')
     crc.write_text(f'{zlib.crc32(image):08x}\n', encoding='ascii')
-    record = {'schema_version': 1, 'mode': 'preloaded-execution',
+    record = {'schema_version': 1, 'mode': 'preloaded-execution', 'profile': profile,
+              'profile_id': PROFILE_IDS[profile],
               'image_sha256': digest, 'image_bytes': len(image),
               'image_crc32': zlib.crc32(image), 'entry': entry,
               'title': title, 'version': version,
@@ -60,16 +67,20 @@ def verify(destination):
     if record.get('mode') != 'preloaded-execution' or record.get('schema_version') != 1:
         raise ValueError('invalid preload manifest')
     image = (destination / 'program.gb').read_bytes()
-    if len(image) != abi.PROFILE_ROM_BYTES or hashlib.sha256(image).hexdigest() != record.get('image_sha256'):
+    profile = record.get('profile', DIRECT_PROFILE_NAME)
+    if profile not in IMAGE_BYTES or record.get('profile_id', abi.PROFILE_DIRECT_ID) != PROFILE_IDS[profile]:
+        raise ValueError('preload manifest names an unknown profile')
+    if len(image) != IMAGE_BYTES[profile] or hashlib.sha256(image).hexdigest() != record.get('image_sha256'):
         raise ValueError('preload image changed after preparation')
     if 'fixture' in record:
-        if record['fixture'] != 'mooneye-reg-f':
+        from .mooneye import validate_image, selections
+        root = Path(__file__).resolve().parents[2]
+        if record['fixture'] not in selections(root):
             raise ValueError('unknown preload fixture')
-        from .mooneye import validate_image
         build = json.loads((destination / 'mooneye-build.json').read_text())
-        validate_image(Path(__file__).resolve().parents[2], image,
+        validate_image(root, image,
                        (destination / 'program.sym').read_text(),
-                       backend=build['host_tools'].get('backend', 'windows'))
+                       backend=build['host_tools'].get('backend', 'windows'), fixture=record['fixture'])
     required = {'preload-rom.mif', 'preload-presence.mif', 'preload-crc.hex'}
     if set(record.get('files', {})) != required:
         raise ValueError('incomplete preload files')
@@ -84,17 +95,18 @@ def adopt(client, record):
     from .interface_codec import pack_record
 
     client.request('LOAD_BEGIN', pack_record('load_begin', {
-        'profile': abi.PROFILE_DIRECT_ID, 'size': record['image_bytes'],
+        'profile': record.get('profile_id', abi.PROFILE_DIRECT_ID), 'size': record['image_bytes'],
         'crc32': record['image_crc32']}))
     client.request('LOAD_END')
     return {'mode': 'preloaded-execution', 'image_sha256': record['image_sha256'],
-            'crc_scanned_bytes': record['image_bytes'], 'initial_state': observe_initial(client)}
+            'crc_scanned_bytes': record['image_bytes'],
+            'initial_state': observe_initial(client, record.get('profile_id', abi.PROFILE_DIRECT_ID))}
 
 
-def observe_initial(client):
-    """The same public expectation applies after either loading mode."""
+def observe_initial(client, profile_id=abi.PROFILE_DIRECT_ID):
+    """The same public expectation applies after either loading mode; PROFILE is the session's profile."""
     fields = {'STATE': abi.STATE_PAUSED, 'IMAGE_VALID': 1,
-              'PROFILE': abi.PROFILE_DIRECT_ID, 'DOT_LO': 0, 'DOT_HI': 0,
+              'PROFILE': profile_id, 'DOT_LO': 0, 'DOT_HI': 0,
               'RETIRE_LO': 0, 'RETIRE_HI': 0, 'INPUT': 0,
               'INPUT_SOURCE': abi.INPUT_SOURCE_UART, 'INPUT_EFFECTIVE': 0,
               'SNAPSHOT_VALID': 0}
