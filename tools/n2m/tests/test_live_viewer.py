@@ -14,7 +14,8 @@ import zlib
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
 from n2m.host.client import RejectedCommand
-from n2m.live_viewer import FRAME_DOTS, MAX_STEP_FRAMES, Latest, advance, capture_loop, server, PAGE
+from n2m.live_viewer import (FRAME_DOTS, LOADER_SWAP_SECONDS, MAX_STEP_FRAMES,
+                             Latest, advance, capture_loop, server, PAGE)
 from fpga_viewer import png_writer, Stop
 from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
 
@@ -35,6 +36,9 @@ class Fake:
         self.events = []
         self.count = 0
         self.mask = 0
+        self.profile = abi.PROFILE_DIRECT_ID
+        self.valid = 1
+        self.source = abi.INPUT_SOURCE_UART
         self.dot = 0
         self.stepped_masks = []
     def identify(self):
@@ -42,7 +46,8 @@ class Fake:
         return {'abi':1,'build_id':BUILD if self.fault!='identity' else '00'*16}
     def read_host(self, address):
         self.events.append(('read',address))
-        return {abi.HOST_REG_IMAGE_VALID:1,abi.HOST_REG_INPUT_SOURCE:abi.INPUT_SOURCE_UART,
+        return {abi.HOST_REG_IMAGE_VALID:self.valid,abi.HOST_REG_PROFILE:self.profile,
+                abi.HOST_REG_INPUT_SOURCE:self.source,abi.HOST_REG_INPUT:self.mask,
                 abi.HOST_REG_INPUT_EFFECTIVE:self.mask,abi.HOST_REG_STATE:self.state}[address]
     def write_host(self, address, value):
         self.events.append(('write',address,value))
@@ -72,6 +77,46 @@ class Fake:
         seq = 1 if self.fault=='duplicate' else self.count
         self.events.append('READ_FRAME_COMPLETE')
         return {'size':5760,'epoch':3,'seq':seq,'dot':seq*70224},bytes([0xe4])*5760
+
+
+class LoaderSwapFake(Fake):
+    """A menu tap whose accepted write is immediately cleared by core reset."""
+    def __init__(self, clock, *, final_valid=1, final_profile=abi.PROFILE_DIRECT_ID,
+                 final_state=abi.STATE_RUNNING, final_mask=0, complete=True,
+                 uncertain=False):
+        super().__init__(clock)
+        self.profile = abi.PROFILE_LOADER_ID
+        self.final_valid, self.final_profile = final_valid, final_profile
+        self.final_state, self.final_mask = final_state, final_mask
+        self.complete = complete
+        self.uncertain_on_pause = uncertain
+        self.swap_started = False
+
+    def write_host(self, address, value):
+        if self.state == abi.STATE_LOADING:
+            self.events.append(('write-rejected',address,value))
+            raise RejectedCommand('WRITE_HOST',abi.STATUS_BAD_STATE)
+        super().write_host(address,value)
+        if address == abi.HOST_REG_INPUT and value == abi.BUTTON_A and not self.swap_started:
+            self.swap_started = True
+            self.state = abi.STATE_LOADING
+            self.mask = 0  # The accepted loader reset clears host/effective input.
+
+    def control(self, action):
+        if self.state == abi.STATE_LOADING:
+            self.events.append((action,'rejected'))
+            raise RejectedCommand(action,abi.STATUS_BAD_STATE)
+        super().control(action)
+
+    def transition_pause(self, seconds):
+        self.clock.wait(seconds)
+        if self.uncertain_on_pause:
+            self.uncertain = True
+        elif self.complete:
+            self.valid = self.final_valid
+            self.profile = self.final_profile
+            self.state = self.final_state
+            self.mask = self.final_mask
 
 
 class FakeCamera:
@@ -163,6 +208,83 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual([event for event in client.events if event == 'HALT' or
                           isinstance(event,tuple) and event[:2] == ('write',abi.HOST_REG_INPUT)],
                          ['HALT',('write',abi.HOST_REG_INPUT,0)])
+
+    def test_loader_reset_consumes_tap_then_later_tap_and_capture_continue(self):
+        clock=Clock();clock.value=0;client=LoaderSwapFake(clock);latest=Latest(clock=clock)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            first=enqueue(out,abi.BUTTON_A,134);second=enqueue(out,abi.BUTTON_B,134)
+            result=capture_loop(client,latest,out,png_writer,expected_build=BUILD,stop=clock,
+                                clock=clock,wait=clock.wait,seconds=4,interval=2,
+                                buttons=Buttons(out),transition_pause=client.transition_pause)
+            rows={row['id']:row for row in history(out)}
+        self.assertEqual((result['status'],result['capture_count']),('PASS',2))
+        self.assertEqual([row['id'] for row in result['inputs'][:2]],[first,second])
+        self.assertEqual(result['inputs'][0]['loader_transition'],{
+            'profile':abi.PROFILE_DIRECT_ID,'state':abi.STATE_RUNNING,
+            'bound_edges':abi.LIBRARY_SWAP_BOUND_MBC1_EDGES})
+        self.assertEqual((rows[first]['state'],rows[second]['state']),('RETIRED','RETIRED'))
+        writes=[event[2] for event in client.events
+                if isinstance(event,tuple) and event[:2] == ('write',abi.HOST_REG_INPUT)]
+        self.assertEqual(writes,[abi.BUTTON_A,0,abi.BUTTON_B,0,0])
+        self.assertEqual(client.mask,0)
+        self.assertFalse(client.uncertain)
+        self.assertEqual(result['cleanup'],{
+            'verified':True,'state':abi.STATE_PAUSED,'input_effective':0})
+
+    def test_loader_transition_rejects_invalid_image_profile_input_and_mode(self):
+        cases=(
+            dict(final_valid=0),
+            dict(final_profile=0xff),
+            dict(final_mask=abi.BUTTON_RIGHT),
+            dict(final_state=abi.STATE_PAUSED),
+        )
+        for options in cases:
+            with self.subTest(options=options),tempfile.TemporaryDirectory() as folder:
+                clock=Clock();clock.value=0;client=LoaderSwapFake(clock,**options)
+                out=Path(folder);(out/'service.json').write_text('{}');enqueue(out,abi.BUTTON_A,134)
+                result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                    expected_build=BUILD,stop=clock,clock=clock,
+                                    wait=clock.wait,seconds=4,buttons=Buttons(out),
+                                    transition_pause=client.transition_pause)
+                self.assertEqual(result['status'],'FAIL')
+                self.assertEqual(result['error_class'],'PlayFailure')
+                self.assertEqual(client.mask,0)
+                self.assertFalse(client.uncertain)
+
+    def test_loader_transition_beyond_generated_bound_fails_closed(self):
+        clock=Clock();clock.value=0;client=LoaderSwapFake(clock,complete=False)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            first=enqueue(out,abi.BUTTON_A,134);second=enqueue(out,abi.BUTTON_B,134)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                expected_build=BUILD,stop=clock,clock=clock,
+                                wait=clock.wait,seconds=4,buttons=Buttons(out),
+                                transition_pause=client.transition_pause)
+            rows={row['id']:row for row in history(out)}
+        self.assertEqual((result['status'],result['reason']),('FAIL','PlayFailure'))
+        self.assertFalse(result['cleanup']['verified'])
+        self.assertEqual(rows[first]['state'],'FAILED')
+        self.assertEqual(rows[second]['state'],'QUEUED')
+        self.assertEqual(client.state,abi.STATE_LOADING)
+        self.assertEqual(clock.value,2*LOADER_SWAP_SECONDS)
+        self.assertNotIn(abi.BUTTON_B,[event[2] for event in client.events
+                                      if isinstance(event,tuple) and event[:2] == ('write',abi.HOST_REG_INPUT)])
+
+    def test_loader_transition_uncertainty_sends_no_follow_up_traffic(self):
+        clock=Clock();clock.value=0;client=LoaderSwapFake(clock,uncertain=True)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}');enqueue(out,abi.BUTTON_A,134)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                expected_build=BUILD,stop=clock,clock=clock,
+                                wait=clock.wait,seconds=4,buttons=Buttons(out),
+                                transition_pause=client.transition_pause)
+        self.assertEqual(result['status'],'FAIL')
+        self.assertFalse(result['cleanup']['verified'])
+        self.assertTrue(client.uncertain)
+        trigger=client.events.index(('write',abi.HOST_REG_INPUT,abi.BUTTON_A))
+        self.assertFalse([event for event in client.events[trigger+1:]
+                          if isinstance(event,tuple) and event[0] in ('write','write-rejected')])
 
     def test_camera_failure_is_retained_and_closes_source(self):
         for fault,stage,error in (('start','camera-start','RuntimeError'),('read','capture','TimeoutError'),
