@@ -315,8 +315,9 @@ owner already resolves and ignores as a direct-profile ROM write, so:
 
 The address and value are the pinned homebrew images' least likely write: all
 nine are `ROM ONLY` (`$0147 == $00`) and a static scan of their bytes finds
-no store of `$10` into `$6000`-`$7FFF`; a game with an MBC1 mode write uses
-`$00`/`$01`. A game that does write `$10` there returns to the menu, which is
+no immediate-address store (`LD ($6000-$7FFF),A`) of `$10` in any of them;
+the scan does not resolve pointer-indirect stores and is indicative only. A
+game with an MBC1 mode write uses `$00`/`$01`. A game that does write `$10` there returns to the menu, which is
 the register's defined behavior.
 
 ### Host interaction
