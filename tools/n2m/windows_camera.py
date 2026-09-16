@@ -78,7 +78,9 @@ class DirectShowCamera:
         self.run, self.popen = run, popen
         self.frame_timeout = frame_timeout
         self.process = self.thread = None
-        self.frames = queue.Queue(maxsize=2)
+        # One retained frame makes a slow consumer see the newest complete
+        # image instead of accumulating camera latency.
+        self.frames = queue.Queue(maxsize=1)
         self.error = None
         self.sequence = 0
         self.validated = False
@@ -113,7 +115,9 @@ class DirectShowCamera:
         command = [
             self.executable,'-nostdin','-hide_banner','-loglevel','error',
             '-f','dshow','-rtbufsize','256M','-i','video='+self.device,
-            '-an','-vf','fps=10','-c:v','mjpeg','-q:v','5',
+            '-an','-vf',('scale=640:360:force_original_aspect_ratio=decrease,'
+                         'pad=640:360:(ow-iw)/2:(oh-ih)/2,fps=10'),
+            '-c:v','mjpeg','-q:v','7',
             '-f','mpjpeg','-boundary_tag','n2m-source-frame','pipe:1',
         ]
         self.process = self.popen(
@@ -145,11 +149,16 @@ class DirectShowCamera:
         except Exception:
             self.error = ValueError('camera stream is malformed')
         finally:
-            self._offer(None)
+            # Preserve an already completed latest frame. A reader that drains
+            # it observes the stored error on its next call.
+            if self.frames.empty():
+                self._offer(None)
 
     def read(self):
         if self.process is None:
             raise RuntimeError('camera process not started')
+        if self.error is not None and self.frames.empty():
+            raise self.error
         try:
             item = self.frames.get(timeout=self.frame_timeout)
         except queue.Empty as error:

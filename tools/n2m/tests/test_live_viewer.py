@@ -7,6 +7,7 @@ import struct
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import zlib
 
@@ -249,6 +250,38 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(response.readline(),b'--n2m-camera-frame--\r\n')
         finally:
             response.close();client.close()
+            latest.mark('STOPPED')
+            http.shutdown();http.server_close();thread.join()
+
+    def test_camera_client_disconnect_does_not_stop_producer_or_leak_handler(self):
+        latest=Latest()
+        http=server(latest,'testuser','x'*40,camera_stream=True)
+        thread=threading.Thread(target=http.serve_forever);thread.start()
+        auth={'Authorization':'Basic '+base64.b64encode(b'testuser:'+b'x'*40).decode()}
+        client=HTTPConnection('127.0.0.1',http.server_port,timeout=2)
+        client.request('GET','/camera.mjpg',headers=auth)
+        response=client.getresponse()
+        latest.publish(b'first',{'kind':'camera','seq':1},.01)
+        self.assertEqual(response.readline(),b'--n2m-camera-frame\r\n')
+        response.close();client.close()
+        recovered = False
+        try:
+            for sequence in range(2,30):
+                latest.publish(f'frame-{sequence}'.encode(),
+                               {'kind':'camera','seq':sequence},.01)
+                acquired=[]
+                for _ in range(8):
+                    if http.slots.acquire(blocking=False):
+                        acquired.append(True)
+                recovered = len(acquired)==8
+                for _ in acquired:
+                    http.slots.release()
+                if recovered:
+                    break
+                time.sleep(.01)
+            self.assertTrue(recovered)
+            self.assertGreaterEqual(latest.read()[0]['source']['seq'],2)
+        finally:
             latest.mark('STOPPED')
             http.shutdown();http.server_close();thread.join()
 

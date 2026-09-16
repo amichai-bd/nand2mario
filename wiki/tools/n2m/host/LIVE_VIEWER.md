@@ -73,8 +73,14 @@ camera name must match exactly one enumerated video device. A missing or duplica
 name is refused. The worker invokes DirectShow with an explicit video input and
 `-an`; it starts no microphone or audio stream. The browser receives an
 authenticated multipart MJPEG stream as complete frames arrive from the
-10-frame-per-second capture pipe. The one-second status poll only updates labels;
-it does not pace or fetch the displayed camera frames.
+fixed 640×360, 10-frame-per-second capture profile. JPEG quality 7 limits local
+and tunnel bandwidth while keeping monitor text and large pixels readable. The
+single-frame host queue drops an older complete frame when capture outruns a
+consumer, so it bounds latency instead of building a backlog. The one-second
+status poll only updates labels; it does not pace or fetch the displayed camera
+frames. The profile is a request, not a latency or throughput guarantee; the
+short physical smoke records observed frame size, delivered rate, and local and
+tunnel latency.
 
 To show camera frames and also operate the loaded FPGA, opt in to the UART
 session explicitly. All reviewed-build, selected-endpoint, exclusive-lock,

@@ -84,12 +84,23 @@ class CameraTests(unittest.TestCase):
         self.assertNotIn('audio=Chosen camera',' '.join(command))
         self.assertIn('video=Chosen camera',command)
         self.assertIn('mjpeg',command)
-        self.assertIn('fps=10',command)
+        self.assertIn('scale=640:360',' '.join(command))
+        self.assertIn('fps=10',' '.join(command))
+        self.assertEqual(command[command.index('-q:v')+1],'7')
         self.assertIn('n2m-source-frame',command)
         self.assertIs(subprocess.DEVNULL,[row for kind,*row in calls if kind=='popen'][0][1]['stderr'])
         camera.close()
         self.assertTrue(process.terminated)
         self.assertIsNone(camera.process)
+
+    def test_bounded_queue_drops_an_older_complete_frame(self):
+        process=Process(part()+part())
+        camera,_=self.camera(popen=lambda *_args,**_kwargs:process)
+        camera.validate();camera.start();camera.thread.join(timeout=1)
+        meta,image=camera.read()
+        self.assertEqual((meta,image),({'kind':'camera','seq':2},JPEG))
+        with self.assertRaisesRegex(RuntimeError,'camera process exited'):camera.read()
+        camera.close()
 
     def test_malformed_exit_and_stall_are_truthful(self):
         malformed=Process(b'bad data')
