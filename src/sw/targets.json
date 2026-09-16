@@ -262,6 +262,25 @@
       "version": 1,
       "profile": "dmg-loader-v1",
       "interface_schema_version": 1
+    },
+    "linker-banked": {
+      "directory": "linker/banked",
+      "sources": [
+        "main.asm",
+        "bank1.asm",
+        "bank2.asm",
+        "bank3.asm"
+      ],
+      "assets": {},
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "BANKED DEMO",
+      "version": 1,
+      "profile": "dmg-mbc1-v1",
+      "interface_schema_version": 1
     }
   }
 }

@@ -4,6 +4,7 @@ import time
 import zlib
 
 from .. import generated_interfaces as abi
+from ..profiles import PROFILE_IMAGE_BYTES
 from ..interface_codec import (SDRAM_LINE, checked_range, decode_packet, encode_packet, pack_record, peek_store,
                                sdram_line_address, sdram_read, sdram_write, unpack_record, uint)
 
@@ -163,10 +164,10 @@ class Client:
         callback preserves the original request sequence and result.
         """
         image = bytes(image)
-        if len(image) != abi.PROFILE_ROM_BYTES:
-            raise ValueError('wrong direct-profile image size')
-        if profile not in (abi.PROFILE_DIRECT_ID, abi.PROFILE_LOADER_ID):
+        if profile not in PROFILE_IMAGE_BYTES:
             raise ValueError('load profile must be a generated runtime profile ID')
+        if len(image) != PROFILE_IMAGE_BYTES[profile]:
+            raise ValueError('wrong image size for the load profile')
         notify = progress or (lambda _event: None)
         self.request('LOAD_BEGIN', pack_record('load_begin', {
             'profile': profile, 'size': len(image), 'crc32': zlib.crc32(image)}))

@@ -104,9 +104,15 @@ class Endpoint:
             response = pack_record('word', {'value': values[address]})
         elif name == 'LOAD_BEGIN':
             request = unpack_record('load_begin', payload)
-            if request['profile'] not in (abi.PROFILE_DIRECT_ID, abi.PROFILE_LOADER_ID) or request['size'] != len(self.rom):
+            # Each profile's exact image length (MAS_interfaces, load session); an accepted
+            # MBC1 session addresses the 64 KiB store.
+            sizes = {abi.PROFILE_DIRECT_ID: abi.PROFILE_ROM_BYTES, abi.PROFILE_LOADER_ID: abi.PROFILE_ROM_BYTES,
+                     abi.PROFILE_MBC1_ID: abi.MBC1_ROM_BYTES}
+            if request['profile'] not in sizes or request['size'] != sizes[request['profile']]:
                 status = abi.STATUS_BAD_VALUE
             else:
+                if len(self.rom) != request['size']:
+                    self.rom = bytearray(request['size'])
                 self.profile = request['profile']
                 self.expected_crc = request['crc32']
                 self.state = abi.STATE_LOADING

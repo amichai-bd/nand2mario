@@ -7,7 +7,7 @@ import re
 from .. import generated_interfaces as abi
 from ..records import file_hash
 from sw.package import validate_image
-from sw.linker import PROFILE_IDS
+from ..profiles import PROFILE_IDS, IMAGE_BYTES
 
 
 def read_package(root, manifest):
@@ -45,8 +45,8 @@ def read_package(root, manifest):
             raise ValueError('package artifact hash mismatch')
         if name == rom_name:
             image = content
-    if len(image) != abi.PROFILE_ROM_BYTES:
-        raise ValueError('package has wrong image size')
+    if record['profile'] not in IMAGE_BYTES or len(image) != IMAGE_BYTES[record['profile']]:
+        raise ValueError('package has wrong image size for its profile')
     # Reuse the packager's strict header/checksum validator without trusting a
     # mutable target registry. The immutable image carries its own title/version.
     title = image[0x134:0x144].rstrip(b'\0').decode('ascii')

@@ -9,8 +9,9 @@ places it between the CPU port and the [memory owner](../memory/MAS_memory.md)'s
 stores; [`src/dv/cartridge`](../../../../src/dv/cartridge/README.md) holds the
 fixtures. The generated [interface table](../interfaces/MAS_interfaces.md) owns
 `PROFILE_MBC1_ID`, `PROFILE_STORE_BYTES` and every `MBC1_*` constant this page
-names. Toolchain support for building `dmg-mbc1-v1` images and the pinned
-external game are the open [#307](https://github.com/amichai-bd/nand2mario/issues/307).
+names. The [software toolchain](../../../tools/sw/SPEC.md#implemented-linker-and-packager)
+builds `dmg-mbc1-v1` images; the [host tool](../../../tools/n2m/host/SPEC.md#commands)
+loads them as `MBC1_ID` sessions, from a package or from a pinned external image.
 
 ## Scope
 
@@ -173,11 +174,10 @@ silent pass. The load and exit cases run in the owning fixtures of the
 [validator](../../../../src/dv/uart/tb_uart_validation.sv) and the
 [loader](../../../../src/dv/cartridge/tb_loader.sv). Composed execution uses the existing Intel
 preload path with an original program that switches banks and reports what it
-read. Mooneye `emulator-only/mbc1/rom_512kb` and `bits_bank1` are the pinned
-external executable specification for this capacity (type `$01`, four banks,
-no RAM) once the [Mooneye adapter](../../../../src/dv/mooneye/README.md) accepts a 64 KiB
-MBC1 selection; their expected tables encode the same zero-translation and
-masking rules.
+read. Mooneye `emulator-only/mbc1/rom_512kb` is the pinned external executable
+specification for this capacity (type `$01`, four banks, no RAM), run by the
+[Mooneye adapter](../../../../src/dv/mooneye/README.md) as `mooneye-rom-512kb`;
+its expected table encodes the same zero-translation and masking rules.
 
 | Fixture | Independent check |
 |---|---|
@@ -201,10 +201,35 @@ Named assertions, synthesis-excluded:
 | `UART_LOAD_IMAGE_BYTES` | Every load operation starts with a session length that is one of the two profile image lengths |
 | `LOADER_EXIT_ONLY_IN_GAME_PROFILE` | In the [loader](MAS_loader_profile.md#verification): a game exit effect implies `DIRECT_ID` or `MBC1_ID` |
 
+## External test material
+
+Loaded through `host load --external <pin>` from [`tools/n2m/dependencies.json`](../../../../tools/n2m/dependencies.json);
+no image bytes are committed, the pin records its licence notice, and the
+library keeps 32 KiB slots ([#712](https://github.com/amichai-bd/nand2mario/issues/712)).
+The board launcher lists it once a board session has captured it.
+
+| Pin | Game | Author | Licence | Provenance | Header |
+|---|---|---|---|---|---|
+| `postbot` | PostBot, the MBC1 profile's test game | Tobias Rojahn (MasterIV) | MIT (`LICENSE`, sha256 `77103cf5…9acd`) | The author's repository at commit `5e9316ae…`, in-tree `PostBot.gb` (no release asset), sha256 `65824d3d…13ad`, 65,536 bytes | `$0147` `01`, `$0148` `01`, `$0149` `00`, CGB `00`, title `POSTBOT`; banks 1-3 hold data |
+
+Test material rule: this profile has no cartridge RAM (`$A000`-`$BFFF` reads
+`$FF`, writes are ignored, RAMG enables nothing), so a game whose header
+declares cartridge RAM (`$0149` not `00`, or a type with RAM) is not test
+material for it, whatever its bank count.
+
+The pinned Mooneye MBC1 selection `emulator-only/mbc1/rom_512kb.s` (type
+`$01`, four banks, no RAM) builds under the
+[Mooneye adapter](../../../../src/dv/mooneye/README.md) and runs as
+`mooneye-rom-512kb` in this profile against
+[`n2m_smoke_system`](../../../../src/dv/integration/n2m_smoke_system.sv), which
+composes the same `n2m_mbc1` owner; its expected table is the executable form
+of the translation rules above. The adapter's README records why the other
+64 KiB case, `bits_bank1.s`, is not selected.
+
 ## References
 
 - [Pan Docs, MBC1](https://gbdev.io/pandocs/MBC1.html), the community reference this page follows for the zero translation, masking to the cartridge size, register widths, reset values and the absence of any mode effect at or below 512 KiB. No code or test was imported.
-- [Mooneye test suite](https://github.com/Gekkio/mooneye-test-suite), pinned in [`src/dv/mooneye/pins.json`](../../../../src/dv/mooneye/pins.json): `emulator-only/mbc1/rom_512kb.s` and `bits_bank1.s` as executable specification.
+- [Mooneye test suite](https://github.com/Gekkio/mooneye-test-suite), pinned in [`src/dv/mooneye/pins.json`](../../../../src/dv/mooneye/pins.json): `emulator-only/mbc1/rom_512kb.s` as executable specification.
 - [Shared interfaces](../interfaces/MAS_interfaces.md): profile table, load session, `PROFILE`, status codes.
 - [Memory owner](../memory/MAS_memory.md): ROM store, host port, decoder.
 - [Loader profile](MAS_loader_profile.md): commit observation, game exit register, swap rules.

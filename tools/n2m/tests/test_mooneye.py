@@ -38,6 +38,32 @@ class MooneyeTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'INSTRUCTION'):
             checker.completion(dict(record, pc_after=0x4a83))
 
+    def test_named_selections_and_completion_offsets(self):
+        known = mooneye.selections(ROOT)
+        self.assertEqual(set(known), {'mooneye-reg-f', 'mooneye-rom-512kb'})
+        reg_f, rom = known['mooneye-reg-f'], known['mooneye-rom-512kb']
+        self.assertEqual((reg_f['profile'], reg_f['image_bytes'], reg_f['completion_bank'], reg_f['completion_address']),
+                         ('dmg-direct-v1', 32768, 1, 0x4a81))
+        self.assertEqual((rom['profile'], rom['image_bytes'], rom['completion_bank'], rom['completion_address'], rom['completion_opcode']),
+                         ('dmg-mbc1-v1', 65536, 1, 0x4847, 0x40))
+        self.assertEqual(mooneye.completion_offset(reg_f), 0x4a81)
+        self.assertEqual(mooneye.completion_offset(rom), 0x4847)
+        # Banks above 1 live above the switched window in the image file.
+        self.assertEqual(mooneye.completion_offset(dict(completion_bank=2, completion_address=0x4010)), 0x8010)
+        self.assertEqual(mooneye.completion_offset(dict(completion_bank=3, completion_address=0x7fff)), 0xffff)
+        self.assertEqual(mooneye.PROFILE_HEADERS['dmg-mbc1-v1'], bytes([1, 1, 0]))
+
+    def test_unknown_fixture_and_unpinned_host_are_refused_by_name(self):
+        with self.assertRaisesRegex(ValueError, 'MOONEYE_FIXTURE'):
+            mooneye.validate_image(ROOT, bytes(65536), '', fixture='mooneye-bits-bank1')
+        # The Windows hash of the MBC1 selection is unpinned; the Ubuntu host hash is pinned.
+        with self.assertRaisesRegex(ValueError, 'MOONEYE_HOST_UNPINNED'):
+            mooneye.validate_image(ROOT, bytes(65536), '', fixture='mooneye-rom-512kb')
+        with self.assertRaisesRegex(ValueError, 'MOONEYE_IMAGE_HASH'):
+            mooneye.validate_image(ROOT, bytes(65536), '', fixture='mooneye-rom-512kb', backend='wsl')
+        with self.assertRaisesRegex(ValueError, 'MOONEYE_IMAGE_HASH'):
+            mooneye.validate_image(ROOT, bytes(32768), '', fixture='mooneye-rom-512kb', backend='wsl')
+
     def test_locked_image_cannot_be_replaced(self):
         with self.assertRaisesRegex(ValueError, 'IMAGE_HASH'):
             mooneye.validate_image(ROOT, bytes(32768), '01:4a81 quit@serial_dump')

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "main.asm",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "main.asm",
+      "section": "work",
+      "region": "WRAM",
+      "alignment": 8
+    },
+    {
+      "unit": "bank1.asm",
+      "section": "data",
+      "region": "ROM1",
+      "address": 16384
+    },
+    {
+      "unit": "bank2.asm",
+      "section": "data",
+      "region": "ROM2",
+      "address": 16384
+    },
+    {
+      "unit": "bank3.asm",
+      "section": "data",
+      "region": "ROM3"
+    }
+  ]
+}

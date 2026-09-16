@@ -140,12 +140,22 @@ The target adds `layout`, `entry`, `title`, `version`, `profile`, and
 `entry` is an object with the source `unit` and `symbol`, allowing a local symbol
 without making it an implicit global. Interface schema 1 and a profile from the
 [package profile table](../../../tools/sw/linker.py) must match generated
-exports: `dmg-direct-v1` runs in `PROFILE_DIRECT_ID` and `dmg-loader-v1`, the
-[menu's](../../src/sw/menu/SPEC.md) profile, in `PROFILE_LOADER_ID`. Both
-share the image format below; the loader profile additionally refuses `ROM1`
-layout sections with `LAYOUT_REGION`, because the
-[loader hardware](../../src/rtl/cartridge/MAS_loader_profile.md#address-map-in-the-loader-profile)
-maps its banked window over the upper half. A `dmg-direct-v1` program may
+exports: `dmg-direct-v1` runs in `PROFILE_DIRECT_ID`, `dmg-loader-v1`, the
+[menu's](../../src/sw/menu/SPEC.md) profile, in `PROFILE_LOADER_ID`, and
+`dmg-mbc1-v1`, the [64 KiB MBC1 profile](../../src/rtl/cartridge/MAS_mbc1_profile.md),
+in `PROFILE_MBC1_ID`. The first two share the 32 KiB image format below; the
+loader profile additionally refuses `ROM1` layout sections with `LAYOUT_REGION`,
+because the [loader hardware](../../src/rtl/cartridge/MAS_loader_profile.md#address-map-in-the-loader-profile)
+maps its banked window over the upper half. `dmg-mbc1-v1` builds a
+`MBC1_ROM_BYTES` image with the regions `ROM2` and `ROM3` added: `ROM0` is bank
+0, `ROM1`, `ROM2` and `ROM3` are banks 1-3, each a section space over the CPU
+switched window `$4000`-`$7FFF`. Sections in different banks may share a CPU
+address; overlap is judged inside one bank; bank `b >= 2` bytes land at file
+offset `b * PROFILE_BANK_BYTES + (address - $4000)`, and a cross-bank reference
+resolves to the CPU address of the switched window, which the program must
+select through the `BANK1` register. The other profiles refuse `ROM2`/`ROM3`
+with `LAYOUT_REGION`. The [original banked fixture](../../../src/sw/linker/banked/README.md)
+builds as `linker-banked`. A `dmg-direct-v1` program may
 return to the on-board menu by writing `LIBRARY_GAME_EXIT_VALUE` from the
 generated `interfaces.inc` to any address in `$6000`-`$7FFF`
 ([game exit register](../../src/rtl/cartridge/MAS_loader_profile.md#game-exit-register));
@@ -318,9 +328,10 @@ target-input and declaration order at the lowest aligned free address. Reject
 duplicate/unassigned sections, overlap, absent regions, exhaustion, overflow
 and boundary crossing. RAM allocations emit no ROM bytes or initialization.
 
-The profile contains two contiguous 16 KiB ROM banks, no mapper/cartridge RAM.
-Require the generated CPU-to-file mapping to match that size and contiguity. Sections
-cannot straddle banks. Reserve the header and generated interrupt/restart
+The direct and loader profiles contain two contiguous 16 KiB ROM banks, no
+mapper/cartridge RAM; the MBC1 profile contains four, the upper three sharing
+the switched window. Require the generated CPU-to-file mapping to match the
+profile's size and geometry. Sections cannot straddle banks. Reserve the header and generated interrupt/restart
 vectors before placement; only explicitly named vector sections may occupy
 vector reservations. The packager alone owns the header and entry stub.
 Unfilled ROM bytes are `$FF`; program instructions initialize RAM.
@@ -348,8 +359,10 @@ results. This is the original `v0.5` program's profile; it does not modify the
 private `v0.9` image or its charter acceptance. Incompatible boot profiles fail.
 
 Title is 1..15 uppercase ASCII letters/digits/spaces, zero-padded to 16 bytes.
-New licensee bytes, SGB flag, cartridge type, ROM-size code, RAM-size code and
-old licensee byte are zero; destination is 1; version is an explicit byte.
+New licensee bytes, SGB flag and old licensee byte are zero; cartridge type,
+ROM-size code and RAM-size code are zero in the 32 KiB profiles and `01`, `01`,
+`00` (MBC1, 64 KiB, no cartridge RAM) in `dmg-mbc1-v1`; destination is 1;
+version is an explicit byte.
 Reject incompatible metadata. Header checksum starts at zero: subtract each
 byte of `$0134..$014C` and one modulo 256, store at `$014D`. Global checksum sums
 all bytes except `$014E/$014F` modulo 65536 and is stored big-endian there.

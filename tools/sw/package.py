@@ -2,6 +2,7 @@
 import re
 from n2m import generated_interfaces as hw
 from .linker import mapping_profile
+from n2m.profiles import IMAGE_BYTES, CARTRIDGE_BYTES
 from .expressions import AssemblyError
 
 
@@ -9,6 +10,11 @@ def fail(code, cause):
     error = AssemblyError(code, cause, {"file": "targets.json", "line": 1, "column": 1})
     error.diagnostic["stage"] = "package"
     raise error
+
+
+def cartridge(profile):
+    """Header bytes $0147-$0149: type, ROM size code, RAM size code."""
+    return CARTRIDGE_BYTES[profile]
 
 
 def metadata(title, version, profile):
@@ -22,12 +28,13 @@ def metadata(title, version, profile):
 def package(linked, title, version, profile='dmg-direct-v1'):
     metadata(title, version, profile)
     rom = bytearray(linked['image'])
-    if len(rom) != hw.PROFILE_ROM_BYTES or any(b != 255 for b in rom[0x100:0x150]):
+    if len(rom) != IMAGE_BYTES[profile] or any(b != 255 for b in rom[0x100:0x150]):
         fail('RESERVATION', 'packager requires an exclusive unfilled header')
     entry = linked['entry']
     rom[0x100:0x150] = bytes(0x50)
     rom[0x100:0x104] = bytes([0, 0xc3, entry & 255, entry >> 8])
     rom[0x134:0x144] = title.encode('ascii').ljust(16, b'\0')
+    rom[0x147:0x14a] = cartridge(profile)
     rom[0x14a] = 1
     rom[0x14c] = version
     rom[0x14d] = (-sum(rom[0x134:0x14d]) - 25) & 255
@@ -39,12 +46,13 @@ def package(linked, title, version, profile='dmg-direct-v1'):
 
 def validate_image(rom, entry, title, version, profile='dmg-direct-v1'):
     metadata(title, version, profile)
-    if len(rom) != hw.PROFILE_ROM_BYTES:
-        fail('IMAGE_SIZE', 'direct image must have the exact generated size')
+    if len(rom) != IMAGE_BYTES[profile]:
+        fail('IMAGE_SIZE', 'image must have the exact generated size of its profile')
     if rom[0x100:0x104] != bytes([0, 0xc3, entry & 255, entry >> 8]):
         fail('ENTRY', 'entry stub differs from selected instruction boundary')
     expected = bytearray(0x49)
     expected[0x30:0x40] = title.encode('ascii').ljust(16, b'\0')
+    expected[0x43:0x46] = cartridge(profile)
     expected[0x46] = 1
     expected[0x48] = version
     if rom[0x104:0x14d] != expected:

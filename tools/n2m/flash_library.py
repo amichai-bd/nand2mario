@@ -150,6 +150,8 @@ def check_external_header(image, name, fallback_title=None):
 def external_image(root, pin, offline):
     """The verified pinned image of one external slot; offline reads the cache only."""
     image, provenance = external.read_external(root, pin, offline=offline)
+    if provenance["profile"] != abi.PROFILE_NAME:
+        raise ValueError(f"external image {pin} runs in {provenance['profile']}; the library carries {abi.PROFILE_NAME} slots only")
     check_external_header(image, pin, provenance["title"])
     return image, provenance
 

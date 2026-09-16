@@ -46,7 +46,7 @@ def run(root, build, name):
     model, _ = catalogue.load(root)
     if model['units'].get(name, {}).get('kind') != 'sim':
         raise ValueError(f'{name}: missing simulation entry in src/dv/builder/catalogue.yaml')
-    if target.get('preload') == 'mooneye-reg-f':
+    if str(target.get('preload', '')).startswith('mooneye-'):
         raise ValueError(f'{name}: pinned external fixture tool preparation requires the existing Mooneye workflow')
     attempt = build/'preflight'/name
     attempt.mkdir(parents=True, exist_ok=False)

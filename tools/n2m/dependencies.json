@@ -16,7 +16,7 @@
     "local_changes": "none",
     "storage": "Fetched at run time into ignored workdir/private/external-roms/<name>/; no image bytes are committed",
     "redistribution": "No image or notice is copied into this repository; each entry keeps its upstream terms",
-    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}; title (upper-case letters, digits, space and dash, at most 16) is the catalogue title used only when the image header title bytes 0x134-0x143 are all zero; descriptive keys (name, author, source, release, commit, cartridge, redistribution) identify the reviewed release and say when the artifact is a third-party redistribution rather than the author's own release",
+    "fields": "Each images entry records url (https), sha256, size (exactly the image size of the pin's profile), optional profile (a package profile name; absent means dmg-direct-v1, dmg-mbc1-v1 marks a 64 KiB MBC1 image that only `host load --external` carries: the flash library keeps 32 KiB slots), license, and optional notices as name -> {url, sha256, size}; title (upper-case letters, digits, space and dash, at most 16) is the catalogue title used only when the image header title bytes 0x134-0x143 are all zero; descriptive keys (name, author, source, release, commit, cartridge, redistribution) identify the reviewed release and say when the artifact is a third-party redistribution rather than the author's own release",
     "images": {
       "libbet": {
         "name": "Libbet and the Magic Floor v0.08",
@@ -191,6 +191,27 @@
           "LICENSE": {
             "url": "https://raw.githubusercontent.com/Rafagars/Unstoppable-Knight-GB/47e1059ccce0d803317745461f66b16a754afd29/LICENSE",
             "sha256": "73b86b8993214ea3499082d7a810ef18640eb9f19808ea751b9c91c835df66c0",
+            "size": 1070
+          }
+        }
+      },
+      "postbot": {
+        "name": "PostBot",
+        "author": "Tobias Rojahn (MasterIV)",
+        "source": "https://github.com/MasterIV/PostBot",
+        "release": "none; the author publishes no release asset and commits the built image beside its GBDK source",
+        "commit": "5e9316ae37761171870fd6350b55725b83d59e6c",
+        "url": "https://raw.githubusercontent.com/MasterIV/PostBot/5e9316ae37761171870fd6350b55725b83d59e6c/PostBot.gb",
+        "sha256": "65824d3d7df8003f19923b38055a0660c20542cc363894091da661d9d49d13ad",
+        "size": 65536,
+        "profile": "dmg-mbc1-v1",
+        "license": "MIT",
+        "redistribution": "The author's own repository at the pinned commit, not a third-party mirror",
+        "cartridge": "MBC1, 64 KiB, no cartridge RAM: the downloaded bytes read 0x0147 = 0x01, 0x0148 = 0x01 and 0x0149 = 0x00, with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00; the header title is POSTBOT; banks 1-3 hold data (the MBC1 profile's test game)",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/MasterIV/PostBot/5e9316ae37761171870fd6350b55725b83d59e6c/LICENSE",
+            "sha256": "77103cf586254dced59eb26463143fe73fe3a5cd87300e24876d3996b6769acd",
             "size": 1070
           }
         }
