@@ -63,9 +63,14 @@ def unsupported_backend(root, name, backend):
     return None
 
 
-def load_target(root, name, backend=None):
+def load_target(root, name, backend=None, cache=None):
+    """`cache` (one dict per immutable tree) keeps the parsed registry and import walks across targets."""
     registry = root / "src/dv/builder/targets.json"
-    targets = json.loads(registry.read_text(encoding="utf-8"))
+    targets = cache.get("registry") if cache is not None else None
+    if targets is None:
+        targets = json.loads(registry.read_text(encoding="utf-8"))
+        if cache is not None:
+            cache["registry"] = targets
     if name not in targets or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name):
         raise ValueError(f"unknown simulation target: {name}")
     target = targets[name]
@@ -116,7 +121,7 @@ def load_target(root, name, backend=None):
             raise ValueError(f"target {name}: the Python peer driver supports only Verilator")
         if not target["driver"].get("access"):
             raise ValueError(f"target {name}: a Verilator driver needs a nonempty access list")
-    python_tb.validate(root, target, name)
+    python_tb.validate(root, target, name, cache)
     return target, registry
 
 

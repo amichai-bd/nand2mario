@@ -62,8 +62,15 @@ class RepositoryProof(unittest.TestCase):
                                  "(validated declared host closure equal base)"])
 
     def test_real_report_on_a_mutated_clone_equals_the_in_process_decision(self):
-        """`tests affected` and the proof share decide(): the same mutation, applied for real, agrees."""
-        row = next(r for r in self.rows if r["kind"] == "rtl")
+        """`tests affected` and the proof share decide(): the same mutation, applied for real, agrees.
+
+        An RTL change decides most simulations by their changed inputs; a data
+        change leaves them undecided and validates each one, so both kinds run."""
+        for kind in ("rtl", "data"):
+            with self.subTest(kind=kind):
+                self.real_report_equals_decision(next(r for r in self.rows if r["kind"] == kind))
+
+    def real_report_equals_decision(self, row):
         base = ROOT / "workdir/builds/affected-mutation-unit-tests"
         base.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="clone ", dir=base) as temp:

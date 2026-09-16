@@ -48,7 +48,8 @@ MOONEYE_FIXTURES = tuple(name for name in FIXTURE_BUILDERS if name.startswith("m
 IMAGE_PRELOADS = tuple(name for name in FIXTURE_BUILDERS if name not in MOONEYE_FIXTURES)
 
 
-def validate(root, target, name=None):
+def validate(root, target, name=None, cache=None):
+    """`cache` memoizes import walks for one immutable tree; never share it across edits."""
     kind = target.get("testbench", "systemverilog")
     if kind not in ("systemverilog", "python"):
         raise ValueError("testbench must be systemverilog or python")
@@ -56,7 +57,7 @@ def validate(root, target, name=None):
         if "python" in target:
             raise ValueError("python configuration requires testbench=python")
         if target.get("preload") is not None:
-            validate_fixture(root, target, name or target.get("top"))
+            validate_fixture(root, target, name or target.get("top"), cache)
         elif "preload_inputs" in target:
             raise ValueError("preload_inputs requires a preload")
         return
@@ -97,7 +98,7 @@ def validate(root, target, name=None):
     if target.get('preload') in MOONEYE_FIXTURES:
         if target.get('vendor_model') != 'intel-memory' or not fixture_inputs(root, target['preload']) <= set(config['inputs']):
             raise ValueError('Mooneye preload requires Intel memory and pinned source notices')
-    check_imports(root, target, name or config["module"])
+    check_imports(root, target, name or config["module"], cache)
 
 
 def fixture_inputs(root, preload):
@@ -201,7 +202,7 @@ def fixture_inputs(root, preload):
     return required
 
 
-def validate_fixture(root, target, name):
+def validate_fixture(root, target, name, cache=None):
     """A SystemVerilog target's preload names a registered builder and declares every fixture input."""
     preload = target["preload"]
     if preload not in FIXTURE_BUILDERS:
@@ -217,7 +218,7 @@ def validate_fixture(root, target, name):
     if missing:
         raise ValueError(f"{name}: preload_inputs omit fixture inputs: {', '.join(missing)}")
     implicit = {p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")} | {"tools/build.py"}
-    undeclared = sorted(loaded_modules(root, root / FIXTURE_BUILDERS[preload]) - set(inputs) - implicit)
+    undeclared = sorted(loaded_modules(root, root / FIXTURE_BUILDERS[preload], cache=cache) - set(inputs) - implicit)
     if undeclared:
         raise ValueError(f"{name}: undeclared transitive fixture inputs: {', '.join(undeclared)}")
 
@@ -273,12 +274,28 @@ def _resolve(node, importer, dirs):
     return groups
 
 
-def loaded_modules(root, start, excluded=()):
+def _module_imports(root, module, cache=None):
+    """One module's own search directories and import statements; parsed once per cache."""
+    key = ("module", module)
+    if cache is not None and key in cache:
+        return cache[key]
+    tree = ast.parse(module.read_text(encoding="utf-8"), filename=str(module))
+    entry = (_search_dirs(root, tree), [n for n in ast.walk(tree) if isinstance(n, (ast.Import, ast.ImportFrom))])
+    if cache is not None:
+        cache[key] = entry
+    return entry
+
+
+def loaded_modules(root, start, excluded=(), cache=None):
     """Repository-relative modules a start module loads transitively within IMPORT_SCOPE.
 
     Every import statement counts, including ones inside functions and branches;
-    an excluded path prunes the statements that would load it.
+    an excluded path prunes the statements that would load it. Targets share
+    start modules, so `cache` (one dict per immutable tree) keeps each walk once.
     """
+    key = ("loaded_modules", start.resolve(), tuple(sorted(excluded)))
+    if cache is not None and key in cache:
+        return set(cache[key])
     root = root.resolve()
     scope = tuple(s + "/" for s in IMPORT_SCOPE)
     seen, shared, todo = {}, [], [start.resolve()]
@@ -287,23 +304,23 @@ def loaded_modules(root, start, excluded=()):
         if module in seen:
             continue
         seen[module] = True
-        tree = ast.parse(module.read_text(encoding="utf-8"), filename=str(module))
-        local = _search_dirs(root, tree)
+        local, imports = _module_imports(root, module, cache)
         shared += [d for d in local if d not in shared]
         dirs = local + [d for d in shared if d not in local] + [module.parent]
         dirs += [d for d in (*(root / s for s in IMPORT_SCOPE), root) if d not in dirs]
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.Import, ast.ImportFrom)):
-                continue
+        for node in imports:
             for group in _resolve(node, module, dirs):
                 paths = [p.relative_to(root).as_posix() for p in group if p.is_relative_to(root)]
                 if any(p in excluded for p in paths):
                     continue
                 todo += [p for p in group if p.is_relative_to(root) and p.relative_to(root).as_posix().startswith(scope)]
-    return {p.relative_to(root).as_posix() for p in seen if p != start.resolve()}
+    found = {p.relative_to(root).as_posix() for p in seen if p != start.resolve()}
+    if cache is not None:
+        cache[key] = frozenset(found)
+    return found
 
 
-def check_imports(root, target, name):
+def check_imports(root, target, name, cache=None):
     """Every module a target loads inside IMPORT_SCOPE is a declared input or an explained exclusion."""
     config = target["python"]
     excluded = config.get("excluded_imports", {})
@@ -322,8 +339,8 @@ def check_imports(root, target, name):
         starts.append(root / FIXTURE_BUILDERS[target["preload"]])
     reached, loaded = set(), set()
     for start in starts:
-        reached |= loaded_modules(root, start)
-        loaded |= loaded_modules(root, start, excluded)
+        reached |= loaded_modules(root, start, cache=cache)
+        loaded |= loaded_modules(root, start, excluded, cache)
     # tools/n2m/*.py and tools/build.py enter every fingerprint through simulation.simulate.
     implicit = {p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")} | {"tools/build.py"}
     undeclared = sorted(loaded - set(config["inputs"]) - implicit)
