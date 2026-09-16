@@ -25,19 +25,28 @@ def diagnostic(output, expected_failure=None):
     return None
 
 
+def prepare_attempt(root, target, attempt, *, python_runtime=None, fixture_tools=None):
+    """Write the fixture files and the vsim macro the run reads from its attempt.
+
+    This is the host-only phase `sim prepare` performs without the tag lock;
+    it launches no Questa tool and consults no license.
+    """
+    if python_runtime:
+        from .python_tb import prepare as prepare_python
+        prepare_python(target, attempt, root, fixture_tools)
+        wave_paths = " ".join(f"/{target['top']}/{name}" for name in target.get("python", {}).get("waves", [])) or "/*"
+        (attempt / "run.do").write_text(
+            f"onerror {{quit -code 1}}\nlog {wave_paths}\nvcd file waves/simulation.vcd\n"
+            f"vcd add {wave_paths}\nrun -all\nquit -code 0\n", encoding="utf-8")
+    else:
+        write_macro(attempt)
+
+
 def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, vendor_model=None, python_runtime=None, fixture_tools=None):
     tools = simulator.tools
     library = (compiler / "work").as_posix()
     if prepare:
-        if python_runtime:
-            from .python_tb import prepare as prepare_python
-            prepare_python(target, attempt, root, fixture_tools)
-            wave_paths = " ".join(f"/{target['top']}/{name}" for name in target.get("python", {}).get("waves", [])) or "/*"
-            (attempt / "run.do").write_text(
-                f"onerror {{quit -code 1}}\nlog {wave_paths}\nvcd file waves/simulation.vcd\n"
-                f"vcd add {wave_paths}\nrun -all\nquit -code 0\n", encoding="utf-8")
-        else:
-            write_macro(attempt)
+        prepare_attempt(root, target, attempt, python_runtime=python_runtime, fixture_tools=fixture_tools)
     vendor_compile, vendor_map, vendor_binding = intel_commands(simulator, compiler, attempt, vendor_model)
     return [
         ([tools["vmap"], "-c"], compiler, compiler / "ini.log", "zero"),

@@ -91,8 +91,12 @@ def valid_tag(tag):
             and not tag.endswith(".") and tag.split(".")[0] not in reserved)
 
 
-@contextmanager
-def workspace(root, tag, notices=None):
+def tag_directory(root, tag):
+    """Validate or allocate a tag and return its directory; no lock is taken.
+
+    A command that writes only a fresh immutable attempt (`sim prepare`) uses
+    this alone; every writer of the tag's stage records enters workspace().
+    """
     builds = root / "workdir/builds"
     builds.mkdir(parents=True, exist_ok=True)
     if tag is None:
@@ -112,6 +116,13 @@ def workspace(root, tag, notices=None):
     build.mkdir(exist_ok=True)
     if build.resolve().parent != builds.resolve() or build.is_symlink():
         raise ValueError("tag path escapes workdir/builds")
+    return build
+
+
+@contextmanager
+def workspace(root, tag, notices=None):
+    build = tag_directory(root, tag)
+    tag = build.name
     lock = build / ".lock"
     try:
         fd = take_lock(lock)

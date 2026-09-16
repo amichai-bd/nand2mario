@@ -7,10 +7,11 @@ import platform
 import re
 import subprocess
 import sys
+import time
 import uuid
 
-from .records import atomic_json, atomic_text, file_hash, git_state, workspace
-from .simulation import SIMULATORS, load_target, publish_mirror, simulate, stage_paths
+from .records import atomic_json, atomic_text, file_hash, git_state, tag_directory, workspace
+from .simulation import SIMULATORS, load_target, prepare, publish_mirror, simulate, stage_paths
 from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .host.command import run as host_command
@@ -51,6 +52,16 @@ def parser():
     test.add_argument("--questa-bin", help="directory containing native Questa tools; otherwise discover on PATH")
     test.add_argument("--intel-sim-lib", help="supported Quartus eda/sim_lib directory for Questa Intel-model targets")
     test.add_argument("--sim", choices=SIMULATORS)
+    test.add_argument("--prepared", help="attempt id a prior `sim prepare` of this target produced on this tag; refused if any input changed")
+    prepare = sim.add_parser("prepare", help="build a target's fixtures and preload files into an immutable attempt without taking the tag lock or launching a simulator")
+    prepare.add_argument("target")
+    prepare.add_argument("--seed", type=int, default=1)
+    prepare.add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
+    prepare.add_argument("--questa-bin", help="directory containing native Questa tools; otherwise discover on PATH")
+    prepare.add_argument("--intel-sim-lib", help="supported Quartus eda/sim_lib directory for Questa Intel-model targets")
+    prepare.add_argument("--sim", choices=SIMULATORS)
+    prepare.add_argument("--tag")
+    prepare.add_argument("--json", action="store_true", help="emit one JSON result")
     preflight = sim.add_parser("preflight", help="prepare and check Python fixtures without discovering or launching a simulator")
     preflight.add_argument("target")
     preflight.add_argument("--tag")
@@ -236,6 +247,7 @@ def tagged(root, args, header, publish, progress=None):
     reclaimed = []
     operation_folder = None
     with workspace(root, args.tag, reclaimed) as build:
+        locked_at = time.monotonic()
         report = header(build.name)
         if reclaimed:
             report["stale_lock_reclaimed"] = reclaimed[0].relative_to(root).as_posix()
@@ -315,7 +327,7 @@ def tagged(root, args, header, publish, progress=None):
                 with progress.stage(f"Discover {args.sim.capitalize()} tools"):
                     simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
                                           questa_bin=args.questa_bin)
-                report.update(simulate(root, build, args, simulator, provenance, progress=progress))
+                report.update(simulate(root, build, args, simulator, provenance, progress=progress, locked_at=locked_at))
         except Exception as error:
             report.update(status="FAIL", error=str(error))
             if isinstance(error, AssemblyError):
@@ -351,6 +363,27 @@ def tagged(root, args, header, publish, progress=None):
                 atomic_json(stage / "result.json", failure)
                 publish_mirror(root, mirror, failure, stage / "sim.log")
         publish(build, report)
+    return report
+
+
+def prepare_command(root, args, header, progress):
+    """`sim prepare`: host preparation into an immutable attempt, no tag lock.
+
+    The tag's stage records, manifest, status and latest pointer belong to
+    the tag lock's holder and are not written here.
+    """
+    load_target(root, args.target, args.sim)
+    build = tag_directory(root, args.tag)
+    report = header(build.name)
+    provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
+    progress.line(f"Preparation: target {args.target}; backend {args.sim}; tag lock not taken")
+    with progress.stage(f"Discover {args.sim.capitalize()} tools"):
+        simulator = Simulator(args.sim, verilator_bin=args.verilator_bin, questa_bin=args.questa_bin)
+    with progress.stage("Prepare attempt"):
+        record = prepare(root, build, args, simulator, provenance)
+    # The receipt keeps PREPARED so adoption can tell it from a run result;
+    # the command reports PASS or FAIL like every other command.
+    report.update(record, status="PASS" if record["status"] == "PREPARED" else "FAIL")
     return report
 
 
@@ -483,7 +516,7 @@ LINT_HOST = "Questa compile gate runs on Windows PowerShell"
 
 def simulator_command(args):
     return (args.command == "doctor" or args.command == "regress"
-            or (args.command == "sim" and args.action == "test")
+            or (args.command == "sim" and args.action in ("test", "prepare"))
             or (args.command == "tests" and args.action == "run"))
 
 
@@ -551,6 +584,8 @@ def main(argv=None, root=None):
             # workspace is created. The stage repeats this check defensively.
             load_target(root, args.target, args.sim)
             report = tagged(root, args, header, publish, progress)
+        elif args.command == "sim" and args.action == "prepare":
+            report = prepare_command(root, args, header, progress)
         else:
             report = tagged(root, args, header, publish, progress)
     except Exception as error:
@@ -588,6 +623,10 @@ def main(argv=None, root=None):
                 print(problem)
             print(f"{report['units']} units, {len(report['not_runnable'])} not runnable, "
                   f"{len(report.get('retired', []))} retired")
+        if args.command == "sim" and args.action == "prepare" and report.get("prepared_record"):
+            print(f"Prepared attempt: {report['prepared']} ({report.get('prepare_seconds', 0):.1f}s); receipt {report['prepared_record']}")
+            print("Next: " + powershell_command(["python", "tools/build.py", "sim", "test", args.target,
+                                                 "--tag", report["tag"], "--prepared", report["prepared"]]))
         if args.command == "sim" and report.get("status") == "SKIPPED":
             print(f"{args.target}: SKIPPED {report['reason']}")
         if args.command == "regress" and "targets" in report:

@@ -222,6 +222,11 @@ def clean(root, tag):
     if (build / "sim/regress/.lock").exists() or ((build / ".lock").exists() and
             not stale_lock(build / ".lock")):
         raise ValueError(f"tag {tag} is locked; confirm its writer stopped before cleaning")
+    # A `sim prepare` holds no tag lock; its attempt's own pid lock says it
+    # is still writing there. A dead preparer's lock does not hold the tag.
+    for lock in build.glob("sim/test/*/*/attempts/*/.lock"):
+        if not stale_lock(lock):
+            raise ValueError(f"tag {tag} has a preparation in progress; confirm its writer stopped before cleaning ({lock.relative_to(root).as_posix()})")
     files, size = own_files(build)
     # rmtree removes links and junctions themselves, never their targets.
     shutil.rmtree(build)

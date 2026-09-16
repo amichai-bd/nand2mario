@@ -224,6 +224,46 @@ class WorkspaceLockTests(unittest.TestCase):
             self.assertLess(time.monotonic(), deadline, f"no {marker.name}")
             time.sleep(.005)
 
+    def receipt(self, name, inputs):
+        """A prepared-attempt receipt as `sim prepare` writes it, for `--adopt`."""
+        from n2m.records import file_hash
+        attempt = self.lock.parent / "sim/test/t/verilator/attempts" / name
+        attempt.mkdir(parents=True)
+        (attempt / "fixture.bin").write_bytes(b"prepared " + name.encode())
+        record = {"status": "PREPARED", "inputs": {p: file_hash(self.root / p) for p in inputs},
+                  "prepared_record": (attempt / "prepared.json").relative_to(self.root).as_posix(),
+                  "files": {"fixture.bin": file_hash(attempt / "fixture.bin")}}
+        (attempt / "prepared.json").write_text(json.dumps(record))
+        return attempt / "prepared.json"
+
+    def test_two_prepared_runs_share_one_tag_lock_and_stale_inputs_are_refused(self):
+        # Real processes, each carrying its own prepared attempt for the same
+        # tag. Exactly one holds the tag and adopts; the other is refused by
+        # the live-pid rule, not admitted because it was prepared.
+        (self.root / "input.txt").write_text("v1")
+        first, second = self.receipt("a" * 32, ["input.txt"]), self.receipt("b" * 32, ["input.txt"])
+        done = self.root / "done"
+        a = self.racer("--adopt", str(first), "--hold", str(done))
+        self.wait_for(done.with_name("done.held"))
+        b = self.outcome(self.racer("--adopt", str(second)))
+        self.assertFalse(b["held"])
+        self.assertIsNone(b["adopted"])
+        self.assertRegex(b["error"], LOCKED)
+        done.touch()
+        result = self.outcome(a)
+        self.assertEqual((result["held"], result["adopted"], result["changed"]), (True, True, []))
+        # The tag is free; B's receipt is still admissible until an input moves.
+        self.assertEqual(self.outcome(self.racer("--adopt", str(second)))["adopted"], True)
+        (self.root / "input.txt").write_text("v2")
+        stale = self.outcome(self.racer("--adopt", str(second)))
+        self.assertEqual((stale["held"], stale["adopted"], stale["changed"]), (True, False, ["input.txt"]))
+        (self.root / "input.txt").write_text("v1")
+        (first.parent / "fixture.bin").write_bytes(b"tampered")
+        tampered = self.outcome(self.racer("--adopt", str(first)))
+        self.assertEqual((tampered["adopted"], tampered["changed"]),
+                         (False, [first.parent.relative_to(self.root).as_posix() + "/fixture.bin"]))
+        self.assertEqual(list(self.lock.parent.glob(".lock*")), [])
+
     def test_three_processes_on_one_dead_writer_tag_leave_exactly_one_holder(self):
         # Real processes. A and B both read the dead writer; A reclaims and
         # holds the tag. B then reclaims from its stale read while C, already
