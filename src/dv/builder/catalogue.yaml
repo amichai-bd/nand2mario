@@ -277,10 +277,11 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
-  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 74.26}
-  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 23.48}
-  menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 92.60}
-  menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 42.93}
+  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 0.00}
+  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 98.18}
+  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 29.81}
+  menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 98.17}
+  menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 42.81}
   menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 86.57}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
   mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 113.39}
@@ -511,7 +512,7 @@ units:
   snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: 61.12}
   src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.12, inputs: [src/sw/generated/interfaces.inc]}
   src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.04, inputs: []}
-  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 0.28, inputs: [src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
+  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 0.60, inputs: [src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
   src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 1.22, inputs: [src/dv/v05/program.json]}
   src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.08, inputs: []}
   src/dv/springtrail/test_acquisition_host.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: null, inputs: [cfg/interfaces.json, src/dv/integration, src/dv/springtrail/thrower_route.py, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/sw/opcodes.json]}

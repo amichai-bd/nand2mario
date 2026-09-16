@@ -11,10 +11,14 @@ and the font's shade JSON, and from the loader contract; never from the ROM's
 tilemap or DUT state.
 
 [`fixture.py`](fixture.py) is the `menu` preload builder. Before each run it
-builds the image through `sw build menu`, writes the sixteen-slot SDRAM
-library (`menu-library.hex`) and the scripted reference frames
-(`menu-frames.hex`) into the attempt directory. Slots 0, 1, 2, 7, 8, 9, 10
-and 15 hold stub games titled `SPRINGTRAIL`, `STACKDROP`, `V05 BUTTONS`,
+builds the menu image through `sw build menu` and the
+[`exit-demo`](../../sw/exit-demo/main.asm) game through `sw build exit-demo`,
+writes the sixteen-slot SDRAM library (`menu-library.hex`) and the reference
+frames (`menu-frames.hex`: the scripted menu frames, then the exit-demo game
+frame) into the attempt directory. Slot 1 holds the built `EXIT DEMO` image:
+a solid bar on map row 8 (pixel rows 64..71 shade 3, the rest shade 0) and,
+while Start is held, one write of the game exit value per frame. Slots 0, 2,
+7, 8, 9, 10 and 15 hold stub games titled `SPRINGTRAIL`, `V05 BUTTONS`,
 `SIXTEEN CHAR ROW`, `CGB ONLY TITLE` + `0x00 0xC0`, `ABC-123 XYZ 789`,
 `CGB FLAGGED ROW` + `0x80` and `LAST SLOT`; slots 5-6 hold the 64 KiB
 MBC1 stub `BANKED GAME` under one entry at 5 (its bank 2 writes the game
@@ -22,7 +26,9 @@ exit value); slot 3 is empty; slot 4 is valid to the menu but its entry
 length is 16384, so the engine refuses it; slot 16 is the menu. Ten of the
 sixteen rows are therefore valid, more than the three-game registry, and the
 titles cover digits, dashes, the full sixteen-cell width, the CGB flag values
-in header `0x143`, a two-slot image and the last row.
+in header `0x143`, a two-slot image and the last row. The host-only tests use
+a stub with the `EXIT DEMO` title in slot 1, so the menu reference frames do
+not depend on the build.
 
 [`tb_menu_system`](tb_menu_system.sv) preloads the device model from the hex
 file, swaps the menu in with `WRITE_HOST(LIBRARY_CONTROL)`, selects the board
@@ -38,6 +44,7 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 | Cursor | Down, Down, Up show the cursor on slots 1, 2, 1; Up at slot 0 and a repeated Up leave frame 0 unchanged; every frame is 23040 pixels in source order |
 | Select | Down then A: the only write into `$6000`-`$7FFF` carries 1; the core boots in `DIRECT_ID` with epoch + 1, `LIBRARY_STATUS` result `OK` index 1 |
 | MBC1 select | Five Downs (the fifth frame pixel-exact with the cursor on slot 5) then A: the write carries 5; the core boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; the game's bank 2 code returns to the menu (epoch + 2, index still 5) and the menu runs in `LOADER_ID` |
+| Exit register | Down then A starts the built `exit-demo` image in slot 1 (`DIRECT_ID`, epoch + 1, result `OK` index 1) and its first frame equals the independent bar reference; after the swap's core reset returned the input source to its UART default, the board joypad is selected again and Start is pressed: the only write into `$6000`-`$7FFF` carries `$10`, the menu is back in `LOADER_ID` with epoch + 2, result `OK`, index still 1, running without a host `RUN`, and its first frame equals reference frame 0 |
 | Refused select | Cursor on the empty slot 3, A: `LIBRARY_STATUS` result `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up moves the cursor while the message stays; A on slot 2 starts that game with select data 2; `window_ready` stays set across the refused select |
 | Checker | `+pixel_fault` forces the source shade to 2 for the boot frame and must fail with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 | Reference | `test_menu_reference.py`: font tiles equal the approved core glyphs, glyph mapping, the CGB flag rule in the last title cell only, layout rows, status texts, fixture library bytes and catalogue entry packing, snapshot unpacking and the negative pixel check |
@@ -49,12 +56,16 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 | `menu-frame` | `frame` | `PASS menu-frame checks=9 frames=6 selects=0 commands=6` |
 | `menu-select` | `select` | `PASS menu-select checks=8 frames=2 selects=1 commands=8` |
 | `menu-select-mbc1` | `select-mbc1` | `PASS menu-select-mbc1 checks=9 frames=2 selects=1 commands=8` |
+| `menu-exit` | `exit` | `PASS menu-exit checks=14 frames=4 selects=1 commands=11` |
 | `menu-refused` | `refused` | `PASS menu-refused checks=13 frames=6 selects=1 commands=9` |
 | `menu-frame-fault` | `frame` with `+pixel_fault` | nonzero exit with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label menu --tag <tag>`;
-`menu-select-mbc1` carries the `mbc1` and `system` labels instead so the `menu`
-aggregate stays inside the ordinary 300-second budget.
+`menu-select-mbc1` carries the `mbc1` and `system` labels and `menu-exit` the
+`system` label instead, so the `menu` aggregate stays inside the ordinary
+300-second budget.
 Verilator evidence is preliminary; the board evidence is the
-[game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions).
+[game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions),
+with the exit register in
+[session 7](../../../wiki/src/board-bring-up.md#session-7-game-exit-register-from-a-host-loaded-image).

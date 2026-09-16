@@ -72,6 +72,15 @@ class Layout(unittest.TestCase):
         self.assertEqual((banked[0x147], banked[0x148]), (1, 1))
         self.assertEqual(banked[0x8000:0x8002], bytes([0x3E, fixture.GAME_EXIT_VALUE]))
         self.assertEqual(self.entries[0]['title'], b'SPRINGTRAIL'.ljust(16, b'\0'))
+        # Slot 1 is the exit demo: the stub stands in for the built image with the same title.
+        self.assertEqual(self.entries[1]['title'], b'EXIT DEMO'.ljust(16, b'\0'))
+        self.assertEqual(self.entries[1]['crc32'], zlib.crc32(fixture.exit_stub()))
+        real = bytearray(fixture.exit_stub())
+        real[0x150] ^= 0xFF
+        self.assertEqual(fixture.entries(MENU_IMAGE, bytes(real))[1]['crc32'], zlib.crc32(real))
+        self.assertEqual(fixture.library_bytes(MENU_IMAGE, bytes(real))[32768:65536], real)
+        with self.assertRaises(ValueError):
+            fixture.library_bytes(MENU_IMAGE, fixture.game_image(1, 'OTHER TITLE'))
         self.assertEqual(self.entries[10]['title'], b'CGB FLAGGED ROW\x80')
         self.assertEqual(self.entries[7]['title'], b'SIXTEEN CHAR ROW')
         self.assertEqual(self.entries[8]['title'], b'CGB ONLY TITLE\x00\xC0')
@@ -139,12 +148,18 @@ class Layout(unittest.TestCase):
 
     def test_frames_and_snapshot_check(self):
         frames = fixture.scenario_frames(MENU_IMAGE)
-        self.assertEqual(len(frames), len(fixture.SCENARIO))
+        self.assertEqual(len(frames), len(fixture.SCENARIO) + 1)
         self.assertEqual(len(set(frames)), len(frames))
         for pixels in frames:
             self.assertEqual(len(pixels), 23040)
             self.assertTrue(set(pixels) <= {0, 3})
-        packed = bytes(sum(frames[0][i + k] << (2 * k) for k in range(4)) for i in range(0, 23040, 4))
+        # The exit-demo game frame: shade 3 exactly on pixel rows 64..71.
+        game = frames[fixture.GAME_FRAME]
+        self.assertEqual(game, fixture.exit_frame())
+        self.assertEqual({y for y in range(144) if game[y * 160]}, set(range(64, 72)))
+        self.assertEqual(game.count(3), 8 * 160)
+        self.assertEqual(reference.unpack(fixture.pack(game)), game)
+        packed = fixture.pack(frames[0])
         self.assertEqual(reference.check_pixels(packed, self.entries), 23040)
         self.assertEqual(reference.unpack(packed), reference.expected('menu', self.entries))
         self.assertEqual(reference.expected('cursor-2', self.entries), frames[2])

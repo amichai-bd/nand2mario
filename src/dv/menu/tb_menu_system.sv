@@ -11,7 +11,10 @@
 // select register receives 1 and the game boots), `refused` (A on the
 // empty slot 3 shows SLOT 03 INVALID, Up, A starts slot 2) and `select-mbc1`
 // (five Downs to the 64 KiB MBC1 entry in slots 5-6, A: the game boots in
-// MBC1_ID, runs from its banked half and returns to the menu by itself).
+// MBC1_ID, runs from its banked half and returns to the menu by itself) and
+// `exit` (Down, A: the built exit-demo image in slot 1 boots and shows its
+// bar frame; Start makes it write the game exit value and the menu is back,
+// pixel-exact, with the epoch advanced).
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
 /* verilator lint_off WIDTHTRUNC */
@@ -19,7 +22,9 @@ module tb_menu_system;
     import n2m_interfaces_pkg::*;
     localparam int LIBRARY_BYTES = 32'h8C000;
     localparam int FRAME_PIXELS = 23040;
-    localparam int FRAMES = 7;
+    localparam int FRAMES = 8;
+    localparam int GAME_FRAME = 7;
+    localparam int EXIT_SLOT = 1;
     localparam int SWAP_BOUND = 80000;
     localparam int SWAP_BOUND_MBC1 = 120000;
     localparam int MBC1_SLOT = 5;
@@ -401,6 +406,40 @@ module tb_menu_system;
         checks = checks + 1;
     endtask
 
+    // The built exit-demo game in slot 1: it boots in DIRECT_ID and shows
+    // the bar frame; Start makes it write LIBRARY_GAME_EXIT_VALUE into
+    // $6000, the loader swaps the menu back (epoch + 2 from the menu, index
+    // kept, result OK) and the menu runs without a host RUN, pixel-exact.
+    task automatic fixture_exit;
+        logic [31:0] epoch_before;
+        boot_menu();
+        step(BUTTON_DOWN, EXIT_SLOT);
+        epoch_before = epoch;
+        select_game(8'(EXIT_SLOT), PROFILE_DIRECT_ID);
+        frame_start(6000000);
+        check_frame(GAME_FRAME);
+        // The swap's core reset returned the input source to its UART
+        // default (the path `host input` drives on the board); select the
+        // board joypad again before Start.
+        write_host(HOST_REG_INPUT_SOURCE, INPUT_SOURCE_PHYSICAL);
+        select_seen = 0;
+        press_buttons(BUTTON_START);
+        wait_profile(PROFILE_LOADER_ID, SWAP_BOUND + 1200000, "game exit");
+        if (!select_seen || select_data != LIBRARY_GAME_EXIT_VALUE)
+            $fatal(1, "MENU_SYS_EXIT_WRITE seen=%b data=%02h", select_seen, select_data);
+        if (epoch != epoch_before + 2) $fatal(1, "MENU_SYS_EXIT_EPOCH epoch=%0d", epoch);
+        press_buttons(8'h00);
+        checks = checks + 1;
+        $display("MENU_SYS exit slot=%0d returned time_ns=%0t", EXIT_SLOT, $time);
+        // The exit is not a select commit, so $A003 keeps the slot; the
+        // restarted menu refills bank 34, so the two window bits are masked.
+        read_status({2'b0, 6'd34, 8'(EXIT_SLOT), LIBRARY_RESULT_OK, 8'h20}, 32'h3FFFFF3F);
+        read_host(HOST_REG_STATE, STATE_RUNNING);
+        checks = checks + 1;
+        frame_start(6000000);
+        check_frame(0);
+    endtask
+
     task automatic fixture_refused;
         boot_menu();
         step(BUTTON_DOWN, 1);
@@ -437,6 +476,7 @@ module tb_menu_system;
             "select": fixture_select();
             "refused": fixture_refused();
             "select-mbc1": fixture_select_mbc1();
+            "exit": fixture_exit();
             default: $fatal(1, "MENU_SYS_FIXTURE %s", fixture);
         endcase
         $display("PASS menu-%s checks=%0d frames=%0d selects=%0d commands=%0d", fixture, checks, frames_checked, selects, command_count);

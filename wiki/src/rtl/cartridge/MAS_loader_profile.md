@@ -437,6 +437,7 @@ all under the `cartridge` label; the
 | `loader-exit-mbc1` | An `MBC1_ID` entry with a 32 KiB length is refused; the select of the 64 KiB entry in slots 11-12 pauses, copies all 65536 bytes (the low half read through the CPU port, the whole store through the host port readback), completes within 120,000 edges, publishes `MBC1_ID`, epoch + 1, result `OK` index 11; the [game exit](#game-exit-register) write from the MBC1 game returns to the menu |
 | `loader-key1` | 4 ms glitch, 0.49 s and 0.51 s presses, hold through the swap, press during a swap (`key1_pending`), press in a host session (dropped), release and re-press |
 | `loader-host` | `LOAD_BEGIN` during swap returns `BAD_STATE`; during fill it waits; `SDRAM_WRITE`/`SDRAM_READ` round trips; `LIBRARY_STATUS`; `WRITE_HOST(LIBRARY_CONTROL)` return; a direct host load of a game after a swap behaves as today |
+| `menu-exit` | The real CPU and the built `exit-demo` package: started from the menu into `DIRECT_ID`, the game shows its bar frame; Start makes it write `LIBRARY_GAME_EXIT_VALUE` to `$6000` and the menu is back in `LOADER_ID` (epoch + 2, result `OK`, `$A003` unchanged, running without host `RUN`) with a pixel-exact boot frame ([menu test plan](../../../../src/dv/menu/README.md)) |
 | `loader-menu` | The real CPU: the menu selects games from the joypad, each boots in `DIRECT_ID` and KEY1 returns; one game exits through the [game exit register](#game-exit-register) by itself, back to the running menu with epoch + 1; the 64 KiB MBC1 game in slots 11-12 boots in `MBC1_ID`, switches to ROM bank 2 and returns from that banked half through the same register |
 
 Named assertions the owner carries:
@@ -472,9 +473,12 @@ The `v05-board` and `v05-controls-board` images carry the SDRAM pins and KEY1
 ([session 3](../../board-bring-up.md#session-3-physical-key1-return-with-the-owner-at-the-board))
 returned from a running game to the menu with the epoch change, result `OK`
 and a pixel-exact menu frame.
-Board proof of the [game exit register](#game-exit-register) (a game returns
-to the menu through the write) is pending a later authorized board session
-([#739](https://github.com/amichai-bd/nand2mario/issues/739)).
+The [game exit register](#game-exit-register) was proven on the board in
+[session 7](../../board-bring-up.md#session-7-game-exit-register-from-a-host-loaded-image):
+the built `exit-demo` image, host-loaded into a library slot and started
+from the menu through `host input`, returned to the menu on Start with the
+epoch change, result `OK`, the selected index unchanged and a pixel-exact
+menu frame.
 
 ## References
 
