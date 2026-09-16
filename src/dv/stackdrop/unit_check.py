@@ -13,6 +13,7 @@ from client_transport import connect, frames, refresh_clock
 from test_integration import known, decode_record
 from n2m.preload import verify, adopt
 from cases import expected
+from budget import UNIT_BOUND
 
 
 def check_tail(kind, terminal, pending=(), writes=()):
@@ -142,7 +143,7 @@ async def run(dut, count):
                     await ReadOnly()
                     consume()
                     dot = known(dut.dot_count)
-                    assert prior < dot < 500000 and not any(known(s) for s in (dut.fault, dut.reset_sys, dut.core_reset, dut.paused)), 'STACKDROP_PROGRESS'
+                    assert prior < dot < UNIT_BOUND and not any(known(s) for s in (dut.fault, dut.reset_sys, dut.core_reset, dut.paused)), 'STACKDROP_PROGRESS'
                     prior = dot
                 refresh_clock(client)
                 await control('HALT')

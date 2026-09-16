@@ -9,6 +9,7 @@ LCD = 185948  # 1648 atlas bytes at 52 dots each, plus the fixed prefix.
 SCROLL = ((0xff42, TITLE_SCROLL[1]), (0xff43, TITLE_SCROLL[0]), (0xff42, 0), (0xff43, 0))
 INPUT_WINDOW = (LCD+30000, LCD+32000)
 END = LCD+2*70224+65480
+FINAL = END+2000  # latest accepted pause: one 50 us poll past END, then HALT.
 TITLE = Game()
 PLAY = Game(status=1)
 FRAMES = (bytes(23040), image(TITLE), image(PLAY))
@@ -66,7 +67,7 @@ class Check:
     def finish(self, pause):
         assert self.lcd == [(52, 0), (LCD, 145)], f'STACKDROP_LCD {self.lcd}'
         assert self.pixels == 69120 and len(self.inputs) == 1, 'STACKDROP_MISSING_FRAME'
-        assert END <= pause <= END+2000, 'STACKDROP_FINAL_BOUND'
+        assert END <= pause <= FINAL, 'STACKDROP_FINAL_BOUND'
         for frame, game in enumerate((TITLE, PLAY)):
             assert [(a, v) for _, a, v in self.copies[frame]] == list(zip(ADDRESSES, buffer(game))), 'STACKDROP_FRAME_COPY'
             assert len(self.prepared) > frame, 'STACKDROP_MISSING_PREPARATION'
