@@ -565,6 +565,7 @@ units:
   src/dv/springtrail/test_state_seed.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.06}
   src/dv/springtrail/test_thrower_acquisition.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_unit_markers.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.04}
+  src/dv/springtrail/test_visible_bound.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: null}
   src/dv/stackdrop/test_game_check.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.16}
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.04}
   src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.22}

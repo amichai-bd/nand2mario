@@ -75,12 +75,12 @@ LD A,[ShotY+1]
 LD [ObjectY+1],A
 XOR A,A
 LD [SceneHidden],A
-LD [PieceX],A
-LD [PieceY],A
 LD [PieceFlags],A
 LD A,107
 LD [SceneTile],A
 CALL ScenePosition
+LD B,0
+LD C,0
 CALL EmitPiece
 ; One 16 by 16 release effect follows the shot while it is live.
 SceneEffect:
@@ -106,16 +106,25 @@ LD A,E
 CP A,$A0
 RET Z
 XOR A,A
+; A = 0 and DE = the first inactive byte. Every emitted entry is four bytes,
+; so DE is entry aligned and the tail clears four bytes per iteration.
 ClearSceneByte:
-LD [DE],A
-INC DE
-LD A,E
+LD H,D
+LD L,E
+ClearSceneEntry:
+LD [HL+],A
+LD [HL+],A
+LD [HL+],A
+LD [HL+],A
+LD A,L
 CP A,$A0
-JR Z,SceneComplete
-XOR A,A
-JR ClearSceneByte
-SceneComplete:
+JR NZ,ClearSceneNext
+LD D,H
+LD E,L
 RET
+ClearSceneNext:
+XOR A,A
+JR ClearSceneEntry
 
 AppendScene:
 CALL ScenePosition
@@ -127,7 +136,14 @@ LD A,[ObjectX]
 LD L,A
 LD A,[ObjectX+1]
 LD H,A
-CALL PixelFloor
+SRA H
+RR L
+SRA H
+RR L
+SRA H
+RR L
+SRA H
+RR L
 LD A,[Camera]
 LD C,A
 LD A,[Camera+1]
@@ -142,7 +158,14 @@ LD A,[ObjectY]
 LD L,A
 LD A,[ObjectY+1]
 LD H,A
-CALL PixelFloor
+SRA H
+RR L
+SRA H
+RR L
+SRA H
+RR L
+SRA H
+RR L
 LD A,L
 LD [SceneBaseY],A
 LD A,H

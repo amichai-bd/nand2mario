@@ -56,30 +56,28 @@ LD [SceneBaseY],A
 LD A,[SceneBaseY+1]
 SBC A,0
 LD [SceneBaseY+1],A
+; Each record is x, y, local tile, flags. Facing mirrors x inside the 16-wide
+; canvas and toggles the flip bit. EmitPiece keeps HL on the record walk.
 CourierPiece:
 LD A,[HL+]
 LD B,A
 LD A,[CourierFacing]
 OR A,A
-LD A,B
 JR Z,CourierPieceX
 LD A,8
 SUB A,B
+LD B,A
 CourierPieceX:
-LD [PieceX],A
 LD A,[HL+]
-LD [PieceY],A
+LD C,A
 LD A,[HL+]
 ADD A,42
 LD [SceneTile],A
-LD A,[HL+]
-LD B,A
 LD A,[CourierFacing]
-XOR A,B
+XOR A,[HL]
+INC HL
 LD [PieceFlags],A
-PUSH HL
 CALL EmitPiece
-POP HL
 LD A,[PieceCount]
 DEC A
 LD [PieceCount],A
@@ -89,85 +87,72 @@ RET
 ; Two original adjacent tiles replace one old 8x16 entry without pixel changes.
 EmitPair:
 XOR A,A
-LD [PieceX],A
-LD [PieceY],A
 LD [PieceFlags],A
+LD B,A
+LD C,A
 CALL EmitPiece
-LD A,8
-LD [PieceY],A
 LD A,[SceneTile]
 INC A
 LD [SceneTile],A
+LD B,0
+LD C,8
 JP EmitPiece
 
+; B = piece x offset, C = piece y offset; SceneTile and PieceFlags are set by
+; the caller and DE is the next OAM slot. Capacity refusal precedes every
+; write. Hidden pieces still publish X/tile/flags. HL is preserved.
 EmitPiece:
-; Capacity refusal precedes every write. Hidden pieces still publish X/tile/flags.
 LD A,D
 CP A,$C1
 RET NZ
 LD A,E
 CP A,$A0
 RET NC
-LD A,[SceneBaseX]
-LD L,A
-LD A,[SceneBaseX+1]
-LD H,A
-LD A,[PieceX]
-LD C,A
-LD B,0
-ADD HL,BC
-LD A,L
-ADD A,8
-LD [SceneX],A
 ; Y is unobservable when either the owner or horizontal clipping hides a piece.
 LD A,[SceneHidden]
 OR A,A
-JR NZ,PieceYZero
-LD A,H
-OR A,A
+JR NZ,PieceOwnerHidden
+LD A,[SceneBaseX]
+ADD A,B
+LD B,A
+LD A,[SceneBaseX+1]
+ADC A,0
 JR Z,PieceXPositive
 CP A,$FF
 JR NZ,PieceYZero
-LD A,L
+LD A,B
 CP A,249
 JR C,PieceYZero
 JR PieceXReady
 PieceXPositive:
-LD A,L
+LD A,B
 CP A,160
 JR NC,PieceYZero
 PieceXReady:
 LD A,[SceneBaseY]
-LD L,A
-LD A,[SceneBaseY+1]
-LD H,A
-LD A,[PieceY]
+ADD A,C
 LD C,A
-LD B,0
-ADD HL,BC
-LD A,H
-OR A,A
+LD A,[SceneBaseY+1]
+ADC A,0
 JR Z,PieceYPositive
 CP A,$FF
 JR NZ,PieceYZero
-LD A,L
+LD A,C
 CP A,249
 JR C,PieceYZero
 JR PieceYReady
 PieceYPositive:
-LD A,L
+LD A,C
 CP A,144
 JR NC,PieceYZero
 PieceYReady:
-LD A,L
+LD A,C
 ADD A,16
-JR PieceStore
-PieceYZero:
-XOR A,A
 PieceStore:
 LD [DE],A
 INC DE
-LD A,[SceneX]
+LD A,B
+ADD A,8
 LD [DE],A
 INC DE
 LD A,[SceneTile]
@@ -177,6 +162,15 @@ LD A,[PieceFlags]
 LD [DE],A
 INC DE
 RET
+PieceYZero:
+XOR A,A
+JR PieceStore
+PieceOwnerHidden:
+LD A,[SceneBaseX]
+ADD A,B
+LD B,A
+XOR A,A
+JR PieceStore
 
 ; Exact approved local IDs and offsets; tests compare all records to poses.json.
 CourierPointers:

@@ -377,31 +377,29 @@ JP MotionTileCopy
 
 ; DE = next OAM slot; the four approved tiles form one 16 by 16 object.
 ComposeEffect:
+XOR A,A
+LD [PieceFlags],A
+LD B,A
+LD C,A
 LD A,[EffectTile]
 LD [SceneTile],A
-XOR A,A
-LD [PieceX],A
-LD [PieceY],A
-LD [PieceFlags],A
 CALL EmitPiece
-LD A,8
-LD [PieceX],A
-LD A,[EffectTile]
+LD B,8
+LD C,0
+LD A,[SceneTile]
 INC A
 LD [SceneTile],A
 CALL EmitPiece
-XOR A,A
-LD [PieceX],A
-LD A,8
-LD [PieceY],A
-LD A,[EffectTile]
-ADD A,2
+LD B,0
+LD C,8
+LD A,[SceneTile]
+INC A
 LD [SceneTile],A
 CALL EmitPiece
-LD A,8
-LD [PieceX],A
-LD A,[EffectTile]
-ADD A,3
+LD B,8
+LD C,8
+LD A,[SceneTile]
+INC A
 LD [SceneTile],A
 JP EmitPiece
 

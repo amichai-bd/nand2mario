@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DECODER_VERSION = 3
 # Exact qualified images: ROM sha256 -> digest of the required symbol layout.
 SUPPORTED = {
-    'f4406a34e33cd0720dfc95dcc43432a238552f7f4284906799910ceb5f0240c4':
+    '12f2ee544139173a65feeff1b3e1eebfe53f77dbe03085622240ba53c3785784':
         '92715bf10a6f9d2e9105dac655bf7cd690dd7062b884fe35f4d3ea2055fd80ae',
 }
 MODES = ('TITLE', 'PLAYING', 'RETRY', 'PAUSED', 'WON', 'TIMEUP', 'OVER')
