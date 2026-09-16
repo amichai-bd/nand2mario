@@ -38,7 +38,7 @@ decision to hold the library in flash.
 | Word | One 32-bit flash word; every flash address on this page is a word address in the MAX 10 flash's own numbering, where UFM1 starts at word `0x00800`. The On-Chip Flash IP's Avalon-MM data slave numbers the same words from 0 and adds that base internally (`ADDR_RANGE1_OFFSET`), so the reader drives `avmm_data_addr = flash_word - 0x00800` (`n2m_flash_pkg::FLASH_DATA_BASE`) and every image the IP or its double loads is written in the 0-based Avalon numbering. |
 | Page | 64 Kb (8 KiB, 2048 words), the smallest erasable unit; a 32 KiB image is exactly 4 pages. |
 | User range | Words `0x00800`-`0x2E7FF` (736 KiB): UFM1, UFM0, CFM2 and CFM1, the sectors left to the user in the single compressed image mode. |
-| Library | The 17 slot images (0-15 games, 16 the menu) and the catalogue, 545 KiB, laid out as in [SDRAM](MAS_sdram.md#address-space-layout). |
+| Library | The sixteen game slots (32 KiB images, or 64 KiB MBC1 images each filling two adjacent slots), the menu in slot 16 and the catalogue, 545 KiB, laid out as in [SDRAM](MAS_sdram.md#address-space-layout). |
 | Line | 16 bytes, one SDRAM line request; four consecutive flash words, little-endian, word `k` of the line in bits `32k+31:32k` of `request_data`. |
 | `clk_sys` | 25 MHz; the flash IP, the copier and the SDRAM controller share it. Counts below are `clk_sys` clocks unless a unit is given. |
 | Copier | The power-up state machine that reads the library from flash and writes it to SDRAM through the [storage arbiter](../cartridge/MAS_loader_profile.md#storage-arbiter). |
@@ -65,13 +65,17 @@ flash_word(a) = 0x00800 + (a >> 2)      for SDRAM device byte address a, 0 <= a 
 
 | Flash word | Size | Content | Sector |
 |---|---|---|---|
-| `0x00800 + i * 0x2000`, i = 0..16 | 8192 words, 32 KiB | Slot `i`, one complete 32 KiB image; slot 16 is the menu | slots 0-1 UFM1, UFM0; 2-13 CFM2; 14-16 CFM1 |
+| `0x00800 + i * 0x2000`, i = 0..16 | 8192 words, 32 KiB | Slot `i`: one complete 32 KiB image, or half of a 64 KiB image that starts in slot `i` or `i - 1`; slot 16 is the menu | slots 0-1 UFM1, UFM0; 2-13 CFM2; 14-16 CFM1 |
 | `0x22800`-`0x228FF` | 256 words, 1 KiB | Catalogue, 17 entries x 32 bytes, same format as the [SDRAM catalogue](MAS_sdram.md#address-space-layout) | CFM1 |
 | `0x22900`-`0x2E7FF` | 48,896 words, 191 KiB | Erased, reserved | CFM1 |
 
 Slot `i` byte `b` is at flash word `0x00800 + (i * 32768 + b) / 4`, byte
-`b % 4` of the word, least significant byte first. Slot boundaries fall on
-page boundaries, so one image can be re-programmed without touching another.
+`b % 4` of the word, least significant byte first; a 64 KiB image at slot
+`i` continues into slot `i + 1` with `b` up to 65535. Slot boundaries fall
+on page boundaries, so one image can be re-programmed without touching
+another. Capacity: sixteen game slots, so a library of `n32` 32 KiB and
+`n64` 64 KiB games needs `n32 + 2 * n64 <= 16`; the ten registered 32 KiB
+games leave room for three 64 KiB images.
 The catalogue is written with the images and is the copier's validity source:
 the library is present when entry 16 has `valid == 0x01`, `length == 32768`
 and `profile == LOADER_ID`. An erased flash reads `0xFF` everywhere, which is

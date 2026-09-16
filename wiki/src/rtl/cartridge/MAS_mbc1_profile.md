@@ -108,29 +108,30 @@ The store grows to `PROFILE_STORE_BYTES`; port A (host and copy engine writes,
 host readback) and port B (CPU and DMA reads) keep their roles from the
 [memory owner](../memory/MAS_memory.md#stores-and-ownership) with 16-bit store
 offsets. The loader engine and the UART load owner write the offset they are
-given; the 32 KiB swap and window fill paths are unchanged and touch offsets
-`$0000`-`$7FFF` only.
+given; the 32 KiB swap and window fill paths touch offsets `$0000`-`$7FFF`
+only, and a 64 KiB swap writes the whole store.
 
 Width dependency: `PROFILE_STORE_BYTES` sizes the store and its host range in
 [`n2m_memory_stores`](../../../../src/rtl/memory/n2m_memory_stores.sv) and the
 load address and presence bitmap in [`n2m_uart_load`](../../../../src/rtl/uart/n2m_uart_load.sv)
 and [`n2m_uart_presence_store`](../../../../src/rtl/uart/n2m_uart_presence_store.sv);
-the ROM host port and the UART load owner's address are 16 bits wide. The
-CPU-side offset stays 15 bits: [`n2m_memory_decode`](../../../../src/rtl/memory/n2m_memory_decode.sv)
-and [`n2m_loader_engine`](../../../../src/rtl/cartridge/n2m_loader_engine.sv)
-address the low half, and [`n2m_rom_port_arbiter`](../../../../src/rtl/cartridge/n2m_rom_port_arbiter.sv)
-zero-extends the engine's offset. The session checks in
+the ROM host port, the UART load owner's address, the
+[`n2m_loader_engine`](../../../../src/rtl/cartridge/n2m_loader_engine.sv)
+write offset and the [`n2m_rom_port_arbiter`](../../../../src/rtl/cartridge/n2m_rom_port_arbiter.sv)
+are 16 bits wide. The CPU-side offset stays 15 bits in
+[`n2m_memory_decode`](../../../../src/rtl/memory/n2m_memory_decode.sv). The session checks in
 [`n2m_uart_validate`](../../../../src/rtl/uart/n2m_uart_validate.sv) and the
 sweeps in the load owner use the loaded profile's image length, supplied by the
 [command owner](../uart/MAS_uart.md); `PROFILE_ROM_BYTES` keeps its 32 KiB
 meaning for the direct and loader profiles.
 
-The [SDRAM layout](../storage/MAS_sdram.md#address-space-layout), the flash
-library and the catalogue carry 32 KiB images only: `LIBRARY_SLOT_BYTES` is
-32768 and the catalogue `length` field is 16 bits wide, so it cannot express
-65536. A 64 KiB image therefore reaches the store through the host load session
-only; carrying it in the library is
-[#712](https://github.com/amichai-bd/nand2mario/issues/712).
+The [SDRAM layout](../storage/MAS_sdram.md#address-space-layout) and the
+[flash library](../storage/MAS_flash_library.md#flash-layout) carry a 64 KiB
+image in two adjacent slots under one catalogue entry whose 24-bit length is
+`MBC1_ROM_BYTES`; the [copy engine](MAS_loader_profile.md#select-register)
+copies it into the whole store and publishes `MBC1_ID`, so an MBC1 game
+starts from the menu like a direct one. The host load session is the other
+way into the store.
 
 ### Storage and fit
 

@@ -1769,9 +1769,13 @@ slot value is either a `src/sw/targets.json` package name or
 `external_roms.images`. Every package must carry a packaged runtime profile,
 the menu must be a package that runs in `dmg-loader-v1` (the contract's
 `profile == LOADER_ID` validity rule), a value may occupy one index only across
-both kinds, and each image must be exactly one 32 KiB slot. An external value
-is resolved at registry load: an unknown pin, a pin missing `url`, `sha256`,
-`size` or `license`, or a pin whose `size` is not 32768 is refused by name.
+both kinds, and each image must be exactly its profile's size: one 32 KiB slot
+for `dmg-direct-v1` and `dmg-loader-v1`, two adjacent slots (64 KiB) for
+`dmg-mbc1-v1`, whose index is at most 14 and whose second slot must not be
+registered (its catalogue entry stays empty), so `n32 + 2 * n64 <= 16`. An
+external value is resolved at registry load: an unknown pin, a pin missing
+`url`, `sha256`, `size` or `license`, a pin whose `size` is neither 32768 nor
+65536, or a 64 KiB pin whose next slot is registered is refused by name.
 Today it lists `springtrail`, `stackdrop` and `v05` in slots 0-2, the seven
 playing homebrew images in slots 3-9 and `menu` at 16.
 
@@ -1799,11 +1803,14 @@ Their bytes follow the pin file's redistribution rule: fetched at build time
 into the ignored `workdir/private/external-roms/<name>/`, verified by size and
 SHA-256 on write and on every read, never committed; the `library.hex`,
 `library.dat` and `.pof` that contain them are build artifacts under
-`workdir/`. Each image is validated as a direct-profile image before packing:
-32768 bytes, header byte `0x147` = `0x00` (ROM ONLY) and `0x148` = `0x00`
-(32 KiB), and title bytes `0x134`-`0x143` each zero or printable ASCII, with
-`0x80` (the CGB-compatible flag) also accepted at `0x143`. Its catalogue
-`profile` is `DIRECT_ID`. Wyrmhole and Rex Run are pinned but not registered:
+`workdir/`. Each image is validated by its size before packing: a 32768-byte
+image must carry header byte `0x147` = `0x00` (ROM ONLY) and `0x148` = `0x00`
+(32 KiB) and is catalogued as `DIRECT_ID`; a 65536-byte image must carry an
+MBC1 family type at `0x147` (`0x01`-`0x03`; cartridge RAM is outside the
+profile and reads `$FF`) and `0x148` = `0x01` (64 KiB) and is catalogued as
+`MBC1_ID` under the `dmg-mbc1-v1` profile name; title bytes `0x134`-`0x143`
+are each zero or printable ASCII, with `0x80` (the CGB-compatible flag) also
+accepted at `0x143`. Wyrmhole and Rex Run are pinned but not registered:
 neither [ever enables the LCD](../../showcase/homebrew-library.md#wyrmhole-and-rex-run-never-turn-the-lcd-on)
 under the `dmg-direct-v1` entry state, so a slot for them would only ever show a
 blank screen.

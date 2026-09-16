@@ -107,13 +107,18 @@ A commit to `$6000`-`$7FFF` with `data` in 0-16 starts a swap of image index
 `copy_busy` is ignored. The engine:
 
 1. Reads catalogue entry `data` (2 lines) and checks `valid == 0x01`,
-   `length == 32768` and `profile` in {`DIRECT_ID`, `LOADER_ID`}. Failure:
-   result `INVALID_SLOT`, nothing else changes, the menu keeps running.
+   `profile` in {`DIRECT_ID`, `LOADER_ID`, `MBC1_ID`}, the 24-bit `length`
+   ([catalogue entry](../storage/MAS_sdram.md#address-space-layout)) equal
+   to that profile's image size (32768, 32768, 65536) and, for a 64 KiB
+   image, `data` at most 14 so that its upper half is slot `data + 1` and
+   not the menu. Failure: result `INVALID_SLOT`, nothing else changes, the
+   menu keeps running.
 2. Requests a pause from the core control owner and waits for `paused`.
 3. Clears `image_valid`; the endpoint reports `LOADING`.
-4. Copies the 32 KiB image, line by line, into the ROM store through the host
-   ROM write port, accumulating CRC-32/ISO-HDLC over the 32768 bytes in the
-   order written, with the same `crc32_byte` function `LOAD_END` uses.
+4. Copies the `length` bytes of the image (2048 or 4096 lines), line by
+   line, into the ROM store from offset 0 through the host ROM write port,
+   accumulating CRC-32/ISO-HDLC over those bytes in the order written, with
+   the same `crc32_byte` function `LOAD_END` uses.
 5. Compares the CRC with the catalogue `crc32`. Mismatch: result
    `CRC_MISMATCH`, `image_valid` stays 0, the core stays paused with `PROFILE`
    0; the host `LOAD_BEGIN` or the physical KEY1 recovers. Match: publish
@@ -127,11 +132,15 @@ A commit to `$6000`-`$7FFF` with `data` in 0-16 starts a swap of image index
    the host sends `RUN`.
 
 `copy_busy` is true from the accepting commit edge through step 6.
-Swap bound: 80,000 edges (3.2 ms) from the accepting edge to `copy_busy`
-falling, including the pause wait (at most one M-cycle, 24 edges), the 2048
-lines (at most 38,100 SDRAM edges, overlapped with 32,768 ROM writes that have
-the port to themselves while paused, so about 38,200 edges), the reset and the
-8192-edge RAM initialization sweep. The bound is checked; the sum is guidance.
+Swap bound for a 32 KiB image: 80,000 edges (3.2 ms,
+`LIBRARY_SWAP_BOUND_EDGES`) from the accepting edge to `copy_busy` falling,
+including the pause wait (at most one M-cycle, 24 edges), the 2048 lines (at
+most 38,100 SDRAM edges, overlapped with 32,768 ROM writes that have the port
+to themselves while paused, so about 38,200 edges), the reset and the
+8192-edge RAM initialization sweep. A 64 KiB image copies 4096 lines (about
+76,400 edges), so its bound is 120,000 edges (4.8 ms,
+`LIBRARY_SWAP_BOUND_MBC1_EDGES`); `loader-exit-mbc1` measures 87,865. The
+bounds are checked; the sums are guidance.
 
 ### Copy engine and ROM store port ownership
 
@@ -142,7 +151,9 @@ arbiter in this owner:
 - The UART load owner owns the port while the endpoint is in a host load
   session (`LOAD_BEGIN` accepted, `LOAD_END` or a new `LOAD_BEGIN` not yet
   completed).
-- The engine owns the port while `copy_busy`.
+- The engine owns the port while `copy_busy`. A swap writes offsets 0 to
+  `length - 1`: the low 32 KiB for a direct or loader image, the whole
+  64 KiB store for an MBC1 image; a fill writes `$4000`-`$7FFF`.
 - Neither may start while the other owns it; see [host interaction](#host-interaction)
   for the visible rules. A grant to both on one edge is a named fatal
   assertion, `LOADER_PORT_EXCLUSIVE`.
@@ -336,7 +347,8 @@ command. Rules, in priority order:
 2. While `copy_busy` for a swap, the endpoint reports `STATE == LOADING`. Host
    commands whose precondition is `not loading` or `paused valid image`
    return `BAD_STATE` as today. `LOAD_BEGIN` (precondition `any`) also returns
-   `BAD_STATE` while `copy_busy`; the host retries after at most 3.2 ms.
+   `BAD_STATE` while `copy_busy`; the host retries after at most 3.2 ms
+   (4.8 ms while a 64 KiB image is being selected).
    `LOAD_WRITE`/`LOAD_END` return `BAD_STATE` because no host session is open.
    The [boot copier](../storage/MAS_flash_library.md#precedence-over-host-loads)
    reports the same `LOADING` while it fills SDRAM after a power-up; there
@@ -406,7 +418,8 @@ and a CPU bus driver or the real CPU. Fixtures, each within the
 
 Implemented by [`tb_loader`](../../../../src/dv/cartridge/tb_loader.sv) with
 a bus driver in place of the CPU (`loader-map`, `loader-window`,
-`loader-swap`, `loader-swap-host`, `loader-swap-fault`, `loader-exit`, `loader-key1` at the real thresholds and
+`loader-swap`, `loader-swap-host`, `loader-swap-fault`, `loader-exit`,
+`loader-exit-mbc1`, `loader-key1` at the real thresholds and
 `loader-key1-queue` for the ordering cases at shortened thresholds) and by
 [`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv) with the
 real CPU running a menu program from SDRAM (`loader-host`, `loader-menu`),
@@ -419,11 +432,12 @@ all under the `cartridge` label; the
 | `loader-window` | Bank commits 0, 1, 33, 34, 63; upper half equals the SDRAM bank after `window_busy` falls; 40,000-edge bound; ignored commit during busy; `window_ready` and `$A001` |
 | `loader-swap` | Select 0, 15 and 16 with a valid catalogue: pause, `image_valid` low before the first ROM write, CRC, `PROFILE`, epoch + 1, running without host `RUN`; 80,000-edge bound; the ROM store equals the image byte for byte |
 | `loader-swap-host` | A select committed by the menu while a host `RUN_DOTS` runs, and a return requested during a host `STEP`: the host command completes (`STOPPED`, `STEP_LIMIT`), the swap completes within the bound with the expected `PROFILE` and epoch + 1, the console stays paused for the host afterwards and resumes on host `RUN`; the ROM store equals the image |
-| `loader-swap-fault` | Invalid entry, wrong length, bad profile, CRC mismatch: exact result codes, no ROM byte changed and `window_ready` unchanged for refused selects, `window_ready` cleared once the accepted swap pauses the core, paused with `image_valid` 0 for the mismatch; bank, select and game exit commits before `sdram_ready`: `NOT_READY` |
+| `loader-swap-fault` | Invalid entry, wrong length, bad profile, a direct-profile entry claiming 65536 bytes, a 64 KiB entry in slot 15, CRC mismatch: exact result codes, no ROM byte changed and `window_ready` unchanged for refused selects, `window_ready` cleared once the accepted swap pauses the core, paused with `image_valid` 0 for the mismatch; bank, select and game exit commits before `sdram_ready`: `NOT_READY` |
 | `loader-exit` | From a running direct-profile game: writes of other values to `$6000`-`$7FFF` and of `$10` to other cartridge addresses change nothing; the [game exit](#game-exit-register) write returns to the menu (`PROFILE` `LOADER_ID`, epoch + 1, result `OK`, `$A003` unchanged, running without host `RUN`, the ROM store equal to the menu image); the write between a return event and the pause sets `key1_pending` and a second menu swap follows |
+| `loader-exit-mbc1` | An `MBC1_ID` entry with a 32 KiB length is refused; the select of the 64 KiB entry in slots 11-12 pauses, copies all 65536 bytes (the low half read through the CPU port, the whole store through the host port readback), completes within 120,000 edges, publishes `MBC1_ID`, epoch + 1, result `OK` index 11; the [game exit](#game-exit-register) write from the MBC1 game returns to the menu |
 | `loader-key1` | 4 ms glitch, 0.49 s and 0.51 s presses, hold through the swap, press during a swap (`key1_pending`), press in a host session (dropped), release and re-press |
 | `loader-host` | `LOAD_BEGIN` during swap returns `BAD_STATE`; during fill it waits; `SDRAM_WRITE`/`SDRAM_READ` round trips; `LIBRARY_STATUS`; `WRITE_HOST(LIBRARY_CONTROL)` return; a direct host load of a game after a swap behaves as today |
-| `loader-menu` | The real CPU: the menu selects games from the joypad, each boots in `DIRECT_ID` and KEY1 returns; one game exits through the [game exit register](#game-exit-register) by itself, back to the running menu with epoch + 1 |
+| `loader-menu` | The real CPU: the menu selects games from the joypad, each boots in `DIRECT_ID` and KEY1 returns; one game exits through the [game exit register](#game-exit-register) by itself, back to the running menu with epoch + 1; the 64 KiB MBC1 game in slots 11-12 boots in `MBC1_ID`, switches to ROM bank 2 and returns from that banked half through the same register |
 
 Named assertions the owner carries:
 
@@ -432,12 +446,12 @@ Named assertions the owner carries:
 | `LOADER_PORT_EXCLUSIVE` | The engine and the UART load owner never both own the ROM host write port |
 | `LOADER_IMAGE_INVALID_BEFORE_WRITE` | An engine write into the ROM store during a swap implies `image_valid == 0` |
 | `LOADER_VALID_IMPLIES_CRC` | `image_valid` rising from an engine swap implies the CRC compared equal on that edge |
-| `LOADER_SWAP_PAUSED` | Engine ROM writes with a 32 KiB job imply `paused` |
-| `LOADER_FILL_UPPER_ONLY` | Engine writes during a fill have offset bit 14 set |
+| `LOADER_SWAP_PAUSED` | Engine ROM writes with a swap job imply `paused` |
+| `LOADER_FILL_UPPER_ONLY` | Engine writes during a fill have offset bits 15:14 equal to `01` |
 | `LOADER_FILL_HOST_PORT` | Every engine write reaches the ROM store through its host port (port A) and never coincides with a UART load owner write |
 | `LOADER_REGS_ONLY_IN_PROFILE` | A bank or select register effect implies `PROFILE == LOADER_ID` |
 | `LOADER_EXIT_ONLY_IN_GAME_PROFILE` | A game exit register effect implies `PROFILE == DIRECT_ID` or `PROFILE == MBC1_ID`; the [MBC1 profile](MAS_mbc1_profile.md#registers) honors the same register |
-| `LOADER_SWAP_BOUND` | `copy_busy` for a swap falls within 80,000 edges of rising |
+| `LOADER_SWAP_BOUND` | `copy_busy` for a swap falls within 80,000 edges of rising, 120,000 for a 64 KiB image |
 | `LOADER_FILL_BOUND` | `copy_busy` for a fill falls within 40,000 edges of rising |
 | `LOADER_KEY1_THRESHOLD` | `key1_return` implies the debounced press has lasted exactly 12,500,000 edges |
 | `LOADER_ONE_CORE_CLIENT` | The core control owner never accepts a host command and an engine request on the same edge |
