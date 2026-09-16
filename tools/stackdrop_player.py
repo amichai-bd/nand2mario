@@ -18,7 +18,18 @@ from n2m.records import atomic_json, file_hash
 from n2m.stackdrop_session import play
 from n2m.test_budget import supervise
 
-ROM = 'f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927'
+
+def current_stackdrop(root, manifest):
+    """Accept only a build of the checked-out Stackdrop source.
+
+    The image identity is the build record's own `rom_sha256`; nothing here
+    pins a hash. A record naming another target, or an input whose recorded
+    hash no longer matches the tree, is not the current image.
+    """
+    record = json.loads((root / Path(manifest)).read_text())
+    stale = [p for p, h in record.get('inputs', {}).items() if file_hash(root / p) != h]
+    if record.get('target') != 'stackdrop' or stale:
+        raise ValueError('STACKDROP_PACKAGE')
 
 
 def finish(client, result, path, *, armed=True):
@@ -46,8 +57,7 @@ def worker(args):
     if state['completed'] != expected or state.get('attempted'):
         raise ValueError('STACKDROP_COMPARISON_ORDER')
     image, package = read_package(ROOT, args.package)
-    if package['rom_sha256'] != ROM:
-        raise ValueError('STACKDROP_PACKAGE')
+    current_stackdrop(ROOT, args.package)
     fit_path = Path(setup['fit_record'])
     if file_hash(fit_path) != setup['fit_sha256']:
         raise ValueError('STACKDROP_FIT_RECORD')

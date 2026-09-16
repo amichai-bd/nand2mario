@@ -401,11 +401,12 @@ Conditions at the time of the observation:
 
 - Wire build `87d5f0280a2afad8be6b85dc601141cc`, ABI 1: the already-programmed
   build reused for that session, not the build in the run record above.
-- Loaded image: restyled Stackdrop, SHA-256
+- Loaded image: the restyled Stackdrop of that day, SHA-256
   `f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927`, 32768
-  bytes, profile `dmg-direct-v1`, built from `main` at `1b18cfc2`. Loaded with
-  `host load --package`, all 32768 bytes verified on readback, then
-  `host reset`.
+  bytes, profile `dmg-direct-v1`, built from `main` at `1b18cfc2`. That hash
+  identifies the image observed, not the current build, which later source
+  changes superseded. Loaded with `host load --package`, all 32768 bytes
+  verified on readback, then `host reset`.
 - The score and STATE readouts were legible, and the picture matched what the
   same image renders in the independently generated previews.
 

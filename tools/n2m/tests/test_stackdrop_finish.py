@@ -1,7 +1,10 @@
-"""The command must preserve uncertain completion and cleanup failures."""
+"""The command must bind the current Stackdrop build and preserve uncertain
+completion and cleanup failures."""
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import tempfile
 import unittest
 
@@ -22,6 +25,38 @@ class Client:
             self.uncertain = True
             raise RuntimeError('lost completion')
         self.sequence += 1
+
+
+ROOT = Path(__file__).resolve().parents[3]
+INPUTS = ('src/sw/stackdrop/main.asm', 'src/sw/stackdrop/layout.json')
+
+
+def current_record(**overrides):
+    inputs = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in INPUTS}
+    return dict(dict(target='stackdrop', inputs=inputs), **overrides)
+
+
+class PackageIdentityTests(unittest.TestCase):
+    """The package must be a build of the checked-out source; no hash is pinned."""
+
+    def check(self, record):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp)/'result.json'
+            manifest.write_text(json.dumps(record))
+            command.current_stackdrop(ROOT, manifest)
+
+    def test_current_source_accepted(self):
+        self.check(current_record())
+
+    def test_other_target_and_stale_input_rejected(self):
+        stale = dict(current_record()['inputs'], **{INPUTS[0]: '0'*64})
+        for record in (current_record(target='springtrail'), current_record(inputs=stale)):
+            with self.assertRaises(ValueError):
+                self.check(record)
+
+    def test_no_pinned_image_hash(self):
+        source = (ROOT/'tools/stackdrop_player.py').read_text()
+        self.assertIsNone(re.search(r'[0-9a-f]{64}', source))
 
 
 class FinishTests(unittest.TestCase):

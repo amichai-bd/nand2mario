@@ -218,8 +218,12 @@ height differences. A hole is an empty cell below an occupied cell in its column
 Prefer higher score, then fewer actions, then lexicographic action order
 Left, Right, Rotate, Drop. There is no lookahead or parameter tuning between runs.
 
-Both runs load the same original ROM f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927,
-start a fresh game, and stop after eight issued B-edge actions or game over.
+Both runs load the same immutable `stackdrop` package, start a fresh game, and
+stop after eight issued B-edge actions or game over. The image identity is the
+`rom_sha256` of that package's `sw build` record; no specification or tool
+repeats it. The player accepts a package only when the record names the
+`stackdrop` target and every recorded input hash matches the checked-out
+source, so both runs compare the current built image.
 This is not eight total piece locks: gravity may lock a piece during an action.
 Each has the
 same64-action ceiling and300-second whole-process deadline, including cleanup.
