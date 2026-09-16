@@ -92,9 +92,8 @@ exclusive board lock:
    blank-checks CFM0 and the user range. The result records `isp_seconds`,
    `pof_sha256`, the chain and `program.log` under `fpga-program/<id>/`.
 4. Power-cycle the board with no host attached and observe the monitor. A
-   bitstream that carries the boot copier
-   ([#675](https://github.com/amichai-bd/nand2mario/issues/675)) shows the
-   menu from flash; the `flash-proof` image itself holds the library and the
+   bitstream that carries the [boot copier](rtl/storage/MAS_flash_library.md#boot-copier)
+   (`v05-board`) shows the menu from flash; the `flash-proof` image itself holds the library and the
    reader only.
 5. Record the session under [Run record](#run-record): the attempt commit,
    the `.pof` hash, `isp_seconds`, the observed picture and whether the
