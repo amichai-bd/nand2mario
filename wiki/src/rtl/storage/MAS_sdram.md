@@ -307,6 +307,12 @@ slot a 64 KiB image spills into has an empty entry:
 | 24 | 1 | `length_high`: bits 23:16 of the image length, 0 for a 32 KiB image and 1 for 64 KiB. This byte was reserved zero before, so a 32 KiB entry is byte for byte the entry written then |
 | 25-31 | 7 | Reserved, zero |
 
+Length encoding: an entry's image length is the 24-bit value
+`length_high << 16 | length`. Bytes 2-3 alone described every image while
+all were 32 KiB; byte 24 was reserved zero and now carries bits 23:16, so
+every 32 KiB entry keeps its bytes and only a 64 KiB entry sets it to 1. No
+other field of the entry changed for the two-slot images.
+
 The host writes the catalogue in phase 1 ([boot source](../cartridge/MAS_loader_profile.md#boot-source))
 and the [boot copier](MAS_flash_library.md#boot-copier) writes it from the
 flash mirror of this layout at power-up; the CPU-side hardware reads it and

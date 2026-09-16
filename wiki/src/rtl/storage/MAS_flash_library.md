@@ -66,7 +66,7 @@ flash_word(a) = 0x00800 + (a >> 2)      for SDRAM device byte address a, 0 <= a 
 | Flash word | Size | Content | Sector |
 |---|---|---|---|
 | `0x00800 + i * 0x2000`, i = 0..16 | 8192 words, 32 KiB | Slot `i`: one complete 32 KiB image, or half of a 64 KiB image that starts in slot `i` or `i - 1`; slot 16 is the menu | slots 0-1 UFM1, UFM0; 2-13 CFM2; 14-16 CFM1 |
-| `0x22800`-`0x228FF` | 256 words, 1 KiB | Catalogue, 17 entries x 32 bytes, same format as the [SDRAM catalogue](MAS_sdram.md#address-space-layout) | CFM1 |
+| `0x22800`-`0x228FF` | 256 words, 1 KiB | Catalogue, 17 entries x 32 bytes, same format as the [SDRAM catalogue](MAS_sdram.md#address-space-layout), including its 24-bit length encoding (`length` word plus `length_high` in byte 24, so 32 KiB entries are byte-identical to the one-size catalogue) | CFM1 |
 | `0x22900`-`0x2E7FF` | 48,896 words, 191 KiB | Erased, reserved | CFM1 |
 
 Slot `i` byte `b` is at flash word `0x00800 + (i * 32768 + b) / 4`, byte
