@@ -58,8 +58,10 @@ class FlashIpTests(unittest.TestCase):
         self.assertEqual(lines[4], fpga_flash.CONFIGURATION_MODE)
         self.assertEqual(lines[5], 'set_parameter -name INIT_FILENAME "library.hex" -to "u_reader"')
         self.assertEqual(len(lines), 6)
+        self.assertEqual(fpga_flash.assignments("v05_proof")[5],
+                         'set_parameter -name INIT_FILENAME "library.hex" -to "u_system|u_copier|u_reader"')
         with self.assertRaisesRegex(ValueError, "unsupported flash reader top"):
-            fpga_flash.assignments("v05_proof")
+            fpga_flash.assignments("sdram_proof")
         self.assertTrue(fpga_flash.flash_target(TARGET))
         self.assertFalse(fpga_flash.flash_target({"top": "sdram_proof", "sources": ["src/rtl/storage/n2m_sdram_ctrl.sv"]}))
 
@@ -165,7 +167,8 @@ class FlashIpTests(unittest.TestCase):
             (self.attempt / "audit.tcl").write_text("create_timing_netlist\n" + "update_timing_netlist\n" * 7)
             with self.assertRaisesRegex(ValueError, "strobe clock diagnostic count"):
                 fpga_flash.explained_diagnostics(strobe + "\n", self.attempt, sources, "flash_proof", "audit.log")
-            self.assertEqual(len(fpga_flash.explained_diagnostics((strobe + "\n") * 7, self.attempt, sources, "flash_proof", "audit.log")), 7)
+            self.assertEqual([item["code"] for item in fpga_flash.explained_diagnostics(
+                (strobe + "\n") * 7, self.attempt, sources, "flash_proof", "audit.log")], ["332060"])
             (self.attempt / "audit.tcl").write_text("create_timing_netlist\nread_sdc\nupdate_timing_netlist\n")
             for broken in (text.replace("write_count", "read_count", 1), text + strobe + "\n",
                            text.replace(strobe + "\n", "", 1), text.replace("(201)", "(202)", 1)):
