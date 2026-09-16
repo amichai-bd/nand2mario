@@ -176,14 +176,17 @@ def _sim_plan(menu, root):
         action = menu.choose("Simulation action", _named(command_actions(("sim",))))
         if action is BACK:
             return BACK
-        if action == "test":
+        if action in ("test", "prepare"):
             steps = [
                 ("sim", lambda _: _backend(menu)),
                 ("target", lambda a: menu.choose(
-                    "Select simulation test", _named(simulation_targets(root, a["sim"]))))]
+                    "Select simulation test" if action == "test" else "Select target to prepare",
+                    _named(simulation_targets(root, a["sim"]))))]
             plan = _editable(menu, steps, lambda answers: _simulator_default(Plan(
-                ["sim", "test", answers["target"], "--sim", answers["sim"]],
-                ("sim", "test"), _sim_host(answers["sim"]), "Build, run and check a simulation"), root))
+                ["sim", action, answers["target"], "--sim", answers["sim"]],
+                ("sim", action), _sim_host(answers["sim"]),
+                "Build, run and check a simulation" if action == "test"
+                else "Prepare fixtures without the tag lock; no simulator run"), root))
         else:
             targets = simulation_targets(root, None, preflight=True)
             plan = _editable(menu, [("target", lambda _: menu.choose(
