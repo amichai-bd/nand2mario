@@ -291,15 +291,16 @@ class LoaderTransition:
         self.client, self.mode, self.profile = client, mode, profile
         self.clock, self.pause = clock, pause
 
-    def _ready(self, started, state=None):
+    def _ready(self, state=None):
         """Wait once for the generated worst-case swap bound, then verify."""
         if self.client.uncertain:
             raise RuntimeError('uncertain session')
         state = self.client.read_host(abi.HOST_REG_STATE) if state is None else state
         if state == abi.STATE_LOADING:
-            remaining = LOADER_SWAP_SECONDS-(self.clock()-started)
-            if remaining > 0:
-                self.pause(remaining)
+            # The accepted mask may take arbitrary game time to reach the menu
+            # commit. The hardware bound begins at that commit, so give it one
+            # whole bound from this first conservative LOADING observation.
+            self.pause(LOADER_SWAP_SECONDS)
             if self.client.uncertain:
                 raise RuntimeError('uncertain session')
             # The supplied LOADING sample may itself have taken most of the
@@ -324,7 +325,7 @@ class LoaderTransition:
         return {'profile':profile,'state':state,
                 'bound_edges':abi.LIBRARY_SWAP_BOUND_MBC1_EDGES}
 
-    def _apply_ready(self, mask, started, *, retry):
+    def _apply_ready(self, mask, *, retry):
         prior_profile = self.profile
         try:
             self.client.write_host(abi.HOST_REG_INPUT,mask)
@@ -334,14 +335,14 @@ class LoaderTransition:
             state = self.client.read_host(abi.HOST_REG_STATE)
             if state != abi.STATE_LOADING:
                 raise
-            transition = self._ready(started,state)
+            transition = self._ready(state)
             if mask == 0:
                 return transition
             if retry:
                 raise
             # The endpoint explicitly rejected this write, so no press was
             # applied. Apply it once to the selected image after verification.
-            return self._apply_ready(mask,self.clock(),retry=True) or transition
+            return self._apply_ready(mask,retry=True) or transition
         effective = self.client.read_host(abi.HOST_REG_INPUT_EFFECTIVE)
         if effective == mask:
             return None
@@ -350,30 +351,29 @@ class LoaderTransition:
         if mask and (state == abi.STATE_LOADING or profile != prior_profile):
             # WRITE_HOST was accepted. The reset consumed and cleared this tap;
             # settling it is safe, replaying it into the game is not.
-            return self._ready(started,state)
+            return self._ready(state)
         raise PlayFailure('STATE_INPUT')
 
     def apply(self, client, mask):
         if client is not self.client:
             raise ValueError('loader transition client changed')
-        started = self.clock()
         state = client.read_host(abi.HOST_REG_STATE)
         if state == abi.STATE_LOADING:
-            transition = self._ready(started,state)
+            transition = self._ready(state)
             if mask == 0:
                 return transition
-            return self._apply_ready(mask,self.clock(),retry=False) or transition
+            return self._apply_ready(mask,retry=False) or transition
         if state != state_for(self.mode()):
             raise PlayFailure('STATE_LOADER_MODE')
         profile = client.read_host(abi.HOST_REG_PROFILE)
         if profile != self.profile:
             # The short transition may have completed between two host reads.
             # A changed generated profile is the durable witness in that case.
-            transition = self._ready(started,state)
+            transition = self._ready(state)
             if mask == 0:
                 return transition
-            return self._apply_ready(mask,self.clock(),retry=False) or transition
-        return self._apply_ready(mask,started,retry=False)
+            return self._apply_ready(mask,retry=False) or transition
+        return self._apply_ready(mask,retry=False)
 
 
 def advance(client, dots):

@@ -83,14 +83,31 @@ class LoaderSwapFake(Fake):
     """A menu tap whose accepted write is immediately cleared by core reset."""
     def __init__(self, clock, *, final_valid=1, final_profile=abi.PROFILE_DIRECT_ID,
                  final_state=abi.STATE_RUNNING, final_mask=0, complete=True,
-                 uncertain=False):
+                 uncertain=False, delayed_commit_bounds=0):
         super().__init__(clock)
         self.profile = abi.PROFILE_LOADER_ID
         self.final_valid, self.final_profile = final_valid, final_profile
         self.final_state, self.final_mask = final_state, final_mask
         self.complete = complete
         self.uncertain_on_pause = uncertain
+        self.delayed_commit_bounds = delayed_commit_bounds
+        self.pending_swap = False
+        self.pause_calls = []
         self.swap_started = False
+
+    def start_swap(self):
+        self.swap_started = True
+        self.pending_swap = False
+        self.state = abi.STATE_LOADING
+        self.mask = 0  # The accepted loader reset clears host/effective input.
+
+    def read_host(self, address):
+        if address == abi.HOST_REG_INPUT_EFFECTIVE and self.pending_swap:
+            # The game can take time after accepting the mask before its menu
+            # commit. Begin the hardware-bounded interval only at this readback.
+            self.clock.wait(self.delayed_commit_bounds*LOADER_SWAP_SECONDS)
+            self.start_swap()
+        return super().read_host(address)
 
     def write_host(self, address, value):
         if self.state == abi.STATE_LOADING:
@@ -98,9 +115,10 @@ class LoaderSwapFake(Fake):
             raise RejectedCommand('WRITE_HOST',abi.STATUS_BAD_STATE)
         super().write_host(address,value)
         if address == abi.HOST_REG_INPUT and value == abi.BUTTON_A and not self.swap_started:
-            self.swap_started = True
-            self.state = abi.STATE_LOADING
-            self.mask = 0  # The accepted loader reset clears host/effective input.
+            if self.delayed_commit_bounds:
+                self.pending_swap = True
+            else:
+                self.start_swap()
 
     def control(self, action):
         if self.state == abi.STATE_LOADING:
@@ -109,6 +127,7 @@ class LoaderSwapFake(Fake):
         super().control(action)
 
     def transition_pause(self, seconds):
+        self.pause_calls.append(seconds)
         self.clock.wait(seconds)
         if self.uncertain_on_pause:
             self.uncertain = True
@@ -231,6 +250,21 @@ class ViewerTests(unittest.TestCase):
         self.assertFalse(client.uncertain)
         self.assertEqual(result['cleanup'],{
             'verified':True,'state':abi.STATE_PAUSED,'input_effective':0})
+
+    def test_loader_bound_starts_when_delayed_menu_commit_is_observed(self):
+        clock=Clock();clock.value=0
+        client=LoaderSwapFake(clock,delayed_commit_bounds=2)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}');enqueue(out,abi.BUTTON_A,134)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                expected_build=BUILD,stop=clock,clock=clock,
+                                wait=clock.wait,seconds=4,buttons=Buttons(out),
+                                transition_pause=client.transition_pause)
+        self.assertEqual(result['status'],'PASS')
+        self.assertEqual(client.pause_calls,[LOADER_SWAP_SECONDS])
+        self.assertEqual(result['inputs'][0]['loader_transition']['profile'],
+                         abi.PROFILE_DIRECT_ID)
+        self.assertEqual(client.mask,0)
 
     def test_loader_transition_rejects_invalid_image_profile_input_and_mode(self):
         cases=(
