@@ -107,7 +107,7 @@ module tb_loader #(
         .sdram_request_address(sdram_request_address), .sdram_request_data(sdram_request_data),
         .sdram_request_ready(sdram_request_ready), .sdram_response_valid(sdram_response_valid),
         .sdram_response_data(sdram_response_data),
-        .engine_pause(engine_pause), .engine_reset_request(engine_reset_request), .boot_run(1'b0),
+        .engine_pause(engine_pause), .engine_reset_request(engine_reset_request),
         .engine_reset_accept(engine_reset_accept), .engine_reset_done(engine_reset_done),
         .image_invalidate(image_invalidate), .image_publish(image_publish), .image_profile(image_profile),
         .copy_busy(copy_busy), .swap_busy(swap_busy), .window_busy(window_busy), .sdram_ready(sdram_ready),

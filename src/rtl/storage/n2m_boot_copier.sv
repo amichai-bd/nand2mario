@@ -13,9 +13,9 @@
 // next flash line is requested only when the reader's line has moved. The
 // SDRAM (18 clocks per line plus refresh) sets the pace; the flash (17 per
 // line) stays ahead. flash_boot is set on the edge the last line is accepted
-// and cleared only by reset_sys. Every register is in clk_sys. Under
-// synthesis the reader instantiates the On-Chip Flash IP; under VERILATOR
-// the repository double, loaded by the fixture through the reader's u_flash.
+// and cleared only by reset_sys. Every register is in clk_sys. In the FPGA
+// image the reader instantiates the On-Chip Flash IP; under VERILATOR it
+// selects the repository double, which the fixture loads through u_flash.
 `timescale 1ns/1ps
 `default_nettype none
 `include "src/rtl/common/macros.svh"
