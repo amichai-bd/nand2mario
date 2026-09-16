@@ -59,6 +59,15 @@ def describe_failure(stage, error):
     return {'stage':stage,'error_class':type(error).__name__,'message':' '.join(words)[:200]}
 
 
+def cleanup_error_names(error):
+    """Class names of a cleanup error and the errors it interrupted, joined by '+'."""
+    names = []
+    while error is not None and type(error).__name__ not in names:
+        names.append(type(error).__name__)
+        error = error.__context__
+    return '+'.join(names)
+
+
 class Latest:
     def __init__(self, *, clock=time.monotonic, stale_after=5):
         self.clock, self.stale_after = clock, stale_after
@@ -303,10 +312,17 @@ class LoaderTransition:
         self.loader_candidate = False
 
     def _ready(self, state=None):
-        """Wait once for the generated worst-case swap bound, then verify."""
+        """Wait once for the generated worst-case swap bound, then verify.
+
+        Only a LOADING sample is trusted from the caller: it conservatively
+        starts the bound. Any other sample may predate a swap that began between
+        the caller's reads, so the guard judges a fresh STATE of its own and never
+        skips the wait on a stale RUNNING or PAUSED observation.
+        """
         if self.client.uncertain:
             raise RuntimeError('uncertain session')
-        state = self.client.read_host(abi.HOST_REG_STATE) if state is None else state
+        if state != abi.STATE_LOADING:
+            state = self.client.read_host(abi.HOST_REG_STATE)
         if state == abi.STATE_LOADING:
             # The accepted mask may take arbitrary game time to reach the menu
             # commit. The hardware bound begins at that commit, so give it one
@@ -346,17 +362,18 @@ class LoaderTransition:
         except RejectedCommand as error:
             if error.status != abi.STATUS_BAD_STATE or self.client.uncertain:
                 raise
-            state = self.client.read_host(abi.HOST_REG_STATE)
-            if state != abi.STATE_LOADING:
-                raise
-            transition = self._ready(state)
+            # BAD_STATE proves this command was not applied. The swap that caused
+            # it may already have finished, so the guard samples STATE itself:
+            # LOADING waits the bound, a completed swap is verified directly.
+            transition = self._ready()
             if mask == 0:
+                # Loader reset established neutral input and the guard verified it.
                 self.loader_candidate = False
                 return transition
             if retry:
                 raise
-            # The endpoint explicitly rejected this command, so no press was
-            # applied. Apply it once to the selected image after verification.
+            # No press was applied. Apply it once to the selected image after
+            # verification.
             return self._apply_ready(mask,retry=True) or transition
         # The reply is the endpoint's acknowledgement that the complete mask
         # was applied. Do not add state/profile/effective reads to this latency
@@ -385,7 +402,9 @@ class LoaderTransition:
             return self._ready(state)
         profile = self.client.read_host(abi.HOST_REG_PROFILE)
         if profile != self.profile:
-            return self._ready(state)
+            # The swap may have begun between these two reads; the guard takes
+            # a fresh STATE rather than trusting this older sample.
+            return self._ready()
         if state != state_for(self.mode()):
             raise PlayFailure('STATE_LOADER_MODE')
         return None
@@ -393,6 +412,8 @@ class LoaderTransition:
 
 class CameraPublisher:
     """Read and publish camera frames without ever owning the UART client."""
+    join_seconds = 2
+
     def __init__(self, camera, latest, out, stop, *, clock=time.monotonic):
         self.camera, self.latest, self.out, self.stop = camera, latest, out, stop
         self.clock = clock
@@ -441,10 +462,15 @@ class CameraPublisher:
             return
         self.closed = True
         self.stopping.set()
-        self.camera.close()  # Terminates the source and unblocks camera.read().
-        self.thread.join(timeout=2)
-        if self.thread.is_alive():
-            raise RuntimeError('camera publisher did not stop')
+        try:
+            self.camera.close()  # Terminates the source and unblocks camera.read().
+        finally:
+            # A failed source close never skips this bounded join: the thread may
+            # still publish frames and write artifacts. A live thread raises here
+            # with the source error kept as its context.
+            self.thread.join(timeout=self.join_seconds)
+            if self.thread.is_alive():
+                raise RuntimeError('camera publisher did not stop')
 
 
 def return_main_menu(client, transition):
@@ -706,7 +732,9 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             try:
                 camera_publisher.close()
             except Exception as error:
-                camera_cleanup_error = type(error).__name__
+                # Both a failed source close and a publisher that stayed alive
+                # are reported, outermost first, never only the last one.
+                camera_cleanup_error = cleanup_error_names(error)
                 result.update(status='FAIL',camera_cleanup_error=camera_cleanup_error)
             count,captures,error = camera_publisher.snapshot()
             result['capture_count'],result['captures'] = count,captures

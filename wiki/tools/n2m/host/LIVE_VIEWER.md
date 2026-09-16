@@ -171,6 +171,9 @@ owner polls the finite FIFO independently, so a blocked camera read cannot delay
 a queued command and a UART command or 134 ms hold cannot stall camera
 publication. At most 16 requests can be pending. The UART owner still executes
 each frozen batch in order and releases one press before starting the next.
+Shutdown closes the camera source and then always waits a bounded time for the
+publisher thread to stop; a failed source close and a publisher that stays alive
+are both reported in the run result, never only the last one.
 
 An ordinary free-run tap outside the loader-selection boundary sends exactly two
 acknowledged `COMMAND_INPUT` operations: the complete press mask, the fixed 134
@@ -182,24 +185,31 @@ neutral command; a batch with no press takes one step of its own. A step is
 emulated time, not a frame readback, so no other UART request interleaves with
 one.
 
-Camera cadence sends no UART request. While idle, the UART owner checks STATE and
-PROFILE at most once per second. A stable check is exactly those two reads. A
-LOADING state or changed profile invokes the full bounded post-loader guard; an
-unexpected selected-mode state stops the worker. Preflight, loader settlement,
+Camera cadence never causes a health read, and in free-run it sends no UART
+request at all. In stepped mode with a camera, each newly observed camera frame
+sequence lets the UART owner take one `RUN_DOTS` step when no press in that cycle
+already stepped, so an idle stepped view still advances at camera pace. While
+idle, the UART owner checks STATE and PROFILE at most once per second. A stable
+check is exactly those two reads. A LOADING state or changed profile invokes the
+full bounded post-loader guard, which samples STATE again itself rather than
+trusting the older health read; an unexpected selected-mode state stops the worker. Preflight, loader settlement,
 Main menu and shutdown retain their fuller image, input-authority, neutral-input
 and mode checks.
 
 A loader-profile menu selection is the bounded exception to an ordinary release.
 An acknowledged press can make the menu start an image swap; that swap resets the
 core and clears host and effective input. The viewer never replays that accepted
-press into the selected game. If the neutral command is explicitly rejected with
+press into the selected game. If an input command is explicitly rejected with
 `BAD_STATE`, or the idle health check later observes `STATE == LOADING` or a
-changed supported PROFILE, the UART owner waits for the generated worst-case
-64 KiB swap bound (`LIBRARY_SWAP_BOUND_MBC1_EDGES`, 120,000 system edges), then
-requires `IMAGE_VALID == 1`, a generated supported profile, UART input authority,
-host and effective input 0, and RUNNING in free-run or PAUSED in stepped mode.
-Only then does it continue. An input command that the endpoint certainly rejected
-with `BAD_STATE` before applying a nonzero press may be sent once after the same
+changed supported PROFILE, the UART owner reads a fresh STATE sample of its own,
+because the swap may have begun after an earlier read or finished before it. A
+LOADING sample waits for the generated worst-case 64 KiB swap bound
+(`LIBRARY_SWAP_BOUND_MBC1_EDGES`, 120,000 system edges); a swap that already
+completed is verified without the wait. The guard then requires
+`IMAGE_VALID == 1`, a generated supported profile, UART input authority, host and
+effective input 0, and RUNNING in free-run or PAUSED in stepped mode. Only then
+does it continue. An input command that the endpoint certainly rejected with
+`BAD_STATE` before applying a nonzero press may be sent once after the same
 verification. An acknowledged command is never replayed. A rejected neutral
 release is not resent because loader reset itself establishes neutral input and
 the guard verifies it. Because A is the loader menu's specified selection
