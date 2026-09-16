@@ -45,7 +45,7 @@ class ProgramArtTests(unittest.TestCase):
         rom, symbols, _ = build(ROOT, 'stackdrop')
         shapes = rom[symbols['Shapes']:symbols['Shapes'] + 112]
         faces = rom[symbols['Faces']:symbols['Faces'] + 8]
-        self.assertEqual(tuple(faces), cases.FACES)
+        self.assertEqual(tuple(faces), screen.FACES)
         play = Game()
         for buttons in PLAY_SCRIPT:
             play.update(buttons)

@@ -29,9 +29,9 @@ def valid(board, points):
 
 def state(screen):
     """Infer an exact origin using the visible rotation and next-piece identity."""
-    board = screen['board']
+    board = screen['board']  # Cell codes 0..7: empty or 1+piece; only occupancy matters here.
     if (screen['status'] != 1 or len(board) != 96 or
-            any(v not in (0, 1) for v in board) or
+            any(v not in range(8) for v in board) or
             screen['rotation'] not in range(4) or
             screen['next_piece'] not in range(7)):
         raise ValueError('STACKDROP_PLAYER_SCREEN')

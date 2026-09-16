@@ -1,6 +1,5 @@
 """Read only original rendered tiles; no gameplay memory or predicted state."""
 from pathlib import Path
-from cases import FACES
 # Original 5x7 glyphs for digits, labels and the status letter, drawn here and
 # mirrored by the ROM atlas; `test_screen` compares both against the asset.
 SMALL = """\
@@ -47,7 +46,11 @@ MARQUEE = 8  # First marquee column; centred over the frame and panels at 5..19.
 TITLE_TILE = 49  # Six tiles per title letter: top, middle, foot; left, right.
 FACE_TILE = TITLE_TILE+6*len(WORD)  # Locked faces for O, T, L, J, S, Z follow the title letters.
 TILES = FACE_TILE+6
-assert FACES == (0, 2)+tuple(range(FACE_TILE, TILES)), 'STACKDROP_FACE_TILES'
+# Locked face tile per board cell code: 0 empty, then I, O, T, L, J, S, Z. Tile
+# 2 stays the I face so every earlier tile keeps its number and the title page
+# its pixels. The ROM `Faces` table holds the same bytes; `test_program_art`
+# compares them and `cases.buffer` builds the image oracle from this tuple.
+FACES = (0, 2)+tuple(range(FACE_TILE, TILES))
 # Shade-1 motif inside the shade-2 face of each locked piece, on the 4x4
 # interior at 2..5; the shade-3 outline at 1 and 6 is shared by all seven.
 MOTIF = dict(zip(FACES[1:], (
