@@ -325,7 +325,7 @@ def execute(argv, folder, log, timeout, record, build):
         explained = [*explained, *generated_design_diagnostics(text, folder)]
     if log.name == "compile.log" and sdram_target(record.get("definition", {})):
         explained = [*explained, *sdram_clock_diagnostics(text, folder)]
-    if log.name in fpga_flash.STROBE_COUNTS and fpga_flash.flash_target(record.get("definition", {})):
+    if log.name in fpga_flash.STROBE_LOGS and fpga_flash.flash_target(record.get("definition", {})):
         explained = [*explained, *fpga_flash.explained_diagnostics(text, folder, record["tools"]["onchip_flash"],
                                                                    record["definition"]["top"], log.name)]
     record["classified_diagnostics"].extend(diagnostics(text, explained))

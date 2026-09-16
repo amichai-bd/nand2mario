@@ -62,6 +62,7 @@ STROBE_WARNING = ("Warning (332060): Node: {node} was determined to be a clock b
 # netlist update in its script (one for flash_proof, seven for the composed
 # images whose audit walks three corners twice), read from audit.tcl.
 STROBE_COUNTS = {"compile.log": 4}
+STROBE_LOGS = ("compile.log", "audit.log")
 AUDIT_UPDATE = "update_timing_netlist"
 
 
