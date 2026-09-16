@@ -427,10 +427,10 @@ units:
   python-pub: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 43.50}
   python-pus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 10.68}
   python-pux: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 9.07}
-  python-stackdrop-game: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 37.33}
-  python-stackdrop-short: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 7.89}
-  python-stackdrop-unit: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 37.21}
-  python-stackdrop-unit-x: {kind: sim, level: 2, labels: [fault, integration, python-tb, stackdrop, system, v05], duration_seconds: 7.87}
+  python-stackdrop-game: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 68.37}
+  python-stackdrop-short: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 14.17}
+  python-stackdrop-unit: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 59.62}
+  python-stackdrop-unit-x: {kind: sim, level: 2, labels: [fault, integration, python-tb, stackdrop, system, v05], duration_seconds: 12.21}
   python-startup202-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.84}
   python-startup202-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.73}
   python-stop349: {kind: sim, level: 2, labels: [integration, joypad, python-tb, system, v05], duration_seconds: 6.69}
