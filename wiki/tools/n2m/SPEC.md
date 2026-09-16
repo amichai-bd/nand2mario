@@ -219,6 +219,20 @@ for the other backend fails before discovery. `auto`, Icarus and WSL proxy
 backends remain unsupported. Missing tools and license failures are FAIL, never
 SKIPPED, and no command falls back to the other simulator.
 
+Questa evidence has two parts. The [Questa compile gate](#questa-compile-gate)
+is the standing Questa evidence for the product RTL: every PR that changes
+`src/rtl` or `src/fpga` records its PASS for the PR head, and the hosted
+`PR policy` check refuses the merge without that record under the
+[PR policy](../../agents/pull-requests.md#hosted-and-local-checks). The gate
+compiles and elaborates without a runtime license. Runtime acceptance, meaning
+`sim test`, `tests run`, `regress` and the
+[verification tiers](../../src/dv/integration/SPEC.md#verification-tiers), runs
+on Verilator on WSL; every registered target declares that backend. Questa
+runtime execution stays supported for the targets that declare it and for the
+Windows [doctor](#environment-doctor) smoke, which records a successful
+checkout when the caller's license environment provides one. No acceptance
+criterion requires a licensed Questa run.
+
 One build tool serves two operating systems. WSL owns Verilator execution;
 Windows PowerShell owns Questa execution, `fpga build` and `fpga program`.
 Caches and fingerprints stay per backend and OS under `workdir/`.
@@ -1196,7 +1210,7 @@ failures as failures; retry once the competing run ends, with fresh evidence.
 Do not kill another author's simulator or change license settings to bypass it.
 
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
-the licensed tests established by this integration and outstanding coverage.
+the verification baseline this integration established.
 
 ### Regression subsets
 
@@ -1430,8 +1444,8 @@ neither executes a simulator or reports licensed RTL acceptance, and their
 summaries state this limitation. `PR policy` is the only required hosted check.
 
 Actual local simulator positive and deliberately failing runs are mandatory author
-and independent-review evidence; they run under Verilator on WSL as targets
-migrate. No trusted remote simulation runner is currently configured. The protected trusted-revision route and required product checks
+and independent-review evidence; they run under Verilator on WSL. No trusted
+remote simulation runner is currently configured. The protected trusted-revision route and required product checks
 are out of scope while no runner can be hosted;
 [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
 keeps the record. That route, if resumed, requires independent review of concrete workflow/launcher/configuration before

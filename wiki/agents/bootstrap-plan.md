@@ -108,7 +108,7 @@ Start dependent product work only when:
 GAP-005 physical bring-up and physical
 portions of GAP-010 and GAP-012 remain outstanding board prerequisites;
 record their missing evidence and do not count simulation as hardware proof.
-The shared Questa baseline is recorded under GAP-008. Later unit evidence is
+The shared simulation baseline is recorded under GAP-008. Later unit evidence is
 authorized above. The physical evidence exception allows independent
 implementation progress; all other applicable conditions remain required. The
 gap register stays open for unmet close conditions, even when an independent
