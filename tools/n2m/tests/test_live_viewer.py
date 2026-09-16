@@ -17,7 +17,8 @@ from n2m.host.client import RejectedCommand
 from n2m.live_viewer import (FRAME_DOTS, LOADER_SWAP_SECONDS, MAX_STEP_FRAMES,
                              Latest, advance, capture_loop, server, PAGE)
 from fpga_viewer import png_writer, Stop
-from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
+from n2m.viewer_buttons import (MAIN_MENU_ACTION, Buttons, enqueue,
+                                enqueue_action, enqueue_mode, history)
 
 BUILD = 'ab'*16
 
@@ -136,6 +137,33 @@ class LoaderSwapFake(Fake):
             self.profile = self.final_profile
             self.state = self.final_state
             self.mask = self.final_mask
+
+
+class MainMenuFake(Fake):
+    """The fixed library return changes only the selected image profile."""
+    def __init__(self, clock, fault=None):
+        super().__init__(clock)
+        self.menu_fault = fault
+
+    def read_host(self, address):
+        if address == abi.HOST_REG_LIBRARY_STATUS:
+            self.events.append(('read',address))
+            return (abi.LIBRARY_STATUS_WINDOW_READY | abi.LIBRARY_STATUS_SDRAM_READY |
+                    (abi.LIBRARY_RESULT_OK << 8) | (abi.LIBRARY_MENU_INDEX << 16))
+        return super().read_host(address)
+
+    def write_host(self, address, value):
+        if address == abi.HOST_REG_LIBRARY_CONTROL:
+            self.events.append(('write',address,value))
+            if self.menu_fault == 'rejected':
+                raise RejectedCommand('WRITE_HOST',abi.STATUS_BAD_STATE)
+            if self.menu_fault == 'uncertain':
+                self.uncertain = True
+                raise RuntimeError('uncertain menu return')
+            if self.menu_fault != 'wrong-profile':
+                self.profile = abi.PROFILE_LOADER_ID
+            return {'dot':self.dot}
+        return super().write_host(address,value)
 
 
 class FakeCamera:
@@ -320,6 +348,83 @@ class ViewerTests(unittest.TestCase):
         self.assertFalse([event for event in client.events[trigger+1:]
                           if isinstance(event,tuple) and event[0] in ('write','write-rejected')])
 
+    def test_main_menu_uses_bounded_return_and_preserves_free_run(self):
+        clock=Clock();clock.value=0;client=MainMenuFake(clock);latest=Latest(clock=clock)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            index=enqueue_action(out,MAIN_MENU_ACTION)
+            result=capture_loop(client,latest,out,png_writer,expected_build=BUILD,stop=clock,
+                                clock=clock,wait=clock.wait,seconds=4,interval=2,
+                                buttons=Buttons(out))
+            row={entry['id']:entry for entry in history(out)}[index]
+        self.assertEqual(result['status'],'PASS')
+        self.assertEqual(result['mode'],'free-run')
+        self.assertEqual(row['action'],MAIN_MENU_ACTION)
+        self.assertEqual((row['state'],row['released']),('RETIRED',True))
+        receipt=result['inputs'][0]
+        self.assertEqual(receipt['action_result']['library']['status_reads'],1)
+        self.assertTrue(receipt['action_result']['library']['settled'])
+        self.assertEqual(receipt['action_result']['loader_transition']['profile'],
+                         abi.PROFILE_LOADER_ID)
+        self.assertEqual([event for event in client.events
+                          if isinstance(event,tuple) and event[:2] ==
+                          ('write',abi.HOST_REG_LIBRARY_CONTROL)],
+                         [('write',abi.HOST_REG_LIBRARY_CONTROL,
+                           abi.LIBRARY_CONTROL_RETURN)])
+
+    def test_main_menu_preserves_stepped_mode_and_neutral_input(self):
+        clock=Clock();clock.value=0;client=MainMenuFake(clock);buttons=None
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            buttons=Buttons(out);buttons.mode='stepped'
+            enqueue_action(out,MAIN_MENU_ACTION)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                expected_build=BUILD,stop=clock,clock=clock,
+                                wait=clock.wait,seconds=4,interval=2,buttons=buttons)
+        menu_write=client.events.index(('write',abi.HOST_REG_LIBRARY_CONTROL,
+                                        abi.LIBRARY_CONTROL_RETURN))
+        self.assertEqual(result['status'],'PASS')
+        self.assertEqual(result['mode'],'stepped')
+        self.assertEqual(client.events[menu_write-1][0],'read')
+        self.assertEqual(client.mask,0)
+        self.assertEqual(client.state,abi.STATE_PAUSED)
+        self.assertNotIn('RUN',client.events[menu_write:])
+
+    def test_main_menu_rejection_wrong_profile_and_uncertainty_are_truthful(self):
+        for fault,expected in (('rejected','FAILED'),('wrong-profile','FAILED'),
+                               ('uncertain','UNCERTAIN')):
+            with self.subTest(fault=fault),tempfile.TemporaryDirectory() as folder:
+                clock=Clock();clock.value=0;client=MainMenuFake(clock,fault)
+                out=Path(folder);(out/'service.json').write_text('{}')
+                index=enqueue_action(out,MAIN_MENU_ACTION)
+                result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                    expected_build=BUILD,stop=clock,clock=clock,
+                                    wait=clock.wait,seconds=4,buttons=Buttons(out))
+                row={entry['id']:entry for entry in history(out)}[index]
+                self.assertEqual(result['status'],'FAIL')
+                self.assertEqual(row['action'],MAIN_MENU_ACTION)
+                self.assertEqual(row['state'],expected)
+                self.assertEqual(client.uncertain,fault=='uncertain')
+                if fault == 'uncertain':
+                    trigger=client.events.index(('write',abi.HOST_REG_LIBRARY_CONTROL,
+                                                 abi.LIBRARY_CONTROL_RETURN))
+                    self.assertEqual(client.events[trigger+1:],[])
+
+    def test_cancelled_main_menu_never_calls_its_handler(self):
+        clock=Clock();clock.value=0;client=MainMenuFake(clock)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            index=enqueue_action(out,MAIN_MENU_ACTION);stop=threading.Event();stop.set()
+            called=[]
+            receipt=Buttons(out).one(client,stop,clock=clock,wait=clock.wait,
+                                     perform=lambda *_:called.append(True))
+            row={entry['id']:entry for entry in history(out)}[index]
+        self.assertEqual(receipt['status'],'CANCELLED')
+        self.assertEqual((row['action'],row['state']),(MAIN_MENU_ACTION,'CANCELLED'))
+        self.assertEqual(called,[])
+        self.assertFalse([event for event in client.events if isinstance(event,tuple)
+                          and event[:2] == ('write',abi.HOST_REG_LIBRARY_CONTROL)])
+
     def test_camera_failure_is_retained_and_closes_source(self):
         for fault,stage,error in (('start','camera-start','RuntimeError'),('read','capture','TimeoutError'),
                                   ('duplicate','capture','SourceStale')):
@@ -476,7 +581,8 @@ class ViewerTests(unittest.TestCase):
                 self.assertTrue(all(r['state']=='QUEUED' for r in commands))
                 records=[json.loads(p.read_text()) for p in (out/'inbox').glob('*.json')]
                 self.assertTrue(all(r['mask']==abi.BUTTON_RIGHT and r['milliseconds']==134 for r in records))
-                self.assertIn(b"['Up','Left','Right','Down','A','B','Start','Select']",PAGE)
+                for button in ('Up','Left','Right','Down','A','B','Start','Select'):
+                    self.assertIn(f'data-button="{button}"'.encode(),PAGE)
             finally:
                 http.shutdown();http.server_close();thread.join()
 
@@ -503,6 +609,13 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertTrue(first.with_suffix('.claimed').exists())
             self.assertTrue(receipt['released'])
             self.assertEqual(client.mask,0)
+
+    def test_invalid_fixed_actions_are_never_published(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder)
+            for action in ('reset','load','main-menu ',1,None,True):
+                with self.assertRaises(ValueError):enqueue_action(out,action)
+            self.assertFalse(list((out/'inbox').glob('*.json')))
 
     def test_frozen_batch_before_capture_and_release_each(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -911,6 +1024,7 @@ class SteppedModeTests(unittest.TestCase):
             http=server(Latest(),'testuser','x'*40,input_origin=origin,
                         submit=lambda mask,ms:enqueue(out,mask,ms),
                         submit_mode=lambda mode:enqueue_mode(out,mode),
+                        submit_action=lambda action:enqueue_action(out,action),
                         command_history=lambda:history(out))
             thread=threading.Thread(target=http.serve_forever);thread.start()
             headers={'Authorization':'Basic '+base64.b64encode(b'testuser:'+b'x'*40).decode(),
@@ -927,16 +1041,39 @@ class SteppedModeTests(unittest.TestCase):
                     self.assertEqual(request(override=h)[0],403)
                 self.assertEqual(request(override={'Content-Type':'text/plain'})[0],415)
                 for body in (b'{"mode":"turbo"}',b'{"mode":"stepped","button":"A"}',
-                             b'{"mode":1}',b'{"mode":null}'):
+                             b'{"mode":1}',b'{"mode":null}',b'{"action":"reset"}',
+                             b'{"action":"main-menu","button":"A"}'):
                     self.assertEqual(request(body)[0],400)
                 self.assertFalse(list((out/'inbox').glob('*.json')))
                 code,data=request()
                 self.assertEqual((code,json.loads(data)['id']),(202,1))
                 self.assertEqual(history(out)[0]['mode'],'stepped')
-                self.assertIn(b"for(const mode of ['free-run','stepped'])",PAGE)
+                code,data=request(b'{"action":"main-menu"}')
+                self.assertEqual((code,json.loads(data)['id']),(202,2))
+                self.assertEqual(history(out)[0]['action'],MAIN_MENU_ACTION)
+                self.assertEqual(PAGE.count(b'id="mode-toggle"'),1)
+                self.assertIn(b"mode==='stepped'?'free-run':'stepped'",PAGE)
                 self.assertIn(b'not a real-time proof',PAGE)
             finally:
                 http.shutdown();http.server_close();thread.join()
+
+    def test_game_boy_deck_layout_is_responsive_accessible_and_deliberate(self):
+        dpad=PAGE.index(b'class="dpad"')
+        actions=PAGE.index(b'class="action-buttons"')
+        select=PAGE.index(b'data-button="Select"')
+        system=PAGE.index(b'class="system-controls"')
+        self.assertLess(dpad,actions)
+        self.assertLess(actions,select)
+        self.assertLess(select,system)
+        self.assertIn(b'grid-template-columns:minmax(132px,1fr) minmax(132px,1fr)',PAGE)
+        self.assertIn(b'@media(max-width:420px)',PAGE)
+        self.assertIn(b'min-height:48px',PAGE)
+        self.assertIn(b'aria-label="Directional pad"',PAGE)
+        self.assertIn(b'aria-label="Action buttons"',PAGE)
+        self.assertIn(b'id="control-deck" aria-label="Game Boy controls" hidden',PAGE)
+        self.assertEqual(PAGE.count(b'id="main-menu"'),1)
+        self.assertIn(b"confirm('Return to the main menu?')",PAGE)
+        self.assertIn(b"send({action:'main-menu'},'Main menu')",PAGE)
 
     def test_press_while_already_stepped_is_held_across_its_step(self):
         with tempfile.TemporaryDirectory() as folder:

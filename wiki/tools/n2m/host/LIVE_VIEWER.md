@@ -141,11 +141,24 @@ To play the board locally with held buttons instead of taps, and a monitor
 instead of captured frames, use the [on-screen pad](GAMEPAD.md); it takes the
 same locks, so only one of the two can run at a time.
 
-Eight tap buttons provide Left, Right, Up, Down, A, B, Start and Select. Each tap
-queues a fixed 134 ms press, with no automatic repeat or held-button mode. The
-page reports its accepted ID or a queue-full, busy, stopped or rejected response.
-It does not expose arbitrary UART operations, image loading, reset, configuration,
-file access or uploads.
+One responsive Game Boy control deck provides Left, Right, Up and Down on a
+D-pad at the left, A and B at the right, and Start and Select centered below.
+Every control has an accessible name and a touch target. The two sides stay
+opposite each other on narrow and wide pages. Each tap queues a fixed 134 ms
+press, with no automatic repeat or held-button mode. The page reports its
+accepted ID or a queue-full, busy, stopped or rejected response. Camera-only
+mode keeps the whole deck hidden.
+
+A separate **Main menu** button asks for browser confirmation, then queues the
+only fixed system action the page exposes. The viewer calls the existing
+`host.library.return_to_menu(client, wait=True)` through its sole UART owner.
+That operation sends the one whitelisted `LIBRARY_CONTROL_RETURN` value and
+waits within the host library-return bound. The viewer then applies the shared
+post-loader guard: `IMAGE_VALID == 1`, loader profile selected, UART input
+authority, host and effective input 0, and RUNNING in free-run or PAUSED in
+stepped mode. It sends no RUN or HALT as part of the action, so the selected
+mode survives the return. It exposes no arbitrary UART operation, image load,
+reset, configuration, file access or upload.
 
 Before each capture, including the first, the single UART owner freezes the
 currently published FIFO batch under the producer lock. It executes that whole
@@ -195,13 +208,17 @@ UART acknowledgements before the next capture. During that time the page shows
 PROCESSING INPUTS and the real age of the previous image, not false freshness.
 
 History is newest first. Each record includes its assigned ID, the button or mask
-of a press or the selected mode, its queued timestamp and its observed
+of a press, the selected mode, or Main menu, its queued timestamp and its observed
 start/completion timestamps. A press record keeps its requested `milliseconds`.
 A press retired in free-run shows that duration, `Right 134 ms`. A press retired
 in stepped mode carries the same `step` report as its receipt in the run result,
 and the page shows the step instead of the ignored milliseconds: `Right 1 step,
 70224 dots`, or `Right 1 step, 35112 of 70224 dots` after a short step. The
-page, `/status.json` and `result.json` read the same record.
+page, `/status.json` and `result.json` read the same record. Main-menu success is
+RETIRED only after the bounded return and neutral loader checks. A certain
+rejection is FAILED, uncertain completion is UNCERTAIN, and a request stopped
+before execution is CANCELLED. An uncertain return stops all later UART traffic
+exactly like an uncertain button command.
 Labels accompany all colors:
 
 | State | Color | Meaning |
@@ -219,8 +236,10 @@ failure cannot skip release of an already-pressed key or report false retirement
 
 ## Free-run and stepped modes
 
-Two buttons select the mode; the page reports the active one, and in stepped mode
-the step size and the emulated time advanced for the image being shown.
+One visible toggle switches between the two modes and reflects the active mode;
+there are no competing mode buttons. The page also reports the active mode, and
+in stepped mode the step size and the emulated time advanced for the image being
+shown.
 
 **Free-run** is the default and the unchanged behavior: the board runs
 continuously between captures, so the page is the real-time evidence that the
@@ -270,11 +289,12 @@ Authenticated GET routes are `/`, `/status.json`, the UART-only atomic
 `/frame.png`, and the camera-only continuous `/camera.mjpg`. The camera route is
 `multipart/x-mixed-replace` with complete `image/jpeg` parts; it is authenticated
 once when that bounded stream is opened and does not depend on status polling.
-The sole write route is POST `/input`: one named button or one mode name in at most 64 bytes of
-JSON, exact equality with the configured HTTPS Origin, and `X-Viewer-Input: tap`
-are required in addition to Basic authentication. Mode selection carries exactly
-that authentication; an unknown mode, a body naming both a button and a mode, and
-a mode without the Origin or header are all refused without queuing anything.
+The sole write route is POST `/input`: one named button, one mode name, or the
+exact fixed `{"action":"main-menu"}` in at most 64 bytes of JSON. Exact equality
+with the configured HTTPS Origin and `X-Viewer-Input: tap` are required in
+addition to Basic authentication. Mode and Main menu carry exactly that
+authentication. An unknown mode or action, a body combining fields, and a write
+without the Origin or header are all refused without queuing anything.
 No permissive CORS response is provided; GET never mutates input. Responses
 disable caching, framing and external asset access.
 
