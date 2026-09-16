@@ -99,12 +99,12 @@ module n2m_loader #(
     localparam logic [7:0] MBC1_ID = n2m_interfaces_pkg::PROFILE_MBC1_ID;
     logic loader_active, bank_commit, select_commit, select_in_range, commit_accept;
     logic game_active, exit_commit, exit_return;
-    logic engine_start, engine_busy, engine_done, engine_swap, engine_result_write;
+    logic engine_start, engine_busy, engine_done, engine_swap, engine_swap_large, engine_result_write;
     logic [7:0] engine_result;
     logic engine_sdram_valid, engine_sdram_ready, engine_sdram_response_valid;
     logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] engine_sdram_address;
     logic engine_rom_write;
-    logic [14:0] engine_rom_address;
+    logic [15:0] engine_rom_address;
     logic [7:0] engine_rom_wdata;
     logic key1_pressed, key1_event;
     logic [5:0] bank, bank_next;
@@ -248,7 +248,7 @@ module n2m_loader #(
     n2m_loader_engine u_engine (
         .clk_sys(clk_sys), .reset_sys(reset_sys),
         .start(engine_start), .start_swap(job_swap), .start_index(job_index),
-        .busy(engine_busy), .done(engine_done), .swap_job(engine_swap),
+        .busy(engine_busy), .done(engine_done), .swap_job(engine_swap), .swap_large(engine_swap_large),
         .result_write(engine_result_write), .result_value(engine_result),
         .sdram_valid(engine_sdram_valid), .sdram_address(engine_sdram_address),
         .sdram_ready(engine_sdram_ready), .sdram_response_valid(engine_sdram_response_valid),
@@ -286,8 +286,11 @@ module n2m_loader #(
     `N2M_ASSERT(LOADER_REGS_ONLY_IN_PROFILE, clk_sys, reset_sys,
         (bank_commit || select_commit || read_override) |-> profile == LOADER_ID)
     `N2M_ASSERT(LOADER_EXIT_ONLY_IN_GAME_PROFILE, clk_sys, reset_sys, exit_commit |-> profile == DIRECT_ID || profile == MBC1_ID)
+    // A 64 KiB image copies twice the lines, so its swap has its own bound;
+    // the engine reports the entry's size once the catalogue check passed.
     `N2M_ASSERT(LOADER_SWAP_BOUND, clk_sys, reset_sys,
-        engine_copy_busy && engine_swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_EDGES))
+        engine_copy_busy && engine_swap_busy |-> busy_edges < (engine_swap_large ?
+            17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_MBC1_EDGES) : 17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_EDGES)))
     `N2M_ASSERT(LOADER_FILL_BOUND, clk_sys, reset_sys,
         engine_copy_busy && !engine_swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_FILL_BOUND_EDGES))
     // The copier never overlaps an engine job: the core is paused with an

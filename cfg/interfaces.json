@@ -1466,7 +1466,7 @@
         "name": "SLOT_BYTES",
         "bits": 32,
         "value": 32768,
-        "description": "One image slot: a complete 32 KiB dmg-direct-v1 image"
+        "description": "One image slot: a complete 32 KiB image; a 64 KiB MBC1 image occupies two adjacent slots"
       },
       {
         "name": "SLOTS",
@@ -1526,7 +1526,13 @@
         "name": "SWAP_BOUND_EDGES",
         "bits": 32,
         "value": 80000,
-        "description": "Image swap bound from the accepting select commit edge to copy_busy falling"
+        "description": "Image swap bound for a 32 KiB image from the accepting select commit edge to copy_busy falling"
+      },
+      {
+        "name": "SWAP_BOUND_MBC1_EDGES",
+        "bits": 32,
+        "value": 120000,
+        "description": "Image swap bound for a 64 KiB MBC1 image from the accepting select commit edge to copy_busy falling"
       },
       {
         "name": "RESULT_NONE",
@@ -1544,7 +1550,7 @@
         "name": "RESULT_INVALID_SLOT",
         "bits": 8,
         "value": 2,
-        "description": "$A002: the catalogue entry was not a valid 32768-byte image with a known profile"
+        "description": "$A002: the catalogue entry was not a valid image of its profile's length at an index it fits"
       },
       {
         "name": "RESULT_CRC_MISMATCH",
@@ -2025,17 +2031,17 @@
       {
         "name": "profile",
         "bits": 8,
-        "description": "Profile ID the image runs in: DIRECT_ID for games, LOADER_ID for the menu"
+        "description": "Profile ID the image runs in: DIRECT_ID or MBC1_ID for games, LOADER_ID for the menu"
       },
       {
         "name": "length",
         "bits": 16,
-        "description": "Image length; must equal SLOT_BYTES"
+        "description": "Image length bits 15:0; with length_high the profile's image bytes: 32768 or 65536"
       },
       {
         "name": "crc32",
         "bits": 32,
-        "description": "CRC-32/ISO-HDLC of the 32768 image bytes, as LOAD_BEGIN"
+        "description": "CRC-32/ISO-HDLC of the whole image, as LOAD_BEGIN"
       },
       {
         "name": "title_low",
@@ -2048,8 +2054,13 @@
         "description": "Image header bytes 0x013C-0x0143 verbatim"
       },
       {
+        "name": "length_high",
+        "bits": 8,
+        "description": "Image length bits 23:16: 0 for a 32 KiB image, 1 for 64 KiB"
+      },
+      {
         "name": "reserved",
-        "bits": 64,
+        "bits": 56,
         "description": "Zero"
       }
     ]

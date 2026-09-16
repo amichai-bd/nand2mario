@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `c03d7c6a4290c6c2bbe956e4449f6cd29ed02c5f7f866c67af7738a83a00d0af`.
+Source SHA-256: `50fdb6b6fc063df804253e6f191499e741fc068fa5c6ddaad99e380be299eed6`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -337,7 +337,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 
 | Constant | Bits | Value | Meaning |
 |---|---|---|---|
-| `LIBRARY_SLOT_BYTES` | 32 | `0x8000` | One image slot: a complete 32 KiB dmg-direct-v1 image |
+| `LIBRARY_SLOT_BYTES` | 32 | `0x8000` | One image slot: a complete 32 KiB image; a 64 KiB MBC1 image occupies two adjacent slots |
 | `LIBRARY_SLOTS` | 8 | `0x10` | Game slots 0-15 |
 | `LIBRARY_MENU_INDEX` | 8 | `0x10` | Image index of the menu image; the largest selectable index |
 | `LIBRARY_CATALOGUE_ENTRIES` | 8 | `0x11` | Catalogue entries: sixteen game slots plus the menu |
@@ -347,10 +347,11 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `LIBRARY_ENTRY_BYTES` | 8 | `0x20` | One catalogue entry; the catalogue_entry record lays it out |
 | `LIBRARY_CATALOGUE_VALID` | 8 | `0x1` | Catalogue valid byte of a selectable entry |
 | `LIBRARY_FILL_BOUND_EDGES` | 32 | `0x9C40` | Window fill bound from the bank commit edge to window_busy falling |
-| `LIBRARY_SWAP_BOUND_EDGES` | 32 | `0x13880` | Image swap bound from the accepting select commit edge to copy_busy falling |
+| `LIBRARY_SWAP_BOUND_EDGES` | 32 | `0x13880` | Image swap bound for a 32 KiB image from the accepting select commit edge to copy_busy falling |
+| `LIBRARY_SWAP_BOUND_MBC1_EDGES` | 32 | `0x1D4C0` | Image swap bound for a 64 KiB MBC1 image from the accepting select commit edge to copy_busy falling |
 | `LIBRARY_RESULT_NONE` | 8 | `0x0` | $A002: no swap since global reset |
 | `LIBRARY_RESULT_OK` | 8 | `0x1` | $A002: the last swap completed with a matching CRC |
-| `LIBRARY_RESULT_INVALID_SLOT` | 8 | `0x2` | $A002: the catalogue entry was not a valid 32768-byte image with a known profile |
+| `LIBRARY_RESULT_INVALID_SLOT` | 8 | `0x2` | $A002: the catalogue entry was not a valid image of its profile's length at an index it fits |
 | `LIBRARY_RESULT_CRC_MISMATCH` | 8 | `0x3` | $A002: the copied bytes did not match the catalogue CRC |
 | `LIBRARY_RESULT_NOT_READY` | 8 | `0x4` | $A002: a select or bank commit while the SDRAM was not ready |
 | `LIBRARY_STATUS_COPY_BUSY` | 8 | `0x80` | $A000 bit 7: a window fill or swap is in progress |
@@ -551,12 +552,13 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | Field | Byte offset | Bits | Meaning |
 |---|---|---|---|
 | `valid` | 0 | 8 | 1 valid image, 0 empty slot; any other value is invalid |
-| `profile` | 1 | 8 | Profile ID the image runs in: DIRECT_ID for games, LOADER_ID for the menu |
-| `length` | 2 | 16 | Image length; must equal SLOT_BYTES |
-| `crc32` | 4 | 32 | CRC-32/ISO-HDLC of the 32768 image bytes, as LOAD_BEGIN |
+| `profile` | 1 | 8 | Profile ID the image runs in: DIRECT_ID or MBC1_ID for games, LOADER_ID for the menu |
+| `length` | 2 | 16 | Image length bits 15:0; with length_high the profile's image bytes: 32768 or 65536 |
+| `crc32` | 4 | 32 | CRC-32/ISO-HDLC of the whole image, as LOAD_BEGIN |
 | `title_low` | 8 | 64 | Image header bytes 0x0134-0x013B verbatim |
 | `title_high` | 16 | 64 | Image header bytes 0x013C-0x0143 verbatim |
-| `reserved` | 24 | 64 | Zero |
+| `length_high` | 24 | 8 | Image length bits 23:16: 0 for a 32 KiB image, 1 for 64 KiB |
+| `reserved` | 25 | 56 | Zero |
 
 ## Commands
 

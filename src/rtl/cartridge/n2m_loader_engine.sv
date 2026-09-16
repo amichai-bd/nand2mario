@@ -2,16 +2,19 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 
-// Copy engine: moves a 16 KiB window bank or a 32 KiB image from SDRAM into
-// the ROM store through its host port (port A). Contract:
+// Copy engine: moves a 16 KiB window bank or a whole image (32 KiB, or the
+// 64 KiB of an MBC1 entry) from SDRAM into the ROM store through its host
+// port (port A). Contract:
 // wiki/src/rtl/cartridge/MAS_loader_profile.md#select-register and
 // #copy-engine-and-rom-store-port-ownership.
-// A swap reads the catalogue entry, pauses the core through the core control
-// owner, clears image_valid, copies the image while accumulating CRC-32 over
-// the bytes written, compares, publishes the profile and requests a core
-// reset, then releases its pause. A fill copies one bank into the upper half
-// while the core runs. One line is in flight at a time; the next line is
-// requested while the previous one is written, so the copy is SDRAM-bound.
+// A swap reads the catalogue entry, checks that its length is the length of
+// its profile's image and that the image fits below the menu slot, pauses the
+// core through the core control owner, clears image_valid, copies `length`
+// bytes while accumulating CRC-32 over the bytes written, compares, publishes
+// the profile and requests a core reset, then releases its pause. A fill
+// copies one bank into the upper half while the core runs. One line is in
+// flight at a time; the next line is requested while the previous one is
+// written, so the copy is SDRAM-bound.
 module n2m_loader_engine (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -21,6 +24,8 @@ module n2m_loader_engine (
     output logic busy,
     output logic done,
     output logic swap_job,
+    // The current swap copies a 64 KiB image: the loader's bound is the MBC1 one.
+    output logic swap_large,
     output logic result_write,
     output logic [7:0] result_value,
     // Storage arbiter client: reads only.
@@ -31,7 +36,7 @@ module n2m_loader_engine (
     input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data,
     // ROM store host port through the port arbiter.
     output logic rom_write,
-    output logic [14:0] rom_address,
+    output logic [15:0] rom_address,
     output logic [7:0] rom_wdata,
     // Core control owner: pause level and reset request handshake.
     output logic pause_hold,
@@ -48,8 +53,11 @@ module n2m_loader_engine (
 );
     localparam integer LINE_BYTES = 32'(n2m_interfaces_pkg::SDRAM_LINE_BYTES);
     localparam integer ADDRESS_BITS = 32'(n2m_interfaces_pkg::SDRAM_ADDRESS_BITS);
-    localparam integer SWAP_LINES = 32'(n2m_interfaces_pkg::LIBRARY_SLOT_BYTES) / LINE_BYTES;
     localparam integer FILL_LINES = 32'(n2m_interfaces_pkg::LIBRARY_WINDOW_BYTES) / LINE_BYTES;
+    localparam logic [23:0] DIRECT_BYTES = 24'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
+    localparam logic [23:0] MBC1_BYTES = 24'(n2m_interfaces_pkg::MBC1_ROM_BYTES);
+    // The last game slot a 64 KiB image may start in: it fills that slot and the next.
+    localparam logic [6:0] LAST_LARGE_INDEX = 7'(n2m_interfaces_pkg::LIBRARY_SLOTS) - 7'd2;
     typedef enum logic [3:0] {
         IDLE, CAT_REQ, CAT_WAIT, CHECK, PAUSE, INVALIDATE, COPY, COMPARE, PUBLISH,
         RESET_REQ, RESET_WAIT, RELEASE, DONE
@@ -61,14 +69,15 @@ module n2m_loader_engine (
     logic cat_second, cat_second_next;
     n2m_interfaces_pkg::catalogue_entry_t entry, entry_next;
     logic [ADDRESS_BITS-1:0] line_address, line_address_next;
-    logic [11:0] lines_left, lines_left_next;
+    logic [12:0] lines_left, lines_left_next;
     logic [LINE_BYTES*8-1:0] buffer, buffer_next, write_line, write_line_next;
     logic buffer_full, buffer_full_next, writing, writing_next;
     logic [3:0] byte_index, byte_index_next;
-    logic [14:0] write_offset, write_offset_next;
+    logic [15:0] write_offset, write_offset_next;
     logic [31:0] crc, crc_next;
     logic fault_hold, fault_hold_next;
-    logic entry_ok, crc_match;
+    logic entry_ok, crc_match, entry_large;
+    logic [23:0] entry_bytes, profile_bytes;
     logic [7:0] result_next;
     logic result_write_next;
 
@@ -85,9 +94,22 @@ module n2m_loader_engine (
     assign image_invalidate = state == INVALIDATE && !reset_sys;
     assign image_publish = state == PUBLISH && !reset_sys;
     assign image_profile = entry.profile;
+    // The entry's length is 24 bits: the low word and length_high. A valid
+    // entry carries exactly its profile's image length, and a 64 KiB image
+    // must start in a slot that leaves the next one for its upper half.
+    assign entry_bytes = {entry.length_high, entry.length};
+    assign entry_large = entry.length_high != 8'd0;
+    assign swap_large = entry_large;
+    always_comb begin
+        case (entry.profile)
+            n2m_interfaces_pkg::PROFILE_DIRECT_ID, n2m_interfaces_pkg::PROFILE_LOADER_ID: profile_bytes = DIRECT_BYTES;
+            n2m_interfaces_pkg::PROFILE_MBC1_ID: profile_bytes = MBC1_BYTES;
+            default: profile_bytes = 24'd0;
+        endcase
+    end
     assign entry_ok = entry.valid == n2m_interfaces_pkg::LIBRARY_CATALOGUE_VALID &&
-        32'(entry.length) == 32'(n2m_interfaces_pkg::LIBRARY_SLOT_BYTES) &&
-        (entry.profile == n2m_interfaces_pkg::PROFILE_DIRECT_ID || entry.profile == n2m_interfaces_pkg::PROFILE_LOADER_ID);
+        profile_bytes != 24'd0 && entry_bytes == profile_bytes &&
+        (!entry_large || index <= LAST_LARGE_INDEX);
     assign crc_match = (crc ^ n2m_interfaces_pkg::WIRE_CRC32_INIT) == entry.crc32;
 
     always_comb begin
@@ -124,8 +146,8 @@ module n2m_loader_engine (
                     state_next = CAT_REQ;
                 end else begin
                     line_address_next = ADDRESS_BITS'({start_index[5:0], 14'd0});
-                    lines_left_next = 12'(FILL_LINES);
-                    write_offset_next = 15'h4000;
+                    lines_left_next = 13'(FILL_LINES);
+                    write_offset_next = 16'h4000;
                     state_next = COPY;
                 end
             end
@@ -155,28 +177,28 @@ module n2m_loader_engine (
             PAUSE: if (paused) state_next = INVALIDATE;
             INVALIDATE: begin
                 line_address_next = ADDRESS_BITS'({index, 15'd0});
-                lines_left_next = 12'(SWAP_LINES);
-                write_offset_next = 15'd0;
+                lines_left_next = 13'(entry_bytes >> 4);
+                write_offset_next = 16'd0;
                 state_next = COPY;
             end
             COPY: begin
                 case (fetch)
                     FETCH_REQ: if (sdram_ready) begin
                         line_address_next = line_address + ADDRESS_BITS'(LINE_BYTES);
-                        lines_left_next = lines_left - 12'd1;
+                        lines_left_next = lines_left - 13'd1;
                         fetch_next = FETCH_WAIT;
                     end
                     FETCH_WAIT: if (sdram_response_valid) begin
                         buffer_next = sdram_response_data;
                         buffer_full_next = 1'b1;
-                        fetch_next = lines_left == 12'd0 ? FETCH_DONE : FETCH_REQ;
+                        fetch_next = lines_left == 13'd0 ? FETCH_DONE : FETCH_REQ;
                     end
                     default: begin end
                 endcase
                 if (writing) begin
                     crc_next = n2m_uart_pkg::crc32_byte(crc, rom_wdata);
                     byte_index_next = byte_index + 4'd1;
-                    write_offset_next = write_offset + 15'd1;
+                    write_offset_next = write_offset + 16'd1;
                     if (byte_index == 4'd15) writing_next = 1'b0;
                 end else if (buffer_full) begin
                     write_line_next = buffer;
@@ -230,7 +252,7 @@ module n2m_loader_engine (
 
     `N2M_ASSERT(LOADER_ENGINE_START_IDLE, clk_sys, reset_sys, start |-> !busy)
     `N2M_ASSERT(LOADER_SWAP_PAUSED, clk_sys, reset_sys, rom_write && swap_job |-> paused)
-    `N2M_ASSERT(LOADER_FILL_UPPER_ONLY, clk_sys, reset_sys, rom_write && !swap_job |-> rom_address[14])
+    `N2M_ASSERT(LOADER_FILL_UPPER_ONLY, clk_sys, reset_sys, rom_write && !swap_job |-> rom_address[15:14] == 2'b01)
     `N2M_ASSERT(LOADER_IMAGE_INVALID_BEFORE_WRITE, clk_sys, reset_sys, rom_write && swap_job |-> !image_valid)
     `N2M_ASSERT(LOADER_VALID_IMPLIES_CRC, clk_sys, reset_sys, image_publish |-> crc_match)
     // One line in flight: a response never lands on a buffer still waiting.

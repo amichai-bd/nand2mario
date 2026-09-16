@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: c03d7c6a4290c6c2bbe956e4449f6cd29ed02c5f7f866c67af7738a83a00d0af
+// Source SHA-256: 50fdb6b6fc063df804253e6f191499e741fc068fa5c6ddaad99e380be299eed6
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -250,6 +250,7 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] LIBRARY_CATALOGUE_VALID = 8'h1;
   localparam logic [31:0] LIBRARY_FILL_BOUND_EDGES = 32'h9C40;
   localparam logic [31:0] LIBRARY_SWAP_BOUND_EDGES = 32'h13880;
+  localparam logic [31:0] LIBRARY_SWAP_BOUND_MBC1_EDGES = 32'h1D4C0;
   localparam logic [7:0] LIBRARY_RESULT_NONE = 8'h0;
   localparam logic [7:0] LIBRARY_RESULT_OK = 8'h1;
   localparam logic [7:0] LIBRARY_RESULT_INVALID_SLOT = 8'h2;
@@ -444,9 +445,11 @@ package n2m_interfaces_pkg;
   localparam integer CATALOGUE_ENTRY_CRC32_OFFSET = 4;
   localparam integer CATALOGUE_ENTRY_TITLE_LOW_OFFSET = 8;
   localparam integer CATALOGUE_ENTRY_TITLE_HIGH_OFFSET = 16;
-  localparam integer CATALOGUE_ENTRY_RESERVED_OFFSET = 24;
+  localparam integer CATALOGUE_ENTRY_LENGTH_HIGH_OFFSET = 24;
+  localparam integer CATALOGUE_ENTRY_RESERVED_OFFSET = 25;
   typedef struct packed {
-    logic [63:0] reserved;
+    logic [55:0] reserved;
+    logic [7:0] length_high;
     logic [63:0] title_high;
     logic [63:0] title_low;
     logic [31:0] crc32;

@@ -25,8 +25,12 @@ module tb_loader #(
     localparam int BANK63_START = 32'hFC000;
     localparam int BANK63_END = 32'h100000;
     localparam int MENU = 16;
+    // The 64 KiB MBC1 image: slots LARGE and LARGE + 1, one catalogue entry.
+    localparam int LARGE = 11;
+    localparam int LARGE_BYTES = 65536;
     localparam int FILL_BOUND = 40000;
     localparam int SWAP_BOUND = 80000;
+    localparam int SWAP_BOUND_MBC1 = 120000;
     localparam int DEBOUNCE = int'(KEY1_DEBOUNCE_EDGES);
     localparam int HOLD = int'(KEY1_HOLD_EDGES);
     localparam int MS = 25000;
@@ -50,6 +54,10 @@ module tb_loader #(
     logic rom_host_write, rom_host_read, rom_host_valid;
     logic [31:0] rom_host_offset;
     logic [7:0] rom_host_wdata, rom_host_rdata;
+    // The UART load owner's readback side of the ROM host port, driven by the
+    // fixture to read the whole 64 KiB store after a large swap.
+    logic uart_rom_read;
+    logic [15:0] uart_rom_address;
     // Loader.
     logic read_override, copy_busy, swap_busy, window_busy, sdram_ready;
     logic [7:0] loader_read_data;
@@ -98,7 +106,7 @@ module tb_loader #(
         .commit_offset(storage_offset), .commit_data(storage_wdata),
         .cpu_address(address), .read_override(read_override), .read_data(loader_read_data),
         .key1_n(key1_n),
-        .uart_rom_write(1'b0), .uart_rom_read(1'b0), .uart_rom_address(15'd0), .uart_rom_wdata(8'd0),
+        .uart_rom_write(1'b0), .uart_rom_read(uart_rom_read), .uart_rom_address(uart_rom_address), .uart_rom_wdata(8'd0),
         .rom_host_write(rom_host_write), .rom_host_read(rom_host_read),
         .rom_host_offset(rom_host_offset), .rom_host_wdata(rom_host_wdata),
         .host_sdram_valid(host_sdram_valid), .host_sdram_write(host_sdram_write),
@@ -182,8 +190,10 @@ module tb_loader #(
         if (swap_busy && image_valid) saw_invalid_write <= 1;
     end
 
-    // The library: image i byte o, and the catalogue built from it.
+    // The library: image i byte o, and the catalogue built from it. The 64 KiB
+    // image at LARGE is the bytes of slots LARGE and LARGE + 1 in order.
     function automatic logic [7:0] image_byte(input int index, input int offset);
+        if (offset >= SLOT) return image_byte(index + 1, offset - SLOT);
         return 8'((index * 37 + offset * 11 + (offset >> 7) * 5 + (index ^ offset) + 3) ^ (offset >> 12));
     endfunction
     function automatic logic [7:0] library_byte(input int address);
@@ -203,7 +213,7 @@ module tb_loader #(
         logic [255:0] entry;
         for (index = 0; index < IMAGES; index = index + 1) begin
             crc = WIRE_CRC32_INIT;
-            for (offset = 0; offset < SLOT; offset = offset + 1)
+            for (offset = 0; offset < (index == LARGE ? LARGE_BYTES : SLOT); offset = offset + 1)
                 crc = n2m_uart_pkg::crc32_byte(crc, image_byte(index, offset));
             image_crc[index] = crc ^ WIRE_CRC32_INIT;
             entry = '0;
@@ -212,13 +222,22 @@ module tb_loader #(
             entry[31:16] = 16'(SLOT);
             entry[63:32] = image_crc[index];
             for (k = 0; k < 16; k = k + 1) entry[64 + k*8 +: 8] = image_byte(index, 32'h134 + k);
+            // The 64 KiB MBC1 entry: length 65536 as the low word 0 and
+            // length_high 1 (byte 24); the slot it spills into has no entry.
+            if (index == LARGE) begin entry[15:8] = PROFILE_MBC1_ID; entry[31:16] = 16'h0000; entry[199:192] = 8'h01; end
+            if (index == LARGE + 1) entry[7:0] = 8'h00;
             // Fault slots: 3 empty, 5 wrong length, 7 unknown profile, 9 wrong CRC.
             if (index == 3) entry[7:0] = 8'h00;
             if (index == 5) entry[31:16] = 16'h4000;
-            // The exit-mbc1 fixture names the MBC1 profile there instead: the
-            // library carries 32 KiB images only, so the entry is refused.
+            // The exit-mbc1 fixture names the MBC1 profile there instead: an
+            // MBC1 entry with a 32 KiB length is not that profile's image.
             if (index == 7) entry[15:8] = fixture == "exit-mbc1" ? PROFILE_MBC1_ID : 8'h09;
             if (index == 9) entry[63:32] = image_crc[index] ^ 32'h1;
+            // The swap-fault fixture adds two 64 KiB faults: a direct-profile
+            // entry claiming 65536 bytes (13) and an MBC1 image starting in
+            // the last game slot, where its upper half would be the menu (15).
+            if (fixture == "swap-fault" && index == 13) begin entry[31:16] = 16'h0000; entry[199:192] = 8'h01; end
+            if (fixture == "swap-fault" && index == 15) begin entry[15:8] = PROFILE_MBC1_ID; entry[31:16] = 16'h0000; entry[199:192] = 8'h01; end
             entries[index] = entry;
         end
     endtask
@@ -320,6 +339,26 @@ module tb_loader #(
         end
         checks = checks + 1;
     endtask
+    // The whole 64 KiB store through the UART load owner's readback side of
+    // the host port (the CPU port of this bench addresses the low half only).
+    task automatic check_rom_store_large(input int index);
+        int offset;
+        host_session = 1;
+        edge_cycle();
+        for (offset = 0; offset < LARGE_BYTES; offset = offset + 1) begin
+            uart_rom_address = 16'(offset); uart_rom_read = 1;
+            edge_cycle();
+            uart_rom_read = 0;
+            while (!rom_host_valid) edge_cycle();
+            if (rom_host_rdata != image_byte(index, offset))
+                $fatal(1, "LOADER_TB_STORE index=%0d offset=%04h expected=%02h actual=%02h",
+                    index, offset, image_byte(index, offset), rom_host_rdata);
+            edge_cycle();
+        end
+        host_session = 0;
+        edge_cycle();
+        checks = checks + 1;
+    endtask
     // A swap through the select register from the menu; checks the sequence.
     task automatic select_swap(input int index, input logic [7:0] expected_profile);
         int edges;
@@ -332,7 +371,8 @@ module tb_loader #(
         #1;
         if (!copy_busy || !swap_busy) $fatal(1, "LOADER_TB_SWAP_BUSY index=%0d", index);
         while (!paused) begin edge_cycle(); if (rom_host_write) $fatal(1, "LOADER_TB_WRITE_BEFORE_PAUSE"); end
-        wait_copy(edges, SWAP_BOUND, "swap");
+        wait_copy(edges, index == LARGE ? SWAP_BOUND_MBC1 : SWAP_BOUND, "swap");
+        if (index == LARGE) $display("LOADER_TB mbc1_swap_edges=%0d", edges);
         if (saw_invalid_write) $fatal(1, "LOADER_TB_VALID_DURING_WRITE index=%0d", index);
         if (!image_valid || profile != expected_profile)
             $fatal(1, "LOADER_TB_SWAP_PROFILE index=%0d profile=%02h valid=%b", index, profile, image_valid);
@@ -512,6 +552,12 @@ module tb_loader #(
         expect_status(8'h60, LIBRARY_RESULT_INVALID_SLOT, 8'd5, "wrong length");
         cpu_write(16'h6000, 8'd7); wait_copy(edges, SWAP_BOUND, "bad profile");
         expect_status(8'h60, LIBRARY_RESULT_INVALID_SLOT, 8'd7, "bad profile");
+        // 64 KiB faults: a direct-profile entry cannot be 65536 bytes, and an
+        // MBC1 image in slot 15 would spill into the menu slot.
+        cpu_write(16'h6000, 8'd13); wait_copy(edges, SWAP_BOUND, "direct 64 KiB");
+        expect_status(8'h60, LIBRARY_RESULT_INVALID_SLOT, 8'd13, "direct 64 KiB");
+        cpu_write(16'h6000, 8'd15); wait_copy(edges, SWAP_BOUND, "mbc1 last slot");
+        expect_status(8'h60, LIBRARY_RESULT_INVALID_SLOT, 8'd15, "mbc1 last slot");
         if (engine_writes != writes_before || paused || !image_valid || profile != PROFILE_LOADER_ID)
             $fatal(1, "LOADER_TB_REFUSED_EFFECT writes=%0d paused=%b", engine_writes - writes_before, paused);
         check_upper_half(1);
@@ -680,16 +726,18 @@ module tb_loader #(
         checks = checks + 1;
     endtask
 
-    // The MBC1 profile honors the exit register with the same decode. The
-    // fixture models the command owner's profile after a host load of a 64 KiB
-    // image; a catalogue entry naming MBC1_ID is an invalid slot.
+    // The 64 KiB MBC1 entry: an MBC1 entry with a 32 KiB length is refused;
+    // the select of the two-slot image copies all 65536 bytes into the store
+    // within the MBC1 bound and publishes MBC1_ID; the game then honors the
+    // exit register with the same decode as the direct profile.
     task automatic fixture_exit_mbc1;
         int edges;
         logic [31:0] epoch_before, status_before;
         cpu_write(16'h6000, 8'd7); wait_copy(edges, SWAP_BOUND, "mbc1 catalogue entry");
         expect_status(8'h20, LIBRARY_RESULT_INVALID_SLOT, 8'd7, "mbc1 catalogue entry");
-        select_swap(0, PROFILE_DIRECT_ID);
-        profile = PROFILE_MBC1_ID;
+        select_swap(LARGE, PROFILE_MBC1_ID);
+        check_rom_image(LARGE);
+        check_rom_store_large(LARGE);
         status_before = library_status;
         cpu_write(16'h6000, 8'h11);
         cpu_write(16'h7FFF, 8'h00);
@@ -712,7 +760,7 @@ module tb_loader #(
         if (profile != PROFILE_LOADER_ID || !image_valid || epoch != epoch_before + 1)
             $fatal(1, "LOADER_TB_EXIT_MBC1_SWAP profile=%02h valid=%b epoch=%0d", profile, image_valid, epoch);
         while (paused) edge_cycle();
-        expect_status(8'h20, LIBRARY_RESULT_OK, 8'd0, "after mbc1 exit");
+        expect_status(8'h20, LIBRARY_RESULT_OK, 8'(LARGE), "after mbc1 exit");
         check_rom_image(MENU);
         swaps = swaps + 1;
         checks = checks + 1;
@@ -816,7 +864,7 @@ module tb_loader #(
         clk_sys = 0; reset_sys = 1; sdram_reset = 0; key1_n = 1; host_session = 0; host_port_busy = 0; host_return = 0;
         request_valid = 0; write_enable = 0; bus_commit = 0; address = 0; write_data = 0;
         core_start = 0; core_command = 0; core_budget = 32'd1; host_sdram_valid = 0; host_sdram_write = 0;
-        host_sdram_address = 0; host_sdram_data = 0;
+        host_sdram_address = 0; host_sdram_data = 0; uart_rom_read = 0; uart_rom_address = 0;
         profile = PROFILE_LOADER_ID; image_valid = 1;
         checks = 0; engine_writes = 0; swaps = 0; fills = 0; invalid_writes = 0; saw_invalid_write = 0;
         if (!$value$plusargs("fixture=%s", fixture)) fixture = "window";
