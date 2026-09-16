@@ -31,7 +31,9 @@ Checks use real page interactions for categories, filtering, the README/AGENTS
 toggle, source overlays, slides, fullscreen when supported, HTML links, and
 recovery from a missing page. They visit every tab, assert the root line and the
 top sidebar entries each tab starts at, and capture the Blog tab at desktop and
-narrow widths. Unexpected console errors and page exceptions fail.
+narrow widths. At 390 px they assert the strip scrolls, that its right-edge fade
+is shown and lifts at the end; at 1440 px that every tab fits with no fade.
+Unexpected console errors and page exceptions fail.
 The browser's optional favicon request is handled locally. Waits observe page
 state without fixed sleeps.
 
@@ -76,7 +78,10 @@ published documentation; an empty category says so. A tab opens its own
 Home defaults to README; its toggle selects AGENTS. URLs identify the original
 file with `?page=wiki/tools/wiki/SPEC.md`; fragments select headings or `#L12` source
 lines. Former MkDocs document paths redirect to the matching source. Adding a tab
-changes no published URL.
+changes no published URL. At desktop width every tab fits. At phone width
+(760 px and below) the strip scrolls sideways, and a CSS gradient pinned over
+its right edge shows that more tabs exist; it lifts once the strip is scrolled
+to its end. Discoverability needs no script.
 
 `site.py` matches each published path to the longest source root in `ROOTS` and
 records that root beside its tab in the manifest. The sidebar strips the root
