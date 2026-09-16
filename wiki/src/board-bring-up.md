@@ -225,22 +225,22 @@ run evidence.
 
 ## Game library sessions
 
-Two owner-authorized sessions proved the merged game-library slices on the
+Three owner-authorized sessions proved the merged game-library slices on the
 board: the host loads the library into SDRAM, the loader profile swaps images
 and resets the core, the menu runs from the fitted volatile bitstream, and every
 frame named below was read back with `SNAPSHOT`/`READ_FRAME` and compared pixel
 for pixel against an independent reference. As everywhere on this page, the
 pixel-exact UART readback is the display proxy; no monitor was attached. The
-physical KEY1 press is still pending (see the [acceptance table](#game-library-acceptance)).
+[acceptance table](#game-library-acceptance) maps each criterion to its record.
 
-Authorization. On 2026-09-16 the owner pre-authorized both sessions with the
+Authorization. On 2026-09-16 the owner pre-authorized the sessions with the
 same scope: the COM7 UART adapter and the onboard USB-Blaster, a volatile
 `.sof` only, no flash programming, readback through `SNAPSHOT`/`READ_FRAME`,
 and pixel comparison against the independent references. On the same day the
 owner accepted Springtrail as the independent reference game for the started
 title frame: the other loaded games start and their frames are retained, but
 no independent title reference exists for them yet. The physical KEY1 press
-happens only with the owner present at the board.
+was performed by the owner at the board (session 3).
 
 References. Menu frames are compared with
 [`reference.py`](../../src/dv/menu/reference.py), composed from the
@@ -354,6 +354,30 @@ requested while running resumes on its own. Both match the
 [core reset sequencing](rtl/cartridge/MAS_loader_profile.md#core-reset-sequencing-and-image-validity)
 of the contract.
 
+### Session 3: physical KEY1 return with the owner at the board
+
+Same bitstream and board state as session 2: `v05-board` from `main`
+`5a79bd91fb80f151583487c79391a3ac7a2c9de0`, build id
+`90f7b82be13496042dfabf43106558ee`, wire build id
+`ee58651043bffa2d049634e12bb8f790` reported by every record; no reprogramming,
+so board state did not change. The owner was present and pressed KEY1
+(`PIN_A7`) by hand; records under tag `681c-key1`, timestamped 2026-09-16
+05:07 to 05:25 UTC. Menu frames are compared as in session 2, with the
+catalogue bytes from the `host library status` record taken beside each
+snapshot; the same catalogue SHA-256 `15fe956c…` as session 2.
+
+| Step | Record (tag `681c-key1`) | Result |
+|---|---|---|
+| Earlier KEY1 presses from the menu | `status/8658981a…`, `library-status/7564086d…`, `snapshot/15d571db01b54b99abc376de4ed3802c` | `PROFILE` 2, running, result `OK`; epoch 12 where session 2 ended at 7, so each press restarted the menu through the return path; pixel-exact menu frame, CRC32 `c3753fdc`, frame SHA-256 `373f18d5…` |
+| Owner started Stackdrop from the menu with the joypad | `status/13de9b2e…`, `library-status/47048d1e…`, `snapshot/357c2afe30b04a06888671796bcfa12e` | `PROFILE` 1, running, result `OK` index 0, `$A000` 0x20; epoch 21; game frame retained (SHA-256 `c54654fbfe502e02a37434f475b96d9b372847e024bb30d0270dc617fffe3da9`) |
+| Owner held KEY1 about 0.5 s | `status/50713275…`, `library-status/a4b92a33…`, `snapshot/b37001933af141a6abb3c8e68c125b0d` | back in the menu: `PROFILE` 2, `IMAGE_VALID` 1, running, epoch 22, result `OK`, `$A000` 0x60 (`window_ready`, `sdram_ready`); pixel-exact menu frame, 23040 pixels, 0 mismatches, CRC32 `c3753fdc`, frame SHA-256 `373f18d5…`, byte-identical to the session 2 menu frame and its published render |
+
+Four `host input` attempts between the first two rows failed to open the UART
+port while another host process held it; they changed nothing on the board and
+are retained as failures. The owner also watched the game start and the long
+press return to the menu on the display viewer; that observation carries the
+same limits as the [display observation](#display-observation) below.
+
 ### Game library acceptance
 
 | Criterion | Evidence | State |
@@ -363,7 +387,7 @@ of the contract.
 | Joypad selection of a loaded slot starts that game | `snapshot/55c55e6b…` (cursor), `library-status/c05069ef…` (swap `OK` index 1), and the slot 0 and slot 2 swaps | proven |
 | Started game title frame pixel-exact | `snapshot/72199545…`, CRC32 `4a3bad02` (Springtrail, the accepted reference game; stackdrop and v05 frames retained without a reference) | proven |
 | Return to the menu with a pixel-exact menu frame | host return `write/9ab81d26…` then `snapshot/58a8f84a…`, and the final return `snapshot/6770ea06…` | proven through the host return |
-| Physical KEY1 hold returns to the menu | none yet; needs the owner at the board. The host return exercises the same swap by contract, but the debounce, threshold and pin path of [KEY1](rtl/cartridge/MAS_loader_profile.md#key1-return) have run only in simulation (`loader-key1`) | pending |
+| Physical KEY1 hold returns to the menu with a pixel-exact menu frame | session 3 `snapshot/357c2afe…` (Stackdrop running, epoch 21) then the owner's 0.5 s hold and `snapshot/b3700193…` (menu, epoch 22, result `OK`, CRC32 `c3753fdc`); earlier presses `snapshot/15d571db…` | proven, owner present |
 
 ## Display observation
 
@@ -396,8 +420,4 @@ stays with [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing).
 ## Open items
 
 Pressing KEY0 and recording the board reset still needs hands at the board,
-tracked by [#512](https://github.com/amichai-bd/nand2mario/issues/512). The
-physical KEY1 hold that returns to the menu is the one
-[game library criterion](#game-library-acceptance) still pending; it runs only
-with the owner at the board and is tracked by
-[#681](https://github.com/amichai-bd/nand2mario/issues/681).
+tracked by [#512](https://github.com/amichai-bd/nand2mario/issues/512).

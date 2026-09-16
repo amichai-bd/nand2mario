@@ -408,11 +408,10 @@ started game's frame matched the independent title reference pixel for pixel,
 and the host return (`WRITE_HOST(LIBRARY_CONTROL)`, the same swap
 `key1_return` performs) brought the menu back with a pixel-exact menu frame.
 The `v05-board` and `v05-controls-board` images carry the SDRAM pins and KEY1
-(`PIN_A7`). The physical KEY1 hold itself is still
-[pending](../../board-bring-up.md#game-library-acceptance): its debounce,
-threshold and pin path have run only in `loader-key1`, and the press happens
-only with the owner at the board
-([#681](https://github.com/amichai-bd/nand2mario/issues/681)).
+(`PIN_A7`). The owner's physical KEY1 hold at the board
+([session 3](../../board-bring-up.md#session-3-physical-key1-return-with-the-owner-at-the-board))
+returned from a running game to the menu with the epoch change, result `OK`
+and a pixel-exact menu frame.
 
 ## References
 

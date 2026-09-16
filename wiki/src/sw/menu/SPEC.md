@@ -131,10 +131,9 @@ is proven by the [game library sessions](../../board-bring-up.md#game-library-se
 after a host library load the menu frame, the cursor frames after joypad
 Down, and the menu frame after the return from a started game were read back
 with `SNAPSHOT`/`READ_FRAME` and matched `reference.py` pixel for pixel, and
-joypad A started the selected slot. The physical KEY1 return is the one
-[criterion still pending](../../board-bring-up.md#game-library-acceptance)
-([#681](https://github.com/amichai-bd/nand2mario/issues/681)); the host return
-exercised the same swap.
+joypad A started the selected slot. The owner's physical KEY1 hold returned
+from a running game to a pixel-exact menu frame; the host return exercised the
+same swap.
 
 `python tools/build.py sw build menu --tag <tag> --json` builds the image;
 its result records `profile: dmg-loader-v1` and `profile_id: 2`.
