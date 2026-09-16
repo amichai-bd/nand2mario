@@ -79,7 +79,7 @@ visible in frame j+3. The last transition (release of Right+A) is visible from
 frame 21; the run ends after frame 22 completes at dot 1652371
 (`CONTINUITY_FRAMES` = 23, frames 0..22), and the final pause must land within
 2000 dots after it. The same `Online` monitor checks every retirement
-(6357 setup plus 21 updates of 76), every program write, every pixel of all 23
+(6358 setup plus 21 updates of 77), every program write, every pixel of all 23
 frames, each applied-input reply against its window and mask, the
 `continuity_monitor` and `time_progress` monitors (no reset, fault or early
 pause; tick count equals elapsed time throughout) and the final pause window.
@@ -128,7 +128,7 @@ fixed Right+A apply window is50000..52000 after the validated first HALT.
 Request HALT at145132, then keep every monitor live through actual pause within
 2000 additional dots. The owning fixed pixel schedule determines the expected
 partial-row count from pause, never from the observed count. All valid pauses
-require6357 complete retirement records, program writes, one input and both
+require6358 complete retirement records, program writes, one input and both
 blank startup and normal-frame input rows. The50 ms simulation watchdog is
 independent of the300-second total host supervisor (288-second worker allowance).
 The120-second runtime target is not claimed before measurement.
@@ -140,7 +140,7 @@ the four host observations `(source, host, physical, effective)` must be
 `(0,0,0,0)`. Select PHYSICAL through the actual UART while paused, expecting
 `(1,0,0,0)`. During first HALT at50000..52000, drive public physical mask17 and
 one commit on a system edge with `gb_tick=0`. This is the sole effective input
-event and the unchanged oracle still requires6357 complete retirements and all
+event and the unchanged oracle still requires6358 complete retirements and all
 source pixels through actual final pause.
 
 Readbacks then require `(1,0,17,17)`. UART INPUT2 must produce `(1,2,17,17)`;

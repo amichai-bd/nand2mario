@@ -18,7 +18,7 @@ class V05PreloadTests(unittest.TestCase):
             destination = Path(directory)
             python_tb.prepare(target,destination,ROOT)
             record = preload.verify(destination)
-            self.assertEqual(record['image_sha256'],'5163c78c7dff472d4a4366400cb4cc3ae88c5e30d3c3bad6b938822ff1e5cfb7')
+            self.assertEqual(record['image_sha256'],'fbd8bb4745f26dc47ca6584654cbb3aaa6190c880c13238d3655c08b09d42058')
             self.assertEqual(record['image_bytes'],32768)
             (destination / 'program.gb').write_bytes(bytes(32768))
             with self.assertRaisesRegex(ValueError,'image changed'):

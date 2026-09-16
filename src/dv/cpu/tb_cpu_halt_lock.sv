@@ -93,10 +93,41 @@ module tb_cpu_halt_lock;
         end
     endtask
 
+    // Retirement events: scenarios 0/1 retire two, the guarded loop tail
+    // (scenario 2) retires HALT, both NOPs and LD A,n; locks retire none
+    // before recovery and one NOP after it.
+    function automatic integer events_expected(input integer index);
+        events_expected = index==2 ? 4 : (index<2 ? 2 : 0);
+    endfunction
+
+    // Scenario 2 mirrors the images' Sleep tail `HALT / NOP / LD A,n`: the
+    // bug doubles the NOP at $101 (pc_after stays $101 on the first) and
+    // LD A,$10 then reads its own operand, never a STOP.
+    task automatic expect_guarded_tail;
+        expected='0;
+        expected[0 +: 8]=1;
+        expected[16 +: 32]=epoch;
+        expected[48 +: 64]=64'(event_index);
+        expected[304 +: 16]=16'hfffe;
+        expected[360 +: 8]=1;
+        expected[368 +: 8]=1;
+        case (event_index)
+            0: begin expected[112 +: 64]=8; expected[176 +: 16]=16'h100; expected[192 +: 16]=16'h101;
+                     expected[208 +: 24]=24'h76; expected[232 +: 8]=1; expected[352 +: 8]=1; end
+            1: begin expected[112 +: 64]=12; expected[176 +: 16]=16'h101; expected[192 +: 16]=16'h101;
+                     expected[208 +: 24]=24'h0; expected[232 +: 8]=1; end
+            2: begin expected[112 +: 64]=16; expected[176 +: 16]=16'h101; expected[192 +: 16]=16'h102;
+                     expected[208 +: 24]=24'h0; expected[232 +: 8]=1; end
+            default: begin expected[112 +: 64]=24; expected[176 +: 16]=16'h102; expected[192 +: 16]=16'h104;
+                     expected[208 +: 24]=24'h103e; expected[232 +: 8]=2; expected[240 +: 8]=8'h10; end
+        endcase
+    endtask
+
     task automatic check_event;
         if (retirement_valid) begin
-            if (scenario>=2 && !recovery) $fatal(1,"CPU_POWER_LOCK_EVENT case=%0d",scenario);
-            if (event_index>=(recovery ? 1 : 2)) $fatal(1,"CPU_POWER_EXTRA_EVENT");
+            if (scenario>=3 && !recovery) $fatal(1,"CPU_POWER_LOCK_EVENT case=%0d",scenario);
+            if (event_index>=(recovery ? 1 : events_expected(scenario))) $fatal(1,"CPU_POWER_EXTRA_EVENT");
+            if (scenario==2) expect_guarded_tail(); else begin
             expected='0;
             expected[0 +: 8]=1;
             expected[16 +: 32]=epoch;
@@ -112,6 +143,7 @@ module tb_cpu_halt_lock;
             expected[368 +: 8]=1;
             if (scenario==0 && event_index==1) expected[240 +: 8]=8'h3e;
             if (recovery) begin expected[208 +: 24]=0; expected[352 +: 8]=0; end
+            end
             $fdisplay(trace,"event,%0d,%0d,%0d,%096h,%096h",scenario,recovery,event_index,expected,retirement);
             if (retirement!=expected)
                 $fatal(1,"CPU_POWER_EVENT case=%0d event=%0d expected=%096h actual=%096h",
@@ -144,7 +176,7 @@ module tb_cpu_halt_lock;
             stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
             retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
             address_effect_phase,instruction_complete);
-        for (scenario=0; scenario<13; scenario=scenario+1) begin
+        for (scenario=0; scenario<14; scenario=scenario+1) begin
             reset_sys=1; edge_cycle(0); reset_sys=0;
             for (item=0; item<65536; item=item+1) memory[item]=0;
             epoch=32'(scenario+1); ie=1; iflags=1;
@@ -164,20 +196,29 @@ module tb_cpu_halt_lock;
                 writes='{0,0,0,1,1,0};
                 bus_count=6; end_dot=24;
             end
-            if (scenario>=2) begin
-                memory[16'h100]=illegal_opcodes[scenario-2]; memory[16'h101]=0; memory[16'h102]=0;
-                bytes_expected[0]=illegal_opcodes[scenario-2];
+            if (scenario==2) begin
+                // exit-demo/v05 Sleep tail with IF already set at HALT.
+                memory[16'h101]=8'h00; memory[16'h102]=8'h3e; memory[16'h103]=8'h10;
+                memory[16'h104]=8'he0; memory[16'h105]=8'h00;
+                addresses='{16'h100,16'h101,16'h101,16'h102,16'h103,16'h104};
+                bytes_expected='{8'h76,8'h00,8'h00,8'h3e,8'h10,8'he0};
+                kinds='{3'd1,3'd1,3'd1,3'd1,3'd2,3'd1};
+                bus_count=6; end_dot=24;
+            end
+            if (scenario>=3) begin
+                memory[16'h100]=illegal_opcodes[scenario-3]; memory[16'h101]=0; memory[16'h102]=0;
+                bytes_expected[0]=illegal_opcodes[scenario-3];
                 bus_count=1; end_dot=20;
             end
             for (cycle=0; cycle<end_dot*3+2; cycle=cycle+1) begin
                 if (halt_fault && scenario==0 && dot_before==8) force dut.u_control.control.pc=16'h102;
-                if (lock_fault && scenario==2 && dot_before==12) force dut.u_retire.retirement_valid=1'b1;
+                if (lock_fault && scenario==3 && dot_before==12) force dut.u_retire.retirement_valid=1'b1;
                 edge_cycle(cycle%3==0);
             end
             if (fault || !initialized || halted || stopped || bus_index!=bus_count)
                 $fatal(1,"CPU_POWER_FINAL case=%0d",scenario);
-            if (scenario<2) begin
-                if (event_index!=2 || locked || write_count!=(scenario==1 ? 2 : 0))
+            if (scenario<3) begin
+                if (event_index!=events_expected(scenario) || locked || write_count!=(scenario==1 ? 2 : 0))
                     $fatal(1,"CPU_POWER_BUG_FINAL case=%0d",scenario);
                 if (scenario==1 && (memory[16'hfffc]!=1 || memory[16'hfffd]!=1))
                     $fatal(1,"CPU_POWER_RST_RETURN");
@@ -202,7 +243,7 @@ module tb_cpu_halt_lock;
             end
         end
         $fclose(trace);
-        $display("PASS CPU HALT bug cases=2 illegal_locks=11 reset_recovery=11");
+        $display("PASS CPU HALT bug cases=3 illegal_locks=11 reset_recovery=11");
         $finish;
     end
     initial begin

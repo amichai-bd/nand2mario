@@ -249,145 +249,151 @@
     },
     {
       "pc": 581,
+      "bytes": "00",
+      "mcycles": 1,
+      "operation": "nop"
+    },
+    {
+      "pc": 582,
       "bytes": "3e20",
       "mcycles": 2,
       "operation": "a_20"
     },
     {
-      "pc": 583,
+      "pc": 584,
       "bytes": "e000",
       "mcycles": 3,
       "operation": "joyp_write"
     },
     {
-      "pc": 585,
+      "pc": 586,
       "bytes": "f000",
       "mcycles": 3,
       "operation": "joyp_read"
     },
     {
-      "pc": 587,
+      "pc": 588,
       "bytes": "2f",
       "mcycles": 1,
       "operation": "cpl"
     },
     {
-      "pc": 588,
+      "pc": 589,
       "bytes": "e60f",
       "mcycles": 2,
       "operation": "and_0f"
     },
     {
-      "pc": 590,
+      "pc": 591,
       "bytes": "47",
       "mcycles": 1,
       "operation": "b_a"
     },
     {
-      "pc": 591,
+      "pc": 592,
       "bytes": "3e10",
       "mcycles": 2,
       "operation": "a_10"
     },
     {
-      "pc": 593,
+      "pc": 594,
       "bytes": "e000",
       "mcycles": 3,
       "operation": "joyp_write"
     },
     {
-      "pc": 595,
+      "pc": 596,
       "bytes": "f000",
       "mcycles": 3,
       "operation": "joyp_read"
     },
     {
-      "pc": 597,
+      "pc": 598,
       "bytes": "2f",
       "mcycles": 1,
       "operation": "cpl"
     },
     {
-      "pc": 598,
+      "pc": 599,
       "bytes": "e60f",
       "mcycles": 2,
       "operation": "and_0f"
     },
     {
-      "pc": 600,
+      "pc": 601,
       "bytes": "cb37",
       "mcycles": 2,
       "operation": "swap_a"
     },
     {
-      "pc": 602,
+      "pc": 603,
       "bytes": "b0",
       "mcycles": 1,
       "operation": "or_b"
     },
     {
-      "pc": 603,
+      "pc": 604,
       "bytes": "4f",
       "mcycles": 1,
       "operation": "c_a"
     },
     {
-      "pc": 604,
+      "pc": 605,
       "bytes": "210099",
       "mcycles": 3,
       "operation": "hl_9900"
     },
     {
-      "pc": 607,
+      "pc": 608,
       "bytes": "0608",
       "mcycles": 2,
       "operation": "b_08"
     },
     {
-      "pc": 609,
+      "pc": 610,
       "bytes": "5f",
       "mcycles": 1,
       "operation": "e_a"
     },
     {
-      "pc": 610,
+      "pc": 611,
       "bytes": "e601",
       "mcycles": 2,
       "operation": "and_01"
     },
     {
-      "pc": 612,
+      "pc": 613,
       "bytes": "22",
       "mcycles": 2,
       "operation": "write_hli"
     },
     {
-      "pc": 613,
+      "pc": 614,
       "bytes": "7b",
       "mcycles": 1,
       "operation": "a_e"
     },
     {
-      "pc": 614,
+      "pc": 615,
       "bytes": "0f",
       "mcycles": 1,
       "operation": "rrca"
     },
     {
-      "pc": 615,
+      "pc": 616,
       "bytes": "05",
       "mcycles": 1,
       "operation": "dec_b"
     },
     {
-      "pc": 616,
+      "pc": 617,
       "bytes": "20f7",
       "mcycles": 3,
       "operation": "jr_nz"
     },
     {
-      "pc": 618,
-      "bytes": "18d5",
+      "pc": 619,
+      "bytes": "18d4",
       "mcycles": 3,
       "operation": "jr"
     }
