@@ -11,9 +11,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import generated_interfaces as abi
 from .host.client import RejectedCommand
+from .host.library import return_to_menu
 from .profiles import PROFILE_IMAGE_BYTES
 from .springtrail_play import PlayFailure, finish
-from .viewer_buttons import DEFAULT_MODE, MODES
+from .viewer_buttons import DEFAULT_MODE, MAIN_MENU_ACTION, MODES
 
 FRAME_DOTS = 70224  # One whole DMG frame; the step unit in stepped mode.
 MAX_STEP_FRAMES = 60
@@ -21,17 +22,21 @@ SYSTEM_CLOCK_HZ = 25_000_000  # wiki/src/clocks-resets-cdc.md system domain.
 LOADER_SWAP_SECONDS = abi.LIBRARY_SWAP_BOUND_MBC1_EDGES / SYSTEM_CLOCK_HZ
 
 PAGE = b'''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{display:block;margin:20px auto;background:#333;max-width:100%;height:auto}.uart{image-rendering:pixelated}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}#commands{text-align:left;font:14px system-ui;padding-left:20px}#commands li{padding:6px}.QUEUED{color:#77baff}.EXECUTING{color:#ffd166}.RETIRED{color:#84df9b}.FAILED,.UNCERTAIN{color:#ff9393}.CANCELLED{color:#aaa}</style>
-<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Live source image"><small id="detail"></small><p id="buttons"></p><p id="modes"></p><p id="mode-status"></p><p id="input-status"></p><h2 id="commands-title" hidden>Commands (newest first)</h2><ol id="commands"></ol>
+<title>FPGA live view</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{display:block;margin:20px auto;background:#333;max-width:100%;height:auto}.uart{image-rendering:pixelated}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}button{border:0;color:#f7f7f7;cursor:pointer;font:700 18px system-ui;min-height:48px;min-width:48px;touch-action:manipulation}button:focus-visible{outline:3px solid #77baff;outline-offset:3px}#control-deck{background:#c6c5b9;border-radius:18px;color:#202124;margin:20px auto;max-width:640px;padding:clamp(14px,4vw,28px)}.game-controls{align-items:center;display:grid;gap:clamp(20px,10vw,100px);grid-template-columns:minmax(132px,1fr) minmax(132px,1fr)}.dpad{display:grid;grid-template:repeat(3,48px)/repeat(3,48px);justify-content:start}.dpad button{background:#292b2f;border-radius:8px}.dpad .up{grid-area:1/2}.dpad .left{grid-area:2/1}.dpad .right{grid-area:2/3}.dpad .down{grid-area:3/2}.dpad-center{background:#292b2f;grid-area:2/2}.action-buttons{align-items:center;display:flex;gap:16px;justify-content:end;padding-top:18px}.action-buttons button{background:#8f224f;border-radius:50%;height:64px;width:64px}.action-buttons .b{transform:translateY(12px)}.meta-controls{display:flex;gap:18px;justify-content:center;margin-top:20px}.meta-controls button{background:#55585d;border-radius:24px;font-size:13px;min-height:34px;min-width:82px;padding:7px 16px;transform:rotate(-7deg)}.system-controls{border-top:1px solid #9b9b91;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:24px;padding-top:18px}.system-controls button{background:#3c5268;border-radius:8px;padding:10px 16px}.system-controls .main-menu{background:#7d2730}#commands{text-align:left;font:14px system-ui;padding-left:20px}#commands li{padding:6px}.QUEUED{color:#77baff}.EXECUTING{color:#ffd166}.RETIRED{color:#84df9b}.FAILED,.UNCERTAIN{color:#ff9393}.CANCELLED{color:#aaa}@media(max-width:420px){body{margin:10px}.game-controls{gap:12px;grid-template-columns:1fr 1fr}.dpad{grid-template:repeat(3,44px)/repeat(3,44px)}.dpad button{min-height:44px;min-width:44px}.action-buttons{gap:10px}.action-buttons button{height:56px;min-width:56px;width:56px}}
+</style>
+<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Live source image"><small id="detail"></small>
+<section id="control-deck" aria-label="Game Boy controls" hidden><div class="game-controls"><div class="dpad" role="group" aria-label="Directional pad"><button class="up" data-button="Up" aria-label="Up">&#9650;</button><button class="left" data-button="Left" aria-label="Left">&#9664;</button><span class="dpad-center" aria-hidden="true"></span><button class="right" data-button="Right" aria-label="Right">&#9654;</button><button class="down" data-button="Down" aria-label="Down">&#9660;</button></div><div class="action-buttons" role="group" aria-label="Action buttons"><button class="b" data-button="B" aria-label="B button">B</button><button class="a" data-button="A" aria-label="A button">A</button></div></div><div class="meta-controls" role="group" aria-label="Menu buttons"><button data-button="Select">Select</button><button data-button="Start">Start</button></div><div class="system-controls"><button id="mode-toggle" aria-label="Toggle play mode">Mode: Free-run</button><button id="main-menu" class="main-menu">Main menu</button></div></section>
+<p id="mode-status"></p><p id="input-status" aria-live="polite"></p><h2 id="commands-title" hidden>Commands (newest first)</h2><ol id="commands"></ol>
 <script>
 let last=0,sequence=0,controlsBuilt=false,cameraStarted=false;const state=document.querySelector('#state'),frame=document.querySelector('#frame'),detail=document.querySelector('#detail');
 async function send(payload,name){const label=document.querySelector('#input-status');try{const r=await fetch('/input',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer-Input':'tap'},body:JSON.stringify(payload)});if(!r.ok)throw Error('Queue full, busy, stopped or refused');const result=await r.json();label.textContent='Queued '+name+' #'+result.id}catch(e){label.textContent=e.message}}
-function control(target,text,payload){const b=document.createElement('button');b.textContent=text;b.style.cssText='font:20px system-ui;padding:12px;margin:4px';b.onclick=()=>send(payload,text);document.querySelector(target).appendChild(b)}
-function buildControls(s){if(!s.controls_enabled||controlsBuilt)return;controlsBuilt=true;for(const button of ['Up','Left','Right','Down','A','B','Start','Select'])control('#buttons',button,{button});for(const mode of ['free-run','stepped'])control('#modes','Mode: '+mode,{mode});document.querySelector('#commands-title').hidden=false}
+function buildControls(s){if(!s.controls_enabled||controlsBuilt)return;controlsBuilt=true;document.querySelector('#control-deck').hidden=false;for(const b of document.querySelectorAll('[data-button]'))b.onclick=()=>send({button:b.dataset.button},b.dataset.button);document.querySelector('#mode-toggle').onclick=()=>{const mode=document.querySelector('#mode-toggle').dataset.mode==='stepped'?'free-run':'stepped';send({mode},'Mode: '+mode)};document.querySelector('#main-menu').onclick=()=>{if(confirm('Return to the main menu?'))send({action:'main-menu'},'Main menu')};document.querySelector('#commands-title').hidden=false}
 function modeStatus(s){if(!s.controls_enabled){document.querySelector('#mode-status').textContent='Camera view only | UART controls disabled';return}const step=s.step?' | advanced '+s.step.steps+' step(s), '+s.step.executed_dots+' of '+s.step.requested_dots+' dots to dot '+s.step.completed_dot+(s.step.short_by_dots?' | SHORT by '+s.step.short_by_dots+' dots (reason '+s.step.reason+')':''):'';document.querySelector('#mode-status').textContent='Mode '+(s.mode||'unknown')+(s.mode==='stepped'?' | step '+s.step_frames+' frame(s) of 70224 dots'+step+' | not a real-time proof':'')}
+function modeControl(s){if(!s.controls_enabled)return;const mode=s.mode||'free-run',toggle=document.querySelector('#mode-toggle');toggle.dataset.mode=mode;toggle.textContent='Mode: '+(mode==='stepped'?'Stepped':'Free-run');toggle.setAttribute('aria-pressed',mode==='stepped')}
 function scale(s){if(s&&s.image_source==='uart'){let n=Math.max(1,Math.floor((innerWidth-40)/160));frame.className='uart';frame.style.width=(160*n)+'px';frame.style.height=(144*n)+'px'}else{frame.className='camera';frame.style.width='auto';frame.style.height='auto'}}addEventListener('resize',()=>scale({image_source:frame.className}));
-function commands(s){const list=document.querySelector('#commands');list.replaceChildren();if(s.commands_error){list.textContent=s.commands_error;return}for(const r of s.commands||[]){const li=document.createElement('li');li.className=r.state;const names=['Right','Left','Up','Down','A','B','Select','Start'].filter((n,i)=>r.mask&(1<<i)).join('+');const held=r.step?'1 step, '+r.step.executed_dots+(r.step.short_by_dots?' of '+r.step.requested_dots:'')+' dots':r.milliseconds+' ms';const what=r.mode?'mode '+r.mode:(names||'mask '+r.mask)+' '+held;li.textContent='#'+r.id+' '+what+' | '+r.state+' | queued '+(r.queued_at||'-')+' | started '+(r.started_at||'-')+' | completed '+(r.completed_at||'-');list.appendChild(li)}}
-async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();buildControls(s);commands(s);modeStatus(s);scale(s);if(s.image_source==='camera'&&!cameraStarted){frame.src='/camera.mjpg';cameraStarted=true}else if(s.image_source==='uart'&&s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s | '+(s.image_source==='camera'?'physical camera MJPEG frame ':'UART framebuffer ')+s.source.seq+(s.controls_enabled?' | '+s.core_state:''):'Waiting for '+(s.image_source==='camera'?'camera frames':'actual FPGA pixels')}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
+function commands(s){const list=document.querySelector('#commands');list.replaceChildren();if(s.commands_error){list.textContent=s.commands_error;return}for(const r of s.commands||[]){const li=document.createElement('li');li.className=r.state;const names=['Right','Left','Up','Down','A','B','Select','Start'].filter((n,i)=>r.mask&(1<<i)).join('+');const held=r.step?'1 step, '+r.step.executed_dots+(r.step.short_by_dots?' of '+r.step.requested_dots:'')+' dots':r.milliseconds+' ms';const what=r.action==='main-menu'?'Main menu':r.mode?'mode '+r.mode:(names||'mask '+r.mask)+' '+held;li.textContent='#'+r.id+' '+what+' | '+r.state+' | queued '+(r.queued_at||'-')+' | started '+(r.started_at||'-')+' | completed '+(r.completed_at||'-');list.appendChild(li)}}
+async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();buildControls(s);commands(s);modeStatus(s);modeControl(s);scale(s);if(s.image_source==='camera'&&!cameraStarted){frame.src='/camera.mjpg';cameraStarted=true}else if(s.image_source==='uart'&&s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s | '+(s.image_source==='camera'?'physical camera MJPEG frame ':'UART framebuffer ')+s.source.seq+(s.controls_enabled?' | '+s.core_state:''):'Waiting for '+(s.image_source==='camera'?'camera frames':'actual FPGA pixels')}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
 </script>'''
 
 
@@ -120,7 +125,7 @@ class Latest:
 
 
 def server(latest, username, password, port=0, *, input_origin=None, submit=None,
-           submit_mode=None, command_history=None, camera_stream=False):
+           submit_mode=None, submit_action=None, command_history=None, camera_stream=False):
     if input_origin is not None:
         origin = urlsplit(input_origin)
         if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.path or origin.query or origin.fragment:
@@ -234,6 +239,10 @@ def server(latest, username, password, port=0, *, input_origin=None, submit=None
                     if record['mode'] not in MODES:
                         raise ValueError('invalid mode')
                     action = lambda:submit_mode(record['mode'])
+                elif set(record) == {'action'} and submit_action is not None:
+                    if record['action'] != MAIN_MENU_ACTION:
+                        raise ValueError('invalid action')
+                    action = lambda:submit_action(record['action'])
                 elif set(record) == {'button'} and record['button'] in masks:
                     action = lambda:submit(masks[record['button']],134)
                 else:
@@ -325,6 +334,10 @@ class LoaderTransition:
         return {'profile':profile,'state':state,
                 'bound_edges':abi.LIBRARY_SWAP_BOUND_MBC1_EDGES}
 
+    def settle(self, state=None):
+        """Expose the shared post-loader safety check to fixed viewer actions."""
+        return self._ready(state)
+
     def _apply_ready(self, mask, *, retry):
         prior_profile = self.profile
         try:
@@ -374,6 +387,15 @@ class LoaderTransition:
                 return transition
             return self._apply_ready(mask,retry=False) or transition
         return self._apply_ready(mask,retry=False)
+
+
+def return_main_menu(client, transition):
+    """Run only the bounded library return and verify the loader is neutral."""
+    report = return_to_menu(client,wait=True)
+    settled = transition.settle(report['endpoint']['STATE'])
+    if settled['profile'] != abi.PROFILE_LOADER_ID:
+        raise PlayFailure('STATE_LOADER_PROFILE')
+    return {'library':report,'loader_transition':settled}
 
 
 def advance(client, dots):
@@ -487,6 +509,11 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
             steps.append(advance(client,step_frames*FRAME_DOTS))
             return steps[-1]
 
+        def perform(_client, action):
+            if _client is not client or action != MAIN_MENU_ACTION:
+                raise ValueError('unsupported viewer action')
+            return return_main_menu(client,transition)
+
         result['stage'] = 'capture'
         while not stop.is_set() and clock()-started < seconds:
             tick = clock()
@@ -502,7 +529,7 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                     if stop.is_set():
                         break
                     receipt = buttons.one(client,stop,clock=clock,wait=wait,path=path,
-                                          hold=hold,apply=transition.apply)
+                                          hold=hold,apply=transition.apply,perform=perform)
                     result.setdefault('inputs',[]).append(receipt)
                     result['inputs'] = result['inputs'][-32:]
                 if stop.is_set():

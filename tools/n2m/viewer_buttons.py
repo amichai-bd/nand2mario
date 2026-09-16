@@ -13,6 +13,8 @@ CAPACITY = 16
 ACTIVE = {'QUEUED','EXECUTING'}
 MODES = ('free-run','stepped')
 DEFAULT_MODE = MODES[0]
+MAIN_MENU_ACTION = 'main-menu'
+ACTIONS = (MAIN_MENU_ACTION,)
 
 
 def timestamp():
@@ -61,13 +63,17 @@ def merge_history(out, changes):
 
 
 def validate(record):
-    if set(record) not in ({'id','mask','milliseconds'},{'id','mode'}):
+    if set(record) not in ({'id','mask','milliseconds'},{'id','mode'},{'id','action'}):
         raise ValueError('button record fields')
     if type(record['id']) is not int or record['id'] < 1:
         raise ValueError('button record sequence')
     if 'mode' in record:
         if record['mode'] not in MODES:
             raise ValueError('viewer mode outside the published set')
+        return record
+    if 'action' in record:
+        if record['action'] not in ACTIONS:
+            raise ValueError('viewer action outside the published set')
         return record
     if type(record['mask']) is not int or not 1 <= record['mask'] <= 255:
         raise ValueError('button mask outside1..255')
@@ -84,6 +90,11 @@ def enqueue(out, mask, milliseconds):
 def enqueue_mode(out, mode):
     """Publish one mode change; it is ordered and retained like a press."""
     return submit(out,{'mode':mode})
+
+
+def enqueue_action(out, action):
+    """Publish one fixed system action into the same ordered FIFO."""
+    return submit(out,{'action':action})
 
 
 def submit(out, fields):
@@ -141,7 +152,7 @@ class Buttons:
             return sorted(self.inbox.glob('*.json'))[:CAPACITY]
 
     def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None, hold=None,
-            apply=apply_mask):
+            apply=apply_mask, perform=None):
         """Claim once, complete/release before returning to capture.
 
         `hold` replaces the wall-clock press duration when the caller advances
@@ -179,6 +190,12 @@ class Buttons:
                 # Mode selection sends no UART traffic, so it can never leave a
                 # key pressed; the batch already released every earlier press.
                 self.mode = record['mode']
+                receipt['status'] = 'APPLIED'
+                return receipt
+            if 'action' in record:
+                if perform is None:
+                    raise ValueError('viewer action handler unavailable')
+                receipt['action_result'] = perform(client,record['action'])
                 receipt['status'] = 'APPLIED'
                 return receipt
             pressed = True

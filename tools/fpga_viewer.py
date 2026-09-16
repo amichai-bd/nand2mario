@@ -28,7 +28,8 @@ from n2m.host.transport import session, session_root
 from n2m.gui_pad import explain_conflict, pad_loop
 from n2m.live_viewer import MAX_STEP_FRAMES, Latest, capture_loop, describe_failure, server
 from n2m.records import atomic_json
-from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
+from n2m.viewer_buttons import (Buttons, enqueue, enqueue_action, enqueue_mode,
+                                history)
 from n2m.windows_camera import DirectShowCamera
 
 
@@ -119,10 +120,12 @@ def worker(args):
         signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
         submit = (lambda mask,ms:enqueue(out,mask,ms)) if controls else None
         submit_mode = (lambda mode:enqueue_mode(out,mode)) if controls else None
+        submit_action = (lambda action:enqueue_action(out,action)) if controls else None
         command_history = (lambda:history(out)) if controls else None
         http = server(latest,credentials['username'],credentials['password'],args.port,
                       input_origin=args.input_origin,submit=submit,
-                      submit_mode=submit_mode,command_history=command_history,
+                      submit_mode=submit_mode,submit_action=submit_action,
+                      command_history=command_history,
                       camera_stream=camera_source is not None)
         thread = threading.Thread(target=http.serve_forever,daemon=True)
         thread.start()
