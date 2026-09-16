@@ -15,7 +15,9 @@ the copier in the `v05-board` image and the builder's
 The [flash-resident boot sessions](../../board-bring-up.md#flash-resident-boot-and-sdram-sweep-sessions)
 record the programmed `.pof`, the power-up to the menu and the read-back
 library state on the board; the programming section below is the contract
-those slices derive from.
+those slices derive from. The board's current flash-resident image is the
+[session 8](../../board-bring-up.md#session-8-reflash-with-the-updated-v05-image)
+`v05-board` fit, packed `catalogue.bin` SHA-256 `dca33a9b…`.
 
 ## Scope
 
@@ -375,6 +377,11 @@ full SDRAM sweep had overwritten the SDRAM, both a JTAG flash programming
 the copier again and restored the flash menu with the same catalogue and a
 pixel-exact frame
 ([session 6](../../board-bring-up.md#session-6-flash-reconfiguration-restores-the-library-without-a-power-cycle)).
+A fourth write carried a rebuilt game into CFM0 and repeated the proofs on the
+new image: the device reconfigured from CFM0 again without a power cycle, the
+catalogue read from SDRAM equalled the packed one, the menu frame was
+pixel-exact, and the rebuilt game started from the menu and answered the joypad
+([session 8](../../board-bring-up.md#session-8-reflash-with-the-updated-v05-image)).
 The copier's and reader's timing evidence remains simulation against the
 double plus the fit.
 

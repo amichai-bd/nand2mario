@@ -471,6 +471,14 @@ record; the concise records (fit, dry-run, program, status, library status,
 snapshot and compare results, sweep provenance) are retained with a provenance
 note and linked from the closing PR.
 
+Four flash writes have been made on this board: sessions 4, 5, 6 and 8. The
+current flash-resident image is
+[session 8](#session-8-reflash-with-the-updated-v05-image): `v05-board` build
+id `39ded89fa8f15f25b89ebdd8c6264c67`, wire build id `674c26c6…`, `.pof`
+SHA-256 `e6d86943…`, packed `catalogue.bin` SHA-256 `dca33a9b…`, eleven games
+and the menu. The images of sessions 4 to 6 are history; each earlier record
+names the image it was taken on.
+
 Authorization. Every earlier board session was volatile `.sof` only. In the
 morning of 2026-09-16 the owner authorized both parts: "I authorize the flash
 programming session, and if needed a four-hour SDRAM sweep — that's fine",
@@ -595,9 +603,10 @@ dots per second, so a dot value dates the last reset.
 Two facts differ from the issue text that requested this record. The board was
 running the menu, not paused at input 0: the flash-boot design starts the menu
 on every reset, so "paused at input 0" is not a state this image rests in
-(`INPUT` was 0 throughout). And the image is the current flash-resident fit,
-not the superseded `87d5f028…` wire build the issue named, which later
-qualified fits replaced.
+(`INPUT` was 0 throughout). And the image was the flash-resident fit of the
+day, not the superseded `87d5f028…` wire build the issue named, which later
+qualified fits replaced; [session 8](#session-8-reflash-with-the-updated-v05-image)
+has since replaced it in turn.
 
 | Step | Records | Result |
 |---|---|---|
@@ -612,6 +621,83 @@ build identity. Board state after: flash-resident menu running, cursor 0, no
 selection. The comparison uses the same
 [`reference.py`](../../src/dv/menu/reference.py) path as the other menu frames
 on this page.
+
+### Session 8: reflash with the updated V05 image
+
+The fourth flash write. `e17a23d` changed the `v05` image's HALT loop, so the
+packed library no longer matched the flash content: the reflash carries the
+rebuilt V05 into CFM0 and repeats the flash-boot, menu and selection proofs on
+it. The owner put root in charge of the UART and JTAG for this session and was
+not at the board; no power cycle was performed and nothing was rewired.
+
+- Git commit: the fit was taken at `e5e3491dc02fdd55efdd58bef3b6dab4103556f7`,
+  the head squashed into `main` as `e17a23d`; the `src/` content is the same at
+  both. Eleven games in slots 0 to 10 and the menu at 16. Slot 2 `V05 BUTTONS`
+  carries the new image, CRC32 `dda78e9e` where every earlier flash image had
+  `718b0dcb`; every other slot CRC32 is unchanged. `library.hex` SHA-256
+  `ee398355…`, packed `catalogue.bin` SHA-256 `dca33a9b…` with catalogue CRC32
+  `e7fdbc26`, 106,752 defined words from the
+  [registry](../../src/fpga/de10_lite/library.json).
+- Fit: `v05-board` attempt `82be085a97fd` (tag `764-fit`), status `PASS`,
+  22:43:58 to 22:48:03 UTC on 2026-09-16 (01:43 to 01:48 board clock, UTC+3, on
+  2026-09-17), build id `39ded89fa8f15f25b89ebdd8c6264c67`, wire build id
+  `674c26c6d8bd9eb8255ff1a89fd8de39` reported by every host record;
+  configuration mode `Single Comp Image`, `UFM blocks : 1 / 1`, `.pof` SHA-256
+  `e6d86943df5fb6856d11925945db8bee2621a4816f176c75dd86368cd57970ad`, user
+  range matched, CFM0 used 369,933 of 688,128 bytes; unconstrained clocks: the
+  On-Chip Flash IP sense-enable strobe only, ignored constraints none, worst
+  slack 0.056 ns (fast-corner hold on the system PLL clock). 12,852 of 49,760
+  logic elements, 1,056,616 memory bits, 2 PLLs.
+- Quartus version: Prime 25.1std.0 Build 1129 SC Lite Edition, for fit and
+  programmer.
+- Flash programming: `fpga-program/77d8f6afade8` (tag `764-program`),
+  `quartus_pgm -c 1 -m jtag -o pvb;<pof>` against the one `USB-Blaster [USB-1]`
+  chain with `10M50DA(.|ES)/10M50DC` (IDCODE `031050DD`), "Quartus Prime
+  Programmer was successful. 0 errors, 0 warnings", processing 01:58:55 to
+  01:59:43 board clock, `isp_seconds` 48.25, `device_state` `changed`;
+  `pof_sha256` equal to the fit's.
+- Wiring: the documented UART and JTAG connections above.
+
+Host records under tags `764-status-after-program` and `764-board-*`,
+transaction stamps 22:59:50 to 23:01:48 UTC on 2026-09-16 (01:59:50 to 02:01:48
+board clock). Menu frames are compared with
+[`reference.py`](../../src/dv/menu/reference.py) against the catalogue bytes of
+the `764-board-libstatus` record, as in the other menu frames on this page. The
+dot counter runs at 4,194,304 dots per second, so the dot differences below are
+elapsed board time.
+
+| Step | Record | Result |
+|---|---|---|
+| `host status` about 7 s after programming ended | `764-status-after-program`, `status/0454c923…` | endpoint build id `674c26c6…` equals the program record's `wire_build_id`, so the MAX 10 reconfigured from CFM0 with no power cycle, as in session 6; `IMAGE_VALID` 1, `PROFILE` 2, `STATE` running, `INPUT` 0 |
+| `host status`, `host library status` | `764-board-status`, `status/610d4f66…`; `764-board-libstatus`, `library-status/1c71f744…` | same wire build id, `PROFILE` 2, running; `$A000` 0x68: `window_ready`, `sdram_ready`, `flash_boot`; result `OK`, `$A003` 255 (no selection); catalogue read from SDRAM SHA-256 `dca33a9b…`, byte-identical to the fit's packed catalogue; twelve valid entries — slots 0 to 10 with slot 2 `V05 BUTTONS` `dda78e9e` and slot 10 `POSTBOT` `7daea6a1` at 65,536 bytes, and the menu at 16 |
+| Menu frame | `764-board-menu`, `snapshot/7ac40cf4…` | epoch 1, seq 1501; pixel-exact `expected('menu')` for that catalogue: 23040 pixels, 0 mismatches, CRC32 `c625db9f`, frame SHA-256 `ab21e333…`; cursor 0. The titles are unchanged, so this is the same CRC32 as the session 6 menu |
+| Down, Down (`764-board-down1`, `-down2`, each `host input --mask 8` then `--mask 0`), menu frame | `input/…` under those tags, `764-board-menu2`, `snapshot/54d908b9…` | epoch 1, seq 2219; pixel-exact `expected('cursor-2')`, 23040 pixels, 0 mismatches, CRC32 `598b1545`, frame SHA-256 `bf40a8f8…` |
+| A on slot 2 (`764-board-select-a`: `--mask 16`, `--mask 0`), `host status`, `host library status` | `input/385f3ca9…`, `764-board-status-v05`, `status/708721f5…`; `764-board-libstatus-v05`, `library-status/98174aba…` | the loader swapped slot 2: `PROFILE` 1, `IMAGE_VALID` 1, running, `$A000` 0x28 (`window_ready` cleared by the swap), result `OK`, `$A003` 2 |
+| V05 frame | `764-board-v05-frame`, `snapshot/b00b58e2…` | epoch 2, seq 618; 5760 packed bytes, SHA-256 `bc51aaa8ca4c10ff75b9845766eb05094866a150a9707fc0aaf3ae966d041d3f` |
+| A pressed and released 2.05 s apart (`764-board-v05-a`, `-v05-a-rel`), frame 2.89 s after the release | `764-board-v05-frame2`, `snapshot/…` | epoch 2, seq 1093; SHA-256 `bc51aaa8…`, equal to the frame before the press: V05 lights its map tiles only while the button is held, so a frame read after the release shows no change |
+| `host library return --wait` | `764-board-return`, `library-return/cf236d0c…` | `PROFILE` 1 running before, `PROFILE` 2 running after, settled; `$A000` 0x28, `$A003` 2, result `OK` |
+| Menu frame after the return | `764-board-menu-after`, `snapshot/916d8e09…` | epoch 3, seq 175; pixel-exact `expected('menu')`, 23040 pixels, 0 mismatches, CRC32 `c625db9f`, frame SHA-256 `ab21e333…`, byte-identical to the menu frame before the selection; cursor 0 |
+
+A second run held the button across the snapshot, which the first run did not.
+Down, Down and A again (`764-board-hold-down1`, `-down2`, `-select`) started
+V05: `764-board-hold-status`, `status/…`, `PROFILE` 1 running. Its base frame
+`764-board-hold-base`, `snapshot/e3d64d32…` (epoch 4, seq 583) has SHA-256
+`bc51aaa8…`, the first run's frame. A was then pressed (`764-board-hold-a`,
+`--mask 16`) and left held; the frame read 2.97 s later
+(`764-board-hold-held`, `snapshot/5e73e839…`, epoch 4, seq 963) has SHA-256
+`11ef63e3ecf1e906f6493e7a66cb79514490c499b27bccdb6a3840a9ddecc7a5` and differs
+from the base. A was released 6.35 s after the press (`764-board-hold-a-rel`,
+`--mask 0`) and the frame read 2.45 s after that (`764-board-hold-released`,
+`snapshot/c6793a5b…`, epoch 4, seq 1311) is SHA-256 `bc51aaa8…` again, equal to
+the base. `764-board-hold-return`, `library-return/…` put the menu back:
+`PROFILE` 2 running, `$A003` 2, settled. The rebuilt V05 therefore answers the
+joypad on hardware, and the change is confined to the interval the button is
+held.
+
+This session repeats the flash-boot, menu and return criteria of the
+[acceptance table](#flash-and-sweep-acceptance) on the new image; it adds no
+criterion. Board state after the session: flash holds this eleven-game image,
+menu running from the SDRAM copy the boot copier made, COM7 released.
 
 ### Full SDRAM sweep
 
