@@ -83,8 +83,9 @@ exclusive board lock:
    `Single Comp Image` and a passing `.pof` check.
 2. Prove the record and the command without touching the board:
    `python tools/build.py fpga program --pof <pof> --dry-run --quartus-bin <Quartus-bin> --tag <tag>`.
-   The command written to `dry-run.log` is
-   `quartus_pgm -c <cable> -m jtag -o "pvb;<pof>"`.
+   The line written to `dry-run.log` is
+   `quartus_pgm -c <cable> -m jtag -o pvb;<pof>` (the argument list without
+   shell quoting).
 3. With the UART adapter disconnected and only the USB-Blaster attached, run
    the same command without `--dry-run`. `jtagconfig` must report one
    USB-Blaster chain with a `10M50DA`; `quartus_pgm` programs, verifies and
@@ -98,7 +99,7 @@ exclusive board lock:
 5. Record the session under [Run record](#run-record): the attempt commit,
    the `.pof` hash, `isp_seconds`, the observed picture and whether the
    flash content changed. No session has run yet
-   ([#677](https://github.com/amichai-bd/nand2mario/issues/677)).
+   ([#694](https://github.com/amichai-bd/nand2mario/issues/694)).
 
 Programming the flash changes the board's power-up configuration: the next
 `fpga program --sof` still configures the device volatile for that power

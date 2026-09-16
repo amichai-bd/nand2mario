@@ -81,6 +81,13 @@ class FpgaProgramTests(unittest.TestCase):
         self.assertEqual(result["devices"], ["10M50DA(.|ES)/10M50DC"], "report the chain's own device name")
         self.assertEqual(calls[1][:5], ["quartus_pgm", "-c", "1", "-m", "jtag"])
         self.assertEqual(calls[1][-1], f"p;{self.sof.resolve()}")
+        # The path `fpga build` prints is repository-relative; it is recorded resolved.
+        relative = Path(os.path.relpath(self.sof, Path.cwd()))
+        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=run):
+            result = program(ROOT, self.folder, relative, quartus_bin="tools")
+        self.assertEqual(result["sof"], self.sof.resolve().relative_to(ROOT.resolve()).as_posix())
+        self.assertEqual(calls[-1][-1], f"p;{self.sof.resolve()}")
 
     def test_program_progress_and_launcher_handoff_use_checked_wire_id(self):
         record = json.loads((self.folder / "result.json").read_text())
