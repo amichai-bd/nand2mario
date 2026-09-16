@@ -252,9 +252,22 @@ class Client:
         # second SNAPSHOT is sent while chunks are being retrieved.
         return metadata, pixels
 
-    def sdram_write(self, address, line):
-        """Write one 16-byte line at a line-aligned device address."""
-        return self.request('SDRAM_WRITE', sdram_write(address, line))
+    def sdram_write(self, address, lines):
+        """Write 1..15 consecutive 16-byte lines starting at a line-aligned device address."""
+        return self.request('SDRAM_WRITE', sdram_write(address, lines))
+
+    def sdram_write_region(self, address, data, notify=None, **event):
+        """Write a line multiple of bytes in WRITE_MAX_LINES-line commands; notify every 256 lines and at the end."""
+        lines = len(data) // SDRAM_LINE
+        notify = notify or (lambda _event: None)
+        notify({'stage': 'write', **event, 'completed': 0, 'total': lines})
+        batch = abi.SDRAM_WRITE_MAX_LINES
+        for index in range(0, lines, batch):
+            count = min(batch, lines - index)
+            self.sdram_write(address + index * SDRAM_LINE, data[index * SDRAM_LINE:(index + count) * SDRAM_LINE])
+            done = index + count
+            if done % 256 < batch or done == lines:
+                notify({'stage': 'write', **event, 'completed': done, 'total': lines})
 
     def sdram_read(self, address, lines=1):
         """Read 1..15 consecutive lines; returns exactly lines*16 bytes."""
@@ -263,8 +276,8 @@ class Client:
     def sdram_test(self, start, length, *, seed=1, progress=None, mismatch_limit=64):
         """Write a seeded pattern over a line range, read it back and compare.
 
-        Writes go one line per SDRAM_WRITE and reads fifteen lines per
-        SDRAM_READ. The pattern is derived from the seed and the line address
+        Writes and reads both go fifteen lines per command (SDRAM_WRITE
+        and SDRAM_READ). The pattern is derived from the seed and the line address
         so a stale or aliased line never matches by accident. Every mismatch is
         reported by device address with expected and actual bytes, up to
         ``mismatch_limit`` detailed entries; the count is always complete.
@@ -277,11 +290,14 @@ class Client:
         notify = progress or (lambda _event: None)
         lines = length // SDRAM_LINE
         notify({'stage': 'write', 'completed': 0, 'total': lines})
-        for index in range(lines):
+        batch = abi.SDRAM_WRITE_MAX_LINES
+        for index in range(0, lines, batch):
+            count = min(batch, lines - index)
             address = start + index * SDRAM_LINE
-            self.sdram_write(address, sdram_pattern(address, seed))
-            if index % 256 == 255 or index == lines - 1:
-                notify({'stage': 'write', 'completed': index + 1, 'total': lines})
+            self.sdram_write(address, b''.join(sdram_pattern(address + i * SDRAM_LINE, seed) for i in range(count)))
+            done = index + count
+            if done % 256 < batch or done == lines:
+                notify({'stage': 'write', 'completed': done, 'total': lines})
         mismatches = []
         mismatch_count = 0
         compared = 0

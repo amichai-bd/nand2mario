@@ -1342,7 +1342,7 @@
         "name": "SDRAM_WRITE",
         "bits": 8,
         "value": 17,
-        "description": "Write one 16-byte line at a line-aligned SDRAM device address; requires the SDRAM initialized."
+        "description": "Write 1 through 15 consecutive 16-byte lines at a line-aligned SDRAM device address; payload 4 + 16 n bytes; requires the SDRAM initialized."
       },
       {
         "name": "SDRAM_READ",
@@ -1441,6 +1441,12 @@
         "bits": 8,
         "value": 15,
         "description": "Largest SDRAM_READ line count; 15 lines fit one response payload"
+      },
+      {
+        "name": "WRITE_MAX_LINES",
+        "bits": 8,
+        "value": 15,
+        "description": "Largest SDRAM_WRITE line count; the address and 15 lines fit one request payload"
       }
     ],
     "library": [
@@ -1891,27 +1897,7 @@
       {
         "name": "address",
         "bits": 32,
-        "description": "Line-aligned device byte address; bits 31:26 and 3:0 zero"
-      },
-      {
-        "name": "data0",
-        "bits": 32,
-        "description": "Line bytes 0-3, byte 0 first"
-      },
-      {
-        "name": "data1",
-        "bits": 32,
-        "description": "Line bytes 4-7"
-      },
-      {
-        "name": "data2",
-        "bits": 32,
-        "description": "Line bytes 8-11"
-      },
-      {
-        "name": "data3",
-        "bits": 32,
-        "description": "Line bytes 12-15"
+        "description": "Line-aligned device byte address of the first line; bits 31:26 and 3:0 zero. Followed by 1 through WRITE_MAX_LINES lines of 16 bytes, byte 0 first; the line count is the payload length minus 4, divided by 16"
       }
     ],
     "sdram_read": [
@@ -2063,7 +2049,7 @@
     },
     {
       "name": "SDRAM_WRITE",
-      "request": "sdram_write",
+      "request": "sdram_write+lines",
       "response": "empty",
       "state": "any; SDRAM initialized"
     },

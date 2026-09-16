@@ -104,14 +104,23 @@ memory port is enabled. The [memory implementation](../memory/MAS_memory.md) rem
 binds its reviewed ROM ports rather than copying backing storage.
 
 `SDRAM_WRITE` and `SDRAM_READ` reach the [SDRAM controller](../storage/MAS_sdram.md)
-through `n2m_uart_sdram`, which holds one line request until the controller
-accepts it and, for reads, streams each returned line through the chunked
-reply path READ_ROM uses. Validation checks alignment, device bounds, the
-1-15 line count and the controller's `initialized` flag before any request
-is issued; both commands are accepted in every endpoint state. Only
-`SDRAM_WRITE` captures its full 20-byte record before validation; every
-other command keeps its 9-byte capture and timing. A composition without an
-SDRAM ties `sdram_initialized` low and both commands answer `BAD_VALUE`.
+through `n2m_uart_sdram`, which issues one line request per line and holds it
+until the controller accepts it. A write carries 1 through
+`SDRAM_WRITE_MAX_LINES` (15) lines after its 4-byte address record; the line
+count is the payload length minus 4, in lines, so the single-line form is the
+original 20-byte payload. The dispatcher streams the write bytes from the
+packet store into the bridge one line at a time, as LOAD_WRITE does, fetching
+a byte only while the bridge can take it; the bridge fills a line, requests it,
+and takes the next line after acceptance, so lines land at consecutive device
+addresses in order. A read streams each returned line through the chunked
+reply path READ_ROM uses. Validation checks the write payload shape
+(`BAD_LENGTH` unless it is the address plus 1 through 15 whole lines; a
+16-line payload exceeds `MAX_PAYLOAD` and is discarded as oversize input
+before any command), then alignment, device bounds of the whole range, the
+1-15 read count and the controller's `initialized` flag (`BAD_VALUE`) before
+any request is issued; both commands are accepted in every endpoint state.
+Every command captures the same 9-byte argument record. A composition without
+an SDRAM ties `sdram_initialized` low and both commands answer `BAD_VALUE`.
 
 The [snapshot owner](../snapshot/MAS_snapshot.md) supplies a separate completion/read boundary; UART
 does not read or lease VGA banks. CPU, PPU, DMA, JOYP and endpoint framing are

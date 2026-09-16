@@ -373,7 +373,7 @@ def _host_steps(menu, root, action):
     if action in ("sdram-write", "sdram-read"):
         steps.append(("address", lambda _: menu.text("Line-aligned SDRAM device address (for example 0x0)", default="0x0")))
     if action == "sdram-write":
-        steps.append(("data", lambda _: menu.text("Sixteen line bytes as 32 hex digits", default="00" * 16)))
+        steps.append(("data", lambda _: menu.text("Line bytes as hex digits (1-15 whole lines)", default="00" * 16)))
     if action == "sdram-read":
         steps.append(("lines", lambda _: menu.text("Lines to read (1-15)", default="1")))
     if action == "sdram-test":

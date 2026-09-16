@@ -301,12 +301,15 @@ command. Rules, in priority order:
    during a fill waits for the fill to finish (at most 1.6 ms) before it pauses
    the core, so the fill never writes into a host session.
 4. Host SDRAM line commands in the generated command table (the SDRAM
-   bring-up slice adds them; the loader slice adds the arbiter): `SDRAM_WRITE` (26-bit line-aligned device address plus 16
-   bytes; response empty) and `SDRAM_READ` (device address plus a line count
-   1-15; response the bytes). Both require `sdram_ready` and a line-aligned
-   address, else `BAD_VALUE`; both are accepted in every endpoint state and
-   complete after the line transfers, at most 23 edges per line plus swap
-   waiting, so the host client's existing timeout covers them.
+   bring-up slice adds them; the loader slice adds the arbiter): `SDRAM_WRITE` (26-bit line-aligned device address plus 1-15
+   whole 16-byte lines, the count given by the payload length; response
+   empty) and `SDRAM_READ` (device address plus a line count 1-15; response
+   the bytes). A write payload that is not the address plus whole lines is
+   `BAD_LENGTH`. Both require `sdram_ready`, a line-aligned address and a
+   range inside the device, else `BAD_VALUE`; both are accepted in every
+   endpoint state and complete after the line transfers, at most 23 edges
+   per line plus swap waiting (a write also spends two edges fetching each
+   payload byte), so the host client's existing timeout covers them.
 5. The host reads this owner through two new read-only host registers,
    `LIBRARY_STATUS` (the `$A000` byte in bits 7:0, `$A002` in 15:8, `$A003`
    in 23:16, `bank` in 29:24) and `LIBRARY_KEY1` (hold counter in edges),

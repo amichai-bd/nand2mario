@@ -112,7 +112,9 @@ records without opening a device. Their decoder raises on unsupported versions;
 the [endpoint validator](../../../../src/rtl/uart/n2m_uart_validate.sv) maps that header to the specified error reply.
 Request/response payload layouts come from the generated command table. `empty`
 is zero bytes; `bytes` is the requested byte count; `offset+bytes` is an offset
-record followed by nonempty data. No padding bytes or optional trailing fields.
+record followed by nonempty data; `sdram_write+lines` is the `sdram_write`
+address record followed by 1 through `SDRAM_WRITE_MAX_LINES` whole 16-byte
+lines. No padding bytes or optional trailing fields.
 An error response has no payload, including STEP_LIMIT. Successful replies echo
 sequence and command, set response kind and OK, and carry the documented payload.
 

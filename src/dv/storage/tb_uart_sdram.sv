@@ -24,14 +24,16 @@ module tb_uart_sdram;
     logic dram_cas_n, dram_cke, dram_clk, dram_cs_n, dram_dqml, dram_dqmh, dram_ras_n, dram_we_n;
     tri [15:0] dram_dq;
     logic [31:0] model_refreshes, model_reads, model_writes;
-    logic [7:0] request_payload [0:255];
+    // Sized for the oversize sixteen-line frame (272 raw bytes) as well as
+    // every in-limit packet.
+    logic [7:0] request_payload [0:271];
     logic [7:0] expected_payload [0:255];
-    logic [7:0] raw_request [0:267];
-    logic [7:0] encoded_request [0:270];
+    logic [7:0] raw_request [0:283];
+    logic [7:0] encoded_request [0:287];
     logic [7:0] encoded_reply [0:270];
     logic [7:0] raw_reply [0:267];
     integer encoded_size, reply_size, expected_size, command_count;
-    integer written, read_lines, rejected;
+    integer written, read_lines, rejected, discarded;
     logic [31:0] token, expected_token;
     logic [7:0] expected_command, expected_status;
     bit waiting_reply, payload_fault;
@@ -105,7 +107,8 @@ module tb_uart_sdram;
             for(item=1;item<code;item=item+1) begin raw_reply[destination]=encoded_reply[source];destination=destination+1;source=source+1;end
             if(code!=255 && source<reply_size) begin raw_reply[destination]=0;destination=destination+1;end
         end
-        if (!waiting_reply || destination!=12+expected_size) $fatal(1,"UART_SDRAM_REPLY_SIZE expected=%0d actual=%0d",12+expected_size,destination);
+        if (!waiting_reply) $fatal(1,"UART_SDRAM_UNEXPECTED_REPLY bytes=%0d",destination);
+        if (destination!=12+expected_size) $fatal(1,"UART_SDRAM_REPLY_SIZE expected=%0d actual=%0d",12+expected_size,destination);
         checksum=65535;
         for(item=0;item<destination-2;item=item+1) checksum=crc_update(checksum,raw_reply[item]);
         if(raw_reply[destination-2]!=8'(checksum) || raw_reply[destination-1]!=8'(checksum>>8)) $fatal(1,"UART_SDRAM_CRC");
@@ -168,16 +171,20 @@ module tb_uart_sdram;
         if(waiting_reply) $fatal(1,"UART_SDRAM_TIMEOUT token=%0d command=%0d",token,cmd);
         repeat(4) @(negedge clk_sys);token=token+1;command_count=command_count+1;
     endtask
-    // SDRAM_WRITE: address then the sixteen line bytes, byte 0 first.
-    task automatic write_line(input logic [31:0] address);
+    // SDRAM_WRITE: address then count*16 line bytes, byte 0 of the first line
+    // first; the line count is carried by the payload length alone.
+    task automatic write_lines(input logic [31:0] address, input integer count);
         integer item;
         for(item=0;item<4;item=item+1) request_payload[item]=8'(address>>(item*8));
-        for(item=0;item<16;item=item+1) begin
-            request_payload[4+item]=line_byte(address,item);
-            memory[address+item]=line_byte(address,item);
+        for(item=0;item<count*16;item=item+1) begin
+            request_payload[4+item]=line_byte(address+32'(item-item%16),item%16);
+            memory[address+item]=line_byte(address+32'(item-item%16),item%16);
         end
-        exchange(n2m_interfaces_pkg::COMMAND_SDRAM_WRITE,20,0,0);
-        written=written+1;
+        exchange(n2m_interfaces_pkg::COMMAND_SDRAM_WRITE,4+count*16,0,0);
+        written=written+count;
+    endtask
+    task automatic write_line(input logic [31:0] address);
+        write_lines(address,1);
     endtask
     // SDRAM_READ: address and line count; the reply carries count*16 bytes.
     task automatic read_lines_at(input logic [31:0] address, input integer count);
@@ -192,9 +199,22 @@ module tb_uart_sdram;
     task automatic reject_write(input logic [31:0] address, input integer size, input logic [7:0] status);
         integer item;
         for(item=0;item<4;item=item+1) request_payload[item]=8'(address>>(item*8));
-        for(item=0;item<16;item=item+1) request_payload[4+item]=8'(item);
+        for(item=0;item<size;item=item+1) request_payload[4+item]=8'(item);
         exchange(n2m_interfaces_pkg::COMMAND_SDRAM_WRITE,size,status,0);
         rejected=rejected+1;
+    endtask
+    // A payload over the 256-byte limit is not a command: the endpoint discards
+    // the frame through its delimiter and answers nothing (MAS_uart). The pin
+    // monitor fails on any reply while none is awaited.
+    task automatic discard_write(input logic [31:0] address, input integer size);
+        integer item;
+        for(item=0;item<4;item=item+1) request_payload[item]=8'(address>>(item*8));
+        for(item=0;item<size;item=item+1) request_payload[4+item]=8'(item);
+        waiting_reply=0;
+        send_request(token,n2m_interfaces_pkg::COMMAND_SDRAM_WRITE,size);
+        repeat(20000) @(negedge clk_sys);
+        if (reply_size!=0) $fatal(1,"UART_SDRAM_DISCARD_REPLY bytes=%0d",reply_size);
+        token=token+1;discarded=discarded+1;
     endtask
     task automatic reject_read(input logic [31:0] address, input integer count, input integer size, input logic [7:0] status);
         integer item;
@@ -204,52 +224,68 @@ module tb_uart_sdram;
         rejected=rejected+1;
     endtask
     initial begin
-        integer item;
         clk_sys=0;reset_sys=1;uart_rx=1;physical_commit=0;physical_buttons=0;
         reply_size=0;expected_size=0;command_count=0;token=1;waiting_reply=0;
-        written=0;read_lines=0;rejected=0;
+        written=0;read_lines=0;rejected=0;discarded=0;
         payload_fault=$test$plusargs("payload_fault");
         $dumpfile("waves.vcd");
         $dumpvars(0,reset_sys,uart_rx,uart_tx,endpoint_state,sdram_initialized,sdram_request_valid,
             sdram_request_write,sdram_request_address,sdram_request_ready,sdram_response_valid,
-            written,read_lines,rejected,command_count);
+            written,read_lines,rejected,discarded,command_count);
         repeat(5) @(negedge clk_sys);reset_sys=0;
         // The first write arrives long before the 5038-clock initialization: BAD_VALUE.
         if (sdram_initialized) $fatal(1,"UART_SDRAM_EARLY_INIT");
         reject_write(32'h0000000,20,4);
         if (sdram_initialized) $fatal(1,"UART_SDRAM_LATE_REJECT");
         while(!sdram_initialized) @(negedge clk_sys);
-        // Slot 0 start, device end, slot 15 end, catalogue start, then a run of
-        // fifteen consecutive lines read back in one command.
+        // Single lines at slot 0 start, device end, slot 15 end and catalogue
+        // start; then multi-line writes: fifteen lines in one command, the last
+        // fifteen lines of the device, seven lines across a row boundary
+        // (rows are 2 KiB) and two lines in bank 2; each read back in one command.
         write_line(32'h0000000);
         write_line(32'h3fffff0);
         write_line(32'h007fff0);
         write_line(32'h0088000);
-        for(item=0;item<15;item=item+1) write_line(32'h1002800+item*16);
+        write_lines(32'h1002800,15);
+        write_lines(32'h3ffff10,15);
+        write_lines(32'h00007c0,7);
+        write_lines(32'h2000000,2);
         read_lines_at(32'h0000000,1);
         read_lines_at(32'h3fffff0,1);
         read_lines_at(32'h007fff0,1);
         read_lines_at(32'h0088000,1);
         read_lines_at(32'h1002800,15);
         read_lines_at(32'h1002880,3);
+        read_lines_at(32'h3ffff10,15);
+        read_lines_at(32'h00007c0,7);
+        read_lines_at(32'h2000000,2);
         // Overwrite then read: the later write wins.
         write_line(32'h0000000);
         read_lines_at(32'h0000000,1);
-        // Structural refusals, none of which reaches the controller.
+        // Structural refusals, none of which reaches the controller: misaligned,
+        // past the device, a two-line run crossing the device end (BAD_VALUE);
+        // 19, 21, 4 (zero lines) and 252 (fifteen and a half lines) payload
+        // bytes (BAD_LENGTH); a sixteen-line payload (260 bytes) is discarded
+        // as oversize and the next command still answers.
         reject_write(32'h0000008,20,4);
         reject_write(32'h4000000,20,4);
+        reject_write(32'h3fffff0,36,4);
         reject_write(32'h0000000,19,3);
         reject_write(32'h0000000,21,3);
+        reject_write(32'h0000000,4,3);
+        reject_write(32'h0000000,252,3);
+        discard_write(32'h0000000,260);
+        read_lines_at(32'h0000000,1);
         reject_read(32'h0000010,0,5,4);
         reject_read(32'h0000010,16,5,4);
         reject_read(32'h0000004,1,5,4);
         reject_read(32'h3fffff0,2,5,4);
         reject_read(32'h4000000,1,5,4);
         reject_read(32'h0000000,1,4,3);
-        if (model_writes!=written || model_reads!=read_lines || read_lines!=23 || written!=20)
+        if (model_writes!=written || model_reads!=read_lines || read_lines!=48 || written!=44)
             $fatal(1,"UART_SDRAM_COUNTS writes=%0d/%0d reads=%0d/%0d",model_writes,written,model_reads,read_lines);
-        $display("PASS UART SDRAM wire writes=%0d lines_read=%0d rejected=%0d commands=%0d refreshes=%0d",
-            written,read_lines,rejected,command_count,model_refreshes);
+        $display("PASS UART SDRAM wire writes=%0d lines_read=%0d rejected=%0d discarded=%0d commands=%0d refreshes=%0d",
+            written,read_lines,rejected,discarded,command_count,model_refreshes);
         $finish;
     end
     initial begin #1600000000;$fatal(1,"UART_SDRAM_WATCHDOG");end

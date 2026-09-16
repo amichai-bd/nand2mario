@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `61baa1343688abb0beeceb051ddd5f1459db24b156e1f09ba823b7ce03dc5955`.
+Source SHA-256: `f4d8484c5aaf75bc26b7702d4bf1f1f4d68bb7c1433e135335c9d46683ba2864`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -293,7 +293,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `COMMAND_WRITE_HOST` | 8 | `0xE` | Write a whitelisted host control register. |
 | `COMMAND_RUN_DOTS` | 8 | `0xF` | Run a bounded number of real dots and pause |
 | `COMMAND_PEEK` | 8 | `0x10` | Read exact bytes from one paused non-ROM store; read-only, rejected unless paused. |
-| `COMMAND_SDRAM_WRITE` | 8 | `0x11` | Write one 16-byte line at a line-aligned SDRAM device address; requires the SDRAM initialized. |
+| `COMMAND_SDRAM_WRITE` | 8 | `0x11` | Write 1 through 15 consecutive 16-byte lines at a line-aligned SDRAM device address; payload 4 + 16 n bytes; requires the SDRAM initialized. |
 | `COMMAND_SDRAM_READ` | 8 | `0x12` | Read 1 through 15 consecutive 16-byte lines from a line-aligned SDRAM device address; requires the SDRAM initialized. |
 
 ## Peek
@@ -329,6 +329,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `SDRAM_BYTES` | 32 | `0x4000000` | Device size in bytes |
 | `SDRAM_LINE_BYTES` | 8 | `0x10` | One line: the unit of every SDRAM host command |
 | `SDRAM_READ_MAX_LINES` | 8 | `0xF` | Largest SDRAM_READ line count; 15 lines fit one response payload |
+| `SDRAM_WRITE_MAX_LINES` | 8 | `0xF` | Largest SDRAM_WRITE line count; the address and 15 lines fit one request payload |
 
 ## Library
 
@@ -506,15 +507,11 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 
 ## Sdram Write record
 
-20 bytes, in listed order; each field is unsigned little-endian.
+4 bytes, in listed order; each field is unsigned little-endian.
 
 | Field | Byte offset | Bits | Meaning |
 |---|---|---|---|
-| `address` | 0 | 32 | Line-aligned device byte address; bits 31:26 and 3:0 zero |
-| `data0` | 4 | 32 | Line bytes 0-3, byte 0 first |
-| `data1` | 8 | 32 | Line bytes 4-7 |
-| `data2` | 12 | 32 | Line bytes 8-11 |
-| `data3` | 16 | 32 | Line bytes 12-15 |
+| `address` | 0 | 32 | Line-aligned device byte address of the first line; bits 31:26 and 3:0 zero. Followed by 1 through WRITE_MAX_LINES lines of 16 bytes, byte 0 first; the line count is the payload length minus 4, divided by 16 |
 
 ## Sdram Read record
 
@@ -559,7 +556,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `WRITE_HOST` | `write_host` | `dot` | Not LOADING. |
 | `RUN_DOTS` | `word` | `run_dots` | paused valid image |
 | `PEEK` | `peek_range` | `bytes` | paused |
-| `SDRAM_WRITE` | `sdram_write` | `empty` | any; SDRAM initialized |
+| `SDRAM_WRITE` | `sdram_write+lines` | `empty` | any; SDRAM initialized |
 | `SDRAM_READ` | `sdram_read` | `bytes` | any; SDRAM initialized |
 
 ## Provenance

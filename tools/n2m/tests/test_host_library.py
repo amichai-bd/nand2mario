@@ -39,11 +39,12 @@ class CorruptingEndpoint(Endpoint):
         result = super().write(packet)
         name, payload, _seq = self.requests[-1]
         if name == 'SDRAM_WRITE':
-            address = unpack_record('sdram_write', payload)['address']
-            if address <= self.corrupt < address + 16:
-                line = bytearray(self.sdram[address])
-                line[self.corrupt - address] ^= 0x80
-                self.sdram[address] = bytes(line)
+            address = unpack_record('sdram_write', payload[:4])['address']
+            if address <= self.corrupt < address + len(payload) - 4:
+                line_address = self.corrupt - (self.corrupt - address) % 16
+                line = bytearray(self.sdram[line_address])
+                line[self.corrupt - line_address] ^= 0x80
+                self.sdram[line_address] = bytes(line)
         return result
 
 
@@ -157,7 +158,8 @@ class LibraryTests(unittest.TestCase):
         result = library.load_library(Client(endpoint), images, menu, progress=events.append)
         self.assertEqual((result['status'], result['mismatch_count'], result['images']), ('PASS', 0, 4))
         names = [name for name, _p, _s in endpoint.requests if name.startswith('SDRAM')]
-        writes = 4 * 2048 + 64
+        # Fifteen lines per write command: ceil(2048/15) per image, ceil(64/15) for the catalogue.
+        writes = 4 * 137 + 5
         self.assertEqual(names[:writes], ['SDRAM_WRITE'] * writes)
         self.assertEqual(set(names[writes:]), {'SDRAM_READ'})
         for index, (image, _profile) in enumerate(images + [menu]):

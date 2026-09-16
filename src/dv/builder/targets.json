@@ -30236,7 +30236,7 @@
     ],
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS UART SDRAM wire writes=20 lines_read=23 rejected=11",
+    "signature": "PASS UART SDRAM wire writes=44 lines_read=48 rejected=14 discarded=1",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   },

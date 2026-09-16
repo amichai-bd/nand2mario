@@ -187,7 +187,7 @@ def parser():
             leaf.add_argument('--address', type=lambda value: int(value, 0), required=True,
                               help='line-aligned SDRAM device byte address')
         if action == 'sdram-write':
-            leaf.add_argument('--data', required=True, help='exactly 16 bytes as 32 hex digits, byte 0 first')
+            leaf.add_argument('--data', required=True, help='1..15 whole 16-byte lines as hex digits, byte 0 first')
         if action == 'sdram-read':
             leaf.add_argument('--lines', type=int, default=1, help='1..15 consecutive lines')
         if action == 'sdram-test':
