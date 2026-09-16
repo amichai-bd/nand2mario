@@ -567,6 +567,36 @@ class FpgaTests(unittest.TestCase):
         self.assertNotIn("Checked bitstream:", text)
         self.assertNotIn("Next (Windows PowerShell):", text)
 
+    def test_cli_text_prints_the_flash_lines_only_with_onchip_flash_evidence(self):
+        """Quartus writes a .pof for every image; only onchip_flash evidence earns the summary lines."""
+        attempt = "workdir/builds/flash/fpga/smoke/attempts/a1/output/"
+        evidence = [{}]
+
+        def fake(root, build, args, provenance=None, progress=None):
+            return {"status": "PASS", "cache": "BUILT", "attempt_result": "result.json",
+                    "artifacts": {attempt + "design.sof": "hash", attempt + "design.pof": "hash"},
+                    "evidence": evidence[0]}
+
+        def run(tag):
+            with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
+                    patch("n2m.cli.platform.system", return_value="Windows"), \
+                    contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(main(["fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", tag], self.root), 0)
+            return output.getvalue()
+
+        text = run("flash-none")
+        self.assertIn("Checked bitstream: " + attempt + "design.sof", text)
+        self.assertNotIn(".pof", text)
+        self.assertNotIn("CFM0", text)
+        self.assertNotIn("None", text)
+
+        evidence[0] = {"onchip_flash": {"configuration_mode": "Single Comp Image",
+                                        "pof": {"cfm0_used_bytes": 263216, "cfm0_bytes": 688128,
+                                                "cfm0_spare_bytes": 424912}}}
+        lines = run("flash-image").splitlines()
+        self.assertIn("Flash image (.pof, library in the user range): " + attempt + "design.pof", lines)
+        self.assertIn("CFM0 used 263216 of 688128 bytes; spare 424912", lines)
+
     def test_execute_keeps_unexplained_warning_failure(self):
         record = {'commands': [], 'classified_diagnostics': []}
         log = self.build / 'warning.log'

@@ -1725,7 +1725,8 @@ assembler enforces the CFM0 fit and emits no `.pof` for an image that does
 not fit, so the required `.pof` is the overflow evidence; the contract states
 no numeric margin beyond fitting CFM0, so the numbers are recorded, not
 thresholded. The text output names the `.pof` and the CFM0
-usage after the bitstream.
+usage after the bitstream only when the record carries `evidence.onchip_flash`;
+a non-flash image, whose `.pof` Quartus also writes, prints neither line.
 
 ### Flash programming
 

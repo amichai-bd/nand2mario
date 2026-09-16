@@ -410,12 +410,15 @@ def _human_result(args, report, progress):
         if bitstreams:
             label = "Checked bitstream" if status == "PASS" else "Unverified bitstream artifact"
             progress.line(f"{label}: {bitstreams[-1]}")
-        flash_images = _artifacts(report, suffix="/output/design.pof")
         if status == "PASS":
             for line in fpga_hold.summary_lines(report.get("evidence", {}).get("hold_paths")):
                 progress.line(line)
-        if flash_images and status == "PASS":
-            pof = report.get("evidence", {}).get("onchip_flash", {}).get("pof", {})
+        # Quartus writes a .pof for every image; only a flash image records
+        # onchip_flash evidence, so the record decides whether the lines print.
+        flash_images = _artifacts(report, suffix="/output/design.pof")
+        onchip_flash = report.get("evidence", {}).get("onchip_flash")
+        if flash_images and onchip_flash and status == "PASS":
+            pof = onchip_flash.get("pof", {})
             progress.line(f"Flash image (.pof, library in the user range): {flash_images[-1]}")
             progress.line(f"CFM0 used {pof.get('cfm0_used_bytes')} of {pof.get('cfm0_bytes')} bytes; spare {pof.get('cfm0_spare_bytes')}")
         if status == "PASS" and bitstreams and not report.get("build_id_override"):
