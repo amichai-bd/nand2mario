@@ -399,15 +399,20 @@ Named assertions the owner carries:
 | `LOADER_COPIER_EXCLUSIVE` | The boot copier's `CHECK`/`COPY` never overlaps an engine job |
 
 The Questa compile-only gate, the fit and the board sessions follow the
-[charter workflow](../../project-charter.md#game-library). Board proof for
-this owner: after a host library load, the UART log shows the swap epoch
-change and `LIBRARY_STATUS` for a selection made through the physical joypad,
-the game's frame hashes match the direct-load run of the same image, and a
-KEY1 hold returns to the menu; the owner confirms the picture when present.
+[charter workflow](../../project-charter.md#game-library). The
+[game library sessions](../../board-bring-up.md#game-library-sessions) on the
+fitted `v05-board` image proved this owner on the DE10-Lite: after a host
+library load, a selection made through the board joypad path swapped the
+chosen slot in with the epoch change and `LIBRARY_STATUS` result `OK`, the
+started game's frame matched the independent title reference pixel for pixel,
+and the host return (`WRITE_HOST(LIBRARY_CONTROL)`, the same swap
+`key1_return` performs) brought the menu back with a pixel-exact menu frame.
 The `v05-board` and `v05-controls-board` images carry the SDRAM pins and KEY1
-(`PIN_A7`) for that session. Until it has run, the Verilator fixtures above are
-preliminary evidence only and the board and VGA-readback acceptance of the
-epic [#658](https://github.com/amichai-bd/nand2mario/issues/658) is not met.
+(`PIN_A7`). The physical KEY1 hold itself is still
+[pending](../../board-bring-up.md#game-library-acceptance): its debounce,
+threshold and pin path have run only in `loader-key1`, and the press happens
+only with the owner at the board
+([#681](https://github.com/amichai-bd/nand2mario/issues/681)).
 
 ## References
 
