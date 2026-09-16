@@ -50,7 +50,7 @@ continuous check fires on the first edge past that limit.
 | `sdram-fault-read-late` | `line` with `-gMODEL_READ_LAUNCH_EDGES=2` (the port's original shared assumption) | nonzero exit, `SDRAM_TB_READBACK shift=-1` |
 | `uart-sdram` | [`tb_uart_sdram`](tb_uart_sdram.sv): `SDRAM_WRITE`/`SDRAM_READ` packets over the UART wire into the controller and model | `PASS UART SDRAM wire writes=44 lines_read=48 rejected=14 discarded=1` |
 | `uart-sdram-fault` | same with `+payload_fault` | nonzero exit, `UART_SDRAM_PAYLOAD cmd=18 index=0` |
-| `library-peer` | [`tb_library_peer`](tb_library_peer.sv) with [`library_driver.py`](library_driver.py) and [`library_peer.py`](library_peer.py): `host library load`/`status` through the live Client (pinned cocotb interpreter) | `PASS library-peer transactions=843 device_writes=6208 device_reads=6272` and the peer's `PASS library peer live Client images=3 slots=2 verified=3 status_rows=17` |
+| `library-peer` | [`tb_library_peer`](tb_library_peer.sv) with [`library_driver.py`](library_driver.py) and [`library_peer.py`](library_peer.py): `host library load`/`status`/`return` through the live Client (pinned cocotb interpreter); the endpoint must raise exactly one `library_return` pulse | `PASS library-peer transactions=851 device_writes=6208 device_reads=6272 returns=1` and the peer's `PASS library peer live Client images=3 slots=2 verified=3 status_rows=17 return=PAUSED` |
 
 ## Flash reader
 

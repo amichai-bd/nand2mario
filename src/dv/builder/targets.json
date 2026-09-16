@@ -30704,7 +30704,7 @@
     ],
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS library-peer transactions=843 device_writes=6208 device_reads=6272",
+    "signature": "PASS library-peer transactions=851 device_writes=6208 device_reads=6272 returns=1",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {

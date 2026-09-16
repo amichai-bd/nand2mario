@@ -22,9 +22,11 @@ module tb_library_peer;
     // Only these serial stimulus/receiver mailboxes are writable by the peer driver.
     logic [7:0] tx_bytes [0:271];
     logic [7:0] rx_bytes [0:271];
-    integer tx_count, rx_count, transactions;
+    integer tx_count, rx_count, transactions, return_pulses;
     logic tx_go, tx_busy, rx_done, finish_request;
     logic [63:0] simulation_ns, dot_count;
+    // The endpoint's menu-return event, raised by an accepted WRITE_HOST(LIBRARY_CONTROL) = 1.
+    logic library_return, library_return_q;
 
     // 3.125 MBaud keeps eight system clocks per bit for the bit-level driver
     // and monitor below; the SDRAM timing is unchanged at 40 ns per clock.
@@ -53,7 +55,7 @@ module tb_library_peer;
         .loader_copy_busy(1'b0), .loader_swap_busy(1'b0), .engine_invalidate(1'b0), .engine_publish(1'b0),
         .engine_profile(8'd0), .library_status(32'd0), .library_key1(32'd0), .engine_pause(1'b0),
         .engine_reset_request(1'b0), .boot_run(1'b0), .engine_reset_accept(), .engine_reset_done(), .host_session(), .host_loading(),
-        .host_port_busy(), .library_return()
+        .host_port_busy(), .library_return(library_return)
     );
     n2m_timebase u_timebase (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .pause_request(pause_request), .gb_tick(gb_tick), .paused(paused));
@@ -111,17 +113,24 @@ module tb_library_peer;
             if(value==0) rx_done=1;
         end
     end
+    // One rising edge per accepted return write; the peer sends exactly one.
+    always @(posedge clk_sys) begin
+        library_return_q <= library_return;
+        if (!reset_sys && library_return && !library_return_q) return_pulses = return_pulses + 1;
+    end
     always @(posedge clk_sys) begin
         #1;
         if (!reset_sys && finish_request) begin
             if (model_writes == 0 || model_reads == 0) $fatal(1,"LIBRARY_NO_DEVICE_TRAFFIC");
-            $display("PASS library-peer transactions=%0d device_writes=%0d device_reads=%0d",
-                transactions, model_writes, model_reads);
+            if (return_pulses != 1) $fatal(1,"LIBRARY_RETURN_PULSES pulses=%0d", return_pulses);
+            $display("PASS library-peer transactions=%0d device_writes=%0d device_reads=%0d returns=%0d",
+                transactions, model_writes, model_reads, return_pulses);
             $finish;
         end
     end
     initial begin
-        clk_sys=0; reset_sys=1; uart_rx=1; simulation_ns=0; dot_count=0; transactions=0;
+        clk_sys=0; reset_sys=1; uart_rx=1; simulation_ns=0; dot_count=0; transactions=0; return_pulses=0;
+        library_return_q=0;
         tx_go=0; tx_busy=0; rx_done=0; finish_request=0; tx_count=0; rx_count=0;
         repeat(8) @(negedge clk_sys); reset_sys=0;
     end

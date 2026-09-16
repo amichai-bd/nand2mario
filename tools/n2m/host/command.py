@@ -164,6 +164,11 @@ def run(root, build, args, provenance):
                     client.read_host(abi.HOST_REG_LIBRARY_STATUS))
                 if not args.json:
                     print(library.format_table(rows), flush=True)
+            elif action == 'library-return':
+                # The whitelisted LIBRARY_CONTROL write; a LOADING endpoint is refused by name first.
+                report['result'] = library.return_to_menu(client, wait=args.wait)
+                if not args.json:
+                    print(library.format_return(report['result']), flush=True)
             elif args.action == 'status':
                 # Do not read mutable split counters while the endpoint is running.
                 report['result'] = {name: client.read_host(getattr(abi, 'HOST_REG_' + name))
