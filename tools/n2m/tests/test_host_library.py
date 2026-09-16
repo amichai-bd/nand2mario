@@ -48,6 +48,38 @@ class CorruptingEndpoint(Endpoint):
         return result
 
 
+class LoaderEndpoint(Endpoint):
+    """Models the loader's menu return: LIBRARY_CONTROL = 1 swaps in the menu.
+
+    The swap reports ``copy_busy`` and STATE LOADING for ``busy_reads`` status
+    reads, then result OK with the loader profile live and the core running.
+    A stuck endpoint (``busy_reads`` None) never clears ``copy_busy``.
+    """
+    def __init__(self, busy_reads=2, result=abi.LIBRARY_RESULT_OK):
+        super().__init__()
+        self.busy_reads = busy_reads
+        self.swap_result = result
+        self.swapping = False
+        self.result_byte = abi.LIBRARY_RESULT_NONE
+        self.status_reads = 0
+
+    def host_write(self, address, value):
+        if address == abi.HOST_REG_LIBRARY_CONTROL and value == abi.LIBRARY_CONTROL_RETURN:
+            self.swapping, self.status_reads = True, 0
+            self.state, self.valid = abi.STATE_LOADING, 0
+
+    def library_status(self):
+        if not self.swapping:
+            return (self.result_byte << 8) | 0x00FF0000 | abi.LIBRARY_STATUS_SDRAM_READY
+        self.status_reads += 1
+        if self.busy_reads is None or self.status_reads <= self.busy_reads:
+            return 0x00FF0000 | abi.LIBRARY_STATUS_COPY_BUSY | abi.LIBRARY_STATUS_SDRAM_READY
+        self.swapping, self.result_byte = False, self.swap_result
+        if self.swap_result == abi.LIBRARY_RESULT_OK:
+            self.state, self.valid, self.profile = abi.STATE_RUNNING, 1, abi.PROFILE_LOADER_ID
+        return (self.result_byte << 8) | (abi.LIBRARY_MENU_INDEX << 16) | abi.LIBRARY_STATUS_SDRAM_READY | abi.LIBRARY_STATUS_WINDOW_READY
+
+
 class LibraryTests(unittest.TestCase):
     def setUp(self):
         parent = ROOT / 'workdir/builds/host-library-unit'
@@ -120,7 +152,9 @@ class LibraryTests(unittest.TestCase):
         # The module names no library number of its own: the generated table owns them.
         source = (ROOT / 'tools/n2m/host/library.py').read_text()
         self.assertEqual(re.findall(r'\b(?:32768|0x8000|0x80000|0x88000|557056|abi\.PROFILE_ROM_BYTES)\b', source), [])
-        self.assertEqual(re.findall(r'^[A-Z_]+ = \d+$', source, re.MULTILINE), ['EMPTY = 0', 'CATALOGUE_BYTES = 1024'])
+        # RETURN_STATUS_READS bounds `--wait`; it is not a layout number.
+        self.assertEqual(re.findall(r'^[A-Z_]+ = \d+$', source, re.MULTILINE),
+                         ['EMPTY = 0', 'CATALOGUE_BYTES = 1024', 'RETURN_STATUS_READS = 64'])
         # Entry field offsets follow the generated record.
         image = fixture_image('OFFSETS', 9)
         raw = library.pack_entry(library.image_entry(image, abi.PROFILE_LOADER_ID))
@@ -260,6 +294,83 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual((decoded['flags'], decoded['result'], decoded['bank']),
                          (['copy_busy', 'sdram_ready', 'key1_pending'], 'CRC_MISMATCH', 63))
         self.assertEqual(library.decode_library_status(0x0700)['result'], 'UNKNOWN')
+
+    def test_return_sends_the_whitelisted_control_write_and_reports_the_swap(self):
+        endpoint = LoaderEndpoint(busy_reads=2)
+        endpoint.state, endpoint.valid, endpoint.profile = abi.STATE_RUNNING, 1, abi.PROFILE_DIRECT_ID
+        result = library.return_to_menu(Client(endpoint), wait=True)
+        # Exactly the generated LIBRARY_CONTROL write with the RETURN value; the whitelist masks the rest.
+        self.assertEqual(endpoint.host_writes, [(abi.HOST_REG_LIBRARY_CONTROL, abi.LIBRARY_CONTROL_RETURN)])
+        self.assertEqual(abi.HOST_REG_LIBRARY_CONTROL, 0x100A0)
+        self.assertEqual(abi.HOST_WRITE_MASK_LIBRARY_CONTROL, abi.LIBRARY_CONTROL_RETURN)
+        names = [name for name, _p, _s in endpoint.requests]
+        self.assertEqual(names, ['READ_HOST'] * 3 + ['WRITE_HOST'] + ['READ_HOST'] * 3 + ['READ_HOST'] * 3)
+        self.assertEqual((result['before']['state_name'], result['before']['PROFILE']), ('RUNNING', abi.PROFILE_DIRECT_ID))
+        self.assertEqual((result['status_reads'], result['settled']), (3, True))
+        self.assertEqual((result['library_status']['result'], result['library_status']['flags'], result['library_status']['a003']),
+                         ('OK', ['window_ready', 'sdram_ready'], abi.LIBRARY_MENU_INDEX))
+        self.assertEqual(result['endpoint'], {'STATE': abi.STATE_RUNNING, 'state_name': 'RUNNING',
+                                              'PROFILE': abi.PROFILE_LOADER_ID, 'IMAGE_VALID': 1})
+        self.assertIn('dot', result['control'])
+        text = library.format_return(result)
+        self.assertIn('result OK flags window_ready,sdram_ready', text)
+        self.assertIn('endpoint RUNNING profile 2 image_valid 1 after 3 status read(s)', text)
+        # Without --wait one status read is taken and a busy swap is reported, not failed.
+        endpoint = LoaderEndpoint(busy_reads=2)
+        result = library.return_to_menu(Client(endpoint))
+        self.assertEqual((result['status_reads'], result['settled'], result['library_status']['flags']),
+                         (1, False, ['copy_busy', 'sdram_ready']))
+        self.assertEqual(result['endpoint']['state_name'], 'LOADING')
+
+    def test_return_is_refused_while_loading_and_a_bad_state_reply_is_named(self):
+        endpoint = LoaderEndpoint()
+        endpoint.state = abi.STATE_LOADING
+        with self.assertRaisesRegex(ValueError, 'refused: endpoint is LOADING'):
+            library.return_to_menu(Client(endpoint))
+        self.assertEqual([name for name, _p, _s in endpoint.requests], ['READ_HOST'] * 3)
+        self.assertEqual(endpoint.host_writes, [])
+        # The endpoint enters LOADING between the state read and the write: the BAD_STATE reply is named.
+        racing = LoaderEndpoint()
+        original = racing.write
+        def write(packet):
+            if len(racing.requests) == 3:
+                racing.state = abi.STATE_LOADING
+            return original(packet)
+        racing.write = write
+        with self.assertRaisesRegex(ValueError, 'rejected by the endpoint: BAD_STATE'):
+            library.return_to_menu(Client(racing))
+        self.assertEqual([name for name, _p, _s in racing.requests][-1], 'WRITE_HOST')
+        self.assertEqual(racing.host_writes, [])
+        # A swap that never clears copy_busy fails --wait after the bounded number of reads.
+        stuck = LoaderEndpoint(busy_reads=None)
+        with self.assertRaisesRegex(ValueError, f'did not settle within {library.RETURN_STATUS_READS} status reads'):
+            library.return_to_menu(Client(stuck), wait=True)
+        status_reads = [payload for name, payload, _s in stuck.requests
+                        if name == 'READ_HOST' and unpack_record('read_host', payload)['address'] == abi.HOST_REG_LIBRARY_STATUS]
+        self.assertEqual(len(status_reads), library.RETURN_STATUS_READS)
+
+    def test_cli_return_through_fake_session(self):
+        endpoint = LoaderEndpoint(busy_reads=1)
+        with patch('n2m.host.command.session', self.fake_session(endpoint)), redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'library', 'return', '--wait', '--uart-port', 'COM92', '--tag', self.tag, '--json'], ROOT), 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual((report['status'], report['action']), ('PASS', 'library-return'))
+        self.assertEqual((report['result']['settled'], report['result']['status_reads']), (True, 2))
+        self.assertEqual(report['result']['library_status']['result'], 'OK')
+        self.assertEqual(report['result']['endpoint']['state_name'], 'RUNNING')
+        self.assertEqual(endpoint.host_writes, [(abi.HOST_REG_LIBRARY_CONTROL, abi.LIBRARY_CONTROL_RETURN)])
+        with patch('n2m.host.command.session', self.fake_session(LoaderEndpoint(busy_reads=0))), redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'library', 'return', '--uart-port', 'COM92', '--tag', self.tag], ROOT), 0)
+        self.assertIn('library return: result OK flags window_ready,sdram_ready bank 0; endpoint RUNNING profile 2 image_valid 1',
+                      stdout.getvalue())
+        loading = LoaderEndpoint()
+        loading.state = abi.STATE_LOADING
+        with patch('n2m.host.command.session', self.fake_session(loading)), redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'library', 'return', '--uart-port', 'COM92', '--tag', self.tag, '--json'], ROOT), 1)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual((report['status'], report['error']),
+                         ('FAIL', 'library return refused: endpoint is LOADING, not PAUSED or RUNNING'))
+        self.assertEqual(loading.host_writes, [])
 
 
 if __name__ == '__main__':

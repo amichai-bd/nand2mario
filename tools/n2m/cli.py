@@ -211,6 +211,12 @@ def parser():
     library_load.add_argument('--menu', help='immutable sw/build result.json for the menu image at index 16')
     host_session_options(library_load)
     host_session_options(library.add_parser('status', description='Read the catalogue as stored and print the library table.'))
+    library_return = library.add_parser('return', description='Return to the menu from the host: the whitelisted LIBRARY_CONTROL '
+                                        'write that behaves exactly like the KEY1 hold; accepted while PAUSED or RUNNING, '
+                                        'refused by name while LOADING. Reports LIBRARY_STATUS and the endpoint state after the write.')
+    library_return.add_argument('--wait', action='store_true',
+                                help='read LIBRARY_STATUS until copy_busy and key1_pending clear, within a bounded number of reads')
+    host_session_options(library_return)
     return result
 
 
