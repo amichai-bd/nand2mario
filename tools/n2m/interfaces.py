@@ -53,7 +53,7 @@ def validate(data):
     integer(data['schema_version'], 1, 1, 'schema_version')
     if data['byte_order'] != 'little' or data['profile_name'] != 'dmg-direct-v1':
         raise ValueError('unsupported byte order or profile')
-    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command peek input_source host_write_mask sdram library', 'groups')
+    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command peek input_source host_write_mask sdram library mbc1', 'groups')
     constants = {}
     for group, entries in data['groups'].items():
         if type(entries) is not list or not entries:
@@ -127,6 +127,26 @@ def validate(data):
         raise ValueError('DMG map does not cover 16 bits')
     if constants['PROFILE_ROM_BYTES'] != constants['GB_ROM1_END'] + 1 or constants['PROFILE_BANK_BYTES'] != constants['GB_ROM1_START']:
         raise ValueError('direct ROM mapping mismatch')
+    profile_ids = [constants['PROFILE_' + p] for p in ('DIRECT_ID', 'LOADER_ID', 'MBC1_ID')]
+    if 0 in profile_ids or len(set(profile_ids)) != len(profile_ids):
+        raise ValueError('profile IDs must be distinct and nonzero')
+    # MBC1 geometry: whole banks, a power-of-two bank count within BANK1, and a
+    # store that holds the largest image. The register aliases tile ROM0/ROM1.
+    banks, mask = constants['MBC1_BANKS'], constants['MBC1_BANK_MASK']
+    if (constants['MBC1_ROM_BYTES'] != banks * constants['PROFILE_BANK_BYTES'] or mask != banks - 1
+            or banks & mask or banks > 1 << constants['MBC1_BANK1_BITS']
+            or not 1 <= constants['MBC1_RESET_BANK'] <= mask):
+        raise ValueError('MBC1 bank geometry mismatch')
+    if constants['PROFILE_STORE_BYTES'] < max(constants['PROFILE_ROM_BYTES'], constants['MBC1_ROM_BYTES']):
+        raise ValueError('ROM store smaller than a profile image')
+    cursor = 0
+    for register in ('RAMG', 'BANK1', 'BANK2', 'MODE'):
+        start, end = constants['MBC1_' + register + '_START'], constants['MBC1_' + register + '_END']
+        if start != cursor or end < start:
+            raise ValueError('overlapping or missing MBC1 register alias range')
+        cursor = end + 1
+    if cursor != constants['GB_ROM1_END'] + 1:
+        raise ValueError('MBC1 register aliases do not cover the ROM range')
     if constants['FRAME_BYTES'] * 8 != constants['FRAME_WIDTH'] * constants['FRAME_HEIGHT'] * constants['FRAME_PIXEL_BITS']:
         raise ValueError('frame geometry mismatch')
     return constants

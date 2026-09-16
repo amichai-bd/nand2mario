@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: 80358961f267d56d1b1ae0b33aa68687e0284aaa4601c9b986e1d7d76f244869
+// Source SHA-256: c03d7c6a4290c6c2bbe956e4449f6cd29ed02c5f7f866c67af7738a83a00d0af
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -92,7 +92,9 @@ package n2m_interfaces_pkg;
   localparam logic [15:0] VECTOR_JOYPAD = 16'h60;
   localparam logic [7:0] PROFILE_DIRECT_ID = 8'h1;
   localparam logic [7:0] PROFILE_LOADER_ID = 8'h2;
+  localparam logic [7:0] PROFILE_MBC1_ID = 8'h3;
   localparam logic [31:0] PROFILE_ROM_BYTES = 32'h8000;
+  localparam logic [31:0] PROFILE_STORE_BYTES = 32'h10000;
   localparam logic [15:0] PROFILE_BANK_BYTES = 16'h4000;
   localparam logic [15:0] PROFILE_HEADER_START = 16'h100;
   localparam logic [15:0] PROFILE_HEADER_END = 16'h14F;
@@ -262,6 +264,20 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] LIBRARY_GAME_EXIT_VALUE = 8'h10;
   localparam logic [31:0] LIBRARY_KEY1_DEBOUNCE_EDGES = 32'h1E848;
   localparam logic [31:0] LIBRARY_KEY1_HOLD_EDGES = 32'hBEBC20;
+  localparam logic [31:0] MBC1_ROM_BYTES = 32'h10000;
+  localparam logic [7:0] MBC1_BANKS = 8'h4;
+  localparam logic [7:0] MBC1_BANK_MASK = 8'h3;
+  localparam logic [7:0] MBC1_BANK1_BITS = 8'h5;
+  localparam logic [7:0] MBC1_BANK2_BITS = 8'h2;
+  localparam logic [7:0] MBC1_RESET_BANK = 8'h1;
+  localparam logic [15:0] MBC1_RAMG_START = 16'h0;
+  localparam logic [15:0] MBC1_RAMG_END = 16'h1FFF;
+  localparam logic [15:0] MBC1_BANK1_START = 16'h2000;
+  localparam logic [15:0] MBC1_BANK1_END = 16'h3FFF;
+  localparam logic [15:0] MBC1_BANK2_START = 16'h4000;
+  localparam logic [15:0] MBC1_BANK2_END = 16'h5FFF;
+  localparam logic [15:0] MBC1_MODE_START = 16'h6000;
+  localparam logic [15:0] MBC1_MODE_END = 16'h7FFF;
   localparam integer PACKET_HEADER_BYTES = 10;
   localparam integer PACKET_HEADER_VERSION_OFFSET = 0;
   localparam integer PACKET_HEADER_KIND_OFFSET = 1;

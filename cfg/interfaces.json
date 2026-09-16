@@ -553,10 +553,22 @@
         "description": "Banked-window loader profile of the on-board menu; wiki/src/rtl/cartridge/MAS_loader_profile.md"
       },
       {
+        "name": "MBC1_ID",
+        "bits": 8,
+        "value": 3,
+        "description": "dmg-mbc1-v1: bounded 64 KiB MBC1 profile without cartridge RAM; wiki/src/rtl/cartridge/MAS_mbc1_profile.md"
+      },
+      {
         "name": "ROM_BYTES",
         "bits": 32,
         "value": 32768,
-        "description": "Exact load image length"
+        "description": "Exact load image length of DIRECT_ID and LOADER_ID"
+      },
+      {
+        "name": "STORE_BYTES",
+        "bits": 32,
+        "value": 65536,
+        "description": "ROM store capacity: the largest profile image; store offsets are this wide"
       },
       {
         "name": "BANK_BYTES",
@@ -1600,6 +1612,92 @@
         "value": 12500000,
         "description": "Debounced KEY1 press length (0.5 s) that raises one menu return"
       }
+    ],
+    "mbc1": [
+      {
+        "name": "ROM_BYTES",
+        "bits": 32,
+        "value": 65536,
+        "description": "Exact load image length of MBC1_ID: BANKS banks of PROFILE_BANK_BYTES"
+      },
+      {
+        "name": "BANKS",
+        "bits": 8,
+        "value": 4,
+        "description": "ROM banks 0-3; bank 0 is fixed at $0000-$3FFF, the effective bank is switched at $4000-$7FFF"
+      },
+      {
+        "name": "BANK_MASK",
+        "bits": 8,
+        "value": 3,
+        "description": "Bits of the BANK1 register that reach the store after the 0-to-1 translation; BANKS - 1"
+      },
+      {
+        "name": "BANK1_BITS",
+        "bits": 8,
+        "value": 5,
+        "description": "BANK1 register width; the whole register is compared with zero before masking"
+      },
+      {
+        "name": "BANK2_BITS",
+        "bits": 8,
+        "value": 2,
+        "description": "BANK2 register width; stored, no effect on a 64 KiB image"
+      },
+      {
+        "name": "RESET_BANK",
+        "bits": 8,
+        "value": 1,
+        "description": "Effective switched bank after reset and after every zero BANK1 write"
+      },
+      {
+        "name": "RAMG_START",
+        "bits": 16,
+        "value": 0,
+        "description": "RAMG (cartridge RAM enable) write alias range start; accepted and ignored"
+      },
+      {
+        "name": "RAMG_END",
+        "bits": 16,
+        "value": 8191,
+        "description": "RAMG write alias range end, inclusive"
+      },
+      {
+        "name": "BANK1_START",
+        "bits": 16,
+        "value": 8192,
+        "description": "BANK1 (ROM bank number) write alias range start"
+      },
+      {
+        "name": "BANK1_END",
+        "bits": 16,
+        "value": 16383,
+        "description": "BANK1 write alias range end, inclusive"
+      },
+      {
+        "name": "BANK2_START",
+        "bits": 16,
+        "value": 16384,
+        "description": "BANK2 (upper bank bits) write alias range start"
+      },
+      {
+        "name": "BANK2_END",
+        "bits": 16,
+        "value": 24575,
+        "description": "BANK2 write alias range end, inclusive"
+      },
+      {
+        "name": "MODE_START",
+        "bits": 16,
+        "value": 24576,
+        "description": "MODE (banking mode select) write alias range start; the same range carries the game exit value"
+      },
+      {
+        "name": "MODE_END",
+        "bits": 16,
+        "value": 32767,
+        "description": "MODE write alias range end, inclusive"
+      }
     ]
   },
   "records": {
@@ -1653,12 +1751,12 @@
       {
         "name": "profile",
         "bits": 8,
-        "description": "Direct profile ID"
+        "description": "Profile ID: DIRECT_ID, LOADER_ID or MBC1_ID"
       },
       {
         "name": "size",
         "bits": 32,
-        "description": "Exact image byte length"
+        "description": "Exact image byte length of that profile: PROFILE_ROM_BYTES or MBC1_ROM_BYTES"
       },
       {
         "name": "crc32",

@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `80358961f267d56d1b1ae0b33aa68687e0284aaa4601c9b986e1d7d76f244869`.
+Source SHA-256: `c03d7c6a4290c6c2bbe956e4449f6cd29ed02c5f7f866c67af7738a83a00d0af`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -120,7 +120,9 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 |---|---|---|---|
 | `PROFILE_DIRECT_ID` | 8 | `0x1` | dmg-direct-v1; original v0.5 programs only |
 | `PROFILE_LOADER_ID` | 8 | `0x2` | Banked-window loader profile of the on-board menu; wiki/src/rtl/cartridge/MAS_loader_profile.md |
-| `PROFILE_ROM_BYTES` | 32 | `0x8000` | Exact load image length |
+| `PROFILE_MBC1_ID` | 8 | `0x3` | dmg-mbc1-v1: bounded 64 KiB MBC1 profile without cartridge RAM; wiki/src/rtl/cartridge/MAS_mbc1_profile.md |
+| `PROFILE_ROM_BYTES` | 32 | `0x8000` | Exact load image length of DIRECT_ID and LOADER_ID |
+| `PROFILE_STORE_BYTES` | 32 | `0x10000` | ROM store capacity: the largest profile image; store offsets are this wide |
 | `PROFILE_BANK_BYTES` | 16 | `0x4000` | Section boundary |
 | `PROFILE_HEADER_START` | 16 | `0x100` | Packager reservation inclusive |
 | `PROFILE_HEADER_END` | 16 | `0x14F` | Packager reservation inclusive |
@@ -361,6 +363,25 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `LIBRARY_KEY1_DEBOUNCE_EDGES` | 32 | `0x1E848` | KEY1 level must be stable this many edges (5 ms) before the debounced level changes |
 | `LIBRARY_KEY1_HOLD_EDGES` | 32 | `0xBEBC20` | Debounced KEY1 press length (0.5 s) that raises one menu return |
 
+## Mbc1
+
+| Constant | Bits | Value | Meaning |
+|---|---|---|---|
+| `MBC1_ROM_BYTES` | 32 | `0x10000` | Exact load image length of MBC1_ID: BANKS banks of PROFILE_BANK_BYTES |
+| `MBC1_BANKS` | 8 | `0x4` | ROM banks 0-3; bank 0 is fixed at $0000-$3FFF, the effective bank is switched at $4000-$7FFF |
+| `MBC1_BANK_MASK` | 8 | `0x3` | Bits of the BANK1 register that reach the store after the 0-to-1 translation; BANKS - 1 |
+| `MBC1_BANK1_BITS` | 8 | `0x5` | BANK1 register width; the whole register is compared with zero before masking |
+| `MBC1_BANK2_BITS` | 8 | `0x2` | BANK2 register width; stored, no effect on a 64 KiB image |
+| `MBC1_RESET_BANK` | 8 | `0x1` | Effective switched bank after reset and after every zero BANK1 write |
+| `MBC1_RAMG_START` | 16 | `0x0` | RAMG (cartridge RAM enable) write alias range start; accepted and ignored |
+| `MBC1_RAMG_END` | 16 | `0x1FFF` | RAMG write alias range end, inclusive |
+| `MBC1_BANK1_START` | 16 | `0x2000` | BANK1 (ROM bank number) write alias range start |
+| `MBC1_BANK1_END` | 16 | `0x3FFF` | BANK1 write alias range end, inclusive |
+| `MBC1_BANK2_START` | 16 | `0x4000` | BANK2 (upper bank bits) write alias range start |
+| `MBC1_BANK2_END` | 16 | `0x5FFF` | BANK2 write alias range end, inclusive |
+| `MBC1_MODE_START` | 16 | `0x6000` | MODE (banking mode select) write alias range start; the same range carries the game exit value |
+| `MBC1_MODE_END` | 16 | `0x7FFF` | MODE write alias range end, inclusive |
+
 ## Packet Header record
 
 10 bytes, in listed order; each field is unsigned little-endian.
@@ -396,8 +417,8 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 
 | Field | Byte offset | Bits | Meaning |
 |---|---|---|---|
-| `profile` | 0 | 8 | Direct profile ID |
-| `size` | 1 | 32 | Exact image byte length |
+| `profile` | 0 | 8 | Profile ID: DIRECT_ID, LOADER_ID or MBC1_ID |
+| `size` | 1 | 32 | Exact image byte length of that profile: PROFILE_ROM_BYTES or MBC1_ROM_BYTES |
 | `crc32` | 5 | 32 | Whole image CRC-32/ISO-HDLC |
 
 ## Offset record
