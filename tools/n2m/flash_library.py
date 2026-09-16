@@ -11,9 +11,12 @@ IP or its double loads is written in the 0-based Avalon numbering"), so:
     Intel HEX byte address of slot byte b of slot i = 4 * avalon_word = i * 32768 + b
 
 The catalogue entry bytes come from one code path, tools/n2m/host/library.py,
-so the host loader and the flash image cannot disagree. Slots the registry
-leaves empty and the reserved range are omitted from both files and read
-erased (0xFFFFFFFF).
+so the host loader and the flash image cannot disagree. library.hex defines
+every word of the user range, erased words as 0xFFFFFFFF: the assembler fills
+words a hex leaves undefined between its first and last record with zeros, so
+an explicit image is the only way the programmed flash reads what the double
+reads. library.dat lists only the defined words; the double reads the rest
+erased.
 """
 import json
 from pathlib import Path
@@ -136,12 +139,15 @@ def assemble(images):
     return {"words": words, "catalogue": catalogue, "rows": rows}
 
 
-def intel_hex(words):
-    """Intel HEX of the words, byte addressed at 4 * avalon word, 16 bytes per record.
+def intel_hex(words, count=USER_WORDS):
+    """Intel HEX of the whole user range, byte addressed at 4 * avalon word, 16 bytes per record.
 
-    Records are type 00 data, type 04 extended linear address at each 64 KiB
-    boundary and one type 01 end record; every record carries its checksum.
+    Every word 0..count-1 is written, undefined words as 0xFFFFFFFF. Records
+    are type 00 data, type 04 extended linear address at each 64 KiB boundary
+    and one type 01 end record; every record carries its checksum.
     """
+    if words and max(words) >= count:
+        raise ValueError("library words exceed the user range")
     lines = []
     upper = None
 
@@ -149,14 +155,12 @@ def intel_hex(words):
         body = bytes([len(data), address >> 8, address & 0xFF, kind]) + data
         return ":" + (body + bytes([(-sum(body)) & 0xFF])).hex().upper()
 
-    for start in sorted({word - word % (RECORD_BYTES // WORD_BYTES) for word in words}):
-        data = b"".join((words.get(word, ERASED_WORD)).to_bytes(WORD_BYTES, "little")
-                        for word in range(start, start + RECORD_BYTES // WORD_BYTES))
-        address = start * WORD_BYTES
+    image = words_to_bytes(words, count * WORD_BYTES)
+    for address in range(0, len(image), RECORD_BYTES):
         if address >> 16 != upper:
             upper = address >> 16
             lines.append(record(0x04, 0, upper.to_bytes(2, "big")))
-        lines.append(record(0x00, address & 0xFFFF, data))
+        lines.append(record(0x00, address & 0xFFFF, image[address:address + RECORD_BYTES]))
     lines.append(record(0x01, 0, b""))
     return "\n".join(lines) + "\n"
 
@@ -212,6 +216,21 @@ def words_to_bytes(words, count=USER_BYTES):
     return bytes(image)
 
 
+def pof_words(image):
+    """Flash bytes as the assembler stores them in a MAX 10 .pof: each 32-bit word bit-reversed.
+
+    Observed on Quartus Prime 25.1std: the 32-bit value with its bit order
+    reversed is stored little-endian, so byte 0 of the .pof word is byte 3 of
+    the flash word with its bits reversed. fpga_flash.pof_evidence compares
+    the whole user range through this transform, which is its own inverse.
+    """
+    out = bytearray(len(image))
+    for offset in range(0, len(image), WORD_BYTES):
+        value = int.from_bytes(image[offset:offset + WORD_BYTES], "little")
+        out[offset:offset + WORD_BYTES] = int(f"{value:032b}"[::-1], 2).to_bytes(WORD_BYTES, "little")
+    return bytes(out)
+
+
 def write(folder, assembled):
     """Write library.hex, library.dat and catalogue.bin into the folder; return their hashes."""
     folder = Path(folder)
@@ -225,7 +244,8 @@ def write(folder, assembled):
 def summary(registry, assembled, hashes, folder, root):
     folder = Path(folder)
     return {"registry": {"path": REGISTRY, "sha256": registry["sha256"]},
-            "convention": "Intel HEX byte address = 4 * (flash word - 0x00800); library.dat @<avalon word> records",
+            "convention": "Intel HEX byte address = 4 * (flash word - 0x00800), whole user range, erased words FFFFFFFF; "
+                          "library.dat @<avalon word> records of the defined words",
             "images": assembled["rows"], "defined_words": len(assembled["words"]),
             "catalogue_flash_word": f"0x{flash_word(library.CATALOGUE_ADDRESS):05X}",
             "catalogue_crc32": f"{zlib.crc32(assembled['catalogue']):08x}",

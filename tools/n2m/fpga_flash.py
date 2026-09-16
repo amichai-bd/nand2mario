@@ -114,8 +114,7 @@ def verify(folder, top):
         raise ValueError("internal flash configuration mode or library initialization assignment missing")
     words = flash_library.parse_verilog_hex((folder / flash_library.DAT_NAME).read_text(encoding="ascii"))
     hex_bytes = flash_library.parse_intel_hex((folder / flash_library.HEX_NAME).read_text(encoding="ascii"))
-    if hex_bytes != {address: byte for address, byte in enumerate(flash_library.words_to_bytes(words))
-                     if address // flash_library.WORD_BYTES in words}:
+    if hex_bytes != dict(enumerate(flash_library.words_to_bytes(words))):
         raise ValueError("library.hex and library.dat define different words")
     return {"ufm_blocks": 1, "configuration_mode": "Single Comp Image",
             "sources": {name: file_hash(folder / name) for name in SOURCES},
@@ -126,15 +125,17 @@ def verify(folder, top):
 def pof_evidence(path, words):
     """The .pof carries the library byte for byte in the user range and the compressed image fits CFM0.
 
-    The assembler's .pof holds the flash content in address order: the 736 KiB
-    user range (UFM1, UFM0, CFM2, CFM1), then the 672 KiB CFM0. The user range
-    is located by its exact expected bytes, so a shifted, reordered or altered
-    library fails here, and CFM0 usage is the last programmed byte after it.
+    The assembler's .pof holds the flash content in address order after its
+    header: the 736 KiB user range (UFM1, UFM0, CFM2, CFM1), then the 672 KiB
+    CFM0, each 32-bit word bit-reversed (flash_library.pof_words). The user
+    range is located by its exact expected bytes, so a shifted, reordered or
+    altered library fails here, and CFM0 usage is the last programmed byte
+    after it.
     """
     if not path.is_file() or not path.stat().st_size:
         raise ValueError("missing FPGA evidence: design.pof")
     pof = path.read_bytes()
-    expected = flash_library.words_to_bytes(words)
+    expected = flash_library.pof_words(flash_library.words_to_bytes(words))
     base = pof.find(expected)
     if base < 0 or pof.find(expected, base + 1) >= 0:
         raise ValueError("the .pof user range does not hold the assembled library exactly once")
