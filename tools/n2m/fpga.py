@@ -623,7 +623,7 @@ def build_fpga(root, build, args, provenance=None, progress=None):
             # build input, so a changed game image forces a new attempt.
             with progress.stage("Assemble flash library", f"folder: {display_path(root, folder)}"):
                 registry = flash_library.load_registry(root)
-                images = flash_library.build_images(root, build, registry, provenance or {}, rebuild=args.rebuild)
+                images = flash_library.build_images(root, build, registry, provenance or {}, rebuild=args.rebuild, offline=True)
                 assembled = flash_library.assemble(images)
                 hashes = flash_library.write(folder, assembled)
                 record["library"] = flash_library.summary(registry, assembled, hashes, folder, root)

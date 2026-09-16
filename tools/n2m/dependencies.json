@@ -16,7 +16,7 @@
     "local_changes": "none",
     "storage": "Fetched at run time into ignored workdir/private/external-roms/<name>/; no image bytes are committed",
     "redistribution": "No image or notice is copied into this repository; each entry keeps its upstream terms",
-    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}; descriptive keys (name, author, source, release, commit, cartridge, redistribution) identify the reviewed release and say when the artifact is a third-party redistribution rather than the author's own release",
+    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}; title (upper-case letters, digits, space and dash, at most 16) is the catalogue title used only when the image header title bytes 0x134-0x143 are all zero; descriptive keys (name, author, source, release, commit, cartridge, redistribution) identify the reviewed release and say when the artifact is a third-party redistribution rather than the author's own release",
     "images": {
       "libbet": {
         "name": "Libbet and the Magic Floor v0.08",
@@ -137,6 +137,7 @@
       },
       "alien-invasion": {
         "name": "Alien Invasion v1.0.0",
+        "title": "ALIEN INVASION",
         "author": "NiliusJulius",
         "source": "https://github.com/NiliusJulius/Alien-Invasion",
         "release": "v1.0.0",
@@ -156,6 +157,7 @@
       },
       "square-fall": {
         "name": "Square Fall v0.3",
+        "title": "SQUARE FALL",
         "author": "bjorn_nah (Bjorn)",
         "source": "https://github.com/bjorn-nah/square_fall",
         "release": "v0.3",

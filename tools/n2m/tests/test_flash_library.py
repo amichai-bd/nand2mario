@@ -2,14 +2,16 @@
 import json
 from pathlib import Path
 import sys
+import hashlib
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import flash_library, fpga, fpga_flash, generated_interfaces as abi
-from n2m.host import library
+from n2m.host import external, library
 from n2m.records import file_hash
 from sw.package import package
 
@@ -17,6 +19,21 @@ ROOT = Path(__file__).resolve().parents[3]
 SLOT_WORDS = library.SLOT_BYTES // 4
 CATALOGUE_WORD = 0x22800
 DATA_BASE = 0x00800
+EXTERNALS = {3: 'libbet', 4: 'airaki', 5: 'gb-wordyl', 6: 'max-pirate', 7: 'alien-invasion', 8: 'square-fall',
+             9: 'unstoppable-knight'}
+# Header titles of the pinned images as `title_text` prints them (bytes 0x134-0x143; the 0x80
+# CGB flag at 0x143 keeps the zero padding before it, all printed `?`) and the pinned display
+# titles that stand in for the two blank headers.
+EXTERNAL_TITLES = {3: 'LIBBET' + '?' * 10, 4: 'AIRAKI1     ????', 5: 'GB-WORDYL' + '?' * 7,
+                   6: 'MAXPIRATE', 7: 'ALIEN INVASION', 8: 'SQUARE FALL', 9: 'KNIGHT' + '?' * 10}
+
+
+def external_image(title, seed, cartridge=0, rom_size=0):
+    """A locally generated 32 KiB ROM ONLY image with the given header title bytes; never a downloaded game."""
+    image = bytearray((index * seed + index // 128) % 256 for index in range(library.SLOT_BYTES))
+    image[0x134:0x144] = bytes(title).ljust(16, b'\0')
+    image[0x147], image[0x148] = cartridge, rom_size
+    return bytes(image)
 
 
 def fixture_image(title, seed):
@@ -158,6 +175,11 @@ class RegistryTests(unittest.TestCase):
         self.packages = {'springtrail': {'profile': abi.PROFILE_NAME}, 'stackdrop': {'profile': abi.PROFILE_NAME},
                          'menu': {'profile': library.LOADER_PROFILE_NAME}, 'objects': {}}
         (self.root / flash_library.SW_REGISTRY).write_text(json.dumps({'schema_version': 2, 'targets': self.packages}))
+        (self.root / external.PIN_FILE).parent.mkdir(parents=True)
+        self.pin = {'url': 'https://example.invalid/game.gb', 'sha256': '0' * 64, 'size': library.SLOT_BYTES, 'license': 'MIT'}
+        self.pins = {'game': dict(self.pin), 'other': dict(self.pin, url='https://example.invalid/other.gb', license='Zlib'),
+                     'small': dict(self.pin, size=16384), 'nolicense': {k: v for k, v in self.pin.items() if k != 'license'}}
+        (self.root / external.PIN_FILE).write_text(json.dumps({'external_roms': {'images': self.pins}}))
 
     def registry(self, **fields):
         data = {'schema_version': 1, 'slots': {'0': 'springtrail', '1': 'stackdrop'}, 'menu': 'menu', **fields}
@@ -168,7 +190,30 @@ class RegistryTests(unittest.TestCase):
         registry = self.registry()
         self.assertEqual(registry['slots'], {0: 'springtrail', 1: 'stackdrop'})
         self.assertEqual(registry['menu'], 'menu')
+        self.assertEqual(registry['externals'], {})
         self.assertEqual(registry['sha256'], file_hash(self.root / flash_library.REGISTRY))
+
+    def test_registry_resolves_external_slots_through_the_pin_table(self):
+        registry = self.registry(slots={'0': 'springtrail', '3': 'external:game', '9': 'external:other'})
+        self.assertEqual(registry['slots'], {0: 'springtrail', 3: 'external:game', 9: 'external:other'})
+        self.assertEqual(registry['externals'], {
+            3: {'pin': 'game', 'licence': 'MIT', 'source': 'https://example.invalid/game.gb', 'sha256': '0' * 64},
+            9: {'pin': 'other', 'licence': 'Zlib', 'source': 'https://example.invalid/other.gb', 'sha256': '0' * 64}})
+        self.assertEqual(flash_library.slot_source('external:game'), ('external', 'game'))
+        self.assertEqual(flash_library.slot_source('springtrail'), ('package', 'springtrail'))
+
+    def test_external_registry_refusals(self):
+        cases = ((dict(slots={'0': 'external:missing'}), 'names no pinned external image: missing'),
+                 (dict(slots={'0': 'external:small'}), 'pinned at 16384 bytes'),
+                 (dict(slots={'0': 'external:nolicense'}), 'missing license'),
+                 (dict(slots={'0': 'external:Bad Name'}), 'invalid external image name'),
+                 (dict(slots={'0': 'external:'}), 'invalid external image name'),
+                 (dict(slots={'0': 'external:game', '1': 'external:game'}), 'only one flash library slot'),
+                 (dict(menu='external:game'), 'menu image must be a packaged software target'))
+        for fields, message in cases:
+            with self.subTest(fields=fields):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.registry(**fields)
 
     def test_registry_refusals(self):
         cases = ((dict(schema_version=2), 'schema'), (dict(slots={}), 'schema'), (dict(extra=1), 'schema'),
@@ -184,10 +229,119 @@ class RegistryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     self.registry(**fields)
 
-    def test_checked_in_registry_is_valid_and_lists_our_games(self):
+    def test_checked_in_registry_lists_our_games_and_the_seven_playing_homebrew_images(self):
         registry = flash_library.load_registry(ROOT)
-        self.assertEqual(registry['slots'], {0: 'springtrail', 1: 'stackdrop', 2: 'v05'})
+        self.assertEqual(registry['slots'], {0: 'springtrail', 1: 'stackdrop', 2: 'v05',
+                                             **{index: 'external:' + name for index, name in EXTERNALS.items()}})
         self.assertEqual(registry['menu'], 'menu')
+        self.assertEqual(sorted(registry['externals']), sorted(EXTERNALS))
+        pins = json.loads((ROOT / external.PIN_FILE).read_text())['external_roms']['images']
+        for index, name in EXTERNALS.items():
+            self.assertEqual(registry['externals'][index],
+                             {'pin': name, 'licence': pins[name]['license'], 'source': pins[name]['url'], 'sha256': pins[name]['sha256']})
+        # The two images that never enable the LCD stay out; the two blank-header images carry a display title.
+        self.assertEqual(sorted(set(pins) - set(EXTERNALS.values())), ['rex-run', 'wyrmhole'])
+        self.assertEqual({name: pins[name].get('title') for name in ('alien-invasion', 'square-fall')},
+                         {'alien-invasion': 'ALIEN INVASION', 'square-fall': 'SQUARE FALL'})
+
+
+class ExternalImageTests(unittest.TestCase):
+    """External slots resolved offline against a fake pin table and fake cached files; no network."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='flash external ')
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.images = {'named': external_image(b'NAMED GAME', 3), 'blank': external_image(b'', 5),
+                       'cgb': external_image(b'CGB' + bytes(12) + b'\x80', 7), 'mapper': external_image(b'MBC', 9, cartridge=1),
+                       'control': external_image(b'\x01BAD', 11), 'unnamed-blank': external_image(b'', 13)}
+        self.pins = {name: {'url': f'https://example.invalid/{name}.gb', 'sha256': hashlib.sha256(image).hexdigest(),
+                            'size': library.SLOT_BYTES, 'license': 'MIT'} for name, image in self.images.items()}
+        self.pins['blank']['title'] = 'BLANK TITLE'
+        self.pins['bad-title'] = dict(self.pins['blank'], title='lower case')
+        self.pins['uncached'] = dict(self.pins['named'])
+        self.pins['wrong-hash'] = dict(self.pins['named'], sha256='1' * 64)
+        (self.root / external.PIN_FILE).parent.mkdir(parents=True)
+        (self.root / external.PIN_FILE).write_text(json.dumps({'external_roms': {'images': self.pins}}))
+        for name, image in list(self.images.items()) + [('wrong-hash', self.images['named']), ('bad-title', self.images['blank'])]:
+            folder = self.root / external.CACHE / name
+            folder.mkdir(parents=True)
+            (folder / 'image.gb').write_bytes(image)
+
+    def test_cached_images_resolve_offline_with_their_header_titles(self):
+        with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            image, record = flash_library.external_image(self.root, 'named', offline=True)
+            self.assertEqual(image, self.images['named'])
+            self.assertEqual((record['pin'], record['license'], record['title']), ('named', 'MIT', None))
+            entry = library.image_entry(image, abi.PROFILE_DIRECT_ID, record['title'])
+            self.assertEqual(entry['title'], b'NAMED GAME'.ljust(16, b'\0'))
+            image, record = flash_library.external_image(self.root, 'cgb', offline=True)
+            self.assertEqual(library.image_entry(image, abi.PROFILE_DIRECT_ID, record['title'])['title'], image[0x134:0x144])
+
+    def test_blank_header_title_takes_the_pinned_display_title_only(self):
+        image, record = flash_library.external_image(self.root, 'blank', offline=True)
+        self.assertEqual(record['title'], b'BLANK TITLE')
+        self.assertEqual(library.image_entry(image, abi.PROFILE_DIRECT_ID, record['title'])['title'], b'BLANK TITLE'.ljust(16, b'\0'))
+        # A non-blank header is never overridden, and the fallback changes no other field.
+        named = library.image_entry(self.images['named'], abi.PROFILE_DIRECT_ID, b'OVERRIDE')
+        self.assertEqual(named, library.image_entry(self.images['named'], abi.PROFILE_DIRECT_ID))
+        self.assertEqual(library.image_entry(image, abi.PROFILE_DIRECT_ID)['title'], bytes(16))
+        with self.assertRaisesRegex(ValueError, r'1\.\.16 bytes'):
+            library.image_entry(image, abi.PROFILE_DIRECT_ID, b'X' * 17)
+
+    def test_external_refusals_name_the_image(self):
+        cases = (('uncached', 'external image is not cached: uncached'), ('wrong-hash', 'hash mismatch: wrong-hash'),
+                 ('mapper', 'mapper is not a ROM ONLY 32 KiB cartridge'), ('control', 'outside printable ASCII at 0x134'),
+                 ('unnamed-blank', 'unnamed-blank has a blank header title and its pin has no title'),
+                 ('bad-title', 'pin title must be'), ('unknown', 'unknown external image pin: unknown'))
+        with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            for name, message in cases:
+                with self.subTest(name=name):
+                    with self.assertRaisesRegex(ValueError, message):
+                        flash_library.external_image(self.root, name, offline=True)
+        with self.assertRaisesRegex(ValueError, 'not one 32768-byte slot'):
+            flash_library.check_external_header(self.images['named'][:-1], 'short')
+
+    def test_build_images_stages_external_slots_beside_the_packages(self):
+        registry = {'slots': {0: 'springtrail', 3: 'external:named', 4: 'external:blank'}, 'menu': 'menu',
+                    'externals': {3: {'pin': 'named', 'licence': 'MIT', 'source': self.pins['named']['url'], 'sha256': self.pins['named']['sha256']},
+                                  4: {'pin': 'blank', 'licence': 'MIT', 'source': self.pins['blank']['url'], 'sha256': self.pins['blank']['sha256']}}}
+        build = self.root / 'workdir/builds/unit'
+
+        def fake_build(root, build, args, provenance):
+            rom = build / 'sw/build' / args.target / 'runs/0/image.gb'
+            rom.parent.mkdir(parents=True, exist_ok=True)
+            rom.write_bytes(fixture_image(args.target.upper(), 17))
+            relative = rom.relative_to(root).as_posix()
+            profile = library.LOADER_PROFILE_NAME if args.target == 'menu' else abi.PROFILE_NAME
+            return {'status': 'PASS', 'rom': relative, 'profile': profile, 'attempt': '0', 'fingerprint': 'f' * 8,
+                    'artifacts': {relative: file_hash(rom)}}
+
+        with patch('sw.rom_build.build_target', fake_build), \
+                patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            images = flash_library.build_images(self.root, build, registry, {}, offline=True)
+        self.assertEqual(sorted(images), [0, 3, 4, library.MENU_INDEX])
+        self.assertEqual(images[3][:2], (self.images['named'], abi.PROFILE_NAME))
+        self.assertEqual(images[3][2], {'kind': 'external', **registry['externals'][3], 'image_sha256': self.pins['named']['sha256'],
+                                        'notices': [], 'fallback_title': None})
+        self.assertEqual(images[4][2]['fallback_title'], b'BLANK TITLE')
+        self.assertEqual(images[0][2]['kind'], 'package')
+        assembled = flash_library.assemble(images)
+        rows = {row['index']: row for row in assembled['rows']}
+        self.assertEqual((rows[3]['title'], rows[4]['title'], rows[0]['title']), ('NAMED GAME', 'BLANK TITLE', 'SPRINGTRAIL'))
+        self.assertEqual((rows[3]['licence'], rows[3]['source'], rows[3]['pin']), ('MIT', self.pins['named']['url'], 'named'))
+        self.assertNotIn('fallback_title', rows[3])
+        self.assertEqual(rows[4]['crc32'], f"{zlib.crc32(self.images['blank']):08x}")
+        catalogue = library.parse_catalogue(assembled['catalogue'])
+        self.assertEqual(catalogue[4]['title'], b'BLANK TITLE'.ljust(16, b'\0'))
+        self.assertEqual(catalogue[3]['crc32'], zlib.crc32(self.images['named']))
+        # Offline with one cache missing fails by name, before any package is touched.
+        registry['slots'][5] = 'external:uncached'
+        registry['externals'][5] = {'pin': 'uncached', 'licence': 'MIT', 'source': '', 'sha256': ''}
+        with patch('sw.rom_build.build_target', fake_build), \
+                patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            with self.assertRaisesRegex(ValueError, 'not cached: uncached'):
+                flash_library.build_images(self.root, build, registry, {}, offline=True)
 
 
 class BuilderTests(unittest.TestCase):
@@ -198,19 +352,29 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(fpga.required_reports({'top': 'smoke', 'sources': []}), fpga.REQUIRED_REPORTS)
         self.assertEqual(fpga_flash.reader_path('flash_proof'), 'u_reader')
 
-    def test_sw_library_stage_assembles_the_registered_packages(self):
+    def test_sw_library_stage_assembles_the_registered_packages_and_cached_externals(self):
+        missing = [name for name in EXTERNALS.values() if not (ROOT / external.CACHE / name / 'image.gb').is_file()]
+        if missing:
+            self.skipTest(f'external images not cached (run `sw library` online once): {", ".join(missing)}')
         parent = ROOT / 'workdir/builds'
         parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='flash-library-unit-', dir=parent) as build:
             build = Path(build)
-            report = flash_library.library_stage(ROOT, build, SimpleNamespace(rebuild=False), {'commit': 'test'})
+            report = flash_library.library_stage(ROOT, build, SimpleNamespace(rebuild=False, offline=True), {'commit': 'test'})
             self.assertEqual(report['status'], 'PASS', report.get('error'))
             summary = report['library']
-            self.assertEqual([row['index'] for row in summary['images']], [0, 1, 2, 16])
-            self.assertEqual([row['title'] for row in summary['images']], ['SPRINGTRAIL', 'STACKDROP', 'V05 BUTTONS', 'GAME MENU'])
-            self.assertEqual(summary['images'][3]['profile'], abi.PROFILE_LOADER_ID)
+            self.assertEqual([row['index'] for row in summary['images']], [*range(10), 16])
+            self.assertEqual([row['title'] for row in summary['images']],
+                             ['SPRINGTRAIL', 'STACKDROP', 'V05 BUTTONS', *(EXTERNAL_TITLES[i] for i in range(3, 10)), 'GAME MENU'])
+            self.assertEqual(summary['images'][10]['profile'], abi.PROFILE_LOADER_ID)
+            self.assertEqual({row['profile'] for row in summary['images'][:10]}, {abi.PROFILE_DIRECT_ID})
             self.assertEqual(summary['catalogue_flash_word'], '0x22800')
-            self.assertEqual(summary['defined_words'], 4 * SLOT_WORDS + 256)
+            self.assertEqual(summary['defined_words'], 11 * SLOT_WORDS + 256)
+            pins = json.loads((ROOT / external.PIN_FILE).read_text())['external_roms']['images']
+            for row in summary['images'][3:10]:
+                pin = pins[EXTERNALS[row['index']]]
+                self.assertEqual((row['kind'], row['pin'], row['licence'], row['source'], row['image_sha256']),
+                                 ('external', EXTERNALS[row['index']], pin['license'], pin['url'], pin['sha256']))
             for name in ('library.hex', 'library.dat', 'catalogue.bin'):
                 path = ROOT / summary['files'][name]['path']
                 self.assertTrue(path.is_file())
@@ -220,8 +384,10 @@ class BuilderTests(unittest.TestCase):
             parsed = flash_library.parse_intel_hex((ROOT / summary['files']['library.hex']['path']).read_text())
             self.assertEqual(parsed, dict(enumerate(flash_library.words_to_bytes(words))))
             for row in summary['images']:
-                image = (ROOT / row['result']).parent.joinpath('image.gb').read_bytes()
-                self.assertEqual(file_hash((ROOT / row['result']).parent / 'image.gb'), row['image_sha256'])
+                path = ((ROOT / row['result']).parent if row['kind'] == 'package'
+                        else ROOT / external.CACHE / row['pin']) / 'image.gb'
+                image = path.read_bytes()
+                self.assertEqual(file_hash(path), row['image_sha256'])
                 base = row['index'] * library.SLOT_BYTES
                 self.assertEqual(bytes(parsed[base + b] for b in range(library.SLOT_BYTES)), image)
                 self.assertEqual(row['crc32'], f'{zlib.crc32(image):08x}')

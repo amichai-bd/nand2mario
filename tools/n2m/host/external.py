@@ -12,6 +12,19 @@ PIN_FILE = 'tools/n2m/dependencies.json'
 # Ignored private location required by the source and provenance policy.
 CACHE = 'workdir/private/external-roms'
 FIELDS = ('url', 'sha256', 'size', 'license')
+# A pinned display title stands in for an all-zero header title: the menu
+# font's own alphabet, so the catalogue never carries a byte it cannot draw.
+TITLE = re.compile('[A-Z0-9][A-Z0-9 -]{0,15}')
+
+
+def fallback_title(pin, name):
+    """The pin's `title` as catalogue bytes, or None when the pin has none."""
+    if 'title' not in pin:
+        return None
+    title = pin['title']
+    if not isinstance(title, str) or not TITLE.fullmatch(title):
+        raise ValueError(f'external pin title must be 1-16 upper-case letters, digits, spaces or dashes: {name}')
+    return title.encode('ascii')
 
 
 def verify(data, pin, name):
@@ -23,11 +36,17 @@ def verify(data, pin, name):
     return data
 
 
-def fetch(pin, path, name):
-    """Verify before writing the cache and again after reading it back."""
+def fetch(pin, path, name, offline=False):
+    """Verify before writing the cache and again after reading it back.
+
+    ``offline`` never opens the network: a missing cache is refused by name so
+    an FPGA build cannot stall on a download.
+    """
     if not str(pin['url']).startswith('https://'):
         raise ValueError(f'external pin must use an https source URL: {name}')
     if not path.exists():
+        if offline:
+            raise ValueError(f'external image is not cached: {name}; run `sw library` online first')
         with urllib.request.urlopen(pin['url'], timeout=60) as response:
             # A redirect may downgrade the pinned https URL; the final response must stay https.
             if not str(response.url).startswith('https://'):
@@ -43,7 +62,7 @@ def fetch(pin, path, name):
     return verify(published_bytes(path), pin, name)
 
 
-def read_external(root, name, pin_file=None):
+def read_external(root, name, pin_file=None, offline=False):
     """Return a verified pinned image and its public provenance record."""
     root = Path(root).resolve()
     if not re.fullmatch('[a-z0-9][a-z0-9-]{0,63}', name or ''):
@@ -60,10 +79,10 @@ def read_external(root, name, pin_file=None):
     if pin['size'] != abi.PROFILE_ROM_BYTES:
         raise ValueError(f'pinned size differs from the generated direct-profile image size: {name}')
     cache = root / CACHE / name
-    image = fetch(pin, cache / 'image.gb', name)
+    image = fetch(pin, cache / 'image.gb', name, offline)
     for notice, item in pin.get('notices', {}).items():
         if not re.fullmatch('[A-Za-z0-9][A-Za-z0-9._-]{0,63}', notice):
             raise ValueError(f'external notice name is not a plain file name: {name}')
-        fetch(item, cache / 'notices' / notice, name + '/' + notice)
+        fetch(item, cache / 'notices' / notice, name + '/' + notice, offline)
     return image, {'pin': name, **{field: pin[field] for field in FIELDS},
-                   'notices': sorted(pin.get('notices', {}))}
+                   'title': fallback_title(pin, name), 'notices': sorted(pin.get('notices', {}))}

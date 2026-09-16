@@ -66,13 +66,24 @@ def profile_id(name):
     return PROFILE_IDS[name]
 
 
-def image_entry(image, profile):
-    """The catalogue entry describing one complete slot image."""
+def image_entry(image, profile, fallback_title=None):
+    """The catalogue entry describing one complete slot image.
+
+    The title is header bytes 0x134-0x143 verbatim. Only when every one of them
+    is zero does ``fallback_title`` (a pinned display title, at most 16 ASCII
+    bytes) stand in; a non-blank header is never overridden. Every catalogue
+    writer goes through here, so a flash image and a UART load agree.
+    """
     image = bytes(image)
     if len(image) != SLOT_BYTES:
         raise ValueError(f'library image must be exactly one {SLOT_BYTES}-byte slot')
-    return {'valid': VALID, 'profile': profile, 'length': SLOT_BYTES, 'crc32': zlib.crc32(image),
-            'title': image[TITLE_START:TITLE_START + TITLE_BYTES]}
+    title = image[TITLE_START:TITLE_START + TITLE_BYTES]
+    if fallback_title is not None and not any(title):
+        fallback_title = bytes(fallback_title)
+        if not 0 < len(fallback_title) <= TITLE_BYTES:
+            raise ValueError(f'fallback title must be 1..{TITLE_BYTES} bytes')
+        title = fallback_title.ljust(TITLE_BYTES, b'\0')
+    return {'valid': VALID, 'profile': profile, 'length': SLOT_BYTES, 'crc32': zlib.crc32(image), 'title': title}
 
 
 EMPTY_ENTRY = {'valid': EMPTY, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(TITLE_BYTES)}
