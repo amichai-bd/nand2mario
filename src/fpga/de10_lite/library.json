@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "slots": {
+    "0": "springtrail",
+    "1": "stackdrop",
+    "2": "v05"
+  },
+  "menu": "menu"
+}
