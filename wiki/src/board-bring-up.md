@@ -331,6 +331,22 @@ The host records under tag `681b-board` are timestamped 2026-09-15 23:47 to
 Board state after the session: programmed with the session bitstream, menu
 running from SDRAM.
 
+Rendered frames, native 160x144 PNGs encoded from the retained `frame.2bpp`
+bytes and published as durable PR attachments (PNG SHA-256 in parentheses):
+[menu after load](https://github.com/user-attachments/assets/97251a2c-9b0c-477e-878a-0cdaa8886399)
+(`2dee0801…`),
+[cursor 1](https://github.com/user-attachments/assets/d1c56c91-5c5f-4b9a-94d3-7256f1e03bd6)
+(`def28b6c…`),
+[Springtrail title](https://github.com/user-attachments/assets/0e462b04-19ad-4d59-8a2b-02289cce1129)
+(`505b95f0…`),
+[menu after return](https://github.com/user-attachments/assets/293026f8-7f83-4e59-a858-4c8f69da60a1)
+(`2dee0801…`, the same bytes as the menu after load),
+[cursor 2](https://github.com/user-attachments/assets/42fb889a-c336-408a-b2c7-75301b4d0a4c)
+(`d3673cd1…`) and
+[final menu](https://github.com/user-attachments/assets/e8f8daaa-90a0-41ca-80f2-a39d7f2b8a82)
+(`2dee0801…`). The diff renders are byte-identical to their frames because no
+pixel differs.
+
 Observation from both sessions: a swap requested while the console is
 host-paused completes (`IMAGE_VALID`, `PROFILE`, epoch and `LIBRARY_STATUS`
 update) but leaves the console paused until the host sends `RUN`; a swap
