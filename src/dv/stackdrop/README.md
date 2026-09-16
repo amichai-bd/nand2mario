@@ -72,8 +72,8 @@ Simulated time is deterministic and separate from the wall budget.
 own dot bound: dots at the exact 4194304 Hz `gb_tick` rate, plus a 25 percent
 margin, plus a 10 ms host allowance for identify, preload adoption, RUN and
 HALT over the simulated UART (5.69 ms measured in every target). The game's
-bound is `FINAL` = `END` + 2000 = 393876 dots (93.9 ms), the latest pause its
-checker accepts, giving 128 ms; the run simulates 99.2 ms. The unit's bound is
+bound is `FINAL` = `END` + 2000 = 405012 dots (96.6 ms), the latest pause its
+checker accepts, giving 131 ms; the run simulates 101.9 ms. The unit's bound is
 its 500000-dot `STACKDROP_PROGRESS` limit (119.2 ms), giving 160 ms; the run
 simulates 91.4 ms. The game loop leaves at `END` and the unit's progress check
 fires at its bound, both before the derived timeout, so a scenario failure is
