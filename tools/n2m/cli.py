@@ -15,7 +15,7 @@ from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
-from .fpga_program import program as program_fpga
+from .fpga_program import FLASH_TIMEOUT, program as program_fpga, program_flash
 from .flash_library import library_stage
 from .lint import lint_questa
 from .progress import Progress, powershell_command
@@ -105,11 +105,15 @@ def parser():
     build.add_argument("--build-id", help="comparison only: pin the 128-bit identity macro (32 hex digits) instead of the fingerprint prefix; the result cannot be programmed")
     build.add_argument("--tag")
     build.add_argument("--json", action="store_true")
-    program_parser = fpga.add_parser("program", help="write a checked .sof to the connected board; USB-Blaster/10M50DA identity checked first")
-    program_parser.add_argument("--sof", required=True, help="path to a design.sof built by 'fpga build'")
+    program_parser = fpga.add_parser("program", help="write a checked .sof (volatile) or .pof (internal flash) to the connected board; USB-Blaster/10M50DA identity checked first")
+    image = program_parser.add_mutually_exclusive_group(required=True)
+    image.add_argument("--sof", help="path to a design.sof built by 'fpga build'")
+    image.add_argument("--pof", help="path to a design.pof built by 'fpga build' of a flash image; program, verify and blank-check the internal flash")
+    program_parser.add_argument("--dry-run", action="store_true",
+                                help="with --pof: run the record checks and write the exact quartus_pgm command; no JTAG access")
     program_parser.add_argument("--quartus-bin", required=True, help="explicit directory containing Quartus executables")
     program_parser.add_argument("--jtag-cable", help="required JTAG chain index if more than one is ever present")
-    program_parser.add_argument("--timeout", type=int, default=60)
+    program_parser.add_argument("--timeout", type=int, help="quartus_pgm timeout in seconds; 60 for --sof, 600 for --pof")
     program_parser.add_argument("--tag")
     program_parser.add_argument("--json", action="store_true")
     lint = commands.add_parser("lint", help="front-end gates without a simulation run").add_subparsers(dest="action", required=True)
@@ -257,9 +261,20 @@ def tagged(root, args, header, publish, progress=None):
                     folder = build / "fpga-program" / uuid.uuid4().hex[:12]
                     folder.mkdir(parents=True)
                     operation_folder = folder
-                    progress.line(f"FPGA program: {args.sof}")
-                    result = program_fpga(root, folder, Path(args.sof), quartus_bin=args.quartus_bin,
-                                          cable=args.jtag_cable, timeout=args.timeout, progress=progress)
+                    if args.pof:
+                        progress.line(f"FPGA flash program{' (dry run)' if args.dry_run else ''}: {args.pof}")
+                        result = program_flash(root, folder, Path(args.pof), quartus_bin=args.quartus_bin,
+                                               cable=args.jtag_cable, timeout=args.timeout or FLASH_TIMEOUT,
+                                               dry_run=args.dry_run, progress=progress)
+                    else:
+                        if args.dry_run:
+                            raise ValueError("--dry-run applies only to --pof")
+                        progress.line(f"FPGA program: {args.sof}")
+                        result = program_fpga(root, folder, Path(args.sof), quartus_bin=args.quartus_bin,
+                                              cable=args.jtag_cable, timeout=args.timeout or 60, progress=progress)
+                    # The operation directory keeps its own record beside its logs,
+                    # so the retained evidence outlives later commands on the tag.
+                    atomic_json(folder / "result.json", {"status": "PASS", "provenance": provenance, **result})
                     report.update(status="PASS", provenance=provenance, **result,
                                  artifacts={p.relative_to(root).as_posix(): file_hash(p) for p in folder.rglob("*") if p.is_file()})
             elif args.command == 'host':
@@ -410,6 +425,14 @@ def _human_result(args, report, progress):
             progress.line(f"JTAG: cable {report['cable']}; device {', '.join(report['devices'])}")
         if report.get("program_log"):
             progress.line(f"Program log: {report['program_log']}")
+        if report.get("pof"):
+            if report.get("dry_run"):
+                progress.line(f"Dry run: flash unchanged; command in {report.get('dry_run_log')}")
+            elif status == "PASS":
+                progress.line(f"Flash programmed, verified and blank-checked in {report.get('isp_seconds')} s; "
+                              f".pof sha256 {report.get('pof_sha256')}")
+                progress.line(f"Next: {report.get('next_step')}")
+            return
         if report.get("wire_build_id"):
             progress.line(f"On-wire build ID: {report['wire_build_id']}")
             if status == "PASS" and report.get("fpga_target") == "v05-board":

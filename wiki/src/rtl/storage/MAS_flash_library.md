@@ -241,12 +241,16 @@ The flash is programmed only through JTAG with the Quartus Programmer:
    assembled image and records the CFM0 bytes used. A changed image changes
    the build fingerprint, so the builder runs a new attempt rather than an
    assembler-only rerun.
-3. `fpga program` gains a checked `.pof` path with the same attempt-record
-   rules as the `.sof` path, running `quartus_pgm -m jtag` with program and
-   verify. Programming replaces the CFM0 image and the user range; the
-   in-system programming time from the MAX 10 configuration guide is 52.9 s
-   for CFM0, 22.7 s for CFM1 and 30.2 s for CFM2 on the 10M50 before system
-   overhead; the slice records the measured time.
+3. [`fpga program --pof`](../../../tools/n2m/SPEC.md#flash-programming)
+   writes that `.pof` over JTAG with the same attempt-record rules as the
+   `.sof` path plus the flash evidence rules, running
+   `quartus_pgm -m jtag -o "pvb;<pof>"`: program, verify and blank-check.
+   Programming replaces the CFM0 image and the user range; the in-system
+   programming time from the MAX 10 configuration guide is 52.9 s for CFM0,
+   22.7 s for CFM1 and 30.2 s for CFM2 on the 10M50 before verify and system
+   overhead. The tool records the measured time; the board session
+   ([#677](https://github.com/amichai-bd/nand2mario/issues/677)) has not
+   run yet, so no measured value exists.
 4. A host command that writes flash through the IP's program path is
    deferred: the IP is instantiated read-only, and every sector keeps its
    write protection. Reopening this needs an owner decision.
