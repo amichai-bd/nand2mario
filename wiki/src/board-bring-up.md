@@ -392,40 +392,56 @@ on the board: the built [`exit-demo`](../../src/sw/exit-demo/main.asm) image
 Start is held one write of `$10` to `$6000` per frame) was host-loaded into
 library slot 3 beside our three games, started from the menu through the
 host-injected joypad, and returned to the menu by its own write. The game
-frame is compared with the fixture's independent reference
+frame is compared byte for byte with the fixture's independent reference
 (`fixture.exit_frame()` in [`fixture.py`](../../src/dv/menu/fixture.py):
 pixel rows 64..71 shade 3, the rest shade 0), the menu frames with
 [`reference.py`](../../src/dv/menu/reference.py) against the catalogue bytes
-of the `host library status` record, as in session 2. The same bitstream as
-session 6 stayed programmed; no flash or Quartus action was needed because
-the image is loaded over UART. No monitor observation was recorded.
+of the `host library status` record, as in session 2. The flash-resident
+session 6 bitstream stayed programmed; no flash or Quartus action was needed
+because the image is loaded over UART, and #739 changed no RTL. No monitor
+observation was recorded; nobody was at the board.
 
-- Git commit: `main` `<sha>`; packages `springtrail`, `stackdrop`, `v05`,
-  `exit-demo` (ROM SHA-256 `<sha256>`, CRC32 `<crc32>`) and `menu` built at
-  the same commit (tag `<tag>-sw`).
+- Git commit: branch `739-exit-register-board` at
+  `76aecd23bbbf10ad53df0c2453ee700730008280` (software, fixtures and
+  documentation on `main` `31ba64e`); packages `springtrail`
+  (`d8518b8d`), `stackdrop` (`818978e1`), `v05` (`718b0dcb`), `exit-demo`
+  (ROM SHA-256
+  `06ed18c4e4ab8330c529ec26d7d79ddba57e4e351c43a401b10fb74ad1d89667`, CRC32
+  `1161403e`) and `menu` (`a5d8a00f`) built at the same commit (tag
+  `739-sw`).
 - Fit: unchanged, `v05-board` attempt `d3352b4ff0fb` (tag `738-fit`), build
   id `2f671a6f2216860496e024e2954b712b`, wire build id
   `2b714b95e224e096048616226f1a672f` reported by every host record.
-- Programming: none; board state did not change.
-- Wiring: unchanged.
+- Programming: none; the flash content and the board state did not change.
+- Wiring: unchanged; the owner's display viewer released COM7 before the
+  session and the host records were taken with no hands at the board.
 
-Records under tag `<tag>-board`, timestamped `<start>` to `<end>` UTC; the
-owner was <present at the board / not present>.
+Records under tags `739-board-*` on 2026-09-17, about 00:15 to 00:30 board
+clock. The owner's viewer had left the endpoint `PAUSED`, so the first
+scripted attempt stopped at its menu snapshot (`739-board-menu0`, `SNAPSHOT`
+rejected with status 7: no frame while paused) with no board state changed,
+and the baseline `host status`/`host library status` attempts
+(`739-board-status0`, `-libstatus0`, `-libstatus0b`) failed to open the
+session while the viewer's lock still existed; they are retained as failures.
+The library return record carries the baseline instead.
 
-| Step | Record (tag `<tag>-board`) | Result |
+| Step | Record (tag `739-board-<step>`) | Result |
 |---|---|---|
-| `host library load` springtrail, stackdrop, v05, exit-demo, `--menu` menu | `library-load/<id>` | 5 images, catalogue `PASS`, `mismatch_count` 0; slots 0 `SPRINGTRAIL`, 1 `STACKDROP`, 2 `V05 BUTTONS`, 3 `EXIT DEMO` `<crc32>`, 16 `GAME MENU` profile 2, each equal to its readback CRC32 |
-| `host library return --wait`, `host status`, `host library status` | `library-return/<id>`, `status/<id>`, `library-status/<id>` | menu re-swapped from the new library: `PROFILE` 2, running, epoch `<e0>`, result `OK`; catalogue SHA-256 `<sha256>` |
-| Menu frame | `snapshot/<id>` | epoch `<e0>`; pixel-exact `expected('menu')` for that catalogue: 23040 pixels, 0 mismatches, CRC32 `<crc32>`, frame SHA-256 `<sha256>`; cursor 0 |
-| Down, Down, Down (`host input --mask 8`, `--mask 0`, three times) | six `input/<id>`, `snapshot/<id>` | pixel-exact `expected('cursor-3')`, CRC32 `<crc32>` |
-| A on slot 3 (`--mask 16`, `--mask 0`) | two `input/<id>`, `status/<id>`, `library-status/<id>` | the menu wrote the select register; the loader swapped slot 3: `PROFILE` 1, running, epoch `<e0 + 1>`, result `OK` index 3 |
-| Game frame | `snapshot/<id>` | pixel-exact `exit_frame()`: 23040 pixels, 0 mismatches, CRC32 `<crc32>`, frame SHA-256 `<sha256>` (the bar on rows 64..71) |
-| Start (`--mask 128`, then `--mask 0`) | two `input/<id>`, `status/<id>`, `library-status/<id>` | the game wrote `$10` to `$6000`; the menu is back: `PROFILE` 2, `IMAGE_VALID` 1, running without a host `RUN`, epoch `<e0 + 2>`, result `OK`, `$A003` still 3 (the exit is not a select), `$A000` 0x60 |
-| Menu frame after the exit | `snapshot/<id>` | pixel-exact `expected('menu')`, 23040 pixels, 0 mismatches, CRC32 `<crc32>` (the frame after load), cursor 0 |
+| `host library load` springtrail, stackdrop, v05, exit-demo, `--menu` menu (`libload`) | `library-load/2dab13a5…` | 5 images, catalogue `PASS`, `mismatch_count` 0; slots 0 `SPRINGTRAIL` `d8518b8d`, 1 `STACKDROP` `818978e1`, 2 `V05 BUTTONS` `718b0dcb`, 3 `EXIT DEMO` `1161403e`, 16 `GAME MENU` profile 2 `a5d8a00f`, each equal to its readback CRC32 |
+| `host library return --wait` (`return0`) | `library-return/608d9133…` | baseline and return: `PROFILE` 2, `IMAGE_VALID` 1, `STATE` `PAUSED` (the viewer's state), result `OK`, `$A003` 7 from the viewer's earlier selection, `$A000` 0x28 (`sdram_ready`, `flash_boot`); settled |
+| `host run` (`run0`), `host status` (`status1`), `host library status` (`libstatus1b`) | `run/a53636a5…`, `status/61040e04…`, `library-status/7d3d7b6b…` | the `RUN` was needed only because the endpoint was host-paused; `STATE` running, `PROFILE` 2; `$A000` 0x68 (`window_ready`, `sdram_ready`, `flash_boot`), result `OK`, `$A003` 7; catalogue SHA-256 `1b3bf46e…`, the four titles above and the menu |
+| Menu frame (`menu0b`) | `snapshot/24a39197…` | epoch 29, seq 601; pixel-exact `expected('menu')` for that catalogue: 23040 pixels, 0 mismatches, CRC32 `bee303ec`, frame SHA-256 `d9b6cc8e…`; cursor 0 |
+| Down, Down, Down (`down1b`..`down3b`, each `host input --mask 8` then `--mask 0`), menu frame (`menu3b`) | `input/1a230ee6…`, `input/a255d871…`, `input/b48a4196…`, `input/3a03b9f3…`, `input/e2e93c42…`, `input/dcc9589a…`, `snapshot/8c965c6e…` | epoch 29; pixel-exact `expected('cursor-3')`, 0 mismatches, CRC32 `8a530790`, frame SHA-256 `bc60fc9c…` |
+| A on slot 3 (`select-a`: `--mask 16`, `--mask 0`), `host status` (`status-game`), `host library status` (`libstatus-game`) | `input/dda68ec0…`, `input/b0747103…`, `status/2393e022…`, `library-status/eadb2502…` | the menu wrote the select register and the loader swapped slot 3: `PROFILE` 1, `IMAGE_VALID` 1, running, result `OK` index 3, `$A000` 0x28 (`window_ready` cleared by the swap) |
+| Game frame (`game`) | `snapshot/d2747973…` | epoch 30, seq 916; 5760 packed bytes, SHA-256 `8460305748df8e55afe9f5f47c1389a033c0c161f3f6f3c321935ce17ba2978c`, byte-identical to the independent `exit_frame()` reference (`exit-frame.2bpp`): the bar on pixel rows 64..71 |
+| Start (`start`: `--mask 128`, then `--mask 0`), `host status` (`status-exit`), `host library status` (`libstatus-exit`) | `input/bdb5446b…`, `input/5e6e61c2…`, `status/daec2992…`, `library-status/011d3a65…` | the game wrote `$10` to `$6000`; the menu is back with no host `RUN`: `PROFILE` 2, `IMAGE_VALID` 1, `STATE` running, result `OK`, `$A003` still 3 (the exit is not a select), `$A000` 0x68 |
+| Menu frame after the exit (`menu-after`) | `snapshot/b867f7c9…` | epoch 31, seq 945; pixel-exact `expected('menu')`, 23040 pixels, 0 mismatches, CRC32 `bee303ec`, frame SHA-256 `d9b6cc8e…`, byte-identical to the menu frame before the selection; cursor 0 |
 
-Board state after the session: the session 6 bitstream, menu running from
-the host-loaded library; the flash copier restores the eleven-game library at
-the next power cycle or KEY0.
+The epoch advanced by one at the selection (29 to 30) and by one at the
+game's exit write (30 to 31). Board state after the session: the session 6
+bitstream, menu running from the host-loaded four-game library in SDRAM; the
+flash copier restores the eleven-game library at the next power cycle or
+KEY0. COM7 released.
 
 ### Game library acceptance
 
@@ -436,7 +452,7 @@ the next power cycle or KEY0.
 | Selection of a loaded slot through the host-injected joypad path (`host input`) starts that game | `snapshot/55c55e6b…` (cursor), `library-status/c05069ef…` (swap `OK` index 1), and the slot 0 and slot 2 swaps | proven |
 | Started game title frame pixel-exact | `snapshot/72199545…`, CRC32 `4a3bad02` (Springtrail, the accepted reference game; stackdrop and v05 frames retained without a reference) | proven |
 | Return to the menu with a pixel-exact menu frame | host return `write/9ab81d26…` then `snapshot/58a8f84a…`, and the final return `snapshot/6770ea06…` | proven through the host return |
-| A game's own exit-register write returns to the menu with a pixel-exact menu frame and the epoch advanced | session 7 `snapshot/<id>` (`EXIT DEMO` running, epoch `<e0 + 1>`), Start `input/<id>`, then `library-status/<id>` (epoch `<e0 + 2>`, `PROFILE` 2, result `OK`) and `snapshot/<id>` (menu, CRC32 `<crc32>`) | `<proven>` |
+| A game's own exit-register write returns to the menu with a pixel-exact menu frame and the epoch advanced | session 7 `snapshot/d2747973…` (`EXIT DEMO` running, epoch 30, frame equal to the independent reference), Start `input/bdb5446b…`, then `status/daec2992…` and `library-status/011d3a65…` (`PROFILE` 2 running without host `RUN`, result `OK`, index 3) and `snapshot/b867f7c9…` (menu, epoch 31, CRC32 `bee303ec`) | proven, no hands at the board |
 | Physical KEY1 hold returns to the menu with a pixel-exact menu frame | session 3 `snapshot/357c2afe…` (Stackdrop running, epoch 21) then the owner's 0.5 s hold and `snapshot/b3700193…` (menu, epoch 22, result `OK`, CRC32 `c3753fdc`); earlier presses `snapshot/15d571db…` | proven, owner present |
 
 ## Flash-resident boot and SDRAM sweep sessions
