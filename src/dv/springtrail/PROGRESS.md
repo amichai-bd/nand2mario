@@ -44,7 +44,7 @@ durations in each receipt's `summary.json` are the evidence.
 
 The startup anchor is derived from the built image by
 `startup_anchor.derive`, the independent SM83 timing model under the CPU
-contract, and frozen as `motion_game_reference.LCD`: 177308 dots for this
+contract, and frozen as `motion_game_reference.LCD`: 194728 dots for this
 image. The progression terms of that derivation are `InitProgressArt` 6880,
 `PrepareProgress` 664 and `PublishProgress` 248, with `InitGame` and
 `PrepareScene` grown by the stage tables. The author's earlier hand count of

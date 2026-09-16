@@ -118,8 +118,12 @@ before either reward, and its coin effect is unchanged. Consuming it while
 small spends that opportunity until the ordinary stage reset; later growth
 does not grant power retroactively. Damage still removes power, and retry,
 full reset and stage entry still clear power and block state together.
-`PowerUp` and `GrantStar` retain their separate contracts. The timing and
-current source/CPU/pixel qualification remain #515 implementation gates.
+`PowerUp` and `GrantStar` retain their separate contracts. The ordinary
+route from reset through the mushroom and the coin to a fired shot is
+`src/dv/springtrail/thrower_route.py`; `test_thrower_acquisition.py` runs it
+against the actual source state every update, and the
+[entity timing plan](../../../../src/dv/springtrail/ENTITIES.md#timing) bounds
+the live shot's visible preparation.
 
 ### Release effect
 

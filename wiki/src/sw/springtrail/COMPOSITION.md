@@ -92,8 +92,11 @@ start/restart scenes and one signed-camera/fractional scene. Poisoning occurs
 only initially and before the first full scene. The one-case harness checks
 terminal completion and settled pause before full execution.
 
-A longest syntactic branch path through EmitPiece costs at most580 dots;
-CourierPiece overhead is bounded by296 per piece and setup220 per pose.
+That historical accounting reserved580 dots for a longest syntactic EmitPiece
+path,296 per CourierPiece and220 per pose setup. The current EmitPiece takes
+its piece offsets in registers and its exhaustive maximum is388 dots; the
+[entity timing plan](../../../../src/dv/springtrail/ENTITIES.md#timing) owns
+the current bound.
 There are140 direct pieces, then four20-piece scenes. Full-scene overhead
 includes signed coordinate conversion, state selection and the80-byte tail.
 Allow260000 total dots, including both160-byte poison loops, operand writes,
