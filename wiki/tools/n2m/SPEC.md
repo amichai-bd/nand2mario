@@ -1764,7 +1764,10 @@ addressable, and the user range holds all sixteen slots and the catalogue by
 construction (`16 * 8192 + 256 < 0x2E000` words). The compressed bitstream
 lives in the separate 672 KiB CFM0, so the slot count does not compete with
 the design: the practical slot capacity is the contract's sixteen. The CFM0
-usage of a build is measured in its `.pof` evidence, described below.
+usage of a build is measured in its `.pof` evidence, described below; the
+`v05-board` build of this ten-image registry records 368,590 of 688,128 CFM0
+bytes used (367,027 programmed, 319,538 spare) beside a 361,472-byte library
+that matches the `.pof` user range exactly once.
 
 `python tools/build.py sw library --tag <tag> --json` builds every registered
 package through the same `sw build` stages under that tag (cached as usual;
