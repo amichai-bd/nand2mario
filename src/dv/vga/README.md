@@ -49,3 +49,16 @@ including source addresses 0 and 23039. Explicit public-signal VCD windows retai
 reset and the first visible image without dumping vendor memory internals.
 `vga-read-latency` inserts one additional edge into the actual RAM response;
 expected shades and coordinates are unchanged and must detect the error.
+
+## Bezel border
+
+[`tb_vga_bezel.sv`](tb_vga_bezel.sv) instantiates two frame bridges on one
+stimulus, `SHELL_BEZEL` set and clear, and one snapshot store on each observer
+stream. It fails on any difference in coordinates, sync, validity, image RGB,
+the observer bundle or a snapshot byte, and on any non-black border from the
+bezel-less bridge. It captures one whole displayed raster for the
+[Python border checker](../python/vga/test_vga_bezel.py), whose
+[model](../python/vga/bezel_reference.py) computes the shell from the published
+direction rather than from the tile ROM, map or palette that the scanout reads.
+`python-vga-bezel-corrupt` forces one actual tile ROM read; the model must
+report the first wrong pixel.
