@@ -10,6 +10,11 @@ in the low bits) pixel for pixel and names the first mismatch.
 
 The frame is the background map with one object on top: the cursor pointer.
 Object shade 0 is transparent, the rest map through OBP0.
+
+The background map is 32 rows: the boot splash above the list. A frame is
+read from it at the slide's `scy` and drawn through the fade's `bgp`, so the
+splash frames and the settled menu come from the same rules; `splash_state`
+gives both from the displayed frame number alone.
 """
 import json
 from pathlib import Path
@@ -19,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[3]
 FONT = ROOT / 'src/sw/menu/assets/font-tiles.json'
 GREY_ART = ROOT / 'src/sw/menu/assets/design/v2-grey-tiles.json'
 POINTER_ART = ROOT / 'src/sw/menu/assets/design/v2-cursor-tiles.json'
+SPLASH_ART = ROOT / 'src/sw/menu/assets/design/v2-splash-tiles.json'
 WIDTH, HEIGHT = 160, 144
 COLUMNS, ROWS = 20, 18
 SLOTS = 16
@@ -37,7 +43,9 @@ TILE_FADE32, TILE_FADE21, TILE_FADE10, TILE_SHADOW = 80, 81, 82, 83
 # The two pointer phases, the same arrow one pixel apart. They are object
 # tiles; no map cell ever names them.
 TILE_POINTER = 84
-BANK_TILES = 86
+# The boot splash badge, four cells by two, the only cells above the list.
+TILE_BADGE, BADGE_COLUMNS, BADGE_TILES = 86, 4, 8
+BANK_TILES = 94
 # The grey page shade: the font's shade 0 becomes 2, its ink stays 3.
 GREY_PAGE = 2
 # Cells between the two plate caps of the header and bottom plates.
@@ -45,6 +53,29 @@ PLATE_CELLS = COLUMNS - 2
 # Frames the cursor holds each nudge phase.
 PHASE_HOLD = 16
 PHASES = 2
+# The boot splash (wiki/src/sw/menu/SPEC.md#boot-splash). The background map is
+# 32 rows: the splash fills the 18 rows the screen shows at SCY 0, the list
+# follows it, and the list's last four rows wrap into map rows 0..3 as the
+# splash's own top rows scroll off. The settled view is SCY 144, at which the
+# visible rows are exactly the list.
+MAP_ROWS = 32
+LIST_MAP_ROW = ROWS
+SETTLED_SCY = 8 * LIST_MAP_ROW
+WRAPPED_ROWS = LIST_MAP_ROW + ROWS - MAP_ROWS
+# The fade: the page first, then the ink, then the mid shades, ending on the
+# identity palette. Each step holds FADE_HOLD frames; the slide then raises
+# SCY by SLIDE_STEP a frame.
+FADE = (0x00, 0x40, 0x90, 0xE4)
+FADE_HOLD = 1
+SLIDE_STEP = 16
+FADE_FRAMES = len(FADE) * FADE_HOLD
+SLIDE_FRAMES = SETTLED_SCY // SLIDE_STEP
+# The first frame that carries the settled list: the last slide frame.
+SETTLED_FRAME = FADE_FRAMES + SLIDE_FRAMES - 1
+# The splash art, from the approved sheet: the badge and its two lines.
+BADGE_ROW, BADGE_COLUMN = 4, 8
+SPLASH_TITLE, SPLASH_TITLE_ROW, SPLASH_TITLE_COLUMN = 'GAME LIBRARY', 8, 4
+SPLASH_HINT, SPLASH_HINT_ROW, SPLASH_HINT_COLUMN = 'SELECT A GAME', 10, 3
 # Header 0x143 values that mark a 15-byte title: the CGB flag and CGB-only flag.
 CGB_FLAG, CGB_ONLY = 0x80, 0xC0
 HEADER, HEADER_COLUMN = 'GAME LIBRARY', 4
@@ -109,8 +140,8 @@ def header_row():
     return [TILE_CAP_LEFT] + cells + [TILE_CAP_RIGHT]
 
 
-def tilemap(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sdram_ready=True, drawn_slots=SLOTS):
-    """Visible 20x18 tile indices; `drawn_slots` counts the title rows already drawn on the delayed path.
+def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sdram_ready=True, drawn_slots=SLOTS):
+    """The list's own 18 rows; `drawn_slots` counts the title rows already drawn on the delayed path.
 
     The selection is the pointer object, not a map cell, so `cursor` and
     `phase` do not change the background at all; `frame` uses them.
@@ -130,16 +161,60 @@ def tilemap(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sdra
     return rows
 
 
-def objects(cursor=0, phase=0, **ignored):
+def splash_rows():
+    """The splash's own 18 map rows: the badge over its two lines of text."""
+    rows = [[TILE_BLANK] * COLUMNS for _ in range(ROWS)]
+    for cell in range(BADGE_COLUMNS):
+        rows[BADGE_ROW][BADGE_COLUMN + cell] = TILE_BADGE + cell
+        rows[BADGE_ROW + 1][BADGE_COLUMN + cell] = TILE_BADGE + BADGE_COLUMNS + cell
+    for row, column, text in ((SPLASH_TITLE_ROW, SPLASH_TITLE_COLUMN, SPLASH_TITLE),
+                              (SPLASH_HINT_ROW, SPLASH_HINT_COLUMN, SPLASH_HINT)):
+        rows[row][column:column + len(text)] = text_tiles(text)
+    return rows
+
+
+def background_map(entries, wrapped=WRAPPED_ROWS, **state):
+    """The 32 map rows: the splash, then the list, whose last rows wrap into rows 0..3.
+
+    `wrapped` counts the list's last rows already drawn over the splash's own
+    top rows; the image draws one of them per slide frame, after that splash
+    row has left the top of the screen and before the list row reaches the
+    bottom.
+    """
+    if not 0 <= wrapped <= WRAPPED_ROWS:
+        raise ValueError(f'wrapped must be 0..{WRAPPED_ROWS}')
+    listing = list_rows(entries, **state)
+    rows = splash_rows() + listing[:MAP_ROWS - LIST_MAP_ROW]
+    for row in range(wrapped):
+        rows[row] = listing[MAP_ROWS - LIST_MAP_ROW + row]
+    return rows
+
+
+def tilemap(entries, scy=SETTLED_SCY, wrapped=WRAPPED_ROWS, **state):
+    """The visible 20x18 tile indices: the 32-row map read from `scy`, which wraps.
+
+    The settled view is SCY 144, at which the visible rows are the list alone.
+    """
+    if scy % 8 or not 0 <= scy < 8 * MAP_ROWS:
+        raise ValueError('scy is a whole cell row of the 32-row map')
+    rows = background_map(entries, wrapped=wrapped, **state)
+    return [rows[(scy // 8 + row) % MAP_ROWS] for row in range(ROWS)]
+
+
+def objects(cursor=0, phase=0, scy=SETTLED_SCY, **ignored):
     """The object list: the cursor pointer alone, at screen (0, 8 * (1 + cursor)).
 
     One object never reaches the ten-per-line limit, and its priority flag is
     clear, so it draws in front of the background wherever its shade is not 0.
+    The list rides SCY while the splash slides away and the object does not,
+    so the menu shows the cursor only once the slide has settled.
     """
     if not 0 <= cursor < SLOTS:
         raise ValueError('cursor must select a slot 0..15')
     if phase not in range(PHASES):
         raise ValueError('phase must be 0 or 1')
+    if scy != SETTLED_SCY:
+        return []
     return [(0, 8 * (SLOT_ROW + cursor), TILE_POINTER + phase)]
 
 
@@ -148,6 +223,21 @@ def phase_of_frame(number):
     if number < 0:
         raise ValueError('a frame number counts from the menu\'s first frame')
     return number // PHASE_HOLD % PHASES
+
+
+def splash_state(number):
+    """The boot splash state of displayed frame `number`: (bgp, scy, wrapped rows drawn).
+
+    The frame counter alone decides it, as it does the nudge phase. Loop
+    iteration `number` writes one register and, while the slide runs, draws
+    one wrapped list row, and its writes appear in the frame it numbers.
+    """
+    if number < 0:
+        raise ValueError('a frame number counts from the menu\'s first frame')
+    if number < FADE_FRAMES:
+        return FADE[number // FADE_HOLD], 0, 0
+    step = min(number - FADE_FRAMES + 1, SLIDE_FRAMES)
+    return FADE[-1], SLIDE_STEP * step, min(step, WRAPPED_ROWS)
 
 
 def atlas_tiles(path, count):
@@ -169,21 +259,28 @@ def greyed(tile):
 
 
 def bank_tiles():
-    """The 86-tile bank: font, the font on the grey page, the six grey cells, the two pointer phases."""
+    """The 94-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge."""
     font = font_tiles()
     bank = (font + [greyed(tile) for tile in font]
-            + atlas_tiles(GREY_ART, GREY_ART_TILES) + atlas_tiles(POINTER_ART, POINTER_TILES))
+            + atlas_tiles(GREY_ART, GREY_ART_TILES) + atlas_tiles(POINTER_ART, POINTER_TILES)
+            + atlas_tiles(SPLASH_ART, BADGE_TILES))
     if len(bank) != BANK_TILES:
-        raise ValueError('the menu bank is 86 tiles')
+        raise ValueError(f'the menu bank is {BANK_TILES} tiles')
     return bank
 
 
-def frame(entries, **state):
-    """Row-major shade bytes of the whole 160x144 frame: the background, then the pointer."""
+def frame(entries, bgp=FADE[-1], **state):
+    """Row-major shade bytes of the whole 160x144 frame: the background through BGP, then the pointer.
+
+    `bgp` is the background palette the fade steps through and `scy` the
+    slide's scroll; both default to the settled menu, so a frame asked for
+    without them is the menu the list shows.
+    """
     tiles = bank_tiles()
     rows = tilemap(entries, **state)
-    pixels = [tiles[rows[y // 8][x // 8]][y % 8][x % 8] for y in range(HEIGHT) for x in range(WIDTH)]
-    for left, top, tile in objects(**{key: state[key] for key in ('cursor', 'phase') if key in state}):
+    palette = [(bgp >> (2 * shade)) & 3 for shade in range(4)]
+    pixels = [palette[tiles[rows[y // 8][x // 8]][y % 8][x % 8]] for y in range(HEIGHT) for x in range(WIDTH)]
+    for left, top, tile in objects(**{key: state[key] for key in ('cursor', 'phase', 'scy') if key in state}):
         for y in range(8):
             for x in range(8):
                 shade = tiles[tile][y][x]
@@ -210,13 +307,16 @@ def check_pixels(packed, entries, **state):
 
 
 def expected(sample, entries):
-    """Named frames for board checks: 'menu' is the fresh menu, 'cursor-N' the pointer on slot N, 'phase-N' the fresh menu in nudge phase N."""
+    """Named frames for board checks: 'menu' is the fresh menu, 'cursor-N' the pointer on slot N, 'phase-N' the fresh menu in nudge phase N, 'splash-N' the boot splash at displayed frame N."""
     if sample == 'menu':
         return frame(entries)
     if sample.startswith('cursor-'):
         return frame(entries, cursor=int(sample.removeprefix('cursor-')))
     if sample.startswith('phase-'):
         return frame(entries, phase=int(sample.removeprefix('phase-')))
+    if sample.startswith('splash-'):
+        bgp, scy, wrapped = splash_state(int(sample.removeprefix('splash-')))
+        return frame(entries, bgp=bgp, scy=scy, wrapped=wrapped)
     raise ValueError(f'unknown menu sample {sample!r}')
 
 
