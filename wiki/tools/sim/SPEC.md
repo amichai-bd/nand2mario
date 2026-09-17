@@ -24,7 +24,7 @@ identity; this test is deterministic and reports `seed=none`.
 
 ## Simulator
 
-The builder runs [Verilator on WSL](../n2m/SPEC.md#verilator-simulation). Both
+The builder runs [Verilator on Linux](../n2m/SPEC.md#verilator-simulation). Both
 tile targets declare `simulators: ["verilator"]`: `tile-pixel` passes with
 its exhaustive signature and `tile-pixel-corrupt` fails with its exact mismatch
 diagnostic. The testbench drives two-state fill values where its earlier

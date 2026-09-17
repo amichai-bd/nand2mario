@@ -269,7 +269,9 @@ refuses a foreign simulator before any workspace is taken: Windows reports
 `Verilator simulation runs on Linux`; non-Windows hosts report `Questa
 simulation runs on Windows PowerShell`. Linux still refuses `fpga` commands
 with `FPGA build and programming run on Windows PowerShell` and `lint questa`
-with `Questa compile gate runs on Windows PowerShell`. Every command
+with `Questa compile gate runs on Windows PowerShell`. Windows refuses `tools`
+with `Pinned host tool installation runs on Linux`, because the pinned Verilator
+is an autoconf, `make` and `g++` source build. Every command
 header and simulation record carries `os`
 (`platform.system()`), and caches, fingerprints and compiled objects live under
 the running host's own `workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
@@ -443,7 +445,10 @@ the pinned `src/dv/python` interpreter is absent. A unit labelled
 `needs-wiki-env` runs on the pinned [wiki environment](../wiki/SPEC.md), which
 the selection builds for itself: before the aggregate clock starts, and only
 when such a unit is selected, the run creates that environment if it is absent,
-so the unit runs rather than skips on a host that has never built it. The result
+so the unit runs rather than skips on a host that has never built it. Creating it
+installs [`requirements.txt`](../../../tools/wiki/requirements.txt) with
+`--require-hashes`, which reaches the network unless pip can satisfy the pin from
+its own cache; that is the one command in a selection which does. The result
 is recorded as `preparation.wiki-environment` with `PRESENT`, `BUILT` and its
 wall, or `UNAVAILABLE` and the reason the build could not complete, and the text
 summary names it. Only `UNAVAILABLE` leaves the unit skipped with reason
@@ -1663,15 +1668,21 @@ tag into `v<version>.source` and its `HEAD` must equal the pinned commit; any
 other commit fails before anything is built. The build runs `autoconf`,
 `configure --prefix`, `make -j<jobs>` and `make install` as argv, with
 Verilator's own `VERILATOR_ROOT` and `VERILATOR_BIN` removed from the child
-environment, and every step keeps its transcript under the build tag. A missing
-prerequisite is named rather than guessed. The installed `verilator --version`
+environment, and every step keeps its transcript under the build tag. Each
+transcript is written when its step exits, so a multi-minute `make` shows nothing
+until it finishes. The shallow clone of an annotated tag reports
+`warning: refs/tags/<tag> <sha> is not a commit!`: git is describing the tag
+object it fetched, and the `rev-parse HEAD` check that follows is what the pin is
+actually held to. A missing prerequisite is named rather than guessed. The installed `verilator --version`
 must report the pinned release. The command then writes `installation.json`
 beside the prefix: the pin, the resolved commit, the banner, the installed tool
 hashes, the resolved build tools with their hashes, the host, the interpreter,
 the job count and the elapsed build. `--jobs` sets the parallel build, `--timeout`
 the per-step bound and `--offline` builds only from an already fetched source.
 Running it again with that record in place reuses the installation and builds
-nothing.
+nothing. The clone is kept at `v<version>.source`, about 1.3 GB, which is what
+lets `--offline` rebuild without the network; no build tag owns it and no command
+reclaims it, so remove that directory by hand when the space is wanted.
 
 Discovery reads the record: an installation counts only with `installation.json`
 beside it, so a partially removed tree is never used. `--verilator-bin` wins,

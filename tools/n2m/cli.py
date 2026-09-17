@@ -544,6 +544,9 @@ VERILATOR_HOST = "Verilator simulation runs on Linux"
 QUESTA_HOST = "Questa simulation runs on Windows PowerShell"
 FPGA_HOST = "FPGA build and programming run on Windows PowerShell"
 LINT_HOST = "Questa compile gate runs on Windows PowerShell"
+# The pinned Verilator is an autoconf/make/g++ source build, so its
+# installation belongs to the same host that runs it.
+TOOLS_HOST = "Pinned host tool installation runs on Linux"
 
 
 def simulator_command(args):
@@ -577,6 +580,8 @@ def foreign_host(args):
         return FPGA_HOST
     if args.command == "lint" and system != "Windows":
         return LINT_HOST
+    if args.command == "tools" and system == "Windows":
+        return TOOLS_HOST
     return None
 
 

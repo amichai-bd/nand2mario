@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import test_builder
 from n2m import verilator, verilator_install
-from n2m.cli import FPGA_HOST, QUESTA_HOST, VERILATOR_HOST, main
+from n2m.cli import FPGA_HOST, QUESTA_HOST, TOOLS_HOST, VERILATOR_HOST, main
 from n2m.records import read_json
 from n2m.simulation import load_target
 from n2m.simulator import Simulator, ToolError, verilator_executable
@@ -775,6 +775,14 @@ class HostOwnershipTests(unittest.TestCase):
                 code, report = self.run_cli("Linux", *argv)
                 self.assertEqual(code, 1)
                 self.assertEqual((report["status"], report["error"], report["os"]), ("FAIL", FPGA_HOST, "Linux"))
+
+    def test_windows_refuses_the_pinned_tool_installation(self):
+        """The pin is an autoconf/make/g++ build; Windows gets a refusal, not a
+        missing-prerequisite error from halfway into the build."""
+        code, report = self.run_cli("Windows", "tools", "verilator", "--tag", "w1")
+        self.assertEqual(code, 1)
+        self.assertEqual((report["status"], report["error"], report["os"]),
+                         ("FAIL", TOOLS_HOST, "Windows"))
 
     def test_each_host_still_runs_its_own_commands(self):
         with patch("n2m.cli.platform.system", return_value="Windows"), \

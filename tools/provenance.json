@@ -72,9 +72,9 @@
       "name": "Verilator",
       "record": "n2m/dependencies.json",
       "notices": "sim/THIRD_PARTY.md",
-      "purpose": "Supported WSL RTL simulator, built from the pinned tag",
+      "purpose": "Supported Linux RTL simulator, built from the pinned tag by `tools verilator`",
       "local_changes": "none",
-      "storage": "User prefix outside the repository; no source or binary is committed"
+      "storage": "Ignored workdir/tools/verilator/v<version> inside the checkout, carrying its own installation.json provenance, or any operator prefix on PATH; the cloned source stays beside it under workdir/tools and reaches about 1.3 GB; no source or binary is committed"
     },
     {
       "name": "External Game Boy images for host load",

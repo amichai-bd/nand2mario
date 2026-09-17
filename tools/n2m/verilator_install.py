@@ -148,6 +148,11 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
         if offline:
             raise ValueError(f"offline: the pinned Verilator source is not present at {source}")
         source.parent.mkdir(parents=True, exist_ok=True)
+        # The pinned tag is annotated, so a shallow clone reports
+        # "warning: refs/tags/<tag> <sha> is not a commit!": the tag object is
+        # fetched, its target commit is not a ref. It is upstream git describing
+        # the tag object, not a defect. The `rev-parse HEAD` below is what the
+        # pin is checked against, so a wrong tree still fails here.
         step("clone", [tools["git"], "clone", "--depth", "1", "--branch", tag, item["url"], source],
              source.parent)
     resolved = step("commit", [tools["git"], "-C", source, "rev-parse", "HEAD"], folder, 60).strip()

@@ -485,9 +485,18 @@ def wiki_check(root):
 
 
 def wiki_python(root):
-    """The pinned wiki interpreter, or None when that environment is not built."""
-    module = wiki_check(root)
-    interpreter = module.installed(root) if module is not None else None
+    """The pinned wiki interpreter, or None when that environment is unusable.
+
+    Reading `check.py` or the locks it hashes can fail on its own, for instance
+    with a missing `requirements.txt`. That is reported by the preparation record
+    and by the unit's skip reason rather than raised into the middle of a
+    selection, so one unrunnable unit never aborts the other 154.
+    """
+    try:
+        module = wiki_check(root)
+        interpreter = module.installed(root) if module is not None else None
+    except Exception:
+        return None
     return str(interpreter) if interpreter else None
 
 
@@ -501,19 +510,22 @@ def prepare_wiki_environment(root):
     offline for example, is recorded with its error and the unit is then skipped
     by name; the skip is the honest fallback, never the ordinary path.
     """
-    module = wiki_check(root)
-    if module is None:
-        return {"status": "UNAVAILABLE", "error": f"{WIKI_CHECK} is not present"}
-    interpreter = module.installed(root)
-    if interpreter:
-        return {"status": "PRESENT", "interpreter": str(interpreter)}
     started = time.monotonic()
     try:
+        module = wiki_check(root)
+        if module is None:
+            return {"status": "UNAVAILABLE", "error": f"{WIKI_CHECK} is not present"}
+        interpreter = module.installed(root)
+        if interpreter:
+            return {"status": "PRESENT", "interpreter": str(interpreter)}
         # Captured: a `--json` run must leave exactly one object on stdout.
         interpreter = module.build(root, capture=True)
     except Exception as error:
+        # Locating the environment can fail on its own, so the guard covers
+        # reading check.py and its locks as well as the build. Every failure
+        # reaches the record; none escapes into the selection.
         return {"status": "UNAVAILABLE", "elapsed_seconds": round(time.monotonic() - started, 3),
-                "error": f"the pinned tools/wiki environment could not be built: {error}"}
+                "error": f"the pinned tools/wiki environment could not be prepared: {error}"}
     return {"status": "BUILT", "elapsed_seconds": round(time.monotonic() - started, 3),
             "interpreter": str(interpreter)}
 

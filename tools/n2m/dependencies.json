@@ -288,9 +288,9 @@
     "commit": "ea338be98e1e838d3518809ce8899f85a009963c",
     "license": "LGPL-3.0-only OR Artistic-2.0; see upstream LICENSE, LICENSES/ and the SPDX header in every source file",
     "purpose": "Supported Linux RTL simulator, built from source by `tools verilator`; the Ubuntu 24.04 distribution package (5.020) is below cocotb's 5.036 minimum",
-    "pinned": "5.052 is upstream's current release as of this pin (#601, 2026-09-15) and the oldest one this repository has validated; cocotb 2.1.0 requires 5.036 or newer, so neither the Ubuntu 24.04 package (5.020) nor any earlier tag qualifies. Raise it only with a fresh commit hash and a passing `doctor --json` on the new build.",
+    "pinned": "cocotb 2.1.0 requires Verilator 5.036 or newer, so the Ubuntu 24.04 package (5.020) cannot serve; 5.052 is the release this repository has validated against that floor, and the commit above is the tag it resolves to. Raise it only with a fresh commit hash and a passing `doctor --json` on the new build, which records the banner it actually ran.",
     "local_changes": "none",
-    "storage": "Ignored repository prefix workdir/tools/verilator/v5.052 with its own installation.json provenance, or any operator prefix on PATH; nothing is vendored or redistributed",
+    "storage": "Ignored repository prefix workdir/tools/verilator/v5.052 with its own installation.json provenance, or any operator prefix on PATH; the shallow clone stays at workdir/tools/verilator/v5.052.source (about 1.3 GB) so --offline can rebuild without the network, and no build tag owns either path; nothing is vendored or redistributed",
     "install": {
       "apt": "sudo apt-get install -y git help2man perl python3 make autoconf g++ flex bison ccache libfl2 libfl-dev libgoogle-perftools-dev numactl perl-doc zlib1g zlib1g-dev liblz4-dev",
       "apt_note": "liblz4-dev: Verilator 5.052 compiles its FST writer against the system lz4.h and links -llz4 for every --trace-fst build; zlib1g-dev serves the same writer",

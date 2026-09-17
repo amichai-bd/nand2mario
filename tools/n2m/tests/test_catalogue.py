@@ -680,11 +680,33 @@ class WikiEnvironmentPreparation(unittest.TestCase):
         (self.root / "offline").write_text("", encoding="utf-8")
         record = module.prepare_wiki_environment(self.root)
         self.assertEqual(record["status"], "UNAVAILABLE")
-        self.assertIn("could not be built", record["error"])
+        self.assertIn("could not be prepared", record["error"])
         self.assertIn("no network", record["error"])
         self.assertEqual(self.builds(), 1)
         outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
         self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+
+    def test_a_check_py_that_cannot_be_read_is_recorded_not_raised(self):
+        """Locating the environment can fail too; that belongs in the record."""
+        path = self.root / "tools/wiki/check.py"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # `installed` raises rather than returning None: a missing lock file is
+        # the real case, and it used to abort the whole selection.
+        path.write_text("def installed(root=None):\n"
+                        "    raise FileNotFoundError(2, 'No such file', 'requirements.txt')\n"
+                        "def build(root=None, *, browser=False, capture=False):\n"
+                        "    raise AssertionError('must not be reached')\n", encoding="utf-8")
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "UNAVAILABLE")
+        self.assertIn("could not be prepared", record["error"])
+        self.assertIn("requirements.txt", record["error"])
+        self.assertIsNone(module.wiki_python(self.root))
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+        # A check.py that raises on import is the same class of problem.
+        path.write_text("raise RuntimeError('broken check')\n", encoding="utf-8")
+        self.assertIn("broken check", module.prepare_wiki_environment(self.root)["error"])
+        self.assertIsNone(module.wiki_python(self.root))
 
     def test_a_selection_prepares_the_environment_only_when_a_unit_needs_it(self):
         args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
