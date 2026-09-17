@@ -19,3 +19,8 @@ two files hold the art of the
 [design directions](../../../wiki/src/sw/menu/DESIGN.md) the owner did not
 choose; those tiles are not linked into the image. Render every direction with
 `python -m tools.sw.menu_art --tag <fresh-tag>`.
+
+`assets/design/v2-*.json` holds the art of the
+[menu v2 ideas](../../../wiki/src/sw/menu/DESIGN_V2.md), mockups nobody has
+chosen; those tiles are not linked into the image either. Render every idea with
+`python -m tools.sw.menu_v2 --tag <fresh-tag>`.

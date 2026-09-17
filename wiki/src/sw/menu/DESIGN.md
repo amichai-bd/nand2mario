@@ -7,7 +7,9 @@ the [menu contract](SPEC.md) owns the frame the
 [menu image](../../../../src/sw/menu/main.asm) draws,
 [`reference.py`](../../../../src/dv/menu/reference.py) checks and the
 [frame budget](SPEC.md#frame-budget) measures. B and C stay here as the
-considered alternatives.
+considered alternatives. A second pass over the chosen
+direction is rendered in [menu v2 ideas](DESIGN_V2.md); nothing there is chosen
+or implemented.
 
 Each direction reuses the 39 approved font tiles and adds original 8x8 art of
 its own. The screens below are the same three states for every direction: the
