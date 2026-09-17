@@ -11,12 +11,18 @@
       "unit": "main.asm",
       "section": "assets",
       "region": "ROM0",
-      "address": 3072
+      "address": 4096
     },
     {
       "unit": "main.asm",
       "section": "vars",
       "region": "WRAM"
+    },
+    {
+      "unit": "main.asm",
+      "section": "table",
+      "region": "WRAM",
+      "alignment": 256
     }
   ]
 }

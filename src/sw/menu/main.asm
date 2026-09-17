@@ -12,6 +12,15 @@ LOADER_RESULT EQU GB_CART_RAM_START + 2
 LOADER_INDEX EQU GB_CART_RAM_START + 3
 CATALOGUE_BANK EQU LIBRARY_CATALOGUE_ADDRESS / LIBRARY_WINDOW_BYTES
 ENTRY_TITLE EQU 8
+; The other entry fields the footer reads (cfg/interfaces.json
+; catalogue_entry): the profile ID and the 24-bit image length.
+ENTRY_PROFILE EQU 1
+ENTRY_LENGTH EQU 2
+ENTRY_LENGTH_HIGH EQU 24
+; The tagline table shares the catalogue region and its window bank: one
+; record every LIBRARY_TAGLINE_BYTES, LIBRARY_TAGLINE_CHARS characters then
+; zeros, right behind the entries.
+TAGLINE_OFFSET EQU LIBRARY_TAGLINE_ADDRESS - LIBRARY_CATALOGUE_ADDRESS
 ; Font atlas order: A-Z, 0-9, dash, blank, cursor arrow.
 TILE_DIGIT EQU 26
 TILE_DASH EQU 36
@@ -109,6 +118,12 @@ WRAPPED_SLOTS EQU LIBRARY_SLOTS + STAR_ROW_FIRST - MAP_ROWS
 ; Room for the stars the rule finds, well above the eight it draws today.
 STAR_SLOTS EQU 16
 STAR_ENTRY EQU 3
+; The footer's two cells, on the grey page like the font: the cartridge badge
+; the upper footer row draws and the separator dot no cell names yet. Both use
+; shade 0 and shade 3 only, so the grey copy is derived like the font's.
+TILE_CART EQU 98
+TILE_DOT EQU 99
+FOOTER_ART_ROWS EQU 16
 ; The header and bottom plates: a grey cap in each outer column and 18 cells
 ; between them, filled with a dithered gradient behind the grey text.
 PLATE_COLUMN EQU 1
@@ -124,6 +139,25 @@ FOOTER_ROW EQU 0
 WINDOW_STATUS_ROW EQU 1
 WINDOW_X EQU 7
 WINDOW_Y EQU 128
+; The information footer. The upper window row carries the cartridge badge and
+; then FOOTER_TEXT_CELLS cells of the selected entry's profile and size, the
+; size in three digit cells at FOOTER_DIGIT_COLUMN. The lower row is the status
+; row: it carries the entry's tagline whenever no message is on it.
+FOOTER_BADGE_COLUMN EQU 1
+FOOTER_TEXT_COLUMN EQU 2
+FOOTER_TEXT_CELLS EQU 16
+FOOTER_DIGIT_COLUMN EQU 8
+FOOTER_DIGITS EQU 3
+FOOTER_PLATE EQU WMAP + FOOTER_ROW * 32 + PLATE_COLUMN
+FOOTER_TEXT EQU FOOTER_PLATE + FOOTER_TEXT_COLUMN
+STATUS_TEXT_CELLS EQU WMAP + WINDOW_STATUS_ROW * 32 + PLATE_COLUMN
+; The profile words the footer knows; the word after them is the dashes an
+; unknown profile ID draws.
+FOOTER_PROFILES EQU 3
+; The size field holds three digits, so a length of a thousand kibibytes and
+; over draws dashes, as one that is not whole kibibytes does.
+KIBIBYTE_DIGITS EQU 1000
+NO_SLOT EQU 255
 ; Background and objects while the splash runs; the window joins them on the
 ; settled frame, with the cursor.
 LCDC_LIST EQU $93
@@ -195,6 +229,20 @@ SplashRowCells:
 DS SPLASH_ROW_CELLS
 StatusCells:
 DS STATUS_CELLS
+ShownFooterA:
+DS 1
+ShownFooterB:
+DS 1
+PlateDrawn:
+DS 1
+
+; Every byte of a plate row maps through this table to the cell it draws: the
+; grey page for a glyph, the plate's own gradient fill for the pad byte and the
+; dash for anything the font cannot draw. It is built at boot from CharTile, so
+; one rule owns the mapping, and its page alignment makes a lookup one LD L,A.
+SECTION "table",RAM
+PlateTiles:
+DS 256
 
 SECTION "code",ROM
 Start:
@@ -319,6 +367,20 @@ INC DE
 LD [HL+],A
 DEC B
 JR NZ,CopyStars
+; The footer's two cells on the grey page, derived like the font: they use
+; shade 0 and shade 3 only, so the copy keeps the low plane and sets the high.
+LD DE,Footer
+LD HL,GB_VIEW_TILES_START + TILE_CART * 16
+LD B,FOOTER_ART_ROWS
+CopyFooterArt:
+LD A,[DE]
+INC DE
+INC DE
+LD [HL+],A
+LD A,$FF
+LD [HL+],A
+DEC B
+JR NZ,CopyFooterArt
 ; Every object but the cursor stays off screen, so clear the table.
 LD HL,OAM_CURSOR
 LD B,OAM_BYTES
@@ -387,6 +449,23 @@ LD DE,LIST_MAP + HEADER_COLUMN
 LD B,12
 LD C,TILE_GREY
 CALL DrawText
+; The plate cell table, from the same CharTile rule the list draws with, so a
+; footer row inside VBlank is one page-aligned lookup a cell.
+LD HL,PlateTiles
+LD C,0
+BuildPlateTiles:
+LD A,C
+CP A,PLATE_PAD
+JR Z,PlateTilePad
+CALL CharTile
+ADD A,TILE_GREY
+JR PlateTileWrite
+PlateTilePad:
+LD A,TILE_FADE21
+PlateTileWrite:
+LD [HL+],A
+INC C
+JR NZ,BuildPlateTiles
 ; The six status rows as grey cells, once, while the LCD is off.
 LD HL,StatusText
 LD DE,StatusCells
@@ -499,6 +578,20 @@ EnableLCD:
 ; The window and its plate, built with the LCD off. WX and WY can be set here
 ; because nothing draws the window until LCDC bit 5 goes on.
 CALL WindowPlate
+; The footer of the boot cursor's slot, both rows, with the LCD off, so the
+; first displayed frame writes nothing. Each call draws at most one row, and a
+; boot that listed no catalogue draws neither.
+LD A,NO_SLOT
+LD [ShownFooterA],A
+LD [ShownFooterB],A
+LD A,[BootDraw]
+OR A,A
+JR Z,FooterBooted
+XOR A,A
+LD [PlateDrawn],A
+CALL ShowFooter
+CALL ShowFooter
+FooterBooted:
 LD A,WINDOW_X
 LDH [GB_REG_WX],A
 LD A,WINDOW_Y
@@ -534,9 +627,11 @@ JR NZ,Frame
 JR Advance
 ListFrame:
 CALL Navigate
-CALL Catalogue
 CALL ShowCursor
 CALL ShowStatus
+; Catalogue draws one title row while the list is short and calls the footer
+; once it is whole, so no frame ever draws both.
+CALL Catalogue
 ; One loop iteration per displayed frame, and an iteration's writes appear in
 ; the frame it numbers, so the counter names that frame and bit 4 of it is
 ; that frame's nudge phase. It advances after the writes, not before. The
@@ -952,7 +1047,7 @@ StatusPlate:
 LD A,TILE_CAP_LEFT
 LD [WMAP + WINDOW_STATUS_ROW * 32],A
 LD A,TILE_CAP_RIGHT
-LD [WMAP + WINDOW_STATUS_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
+LD [STATUS_TEXT_CELLS + PLATE_CELLS],A
 JP ShowStatus
 
 WaitVBlank:
@@ -1061,7 +1156,10 @@ JP CommitBank
 Rows:
 LD A,[Pending]
 CP A,LIBRARY_SLOTS
-RET Z
+; The list is whole, so this frame may draw a footer row. The footer hangs off
+; this branch so that a frame which draws a title row costs what it always
+; did: a JR not taken costs what the RET it replaced did.
+JR Z,FooterHook
 LD A,[LOADER_STATUS]
 AND A,LIBRARY_STATUS_WINDOW_READY
 RET Z
@@ -1100,6 +1198,9 @@ INC A
 LD [Pending],A
 RET
 
+FooterHook:
+JP ShowFooter
+
 CommitBank:
 LD A,CATALOGUE_BANK
 LD [LOADER_BANK],A
@@ -1133,7 +1234,9 @@ LD H,A
 LD D,H
 LD E,L
 POP AF
-; A = slot, DE = its sixteen title cells: wherever the caller wants them.
+; A = slot, DE = its sixteen title cells: wherever the caller wants them. The
+; entry address is inline here, not EntryAt's call, because this is the
+; delayed catalogue row's own path and its frame is the menu's peak.
 DrawTitleAt:
 LD L,A
 LD H,0
@@ -1362,6 +1465,9 @@ JR Z,PhaseWrite
 INC A
 PhaseWrite:
 LD [OAM_CURSOR + 2],A
+; The twinkle rewrites eight cells, so the footer waits for the next frame.
+LD A,1
+LD [PlateDrawn],A
 ; The same bit twinkles the star field, so the page and the cursor change
 ; together and both follow from the frame number alone.
 LD A,[ShownPhase]
@@ -1396,6 +1502,11 @@ LD A,B
 LD [ShownKey],A
 LD A,C
 LD [ShownIndex],A
+; The message owns the lower row, so the tagline is drawn again once it goes.
+LD A,1
+LD [PlateDrawn],A
+LD A,NO_SLOT
+LD [ShownFooterB],A
 LD A,B
 CP A,KEY_NOT_READY
 LD A,STATUS_ROW_NOT_READY
@@ -1424,7 +1535,7 @@ ADD HL,HL
 ADD HL,DE
 LD DE,StatusCells
 ADD HL,DE
-LD DE,WMAP + WINDOW_STATUS_ROW * 32 + PLATE_COLUMN
+LD DE,STATUS_TEXT_CELLS
 LD B,PLATE_CELLS
 CopyStatus:
 LD A,[HL+]
@@ -1445,7 +1556,7 @@ CP A,NO_DIGITS
 RET Z
 LD E,A
 LD D,0
-LD HL,WMAP + WINDOW_STATUS_ROW * 32 + PLATE_COLUMN
+LD HL,STATUS_TEXT_CELLS
 ADD HL,DE
 LD D,H
 LD E,L
@@ -1459,6 +1570,294 @@ LD A,TILE_DASH + TILE_GREY
 LD [DE],A
 INC DE
 LD [DE],A
+RET
+
+; The information footer, at most one plate row a frame. The upper row follows
+; the cursor as soon as it moves and the lower row follows in the next frame,
+; and a frame that has already drawn the status row or the star twinkle leaves
+; both to the one after it, so no VBlank writes two plate rows. Only Catalogue
+; calls this, and only once the list is whole, so a frame that draws a title
+; row draws no footer row and pays nothing for the choice.
+ShowFooter:
+LD A,[PlateDrawn]
+OR A,A
+JR NZ,FooterDone
+LD A,[Cursor]
+LD B,A
+LD A,[ShownFooterA]
+CP A,B
+JR Z,FooterLower
+CALL FooterRowA
+JR FooterDone
+FooterLower:
+; A status message owns the lower row while it is shown.
+LD A,[ShownKey]
+CP A,LIBRARY_RESULT_INVALID_SLOT
+JR NC,FooterDone
+LD A,[ShownFooterB]
+CP A,B
+JR Z,FooterDone
+CALL FooterRowB
+FooterDone:
+XOR A,A
+LD [PlateDrawn],A
+RET
+
+; B = slot. The upper row's text cells: the entry's profile word and size, or
+; the empty-slot line. The badge beside them was written with the LCD off.
+FooterRowA:
+LD A,B
+LD [ShownFooterA],A
+; The badge belongs to the footer, not to the plate: a window that carries no
+; footer carries no badge either, so this row writes it.
+LD A,TILE_CART
+LD [FOOTER_PLATE + FOOTER_BADGE_COLUMN],A
+LD A,B
+CALL EntryAt
+LD A,[HL]
+CP A,LIBRARY_CATALOGUE_VALID
+JR Z,FooterEntry
+LD BC,FooterEmpty
+JP FooterLine
+FooterEntry:
+PUSH HL
+LD A,L
+ADD A,ENTRY_PROFILE
+LD L,A
+LD A,[HL]
+; The word of the profile ID, or the dashes of one the menu does not know.
+DEC A
+CP A,FOOTER_PROFILES
+JR C,FooterProfile
+LD A,FOOTER_PROFILES
+FooterProfile:
+LD L,A
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD BC,FooterProfiles
+ADD HL,BC
+LD B,H
+LD C,L
+CALL FooterLine
+POP HL
+; The size: whole kibibytes of the 24-bit length.
+LD A,L
+ADD A,ENTRY_LENGTH
+LD L,A
+LD A,[HL+]
+LD E,A
+LD A,[HL]
+LD D,A
+LD A,L
+ADD A,ENTRY_LENGTH_HIGH - ENTRY_LENGTH - 1
+LD L,A
+LD A,[HL]
+LD C,A
+; A length that is not whole kibibytes has no size to show.
+LD A,E
+OR A,A
+JR NZ,FooterNoSize
+LD A,D
+AND A,3
+JR NZ,FooterNoSize
+; kb = length >> 10: the high byte moved up six places, then bits 15:10.
+LD L,C
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+SRL D
+SRL D
+LD A,D
+OR A,L
+LD L,A
+LD DE,FOOTER_TEXT + FOOTER_DIGIT_COLUMN
+LD A,H
+CP A,HIGH(KIBIBYTE_DIGITS)
+JR C,FooterNumber
+JR NZ,FooterDashes
+LD A,L
+CP A,LOW(KIBIBYTE_DIGITS)
+JR C,FooterNumber
+JR FooterDashes
+FooterNoSize:
+LD DE,FOOTER_TEXT + FOOTER_DIGIT_COLUMN
+; A part kibibyte, or more kibibytes than three digits hold, draws dashes
+; rather than a wrong number.
+FooterDashes:
+LD A,TILE_DASH + TILE_GREY
+LD B,FOOTER_DIGITS
+FooterDash:
+LD [DE],A
+INC DE
+DEC B
+JR NZ,FooterDash
+RET
+
+; HL = kibibytes under KIBIBYTE_DIGITS, DE = the three digit cells: the number
+; on the grey page, with blanks before its first digit.
+FooterNumber:
+LD B,TILE_BLANK + TILE_GREY
+LD C,255
+FooterHundreds:
+INC C
+LD A,L
+SUB A,100
+LD L,A
+LD A,H
+SBC A,0
+LD H,A
+JR NC,FooterHundreds
+LD A,L
+ADD A,100
+LD L,A
+LD A,C
+CALL FooterDigit
+LD C,255
+FooterTens:
+INC C
+LD A,L
+SUB A,10
+LD L,A
+JR NC,FooterTens
+LD A,L
+ADD A,10
+LD L,A
+LD A,C
+CALL FooterDigit
+LD A,L
+ADD A,TILE_DIGIT + TILE_GREY
+LD [DE],A
+RET
+
+; A = digit. A zero before the first digit draws B, the blank; from the first
+; digit on B is the zero glyph, so an inner zero prints.
+FooterDigit:
+OR A,A
+JR NZ,FooterDigitInk
+LD A,B
+JR FooterDigitWrite
+FooterDigitInk:
+ADD A,TILE_DIGIT + TILE_GREY
+LD B,TILE_DIGIT + TILE_GREY
+FooterDigitWrite:
+LD [DE],A
+INC DE
+RET
+
+; BC = FOOTER_TEXT_CELLS characters, drawn into the upper row's text cells
+; through the plate table. The pad byte keeps the plate's own fill.
+FooterLine:
+LD DE,FOOTER_TEXT
+LD H,HIGH(PlateTiles)
+FooterLineCell:
+LD A,[BC]
+INC BC
+LD L,A
+LD A,[HL]
+LD [DE],A
+INC DE
+LD A,E
+CP A,LOW(FOOTER_TEXT + FOOTER_TEXT_CELLS)
+JR NZ,FooterLineCell
+RET
+
+; B = slot. The lower row: the entry's tagline centred in the plate's cells,
+; the plate's own fill on either side. A record is LIBRARY_TAGLINE_CHARS
+; characters then zeros, so both scans below stop inside it, and an all-zero
+; record leaves the plate alone.
+FooterRowB:
+LD A,B
+LD [ShownFooterB],A
+CALL TaglineAt
+LD B,H
+LD C,L
+LD D,0
+FooterCount:
+LD A,[HL+]
+OR A,A
+JR Z,FooterCounted
+INC D
+LD A,D
+CP A,LIBRARY_TAGLINE_CHARS
+JR NZ,FooterCount
+FooterCounted:
+LD A,PLATE_CELLS
+SUB A,D
+SRL A
+LD E,A
+LD HL,STATUS_TEXT_CELLS
+OR A,A
+JR Z,FooterGlyphs
+LD A,TILE_FADE21
+FooterLead:
+LD [HL+],A
+DEC E
+JR NZ,FooterLead
+FooterGlyphs:
+LD A,D
+OR A,A
+JR Z,FooterTail
+LD D,H
+LD E,L
+LD H,HIGH(PlateTiles)
+FooterGlyph:
+LD A,[BC]
+OR A,A
+JR Z,FooterGlyphsDone
+INC BC
+LD L,A
+LD A,[HL]
+LD [DE],A
+INC DE
+LD A,E
+CP A,LOW(STATUS_TEXT_CELLS + PLATE_CELLS)
+JR NZ,FooterGlyph
+FooterGlyphsDone:
+LD H,D
+LD L,E
+FooterTail:
+LD A,L
+CP A,LOW(STATUS_TEXT_CELLS + PLATE_CELLS)
+RET Z
+LD A,TILE_FADE21
+LD [HL+],A
+JR FooterTail
+
+; A = slot -> HL = its catalogue entry in the window bank.
+EntryAt:
+LD L,A
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD A,H
+ADD A,HIGH(GB_ROM1_START)
+LD H,A
+RET
+
+; A = slot -> HL = its tagline record: TAGLINE_OFFSET behind the entries, at a
+; LIBRARY_TAGLINE_BYTES stride, in the same window bank.
+TaglineAt:
+LD L,A
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD D,H
+LD E,L
+ADD HL,HL
+ADD HL,DE
+LD DE,GB_ROM1_START + TAGLINE_OFFSET
+ADD HL,DE
 RET
 
 ; The four fade steps: the page first, then the ink, then the mid shades,
@@ -1486,6 +1885,17 @@ DB 6
 DB 6
 DB 5
 DB 7
+; The upper footer row's sixteen characters, one line per profile ID and then
+; the dashes of an unknown one: the profile word, the size's three digit cells
+; and ' KB'. The pad byte keeps the plate's gradient fill, as the status rows
+; do, and the zeros are placeholders the size digits overwrite.
+FooterProfiles:
+DB "DIRECT  000 KB##"
+DB "LOADER  000 KB##"
+DB "MBC1    000 KB##"
+DB "------  000 KB##"
+FooterEmpty:
+DB "EMPTY SLOT######"
 EXPORT Start
 
 SECTION "assets",ROM
@@ -1499,3 +1909,5 @@ Splash:
 ASSET "Splash"
 Stars:
 ASSET "Stars"
+Footer:
+ASSET "Footer"

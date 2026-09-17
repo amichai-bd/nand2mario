@@ -3,11 +3,13 @@
 The frame is composed from the font's authoritative shade JSON and literal
 layout rules, never from the assembled ROM, its tilemap or DUT output. A
 catalogue is a list of entries shaped like `n2m.host.library.parse_catalogue`
-rows: `valid` (int), `title` (16 bytes) and `tagline` (up to 18 bytes, empty
-for none); index i is slot i, and an entry 16 (the menu itself) is ignored.
-The tagline reaches no cell of this frame: the status plate still draws the
-selection message alone, so a catalogue with taglines and one without render
-the same pixels. `check_pixels` compares a packed
+rows: `valid` (int), `profile` (int), `length` (int), `title` (16 bytes) and
+`tagline` (up to 18 bytes, empty for none); index i is slot i, and an entry 16
+(the menu itself) is ignored. A row that carries only `valid` and `title` still
+renders: the missing fields read as an unknown profile and a zero length.
+The window's two rows are the information footer of
+wiki/src/sw/menu/SPEC.md: the upper row describes one slot and the lower row
+carries its tagline or the selection message. `check_pixels` compares a packed
 `host snapshot` frame (5760 bytes, four 2-bit pixels per byte, first pixel
 in the low bits) pixel for pixel and names the first mismatch.
 
@@ -30,6 +32,7 @@ GREY_ART = ROOT / 'src/sw/menu/assets/design/v2-grey-tiles.json'
 POINTER_ART = ROOT / 'src/sw/menu/assets/design/v2-cursor-tiles.json'
 SPLASH_ART = ROOT / 'src/sw/menu/assets/design/v2-splash-tiles.json'
 STAR_ART = ROOT / 'src/sw/menu/assets/design/v2-stars-tiles.json'
+FOOTER_ART = ROOT / 'src/sw/menu/assets/design/v2-footer-tiles.json'
 WIDTH, HEIGHT = 160, 144
 COLUMNS, ROWS = 20, 18
 SLOTS = 16
@@ -54,9 +57,12 @@ TILE_FADE32, TILE_FADE21, TILE_FADE10, TILE_SHADOW = 80, 81, 82, 83
 TILE_POINTER = 84
 # The boot splash badge, four cells by two, the only cells above the list.
 TILE_BADGE, BADGE_COLUMNS, BADGE_TILES = 86, 4, 8
-# The star field's four cells, the last tiles of the bank.
+# The star field's four cells.
 TILE_STAR, STAR_TILES = 94, 4
-BANK_TILES = 98
+# The footer's two cells, on the grey page like the font: the cartridge badge
+# the upper footer row draws and the separator dot no cell names yet.
+TILE_CART, TILE_DOT, FOOTER_ART_TILES = 98, 99, 2
+BANK_TILES = 100
 # The grey page shade: the font's shade 0 becomes 2, its ink stays 3.
 GREY_PAGE = 2
 # Cells between the two plate caps of the header and bottom plates.
@@ -77,6 +83,25 @@ STAR_MASK = 3
 WINDOW_X, WINDOW_Y = 7, 128
 WINDOW_ROWS = 2
 FOOTER_ROW, WINDOW_STATUS_ROW = 0, 1
+# The information footer. The upper row is the cartridge badge in plate cell
+# FOOTER_BADGE_COLUMN and then FOOTER_TEXT_CELLS cells of the entry's profile
+# and size; the pad character keeps the plate's own gradient fill, as the
+# status rows do. The lower row is the tagline, centred like the status text,
+# unless a message is on it.
+FOOTER_BADGE_COLUMN, FOOTER_TEXT_COLUMN, FOOTER_TEXT_CELLS = 1, 2, 16
+PLATE_PAD = '#'
+# The profile ID of an entry to the word the footer draws (cfg/interfaces.json
+# profile group); any other ID draws dashes.
+PROFILE_WORDS = {1: 'DIRECT', 2: 'LOADER', 3: 'MBC1'}
+PROFILE_CELLS = 6
+# The size field: whole kibibytes in SIZE_DIGITS columns with leading blanks,
+# then ' KB'. A length that is not a whole number of kibibytes, or one of a
+# thousand and more, draws dashes instead of digits.
+KIBIBYTE, SIZE_DIGITS = 1024, 3
+EMPTY_LINE = 'EMPTY SLOT'
+# One tagline record: the characters the menu reads, at TAGLINE_BYTES stride
+# behind the entries in the same window bank (wiki/src/rtl/storage/MAS_sdram.md).
+TAGLINE_CHARS = 18
 # The boot splash (wiki/src/sw/menu/SPEC.md#boot-splash). The background map is
 # 32 rows: the splash fills the 18 rows the screen shows at SCY 0, the list
 # follows it, and the list's last four rows wrap into map rows 0..3 as the
@@ -161,6 +186,58 @@ def plate(fill, text=''):
     return [TILE_CAP_LEFT] + cells + [TILE_CAP_RIGHT]
 
 
+def entry_of(entries, slot):
+    """The catalogue row of a slot, or None when the catalogue has no such row."""
+    if slot is None or not 0 <= slot < SLOTS or slot >= len(entries):
+        return None
+    return entries[slot]
+
+
+def size_text(length):
+    """The size field: whole kibibytes with leading blanks, or dashes for anything the field cannot hold."""
+    kibibytes = length // KIBIBYTE
+    if length % KIBIBYTE or kibibytes >= 10 ** SIZE_DIGITS:
+        return f'{"-" * SIZE_DIGITS} KB'
+    return f'{kibibytes:{SIZE_DIGITS}d} KB'
+
+
+def footer_line(entry):
+    """The footer's upper text: the profile word and the size of a valid entry, or the empty-slot line.
+
+    Exactly FOOTER_TEXT_CELLS characters, padded with PLATE_PAD, which keeps
+    the plate's own gradient fill where the line does not reach.
+    """
+    if not entry or entry.get('valid') != 1:
+        return EMPTY_LINE.ljust(FOOTER_TEXT_CELLS, PLATE_PAD)
+    word = PROFILE_WORDS.get(entry.get('profile', 0), '-' * PROFILE_CELLS)
+    line = f'{word:<{PROFILE_CELLS}}  {size_text(entry.get("length", 0))}'
+    return line.ljust(FOOTER_TEXT_CELLS, PLATE_PAD)
+
+
+def tagline_line(entry):
+    """The tagline characters of an entry, up to the record's first zero; an all-zero record is no tagline."""
+    if not entry:
+        return ''
+    raw = bytes(entry.get('tagline') or b'')[:TAGLINE_CHARS]
+    return raw.partition(b'\0')[0].decode('latin-1')
+
+
+def plate_cell(character):
+    """One plate cell of a text line: the pad keeps the gradient fill, everything else draws on the grey page."""
+    if character == PLATE_PAD:
+        return TILE_FADE21
+    return TILE_GREY + glyph_tile(ord(character))
+
+
+def footer_row(entry):
+    """The footer's upper row: the cartridge badge, then the entry's profile and size."""
+    cells = [TILE_FADE21] * PLATE_CELLS
+    cells[FOOTER_BADGE_COLUMN] = TILE_CART
+    for offset, character in enumerate(footer_line(entry)):
+        cells[FOOTER_TEXT_COLUMN + offset] = plate_cell(character)
+    return [TILE_CAP_LEFT] + cells + [TILE_CAP_RIGHT]
+
+
 def star_here(column, map_row):
     """Whether the star field puts a star in this map cell.
 
@@ -225,15 +302,24 @@ def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sd
     return rows
 
 
-def window_rows(result=RESULT_NONE, index=NO_INDEX, sdram_ready=True):
-    """The window's two rows: the bottom plate, its status text on the lower one.
+def window_rows(entries=(), footer=(0, 0), result=RESULT_NONE, index=NO_INDEX, sdram_ready=True):
+    """The window's two rows: the information footer of the slots `footer` names.
 
     The window is opaque from its top left corner to the bottom right of the
     screen, so it cannot be a band: it is pinned to the last two screen rows
-    and carries the plate alone. The upper row is the plate's own fill, the
-    two rows the information footer will use.
+    and carries the plate alone. Its upper row describes the slot `footer[0]`
+    and its lower row carries the tagline of `footer[1]`, which lags the
+    cursor by a frame because no VBlank writes two plate rows. A status
+    message owns the lower row while it is shown, and a row the image has not
+    drawn is None: the plate's own fill.
     """
-    return [plate(TILE_FADE21), plate(TILE_FADE21, status_text(result, index, sdram_ready).strip())]
+    upper, lower = footer
+    rows = [footer_row(entry_of(entries, upper)) if upper is not None else plate(TILE_FADE21)]
+    message = status_text(result, index, sdram_ready).strip()
+    if message:
+        return rows + [plate(TILE_FADE21, message)]
+    tagline = tagline_line(entry_of(entries, lower)) if lower is not None else ''
+    return rows + [plate(TILE_FADE21, tagline)]
 
 
 def window_on(scy=SETTLED_SCY):
@@ -371,30 +457,54 @@ def greyed(tile):
 
 
 def bank_tiles():
-    """The 98-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge, the stars."""
+    """The 100-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge, the stars, the footer cells."""
     font = font_tiles()
     bank = (font + [greyed(tile) for tile in font]
             + atlas_tiles(GREY_ART, GREY_ART_TILES) + atlas_tiles(POINTER_ART, POINTER_TILES)
-            + atlas_tiles(SPLASH_ART, BADGE_TILES) + atlas_tiles(STAR_ART, STAR_TILES))
+            + atlas_tiles(SPLASH_ART, BADGE_TILES) + atlas_tiles(STAR_ART, STAR_TILES)
+            + [greyed(tile) for tile in atlas_tiles(FOOTER_ART, FOOTER_ART_TILES)])
     if len(bank) != BANK_TILES:
         raise ValueError(f'the menu bank is {BANK_TILES} tiles')
     return bank
 
 
-def frame(entries, bgp=FADE[-1], **state):
+def footer_slots(cursor=0, footer=None, drawn_slots=SLOTS, sdram_ready=True):
+    """The slots the footer's two rows describe, or None for a row the image has not drawn yet.
+
+    There is no footer until the list is whole, so a frame drawn before that
+    has neither row. After it both rows are the cursor's own slot, unless a
+    move has not settled yet, which `footer` names.
+    """
+    if footer is None:
+        if not sdram_ready or drawn_slots < SLOTS:
+            return None, None
+        return cursor, cursor
+    upper, lower = footer
+    for slot in (upper, lower):
+        if slot is not None and not 0 <= slot < SLOTS:
+            raise ValueError('a footer row describes a slot 0..15 or nothing')
+    return upper, lower
+
+
+def frame(entries, bgp=FADE[-1], footer=None, **state):
     """Row-major shade bytes of the whole 160x144 frame: the background through BGP, then the window, then the pointer.
 
     `bgp` is the background palette the fade steps through and `scy` the
     slide's scroll; both default to the settled menu, so a frame asked for
-    without them is the menu the list shows. The window carries the bottom
-    plate and comes on with the cursor, on the settled frame.
+    without them is the menu the list shows. The window carries the
+    information footer and comes on with the cursor, on the settled frame.
+    `footer` names the slots its two rows describe when they have not settled
+    on the cursor's own slot yet.
     """
     tiles = bank_tiles()
     rows = tilemap(entries, **state)
     palette = [(bgp >> (2 * shade)) & 3 for shade in range(4)]
     pixels = [palette[tiles[rows[y // 8][x // 8]][y % 8][x % 8]] for y in range(HEIGHT) for x in range(WIDTH)]
     if window_on(state.get('scy', SETTLED_SCY)):
-        cells = window_rows(**{key: state[key] for key in ('result', 'index', 'sdram_ready') if key in state})
+        cells = window_rows(entries, footer=footer_slots(
+                                state.get('cursor', 0), footer,
+                                **{key: state[key] for key in ('drawn_slots', 'sdram_ready') if key in state}),
+                            **{key: state[key] for key in ('result', 'index', 'sdram_ready') if key in state})
         for y in range(WINDOW_Y, HEIGHT):
             for x in range(max(WINDOW_X - 7, 0), WIDTH):
                 row, column = y - WINDOW_Y, x - (WINDOW_X - 7)
@@ -427,9 +537,12 @@ def check_pixels(packed, entries, **state):
 
 
 def expected(sample, entries):
-    """Named frames for board checks: 'menu' is the fresh menu, 'cursor-N' the pointer on slot N, 'phase-N' the fresh menu in nudge phase N, 'splash-N' the boot splash at displayed frame N."""
+    """Named frames for board checks: 'menu' is the fresh menu, 'cursor-N' the pointer on slot N with its footer settled, 'footer-A-B' the frame after a move to slot A whose lower footer row still describes slot B, 'phase-N' the fresh menu in nudge phase N, 'splash-N' the boot splash at displayed frame N."""
     if sample == 'menu':
         return frame(entries)
+    if sample.startswith('footer-'):
+        upper, lower = (int(part) for part in sample.removeprefix('footer-').split('-'))
+        return frame(entries, cursor=upper, footer=(upper, lower))
     if sample.startswith('cursor-'):
         return frame(entries, cursor=int(sample.removeprefix('cursor-')))
     if sample.startswith('phase-'):

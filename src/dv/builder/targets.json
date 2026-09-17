@@ -32574,7 +32574,7 @@
       "+fixture=frame"
     ],
     "expected_exit": "zero",
-    "signature": "PASS menu-frame checks=9 frames=6 selects=0 commands=6",
+    "signature": "PASS menu-frame checks=12 frames=9 selects=0 commands=6",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300,
     "preload": "menu",
@@ -32850,7 +32850,7 @@
       "+fixture=select-mbc1"
     ],
     "expected_exit": "zero",
-    "signature": "PASS menu-select-mbc1 checks=9 frames=2 selects=1 commands=8",
+    "signature": "PASS menu-select-mbc1 checks=10 frames=3 selects=1 commands=8",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300,
     "preload": "menu",
@@ -33126,7 +33126,7 @@
       "+fixture=refused"
     ],
     "expected_exit": "zero",
-    "signature": "PASS menu-refused checks=13 frames=6 selects=1 commands=9",
+    "signature": "PASS menu-refused checks=15 frames=8 selects=1 commands=9",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300,
     "preload": "menu",

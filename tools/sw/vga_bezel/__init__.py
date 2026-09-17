@@ -30,6 +30,9 @@ SAMPLE = ['SPRINGTRAIL', 'EXIT DEMO', 'STACKDROP', '', 'TILE PARADE', 'BOUNCE LA
           'SCROLL TEST', 'PATTERN 01', '', 'KEY TEST', 'FRAME TIMER', '', 'DEMO REEL',
           '', 'SOUND STUB', '']
 CURSOR = 2
+# The sample entries are 32 KiB direct-profile images and the cursor's own
+# carries a tagline, so the footer draws both of its rows in these previews.
+DIRECT_PROFILE, IMAGE_BYTES, TAGLINE = 1, 32768, b'DROP EVERY BLOCK'
 SOURCE = Path(__file__).with_name('directions.json')
 
 
@@ -143,10 +146,17 @@ TITLES = {'shell': 'Handheld shell', 'plate': 'Plated frame', 'vignette': 'Dark 
 
 
 def menu_frame(root):
-    """The current plated-list menu frame as 160x144 shades, from its independent reference."""
+    """The current menu frame as 160x144 shades, from its independent reference.
+
+    The sample library is our own images: 32 KiB direct-profile games, empty
+    slots, and a tagline on the slot the cursor sits on, so the information
+    footer reads as it does on the board.
+    """
     reference = load_module('menu_reference', root / 'src/dv/menu/reference.py')
-    entries = [{'valid': 1 if title else 0, 'title': title.encode('ascii').ljust(16, b'\0')}
-               for title in SAMPLE]
+    entries = [{'valid': 1 if title else 0, 'profile': DIRECT_PROFILE if title else 0,
+                'length': IMAGE_BYTES if title else 0, 'title': title.encode('ascii').ljust(16, b'\0'),
+                'tagline': TAGLINE if index == CURSOR else b''}
+               for index, title in enumerate(SAMPLE)]
     return reference.frame(entries, cursor=CURSOR)
 
 
