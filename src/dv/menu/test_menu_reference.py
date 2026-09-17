@@ -242,10 +242,18 @@ class Layout(unittest.TestCase):
             self.assertGreater(top, row)
             self.assertLessEqual(top + reference.ROWS, reference.MAP_ROWS + row)
         self.assertEqual(reference.splash_state(reference.SETTLED_FRAME)[1], reference.SETTLED_SCY)
-        # A press settles the frame that samples it, whichever frame that is.
+        # A press skips in at most two frames, each of them a frame of the
+        # schedule, the last settled, and no frame draws more than SKIP_ROWS.
         for number in range(reference.SETTLED_FRAME + 1):
-            self.assertEqual(reference.splash_state(number, skipped=True),
-                             reference.splash_state(reference.SETTLED_FRAME), number)
+            shown = reference.skip_schedule(number)
+            self.assertLessEqual(len(shown), 2, number)
+            self.assertEqual(shown[-1], reference.SETTLED_FRAME, number)
+            drawn = reference.splash_state(number)[2]
+            for frame in shown:
+                rows = reference.splash_state(frame)[2]
+                self.assertLessEqual(rows - drawn, reference.SKIP_ROWS, number)
+                drawn = rows
+            self.assertEqual(drawn, reference.WRAPPED_ROWS, number)
         with self.assertRaises(ValueError):
             reference.splash_state(-1)
         # The first frame is the page alone and the last is the menu itself.

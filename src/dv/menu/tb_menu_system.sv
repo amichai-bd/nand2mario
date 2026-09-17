@@ -19,8 +19,9 @@
 // the nudged one, which pins the phase boundary) and `splash` (the boot
 // splash left alone: every frame of the fade and the slide, ending on the
 // settled list). Every other fixture holds A through the boot instead, which
-// ends the splash in its first displayed frame: their frame 0 is the settled
-// menu, and the consumed press neither moves the cursor nor selects a game.
+// skips the splash: the first displayed frame draws half the wrapped rows and
+// the second is the settled menu, their frame 0, and the consumed press
+// neither moves the cursor nor selects a game.
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
 /* verilator lint_off WIDTHTRUNC */
@@ -435,8 +436,10 @@ module tb_menu_system;
 
     task automatic boot_menu;
         start_menu(BOOT_SKIP);
-        // A is held through the boot, so the splash ends in the frame that
-        // samples it: the first display-eligible frame is the complete menu.
+        // A is held through the boot, so the splash skips: the frame that
+        // samples the press draws half the wrapped rows and the next one is
+        // the complete menu, the frame every fixture counts as frame 0.
+        frame_start(6000000);
         frame_start(6000000);
         check_frame(0);
         press_buttons(8'h00);

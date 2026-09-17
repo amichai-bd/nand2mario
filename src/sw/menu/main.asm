@@ -72,9 +72,12 @@ SETTLED_FRAME EQU FADE_FRAMES + SLIDE_FRAMES - 1
 WRAPPED_ROWS EQU LIST_MAP_ROW + SCREEN_ROWS - MAP_ROWS
 BOOT_SLOTS EQU LIBRARY_SLOTS - WRAPPED_ROWS + 1
 ; The four rows are built as cells at boot, with the LCD off, so a slide frame
-; costs a flat copy and a skip can finish the whole map inside one VBlank.
+; costs a flat copy and a skip frame stays well inside its VBlank.
 SCREEN_COLUMNS EQU 20
 SPLASH_ROW_CELLS EQU WRAPPED_ROWS * SCREEN_COLUMNS
+; A skip draws at most this many of those rows in one VBlank, the same
+; constant as SKIP_ROWS in src/dv/menu/reference.py.
+SKIP_ROWS EQU 2
 HEADER_COLUMN EQU 4
 SLOT_ROW EQU 1
 NUMBER_COLUMN EQU 1
@@ -465,9 +468,9 @@ JR Frame
 ; One displayed frame of the boot splash, numbered by SplashNumber: the fade
 ; writes BGP, the slide writes SCY and draws at most one wrapped list row, and
 ; the last slide frame settles. A button edge latches SplashSkip; from then on
-; the number jumps to the next frame that still has a row to draw, and to the
-; settled frame once the map is whole, so the skip is a handful of frames and
-; every one of them is a frame of the same schedule. The edge is consumed
+; each frame draws up to SKIP_ROWS wrapped rows and takes the schedule's own
+; number for the rows drawn, ending on the settled frame, so a skip is two
+; frames and every one of them is a frame of the same schedule. The edge is consumed
 ; here, and a held button raises no further edge, so the list never acts on it.
 SplashStep:
 LD A,[Pressed]
@@ -479,20 +482,34 @@ SplashScheduled:
 LD A,[SplashSkip]
 OR A,A
 JR Z,SplashFrame
-; The skip: whatever the map still wants, then the settled frame, all in this
-; one VBlank, so the frame the button is held in is already the menu.
+; The skip: at most SKIP_ROWS wrapped rows this VBlank, then the schedule's
+; own frame for the rows now drawn, so no VBlank carries more than half the
+; map, the map finishes in two frames and every frame shown is a frame of the
+; same schedule. The last of them is the settled frame.
 LD A,[SplashRows]
-SkipRows:
 CP A,WRAPPED_ROWS
 JR NC,SkipSettled
+LD B,SKIP_ROWS
+SkipRows:
+PUSH BC
 PUSH AF
 CALL DrawWrapped
 POP AF
+POP BC
 INC A
-JR SkipRows
-SkipSettled:
+CP A,WRAPPED_ROWS
+JR NC,SkipDone
+DEC B
+JR NZ,SkipRows
+SkipDone:
 LD [SplashRows],A
+CP A,WRAPPED_ROWS
+JR NC,SkipSettled
+ADD A,FADE_FRAMES - 1
+JR SkipTo
+SkipSettled:
 LD A,SETTLED_FRAME
+SkipTo:
 LD [SplashNumber],A
 SplashFrame:
 LD A,[SplashNumber]

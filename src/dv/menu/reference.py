@@ -74,6 +74,9 @@ FADE_FRAMES = len(FADE) * FADE_HOLD
 SLIDE_FRAMES = SETTLED_SCY // SLIDE_STEP
 # The first frame that carries the settled list: the last slide frame.
 SETTLED_FRAME = FADE_FRAMES + SLIDE_FRAMES - 1
+# A skip draws at most this many wrapped rows in one VBlank, which keeps the
+# frame's work well inside the VBlank budget the testbench measures.
+SKIP_ROWS = 2
 # The splash art, from the approved sheet: the badge and its two lines.
 BADGE_ROW, BADGE_COLUMN = 4, 8
 SPLASH_TITLE, SPLASH_TITLE_ROW, SPLASH_TITLE_COLUMN = 'GAME LIBRARY', 8, 4
@@ -227,26 +230,35 @@ def phase_of_frame(number):
     return number // PHASE_HOLD % PHASES
 
 
-def splash_state(number, skipped=False):
+def splash_state(number):
     """The boot splash state of displayed frame `number`: (bgp, scy, wrapped rows drawn).
 
     The frame counter alone decides it, as it does the nudge phase. Loop
     iteration `number` writes one register and, while the slide runs, draws
     one wrapped list row, and its writes appear in the frame it numbers.
-
-    `skipped` is a button press sampled in this frame. The image holds the
-    four wrapped rows as cells built at boot, so it finishes the map and
-    settles inside that one VBlank: the frame that takes the press is already
-    the settled frame, and the press is consumed by the splash.
     """
     if number < 0:
         raise ValueError('a frame number counts from the menu\'s first frame')
-    if skipped:
-        number = SETTLED_FRAME
     if number < FADE_FRAMES:
         return FADE[number // FADE_HOLD], 0, 0
     step = min(number - FADE_FRAMES + 1, SLIDE_FRAMES)
     return FADE[-1], SLIDE_STEP * step, min(step, WRAPPED_ROWS)
+
+
+def skip_schedule(number):
+    """The frames the splash shows from a press sampled in frame `number`.
+
+    A skip draws at most SKIP_ROWS wrapped rows a frame, so no VBlank carries
+    more than half the map and the map finishes in two frames. Each of those
+    frames is the schedule's own frame for the rows drawn so far, and the last
+    is the settled frame, so a skip shows nothing the schedule does not.
+    """
+    rows = splash_state(number)[2]
+    shown = []
+    while rows < WRAPPED_ROWS:
+        rows = min(rows + SKIP_ROWS, WRAPPED_ROWS)
+        shown.append(SETTLED_FRAME if rows == WRAPPED_ROWS else FADE_FRAMES + rows - 1)
+    return shown or [SETTLED_FRAME]
 
 
 def atlas_tiles(path, count):
