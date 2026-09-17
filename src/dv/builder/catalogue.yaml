@@ -280,6 +280,7 @@ units:
   menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 0.00}
   menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 69.15}
   menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 22.40}
+  menu-phase: {kind: sim, level: 1, labels: [system], duration_seconds: null}
   menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 77.58}
   menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 38.26}
   menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 86.57}

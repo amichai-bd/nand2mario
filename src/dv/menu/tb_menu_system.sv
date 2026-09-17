@@ -14,7 +14,9 @@
 // MBC1_ID, runs from its banked half and returns to the menu by itself) and
 // `exit` (Down, A: the built exit-demo image in slot 1 boots and shows its
 // bar frame; Start makes it write the game exit value and the menu is back,
-// pixel-exact, with the epoch advanced).
+// pixel-exact, with the epoch advanced) and `phase` (the untouched menu left
+// to animate: displayed frame 15 still carries the plain arrow and frame 16
+// the nudged one, which pins the phase boundary).
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
 /* verilator lint_off WIDTHTRUNC */
@@ -22,13 +24,19 @@ module tb_menu_system;
     import n2m_interfaces_pkg::*;
     localparam int LIBRARY_BYTES = 32'h8C000;
     localparam int FRAME_PIXELS = 23040;
-    localparam int FRAMES = 8;
+    localparam int FRAMES = 9;
     localparam int GAME_FRAME = 7;
+    localparam int PHASE_FRAME = 8;
+    // Frames the cursor holds each nudge phase (wiki/src/sw/menu/SPEC.md).
+    localparam int PHASE_HOLD = 16;
     localparam int EXIT_SLOT = 1;
     localparam int SWAP_BOUND = 80000;
     localparam int SWAP_BOUND_MBC1 = 120000;
     localparam int MBC1_SLOT = 5;
     localparam logic [7:0] STATE_PAUSE = STATE_PAUSED;
+    // VBlank is ten lines of 456 dots: 4560 dots, 1140 M-cycles. Every frame
+    // body of the menu's loop must finish inside it (wiki/src/sw/menu/SPEC.md).
+    localparam int VBLANK_MCYCLES = 1140;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
     logic physical_commit;
@@ -71,15 +79,28 @@ module tb_menu_system;
     bit capturing, frame_complete;
     logic [7:0] select_data;
     bit select_seen;
+    // Frame cost monitor: the menu's VBlank work, measured, not counted.
+    // `menu-marks.hex` carries the built image's `Frame` address and the
+    // address after its `CALL WaitVBlank`, so the RET that leaves WaitVBlank
+    // is the unique retirement whose pc_after is that body address. The dots
+    // from there to the next `CALL WaitVBlank` are the whole frame body.
+    logic retirement_valid;
+    retirement_t retirement;
+    logic [7:0] marks_mem [0:3];
+    logic [15:0] mark_frame, mark_body;
+    longint unsigned cost_start;
+    bit cost_armed;
+    integer cost_samples, cost_min, cost_max, cost_last;
 
     n2m_v05_system #(.UART_BAUD(3125000)) dut (
         .clk_sys, .reset_sys, .clk_pix, .reset_pix, .uart_rx, .uart_tx,
         .physical_commit, .physical_buttons, .effective_buttons(), .input_source_observe(),
         .red, .green, .blue, .hsync_n, .vsync_n, .display_sequence, .display_epoch,
-        .gb_tick, .paused, .core_reset, .epoch, .dot_count, .retirement_valid(), .retirement(),
+        .gb_tick, .paused, .core_reset, .epoch, .dot_count,
         .bus_commit(), .write_enable(), .address(), .write_data(), .read_data(), .irq_ack(),
         .source_valid, .source_start, .source_abort, .source_display_eligible, .source_shade,
         .source_x, .source_y, .source_epoch(), .source_dot(), .fault,
+        .retirement_valid(retirement_valid), .retirement(retirement),
         .key1_n, .sdram_initialized, .sdram_request_valid, .sdram_request_write, .sdram_request_address,
         .sdram_request_data, .sdram_request_ready, .sdram_response_valid, .sdram_response_data
     );
@@ -133,6 +154,27 @@ module tb_menu_system;
             end
         end
     end
+    // Menu frame body cost in M-cycles, bounded by VBlank. Only the menu
+    // image runs in the loader profile, so no game image can match a mark.
+    always @(posedge clk_sys) begin
+        if (!reset_sys && retirement_valid && dut.profile == PROFILE_LOADER_ID) begin
+            if (retirement.pc_after == mark_body) begin
+                cost_start = retirement.dot;
+                cost_armed = 1;
+            end else if (cost_armed && retirement.pc_before == mark_frame) begin
+                cost_armed = 0;
+                cost_last = integer'((retirement.dot - cost_start) / 4);
+                cost_samples = cost_samples + 1;
+                if (cost_last > cost_max) cost_max = cost_last;
+                if (cost_last < cost_min) cost_min = cost_last;
+                $display("MENU_COST frame=%0d mcycles=%0d time_ns=%0t", cost_samples - 1, cost_last, $time);
+                if (cost_last > VBLANK_MCYCLES)
+                    $fatal(1, "MENU_VBLANK_OVERRUN frame=%0d mcycles=%0d budget=%0d",
+                        cost_samples - 1, cost_last, VBLANK_MCYCLES);
+            end
+        end
+    end
+
     // The select register commit: the menu's only write into $6000-$7FFF.
     always @(posedge clk_sys) begin
         if (!reset_sys && dut.bus_commit && dut.write_enable && dut.address >= 16'h6000 && dut.address <= 16'h7FFF) begin
@@ -353,6 +395,25 @@ module tb_menu_system;
         read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd34, 8'hFF, LIBRARY_RESULT_OK, 8'h60});
     endtask
 
+    // Let `count` more display-eligible frames start; the menu is untouched.
+    task automatic idle_frames(input int count);
+        int step_index;
+        for (step_index = 0; step_index < count; step_index = step_index + 1) frame_start(1200000);
+    endtask
+
+    // The nudge is the frame counter's bit 4, so the phase of displayed frame
+    // m is bit 4 of m. Sampling the last plain frame and the first nudged one
+    // pins that boundary at frame 16; the return to phase 0 at frame 32 costs
+    // sixteen more simulated frames and is left to the host reference test,
+    // which shares the same constant.
+    task automatic fixture_phase;
+        boot_menu();
+        idle_frames(PHASE_HOLD - 1);
+        check_frame(0);
+        idle_frames(1);
+        check_frame(PHASE_FRAME);
+    endtask
+
     task automatic fixture_frame;
         boot_menu();
         step(BUTTON_DOWN, 1);
@@ -461,10 +522,14 @@ module tb_menu_system;
         for (command_count=0;command_count<256;command_count=command_count+1) expected_mask[command_count]=8'hFF;
         command_count = 0;
         capturing = 0; frame_complete = 0; select_seen = 0; select_data = 0;
+        cost_armed = 0; cost_start = 0; cost_samples = 0; cost_min = 1 << 30; cost_max = 0; cost_last = 0;
         if (!$value$plusargs("fixture=%s", fixture)) fixture = "frame";
         pixel_fault = $test$plusargs("pixel_fault");
         $readmemh("menu-library.hex", library_mem);
         $readmemh("menu-frames.hex", frames_mem);
+        $readmemh("menu-marks.hex", marks_mem);
+        mark_frame = {marks_mem[1], marks_mem[0]};
+        mark_body = {marks_mem[3], marks_mem[2]};
         repeat (5) @(negedge clk_sys);
         reset_sys = 0; reset_pix = 0;
         repeat (3) @(negedge clk_sys);
@@ -477,8 +542,11 @@ module tb_menu_system;
             "refused": fixture_refused();
             "select-mbc1": fixture_select_mbc1();
             "exit": fixture_exit();
+            "phase": fixture_phase();
             default: $fatal(1, "MENU_SYS_FIXTURE %s", fixture);
         endcase
+        if (cost_samples == 0) $fatal(1, "MENU_COST_MISSING");
+        $display("MENU_COST_SUMMARY frames=%0d min=%0d max=%0d budget=%0d", cost_samples, cost_min, cost_max, VBLANK_MCYCLES);
         $display("PASS menu-%s checks=%0d frames=%0d selects=%0d commands=%0d", fixture, checks, frames_checked, selects, command_count);
         $finish;
     end

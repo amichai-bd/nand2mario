@@ -12,7 +12,10 @@ keeps every section in ROM0 because the upper half is the banked window;
 `assets/font-tiles.json` is the 39-tile font atlas whose glyphs are the
 approved Springtrail core font plus an original blank and cursor arrow.
 
-`assets/design/` holds the original 8x8 art of the proposed
-[design directions](../../../wiki/src/sw/menu/DESIGN.md). Those tiles are not
-linked into the image; render them with
+`assets/design/direction-a-tiles.json` is the chosen design's original art,
+the nudged cursor arrow and the two plate caps, linked into the image as
+`ASSET "Plate"`; the inverse bank is derived from the font at boot. The other
+two files hold the art of the
+[design directions](../../../wiki/src/sw/menu/DESIGN.md) the owner did not
+choose; those tiles are not linked into the image. Render every direction with
 `python -m tools.sw.menu_art --tag <fresh-tag>`.

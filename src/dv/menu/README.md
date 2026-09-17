@@ -13,10 +13,12 @@ tilemap or DUT state.
 [`fixture.py`](fixture.py) is the `menu` preload builder. Before each run it
 builds the menu image through `sw build menu` and the
 [`exit-demo`](../../sw/exit-demo/main.asm) game through `sw build exit-demo`,
-writes the sixteen-slot SDRAM library (`menu-library.hex`) and the reference
-frames (`menu-frames.hex`: the scripted menu frames, then the exit-demo game
-frame) into the attempt directory. Slot 1 holds the built `EXIT DEMO` image:
-a solid bar on map row 8 (pixel rows 64..71 shade 3, the rest shade 0) and,
+writes the sixteen-slot SDRAM library (`menu-library.hex`), the reference
+frames (`menu-frames.hex`: the scripted menu frames, the exit-demo game frame,
+then the boot frame in nudge phase 1) and `menu-marks.hex` (the built image's
+`Frame` address and the address after its `CALL WaitVBlank`, taken from the
+build's own symbol and listing records) into the attempt directory. Slot 1
+holds the built `EXIT DEMO` image: a solid bar on map row 8 (pixel rows 64..71 shade 3, the rest shade 0) and,
 while Start is held, one write of the game exit value per frame. Slots 0, 2,
 7, 8, 9, 10 and 15 hold stub games titled `SPRINGTRAIL`, `V05 BUTTONS`,
 `SIXTEEN CHAR ROW`, `CGB ONLY TITLE` + `0x00 0xC0`, `ABC-123 XYZ 789`,
@@ -46,6 +48,8 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 | MBC1 select | Five Downs (the fifth frame pixel-exact with the cursor on slot 5) then A: the write carries 5; the core boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; the game's bank 2 code returns to the menu (epoch + 2, index still 5) and the menu runs in `LOADER_ID` |
 | Exit register | Down then A starts the built `exit-demo` image in slot 1 (`DIRECT_ID`, epoch + 1, result `OK` index 1) and its first frame equals the independent bar reference; after the swap's core reset returned the input source to its UART default, the board joypad is selected again and Start is pressed: the only write into `$6000`-`$7FFF` carries `$10`, the menu is back in `LOADER_ID` with epoch + 2, result `OK`, index still 1, running without a host `RUN`, and its first frame equals reference frame 0 |
 | Refused select | Cursor on the empty slot 3, A: `LIBRARY_STATUS` result `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up moves the cursor while the message stays; A on slot 2 starts that game with select data 2; `window_ready` stays set across the refused select |
+| Nudge phase | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and frame 16 the nudged one, both pixel-exact, which pins the phase boundary at 16. The return to phase 0 at frame 32 is not simulated; it costs sixteen more simulated frames and follows from the bit-4 constant the image and `reference.phase_of_frame` share, which `test_menu_reference.py` covers |
+| Frame budget | Every menu frame body, measured between the marks from the retirement stream, stays inside VBlank's 1140 M-cycles; the run prints each `MENU_COST` and fails with `MENU_VBLANK_OVERRUN` above it |
 | Checker | `+pixel_fault` forces the source shade to 2 for the boot frame and must fail with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 | Reference | `test_menu_reference.py`: font tiles equal the approved core glyphs, glyph mapping, the CGB flag rule in the last title cell only, layout rows, status texts, fixture library bytes and catalogue entry packing, snapshot unpacking and the negative pixel check |
 
@@ -57,14 +61,16 @@ frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
 | `menu-select` | `select` | `PASS menu-select checks=8 frames=2 selects=1 commands=8` |
 | `menu-select-mbc1` | `select-mbc1` | `PASS menu-select-mbc1 checks=9 frames=2 selects=1 commands=8` |
 | `menu-exit` | `exit` | `PASS menu-exit checks=14 frames=4 selects=1 commands=11` |
+| `menu-phase` | `phase` | `PASS menu-phase checks=6 frames=3 selects=0 commands=6` |
 | `menu-refused` | `refused` | `PASS menu-refused checks=13 frames=6 selects=1 commands=9` |
 | `menu-frame-fault` | `frame` with `+pixel_fault` | nonzero exit with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label menu --tag <tag>`;
-`menu-select-mbc1` carries the `mbc1` and `system` labels and `menu-exit` the
-`system` label instead, so the `menu` aggregate stays inside the ordinary
-300-second budget.
+`menu-select-mbc1` carries the `mbc1` and `system` labels and `menu-exit` and
+`menu-phase` the `system` label instead, so the `menu` aggregate stays inside
+the ordinary 300-second budget; `menu-phase` has to idle through 17 displayed
+frames to reach the phase boundary, which no shorter check can prove.
 Verilator evidence is preliminary; the board evidence is the
 [game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions),
 with the exit register in
