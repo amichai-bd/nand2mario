@@ -18,8 +18,9 @@ frames (`menu-frames.hex`: the scripted menu frames, the exit-demo game frame,
 then the boot frame in nudge phase 1; `menu-splash.hex` the splash schedule and
 `menu-delayed.hex` and `menu-delayed-worst.hex` the delayed catalogue path at
 each alignment, one file per fixture) and `menu-marks.hex` (the built image's
-`Frame` address and the address after its `CALL WaitVBlank`, taken from the
-build's own symbol and listing records) into the attempt directory. Slot 1
+`Frame` address, the address after its `CALL WaitVBlank` and its `Cursor`
+byte's address, taken from the build's own symbol and listing records) into
+the attempt directory. Slot 1
 holds the built `EXIT DEMO` image: a solid bar on map row 8 (pixel rows 64..71 shade 3, the rest shade 0) and,
 while Start is held, one write of the game exit value per frame. Slots 0, 2,
 7, 8, 9, 10 and 15 hold stub games titled `SPRINGTRAIL`, `V05 BUTTONS`,
@@ -50,7 +51,10 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 
 | Requirement | Independent check |
 |---|---|
-| Boot frame | The first display-eligible frame equals reference frame 0: header, fifteen numbered rows above the window's plate, the star field's eight cells, nine titles with a blank last cell on the CGB-flagged slots 8 and 10, `BANKED GAME` once at slot 5, blank rows for slots 3, 6 and 11..14, the `SHORT IMAGE` title of slot 4, cursor on slot 0, slot 0's `DIRECT   32 KB` and its tagline on the footer's two rows; `LIBRARY_STATUS` shows bank 34 and result `OK` |
+| Boot frame | The first display-eligible frame equals reference frame 0: header, fifteen numbered rows above the window's plate, the star field's eight cells, nine titles with a blank last cell on the CGB-flagged slots 8 and 10, `BANKED GAME` once at slot 5, blank rows for slots 3, 6 and 11..14, the `SHORT IMAGE` title of slot 4, cursor on slot 0, the dim press-A badge, slot 0's `DIRECT   32 KB` and its tagline on the footer's two rows; `LIBRARY_STATUS` shows bank 34 and result `OK` |
+| Scroll ramp | A slot deposited into the menu's `Cursor` byte at a frame's first pixel is treated as a move. `menu-scroll` deposits 15: the next four frames carry SCY 146, 148, 150 and 152 with the header sliding off, slot 15's `LAST SLOT` row sliding in above the plate and the pointer riding its row over the plate, the footer staged on the first; Up on the scrolled frame ramps back over four frames to the settled slot 14. `menu-select-last` deposits 14, which stages and settles like a move, then Down crosses the boundary by a real joypad edge and the same four frames follow. Every frame is pixel-exact |
+| Last slot | A on the scrolled frame commits 15 to the select register and `LAST SLOT` boots in `DIRECT_ID` with epoch + 1 and result `OK` index 15, so every slot 0..15 is reachable and selectable |
+| Press-A pulse | The badge in the footer's first plate cell is dim in nudge phase 0 and ink in phase 1: frame 0 and `menu-phase`'s frame 15 carry the dim cell, its frame 16 the ink one, in the same frame as the pointer nudge and the star twinkle |
 | Footer | Every cursor move is compared twice: the frame that shows it carries the new slot on the footer's upper row and the slot before it on the lower one, and the frame after it is settled. `menu-frame` covers two direct slots, `menu-refused` the empty slot and the message that replaces the tagline, `menu-select-mbc1` the 64 KiB entry's `MBC1     64 KB` |
 | Cursor | Down, Down, Up show the cursor on slots 1, 2, 1; Up at slot 0 and a repeated Up leave frame 0 unchanged once the footer has settled; every frame is 23040 pixels in source order |
 | Select | Down then A: the only write into `$6000`-`$7FFF` carries 1; the core boots in `DIRECT_ID` with epoch + 1, `LIBRARY_STATUS` result `OK` index 1 |
@@ -60,7 +64,7 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 | Nudge phase | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and the star field's first phase, frame 16 the nudged arrow and its second, both pixel-exact, which pins the phase boundary at 16 for the pointer and the stars together. The return to phase 0 at frame 32 is not simulated; it costs sixteen more simulated frames and follows from the bit-4 constant the image and `reference.phase_of_frame` share, which `test_menu_reference.py` covers |
 | Frame budget | Every menu frame body, measured between the marks from the retirement stream, stays inside VBlank's 1140 M-cycles; the run prints each `MENU_COST` and fails with `MENU_VBLANK_OVERRUN` above it. An image swap resets the core and its dot counter, so a measurement that would span one is discarded and the first frame after a return is measured from the new epoch's first `WaitVBlank` exit; the discarded count must equal the swaps the fixture scripts, or the run fails with `MENU_COST_SPANS` |
 | Delayed catalogue | The menu boots with `sdram_ready` clear: the list settles with the slot numbers alone, no titles, no footer and `NOT READY` on the plate. The testbench releases the ready bit after a named frame, the next frame carries the committed bank and the cleared plate, and each frame after it one more title row, every one pixel-exact, ending on the whole list with bank 34 and both window bits set. The frame that changes the nudge phase draws half its row and the next frame draws the rest, so one compared frame shows a half-drawn row. `menu-delayed` releases the bit at once, which splits an empty slot; `menu-delayed-worst` holds it seven frames longer, which splits the sixteen-letter title of slot 7, the most expensive row the path can draw |
-| Tile range | Every map cell the menu writes, on the background map and the window map alike, names a tile in its 100-tile bank; a write outside it fails with `MENU_TILE_RANGE`. This bounds a row drawn with the wrong bank offset wherever it runs, the delayed catalogue path included |
+| Tile range | Every map cell the menu writes, on the background map and the window map alike, names a tile in its 102-tile bank; a write outside it fails with `MENU_TILE_RANGE`. This bounds a row drawn with the wrong bank offset wherever it runs, the delayed catalogue path included |
 | Checker | `+pixel_fault` forces the source shade to 2 for the boot frame and must fail with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 | Reference | `test_menu_reference.py`: font tiles equal the approved core glyphs, glyph mapping, the CGB flag rule in the last title cell only, layout rows, status texts, fixture library bytes and catalogue entry packing, snapshot unpacking and the negative pixel check |
 
@@ -68,12 +72,14 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 
 | Target | Fixture | Expected result |
 |---|---|---|
-| `menu-frame` | `frame` | `PASS menu-frame checks=9 frames=6 selects=0 commands=6` |
+| `menu-frame` | `frame` | `PASS menu-frame checks=12 frames=9 selects=0 commands=6` |
 | `menu-select` | `select` | `PASS menu-select checks=8 frames=2 selects=1 commands=8` |
-| `menu-select-mbc1` | `select-mbc1` | `PASS menu-select-mbc1 checks=9 frames=2 selects=1 commands=8` |
+| `menu-select-mbc1` | `select-mbc1` | `PASS menu-select-mbc1 checks=10 frames=3 selects=1 commands=8` |
 | `menu-exit` | `exit` | `PASS menu-exit checks=14 frames=4 selects=1 commands=11` |
 | `menu-phase` | `phase` | `PASS menu-phase checks=6 frames=3 selects=0 commands=6` |
-| `menu-refused` | `refused` | `PASS menu-refused checks=13 frames=6 selects=1 commands=9` |
+| `menu-refused` | `refused` | `PASS menu-refused checks=15 frames=8 selects=1 commands=9` |
+| `menu-scroll` | `scroll` | `PASS menu-scroll checks=13 frames=10 selects=0 commands=6` |
+| `menu-select-last` | `select-last` | `PASS menu-select-last checks=14 frames=8 selects=1 commands=8` |
 | `menu-delayed` | `delayed` | `PASS menu-delayed checks=22 frames=19 selects=0 commands=6` |
 | `menu-delayed-worst` | `delayed-worst` | `PASS menu-delayed-worst checks=29 frames=26 selects=0 commands=6` |
 | `menu-frame-fault` | `frame` with `+pixel_fault` | nonzero exit with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
@@ -82,14 +88,19 @@ Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 the boot frames with `python3 tools/build.py tests run --label menu --tag
 <tag>` and the selection paths with `--label menu-library` and the delayed draw with `--label menu-delayed`, which needs a label of its own because the three do not fit one 300-second aggregate; `menu-phase` and
 `menu-splash` carry `menu-animation`, `menu-select-mbc1` the `mbc1` and
-`system` labels, `menu-exit` the `system` label, and `menu-delayed-worst` a
+`system` labels, `menu-exit` the `system` label, `menu-scroll` and
+`menu-select-last` the `menu-scroll` label, because neither the `menu` nor the
+`menu-library` aggregate can hold two more ramps, and `menu-delayed-worst` a
 label of its own beside `system`, because its alignment is structurally seven
 frames longer than the ordinary per-simulation target permits and it runs as a
 declared wall allowance; `system` is the aggregate above one RTL owner, not an
 ordinary 300-second one, so every aggregate stays
 inside the ordinary 300-second budget with headroom; `menu-phase` has to
 display 18 frames to reach the phase boundary, which no shorter check can
-prove.
+prove. The scroll fixtures deposit a slot into the menu's `Cursor` byte
+through the testbench rather than walk the joypad there: fourteen Downs at
+two frames each would cost more than the per-simulation target, and the moves
+that cross the scroll boundary are still joypad edges.
 Verilator evidence is preliminary; the board evidence is the
 [game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions),
 with the exit register in

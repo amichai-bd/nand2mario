@@ -80,10 +80,10 @@ header and **fifteen slot rows**. Slot 15 is below the window at rest.
 [Idea 6](#6-smooth-scroll-and-a-press-a-pulse) is what brings it back. Its SCY
 ramp scrolls the header off the top when the cursor passes the last visible
 row, which puts sixteen slot rows in the fifteen the window leaves. The cursor
-reaches every slot 0..15 exactly as it does today; only the resting view is
-shorter. That is the shipped frame now: the window carries the plate, the
-[SPEC](SPEC.md#the-list) owns the fifteen resting rows, and until idea 6 lands
-a cursor on slot 15 sits on the plate's upper row with no title beside it.
+reaches every slot 0..15 exactly as it did before the window; only the resting
+view is shorter. That is the shipped frame: the window carries the plate, the
+[SPEC](SPEC.md#the-list) owns the fifteen resting rows and the
+[scroll ramp](SPEC.md#the-scroll-ramp) that shows the sixteenth.
 
 ### What each idea does under this decision
 
@@ -114,14 +114,15 @@ a cursor on slot 15 sits on the plate's upper row with no title beside it.
 Grey plates and a sprite cursor together retire the inverse bank: with no
 inverse bar and no black plate, nothing is drawn as `3 - shade` any more, and
 the [direction A](DESIGN.md) caps and nudged arrow leave the image with it. The
-shipped bank is the 100 tiles listed in the [SPEC](SPEC.md#frame-layout): the 39
+shipped bank is the 102 tiles listed in the [SPEC](SPEC.md#frame-layout): the 39
 font tiles, the same 39 on a mid-grey page, the six authored grey cells, the
 two pointer phases, the eight badge cells of the boot splash, the four star
-cells and the footer's two cells on the grey page. Every derived
-bank costs zero ROM bytes, because the font and the footer art
-use only shade 0 and shade 3, so the grey copy is the low plane with
-the high plane set. The footer needs no plain copy of its two cells, because
-no cell of the frame draws them off the plate.
+cells, the footer's two cells and the press-A badge's two phases on the grey
+page. Every derived bank costs zero ROM bytes: the font and the footer art
+use only shade 0 and shade 3, so their grey copy is the low plane with
+the high plane set, and the press-A badge's dim phase uses shade 1, so its
+copy sets the high plane only where the low plane is clear. Neither needs a
+plain copy of its cells, because no cell of the frame draws them off the plate.
 
 ## 1. Boot splash
 
@@ -322,3 +323,14 @@ In the preview the header scrolls away with the list.
   move carries which offset, and which row entered. With the pulse phase that
   is `expected('scroll-N')` and `expected('pulse-N')`. This and the object pass
   of idea 2 are the two largest reference changes.
+- Built: the [scroll ramp](SPEC.md#the-scroll-ramp) and the
+  [press-A pulse](SPEC.md#the-press-a-pulse) of the SPEC. The composite layout
+  left one row to scroll, slot 15's behind the plate, so the ramp is the four
+  frames from SCY 144 to 152 and back, the cursor alone names the target, and
+  no row is drawn for it: slot 15's row has been in the map since boot, so the
+  prebuilt row this note priced is not needed and the entering row costs
+  nothing. The footer took both window rows, so the `PRESS A TO START` line
+  became the badge alone, in the footer row's first plate cell, pulsing dim
+  and ink on the nudge phase; `phase-N` names both pulse phases and there is
+  no separate `pulse-N`. The [frame budget](SPEC.md#frame-budget) owns the
+  measurements.
