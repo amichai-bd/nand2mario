@@ -244,16 +244,17 @@ LDH [GB_REG_LCDC],A
 ; One sampled update per frame, all map writes inside VBlank.
 Frame:
 CALL WaitVBlank
-; One frame loop iteration per displayed frame, so bit 4 of this counter is
-; the nudge phase of the frame the writes below appear in.
-LD A,[FrameCount]
-INC A
-LD [FrameCount],A
 CALL ReadButtons
 CALL Navigate
 CALL Catalogue
 CALL ShowCursor
 CALL ShowStatus
+; One loop iteration per displayed frame, and an iteration's writes appear in
+; the frame it numbers, so the counter names that frame and bit 4 of it is
+; that frame's nudge phase. It advances after the writes, not before.
+LD A,[FrameCount]
+INC A
+LD [FrameCount],A
 JR Frame
 
 WaitVBlank:

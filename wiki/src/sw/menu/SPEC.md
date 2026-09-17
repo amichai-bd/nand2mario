@@ -133,13 +133,14 @@ plain plate.
 ### Selection bar and nudge
 
 The selected slot's cells 1..19 are the same tiles plus 39, the inverse bank,
-and column 0 carries the arrow. A frame counter byte increments once per
-frame loop iteration, at the top of the body, and bit 4 of it is the nudge
+and column 0 carries the arrow. A frame counter byte advances once per frame
+loop iteration, after that iteration's writes, and bit 4 of it is the nudge
 phase: on phase 1 column 0 holds the nudged arrow, the same arrow one pixel
 to the right, so the cursor ticks every 16 frames. The loop runs exactly once
-per displayed frame, so the phase follows from the frame number alone with no
-console state: displayed frame `m`, counted from the menu's first
-display-eligible frame, carries phase bit 4 of `m`, which
+per displayed frame and an iteration's writes appear in the frame its counter
+names, so the phase follows from the frame number alone with no console
+state: displayed frame `m`, counted from the menu's first display-eligible
+frame, carries phase bit 4 of `m`, which
 [`reference.phase_of_frame`](../../../../src/dv/menu/reference.py) computes.
 
 ### Frame budget
