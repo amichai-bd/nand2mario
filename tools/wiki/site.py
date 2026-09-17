@@ -34,6 +34,12 @@ def approved_image(path, data):
 
 
 PRIVATE_SUFFIXES = set(".rom .sav .srm .hex .mem .mif .gba .nds .state .rtc .pem .key".split())
+# Original generated art, not a memory image of anything private: the shell
+# bezel's ROM contents, which the fitted scanout reads
+# (wiki/src/rtl/vga/MAS_vga.md#border-selection). Named exactly, so the private
+# suffix rule still covers every other file.
+GENERATED_CONTENTS = {"src/rtl/vga/n2m_vga_bezel_map.mif",
+                      "src/rtl/vga/n2m_vga_bezel_tiles.mif"}
 PRIVATE_NAMES = {".env", ".n2m.local.toml", "credentials.json", "secrets.json"}
 SIGNATURES = (b"%PDF-", b"\x89PNG", b"GIF87a", b"GIF89a", b"PK\x03\x04", b"\xff\xd8\xff", b"RIFF", b"\xd0\xcf\x11\xe0")
 DOCUMENT_SUFFIXES = {".md", ".html", ".svg"}
@@ -60,7 +66,7 @@ def github(path: str, fragment: str = "") -> str:
 
 def checked_text(path: str, data: bytes) -> str:
     parts = path.replace("\\", "/").lower().split("/")
-    if (any(part in {"private", "workdir"} for part in parts)
+    if path not in GENERATED_CONTENTS and (any(part in {"private", "workdir"} for part in parts)
             or parts[-1] in PRIVATE_NAMES or parts[-1].startswith(".env.")
             or Path(parts[-1]).suffix in PRIVATE_SUFFIXES):
         raise ValueError(f"Prohibited private content path: {path}")
