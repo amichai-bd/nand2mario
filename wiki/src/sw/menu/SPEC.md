@@ -506,11 +506,12 @@ compares every captured display-eligible frame; the
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
 Every target runs within the ordinary wall budget and under the 120-second
-per-simulation target; `menu-select-mbc1`, `menu-exit`, `menu-phase` and
-`menu-splash` carry the `mbc1`/`system` and `system` labels so the `menu`
-label aggregate stays inside it. `menu-phase` and `menu-splash` also carry
-`menu-animation`, a label of their own, so either can be run alone without
-the `system` aggregate. Simulated frames set those walls, so each fixture
+per-simulation target, and every label aggregate stays inside the ordinary
+300-second budget with room for the work still to come. `menu-frame` and
+`menu-frame-fault` carry `menu`; `menu-select` and `menu-refused` carry
+`menu-library`, the selection paths; `menu-phase` and `menu-splash` carry
+`menu-animation`; `menu-select-mbc1` carries `mbc1` and `menu-exit` only
+`system`, so each can be run without the `system` aggregate. Simulated frames set those walls, so each fixture
 displays as few as its checks allow: the skipped splash costs two frames, a
 press rides the frame that shows the previous press's result, and only a
 repeated mask takes a release frame. What is left is a floor. `menu-splash`

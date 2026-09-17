@@ -70,11 +70,13 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 | `menu-frame-fault` | `frame` with `+pixel_fault` | nonzero exit with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
-all of them with `python3 tools/build.py tests run --label menu --tag <tag>`;
-`menu-select-mbc1` carries the `mbc1` and `system` labels and `menu-exit` and
-`menu-phase` the `system` label instead, so the `menu` aggregate stays inside
-the ordinary 300-second budget; `menu-phase` has to display 18 frames to reach
-the phase boundary, which no shorter check can prove.
+the boot frames with `python3 tools/build.py tests run --label menu --tag
+<tag>` and the selection paths with `--label menu-library`; `menu-phase` and
+`menu-splash` carry `menu-animation`, `menu-select-mbc1` the `mbc1` and
+`system` labels, and `menu-exit` the `system` label, so every aggregate stays
+inside the ordinary 300-second budget with headroom; `menu-phase` has to
+display 18 frames to reach the phase boundary, which no shorter check can
+prove.
 Verilator evidence is preliminary; the board evidence is the
 [game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions),
 with the exit register in
