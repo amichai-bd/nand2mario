@@ -371,8 +371,8 @@ measured from the new epoch's first poll rather than across the swap.
 | Delayed catalogue: the not-ready boot frame, idle | 233 | 20% |
 | Delayed catalogue: the bank commit and the plate's status redraw | 499 | 44% |
 | Delayed catalogue: one title row | 476-1124 | 42-99% |
-| Delayed catalogue: the first half of a row and the nudge phase change | 616 | 54% |
-| Delayed catalogue: the second half of that row | 443 | 39% |
+| Delayed catalogue: the first half of a row and the nudge phase change | 616-940 | 54-82% |
+| Delayed catalogue: the second half of that row | 443-780 | 39-68% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
 select from `menu-refused`, the splash rows from `menu-splash` and
@@ -413,9 +413,11 @@ the eight star cells are rewritten: 194 M-cycles, the 432 of a nudge frame
 against the 238 of an idle one. A whole row plus that is past the budget, so
 that frame draws the first half of its row and the next frame the other half,
 as the [behavior](#behavior) states. `menu-delayed` measured the pair at 616
-and 443 on a blank row. Which row is split follows from when the SDRAM answers;
-`menu-delayed-worst` splits the widest title, the most expensive one the path
-can carry. MEASURED-LATER: the halves of that row.
+and 443 on a blank row. Which row is split follows from when the SDRAM answers,
+so `menu-delayed-worst` splits the widest title, the most expensive row the
+path can carry: 940 for the half that also twinkles and 780 for the other,
+against the 1124 the whole row costs. The split is what holds the margin; the
+sum would be 1318.
 
 No flow boots the menu with the bit clear today. The boot copier holds
 `sdram_ready` low only in `WAIT_SDRAM`, `CHECK` and `COPY` and raises the menu
@@ -560,8 +562,9 @@ stimulus, and `menu-delayed-worst` is seven frames longer again for the same
 structural reason.
 `menu-delayed` measured 123.60 seconds: its 19 frames are a floor, because
 sixteen rows drawn one to the frame cannot arrive sooner and the split row
-costs one frame more. MEASURED-LATER: the declared allowance
-`menu-delayed-worst`.
+costs one frame more. `menu-delayed-worst` is seven frames longer again and
+measured 182.91 seconds, a declared wall allowance in a label of its own rather
+than a target of the ordinary budget.
 The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
 each target's last run. `menu-frame` and `menu-frame-fault` carry `menu`;
