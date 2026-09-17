@@ -70,7 +70,7 @@ module n2m_vga_scan #(
     // black everywhere else, on the coordinates the shade is registered with.
     logic [11:0] bezel_rgb;
     generate if (SHELL_BEZEL) begin : g_shell
-`include "src/rtl/vga/n2m_vga_bezel_rom.svh"
+`include "src/rtl/vga/n2m_vga_bezel_palette.svh"
         logic [6:0] cell_x, cell_y;
         logic border_cell;
         logic [10:0] cell_index;
@@ -94,10 +94,39 @@ module n2m_vga_scan #(
                     cell_index = 11'd1320 + 11'd80 * (11'(cell_y) - 11'd57) + 11'(cell_x);
             end
         end
-        // Memory read registers, like the frame RAM: no reset and no
-        // initialization, so they prime from the raster while reset is held.
-        `DFF(tile, bezel_map[cell_index], clk_pix)
-        `DFF(tile_pixel, bezel_tile_rom[{tile, y[2:0], x[2:0]}], clk_pix)
+        // Two read stages with no reset and no initialization, like the frame
+        // RAM: they prime from the free-running raster while reset is held.
+        // MAX 10 synthesis instantiates the vendor ROM with the same generated
+        // contents; Verilator predefines VERILATOR and reads the array form.
+        // No memory template is inferred on either path.
+`ifdef VERILATOR
+`include "src/rtl/vga/n2m_vga_bezel_rom.svh"
+        `DFF(tile, BEZEL_MAP[cell_index], clk_pix)
+        `DFF(tile_pixel, BEZEL_TILE_ROM[{tile, y[2:0], x[2:0]}], clk_pix)
+`else
+        altsyncram #(
+            .intended_device_family("MAX 10"), .ram_block_type("M9K"),
+            .operation_mode("ROM"), .lpm_type("altsyncram"),
+            .width_a(6), .widthad_a(11), .numwords_a(BEZEL_CELLS),
+            .address_reg_a("CLOCK0"), .outdata_reg_a("UNREGISTERED"),
+            .clock_enable_input_a("BYPASS"), .clock_enable_output_a("BYPASS"),
+            .init_file("src/rtl/vga/n2m_vga_bezel_map.mif")
+        ) u_map (
+            .clock0(clk_pix), .clocken0(1'b1), .aclr0(1'b0),
+            .address_a(cell_index), .q_a(tile)
+        );
+        altsyncram #(
+            .intended_device_family("MAX 10"), .ram_block_type("M9K"),
+            .operation_mode("ROM"), .lpm_type("altsyncram"),
+            .width_a(4), .widthad_a(12), .numwords_a(BEZEL_TILE_PIXELS),
+            .address_reg_a("CLOCK0"), .outdata_reg_a("UNREGISTERED"),
+            .clock_enable_input_a("BYPASS"), .clock_enable_output_a("BYPASS"),
+            .init_file("src/rtl/vga/n2m_vga_bezel_tiles.mif")
+        ) u_tiles (
+            .clock0(clk_pix), .clocken0(1'b1), .aclr0(1'b0),
+            .address_a({tile, y[2:0], x[2:0]}), .q_a(tile_pixel)
+        );
+`endif
         assign bezel_rgb = BEZEL_PALETTE[tile_pixel];
     end else begin : g_none
         assign bezel_rgb = 12'h000;

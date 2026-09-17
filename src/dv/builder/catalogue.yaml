@@ -684,6 +684,7 @@ units:
   tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.14, inputs: [src/dv/cpu/generate_vectors.py]}
   tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.58, inputs: [src/dv/builder, src/dv/display, src/dv/integration, src/dv/mooneye, src/dv/preload, src/dv/python, src/rtl/common, src/rtl/display, src/rtl/interfaces, src/rtl/joypad, src/rtl/ppu/GPL-3.0.txt, src/sw/generated/interfaces.inc, tools/build.py, tools/n2m, tools/sw]}
   tools/n2m/tests/test_vga_bezel.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 2.19, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/vga_bezel, wiki/src/rtl/vga/previews]}
+  tools/n2m/tests/test_vga_bezel_sources.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 1.35, inputs: [src/rtl/vga/n2m_vga_bezel_rom.svh, tools/sw/vga_bezel]}
   tools/n2m/tests/test_windows_camera.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: null, inputs: []}
   tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.14, inputs: [src/dv/display/tb_dmg_tile_pixel.sv, src/rtl/display/dmg_tile_pixel.sv]}
   tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: 0.13, inputs: []}

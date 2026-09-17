@@ -55,12 +55,9 @@ def fixture(folder, lcd=False):
     ram = row("M9Ks", "18 / 182 ( 10 % )") + row("Total block memory bits", "138,240 / 1,677,312 ( 8 % )")
     for bank in range(3):
         ram += row(f"u_bridge|banks[{bank}].u_ram|u_storage|ram|auto_generated|ALTSYNCRAM", "M9K", "True Dual Port", "Dual Clocks", "23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080", "6", "None", "six locations", "Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown")
-    outputs = []
-    for color_index, color in enumerate(("red", "green", "blue")):
-        for bit in range(4):
-            copy = color_index * 2 + bit // 2
-            register = f"u_bridge|u_scan|gray_out[{bit % 2}]" + (f"~_Duplicate_{copy}" if copy else "")
-            outputs.append((f"{color}[{bit}]", register))
+    # One register bit per pin; the fitter may replicate a bit later.
+    outputs = list(zip(fpga_vga.PORTS, fpga_vga.RGB_REGISTERS))
+    outputs = [pair for pair in outputs if not pair[0].endswith("sync_n")]
     outputs += [("hsync_n", "u_bridge|u_scan|hs_out"), ("vsync_n", "u_bridge|u_scan|vs_out")]
     for port, register in outputs:
         ram += row(register, "Packed Register", "Register Packing", "Timing optimization", "Q", "", port + "~output", "I", "")
@@ -85,7 +82,7 @@ def fixture(folder, lcd=False):
                 for bit, (_, register) in enumerate(outputs[:12]):
                     for check in ("setup", "hold"):
                         data = row("0.750", launch, register, pix_clock, pix_clock, "39.683", "0.000", "1.000")
-                        write(prefix + f"blank_{name}_gray{bit}_{check}.rpt", report(f"Report Timing: Found 1 {check} paths (0 violated).", model_name, data))
+                        write(prefix + f"blank_{name}_rgb{bit}_{check}.rpt", report(f"Report Timing: Found 1 {check} paths (0 violated).", model_name, data))
         port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in fpga_vga.PORTS) + "}]"
         data = row("set_max_skew", "1.000", "2.000", "1.000", "", port_filter, "", "", "")
         data += "".join(row("--", "1.000", "2.000", "1.000", outputs[i % 14][1], outputs[i % 14][0], pix_clock, pix_clock, "") for i in range(28))
@@ -177,12 +174,12 @@ class VgaEvidenceTests(unittest.TestCase):
             pixel = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
             for name, old, new in [
                 ("vga_slow0_blank_seen_sys_setup.rpt", "clk_sys", pixel),
-                ("vga_slow85_blank_request_gray1_hold.rpt", pixel, "clk_sys"),
-                ("vga_slow0_outputs_max.rpt", "gray_out[0]", "x_out[6]"),
+                ("vga_slow85_blank_request_rgb1_hold.rpt", pixel, "clk_sys"),
+                ("vga_slow0_outputs_max.rpt", "rgb_out[8]", "x_out[6]"),
                 ("vga_fast0_blank_pix_hold.rpt", "; 0.500 ;", "; -0.001 ;"),
-                ("vga_slow85_blank_active_gray0_setup.rpt", "u_bridge|blank_active", "u_bridge|request"),
-                ("vga_slow0_blank_request_gray0_hold.rpt", "gray_out[0]", "gray_out[1]"),
-                ("vga_fast0_blank_active_gray1_setup.rpt", "; 0.750 ;", "; -0.001 ;"),
+                ("vga_slow85_blank_active_rgb0_setup.rpt", "u_bridge|blank_active", "u_bridge|request"),
+                ("vga_slow0_blank_request_rgb0_hold.rpt", "rgb_out[8]", "rgb_out[9]"),
+                ("vga_fast0_blank_active_rgb1_setup.rpt", "; 0.750 ;", "; -0.001 ;"),
                 ("vga_first_pins.rpt", "blank_seen_sys[0]|d", "blank_seen_sys[1]|d"),
             ]:
                 path = folder / "output" / name
@@ -208,11 +205,11 @@ class VgaEvidenceTests(unittest.TestCase):
             fixture(folder)
             self.assertEqual(fpga_vga.verify(folder)["m9k_blocks"], 18)
             changes = [
-                ("vga_fast0_outputs_max.rpt", "gray_out[0]", "valid_out"),
-                ("vga_fast0_outputs_max.rpt", "gray_out[0]~_Duplicate_1", "gray_out[1]~_Duplicate_1"),
-                ("design.fit.rpt", "gray_out[0]~_Duplicate_5", "gray_out[0]~_Duplicate_6"),
+                ("vga_fast0_outputs_max.rpt", "rgb_out[8]", "valid_out"),
+                ("vga_fast0_outputs_max.rpt", "rgb_out[9]", "rgb_out[8]"),
+                ("design.fit.rpt", "rgb_out[3]", "x_out[3]"),
                 ("design.fit.rpt", "red[0]~output", "red[1]~output"),
-                ("vga_fast0_outputs_max.rpt", "gray_out[0]", "gray_out[2]"),
+                ("vga_fast0_outputs_max.rpt", "rgb_out[11]", "rgb_out[10]"),
                 ("vga_fast0_offer_sequence.rpt", "|captured_sequence[63]", "|captured_sequence[62]"),
                 ("vga_slow0_offer_epoch.rpt", "; 1.000 ;", "; 20.001 ;"),
                 ("vga_fast0_outputs_max.rpt", "; 5.000 ;", "; 10.001 ;"),
@@ -264,7 +261,7 @@ class VgaEvidenceTests(unittest.TestCase):
                     fpga_vga.verify(folder)
 
     def test_physical_register_selection_rejects_missing_or_duplicate(self):
-        original = "n2m_frame_bridge:u_bridge|n2m_vga_scan:u_scan|gray_out[0]"
+        original = "n2m_frame_bridge:u_bridge|n2m_vga_scan:u_scan|rgb_out[0]"
         for candidates, accepted in [([], False), ([original], True),
                 ([original, original + "~_Duplicate_1"], False),
                 ([original + "~_Duplicate_1"], False), ([original, original], False)]:
@@ -278,10 +275,10 @@ class VgaEvidenceTests(unittest.TestCase):
                 tcl.eval("proc get_collection_size {items} {llength $items}")
                 tcl.eval("proc get_register_info {flag item} {return $item}")
                 tcl.eval("proc foreach_in_collection {var items body} {upvar 1 $var value; foreach value $items {uplevel 1 $body}}")
-                script = "\n".join(fpga_vga.physical_register(0, "u_bridge|u_scan|gray_out[0]", fpga.tcl_word))
+                script = "\n".join(fpga_vga.physical_register(0, "u_bridge|u_scan|rgb_out[0]", fpga.tcl_word))
                 if accepted:
                     tcl.eval(script)
-                    self.assertEqual(tcl.splitlist(tcl.getvar("vga_gray_0")), (original,))
+                    self.assertEqual(tcl.splitlist(tcl.getvar("vga_rgb_0")), (original,))
                 else:
                     with self.assertRaisesRegex(tkinter.TclError, "VGA physical output (name )?mismatch"):
                         tcl.eval(script)

@@ -1,6 +1,12 @@
 """Scoped v0.5 composition crossing reports using the existing VGA profile."""
 from . import fpga_vga, fpga_controls, fpga_memory_stores
 
+# The composed memories other than the bezel: three VGA banks, the snapshot
+# and store banks and the UART stores.
+BASE_ATOMS = 147
+BASE_MEMORY_BITS = 1056616
+BASE_LOGICAL_STORES = 20
+
 # The UART receiver and the loader profile's KEY1 return both end at checked
 # two-flop synchronizers (wiki/src/rtl/cartridge/MAS_loader_profile.md#key1-return).
 UART_CHAINS = (("uart", "uart_rx", "u_system|u_uart|u_serial_rx|rx_meta",
@@ -87,15 +93,24 @@ def verify_memory(folder, *, system_net, top="v05_proof"):
         prefix=prefix + 'u_system|', top=top)
     names = re.findall(r'fiftyfivenm_ram_block\s+\\(\S+)\s*\(', text)
     uart_names = {name for name in names if name.startswith(prefix + 'u_system|u_uart|')}
-    if (len(names) != 147 or len(set(names)) != 147
-            or set(names) != set(backing) | set(vga) | uart_names):
+    # The board image selects the shell bezel, so the scanout's tile ROM and
+    # border map are fitted memory too. Their atom count is a fitter choice;
+    # the stored bits are not.
+    bezel = fpga_vga.bezel_atom_names(text, bridge_prefix=prefix + 'u_system|u_bridge|')
+    if not bezel:
+        raise ValueError('shell bezel ROMs are not fitted as block memory')
+    atoms = BASE_ATOMS + len(bezel)
+    bits = BASE_MEMORY_BITS + fpga_vga.BEZEL_MEMORY_BITS
+    if (len(names) != atoms or len(set(names)) != atoms
+            or set(names) != set(backing) | set(vga) | uart_names | set(bezel)):
         raise ValueError('composed memory atom partition differs')
     logical = [row for row in fpga_vga.rows(fit) if len(row) >= 24 and row[1] == 'M9K']
-    if len(logical) != 20:
+    if len(logical) != BASE_LOGICAL_STORES + 2:
         raise ValueError('composed logical memory inventory differs')
-    for label, expected in (('M9Ks', '147 /'), ('Total block memory bits', '1,056,616 /')):
+    for label, expected in (('M9Ks', f'{atoms} /'), ('Total block memory bits', f'{bits:,} /')):
         values = [row[1] for row in fpga_vga.rows(fit) if len(row) == 2 and row[0] == label]
         if len(values) != 1 or not values[0].startswith(expected):
             raise ValueError('composed memory capacity differs')
-    return {'logical_stores': 20, 'atoms': 147, 'bits': 1056616,
-            'backing_atoms': len(backing), 'vga_atoms': len(vga), 'uart': uart}
+    return {'logical_stores': len(logical), 'atoms': atoms, 'bits': bits,
+            'backing_atoms': len(backing), 'vga_atoms': len(vga),
+            'bezel_atoms': len(bezel), 'uart': uart}
