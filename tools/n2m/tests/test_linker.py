@@ -221,6 +221,27 @@ class LinkerTests(unittest.TestCase):
         self.assertEqual(assemble_target(root,build,args,{})['status'],'FAIL')
         registry.write_text(json.dumps(original));self.assertEqual(assemble_target(root,build,args,{})['status'],'PASS')
 
+    def test_a_target_may_declare_the_menu_tagline_and_a_bad_one_is_refused(self):
+        # The real validator on the real registry: a tagline key must survive
+        # assembly, or the flash library could never read one from a package.
+        root=self.checkout('target tagline');build=root/'workdir/builds/a';build.mkdir(parents=True)
+        args=SimpleNamespace(target='linker-basic',rebuild=False)
+        registry=root/'src/sw/targets.json';original=json.loads(registry.read_text())
+        self.assertNotIn('tagline',original['targets']['linker-basic'])
+        self.assertEqual(assemble_target(root,build,args,{})['status'],'PASS')
+        for good in ['A RUN THROUGH MOSS','X'*18,'0-9 AND DASHES']:
+            data=deepcopy(original);data['targets']['linker-basic']['tagline']=good;registry.write_text(json.dumps(data))
+            with self.subTest(tagline=good):self.assertEqual(assemble_target(root,build,args,{})['status'],'PASS')
+        # Omitting the key is the only way to say "no tagline": '' is refused.
+        for bad in ['lower case','X'*19,'','WITH A COMMA,',5,None]:
+            data=deepcopy(original);data['targets']['linker-basic']['tagline']=bad;registry.write_text(json.dumps(data))
+            with self.subTest(tagline=bad):
+                failed=assemble_target(root,build,args,{})
+                self.assertEqual(failed['status'],'FAIL')
+                diagnostic=json.loads((root/next(iter(failed['artifacts']))).read_text())[0]
+                self.assertEqual(diagnostic['code'],'METADATA')
+        registry.write_text(json.dumps(original));self.assertEqual(assemble_target(root,build,args,{})['status'],'PASS')
+
     def test_changed_layout_include_and_generated_inputs(self):
         root=self.checkout('dependencies');build=root/'workdir/builds/a';build.mkdir(parents=True)
         args=SimpleNamespace(target='linker-basic',rebuild=False)

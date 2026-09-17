@@ -367,6 +367,33 @@ class RegistryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     self.registry(**fields)
 
+    def test_a_package_tagline_survives_the_real_target_validator(self):
+        """The registry's package path and the assembler's must agree on a tagline.
+
+        `load_registry` reads `src/sw/targets.json` directly, so on its own it
+        would accept a key the assembler refuses; every package is assembled
+        through `validate_target` before it reaches a slot. Both run here, on
+        the checked-in targets, so the two cannot disagree.
+        """
+        from sw.targets import validate_target
+        from sw.expressions import AssemblyError
+        registry = flash_library.load_registry(ROOT)
+        targets = json.loads((ROOT / flash_library.SW_REGISTRY).read_text())['targets']
+        packages = [name for value in list(registry['slots'].values()) + [registry['menu']]
+                    if flash_library.slot_source(value)[0] == 'package' for name in [flash_library.slot_source(value)[1]]]
+        self.assertEqual(sorted(packages), ['menu', 'springtrail', 'stackdrop', 'v05'])
+        for name in packages:
+            with self.subTest(package=name):
+                target = targets[name]
+                self.assertNotIn('tagline', target)
+                validate_target(dict(target), require_package=True, stage='link')
+                validate_target(dict(target, tagline='A RUN THROUGH MOSS'), require_package=True, stage='link')
+                # The same string the catalogue refuses, refused here too.
+                with self.assertRaises(ValueError):
+                    library.check_tagline('lower case', name)
+                with self.assertRaises(AssemblyError):
+                    validate_target(dict(target, tagline='lower case'), require_package=True, stage='link')
+
     def test_checked_in_registry_lists_our_games_and_the_eight_homebrew_games_that_ran_here(self):
         registry = flash_library.load_registry(ROOT)
         self.assertEqual(registry['slots'], {0: 'springtrail', 1: 'stackdrop', 2: 'v05',

@@ -21,8 +21,9 @@ those slices derive from. The board's current flash-resident image is the
 records what is programmed into the board, not what the packer writes today:
 the catalogue carries each image's CRC-32 and title, so every change to the
 menu image since that session already moved it, and the board keeps the bytes
-of its own session until it is reflashed. The tagline table did not move it
-either, because no entry declares a tagline yet.
+of its own session until it is reflashed. The tagline table moves the digest
+only when an entry declares a tagline, because an undeclared one packs zero
+into bytes that were already zero.
 
 ## Scope
 

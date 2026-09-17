@@ -217,8 +217,8 @@ the list shows fifteen slots and slot 15 needs idea 6 or a shorter list.
   rides in the catalogue region's spare bytes instead:
   [`LIBRARY_TAGLINE_ADDRESS`](../../rtl/storage/MAS_sdram.md#address-space-layout),
   18 characters per slot at a 24-byte stride. The entry did not change, so
-  nothing in RTL did either. No game declares a tagline yet; until one does,
-  every record is zero and this row draws blank.
+  nothing in RTL did either. A game that declares no tagline packs an all-zero
+  record, and this row draws blank for it.
 
 ## 4. Moving background
 

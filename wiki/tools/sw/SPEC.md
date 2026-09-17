@@ -140,9 +140,13 @@ The target adds `layout`, `entry`, `title`, `version`, `profile`, and
 A target carried by the [flash library](../n2m/SPEC.md#flash-library-image) may
 also declare `tagline`, 1-18 upper-case letters, digits, spaces or dashes, which
 `sw library` writes into that slot's
-[tagline record](../../src/rtl/storage/MAS_sdram.md#address-space-layout). The
-key is optional, it is refused when the registry entry declares one too, and no
-target declares one yet.
+[tagline record](../../src/rtl/storage/MAS_sdram.md#address-space-layout). It
+stands outside the all-or-nothing packaging group, so a target may carry it
+alone, and `validate_target` checks it with the catalogue's own
+[`check_tagline`](../../../tools/n2m/host/library.py) so the assembler and the
+packer cannot drift apart. Omitting the key is how a target declares no
+tagline; an empty string is refused rather than treated as none. Declaring one
+here and in the registry entry for the same slot is refused.
 `entry` is an object with the source `unit` and `symbol`, allowing a local symbol
 without making it an implicit global. Interface schema 1 and a profile from the
 [package profile table](../../../tools/sw/linker.py) must match generated

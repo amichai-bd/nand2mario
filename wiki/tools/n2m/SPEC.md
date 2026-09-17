@@ -1879,8 +1879,10 @@ or dashes, the text of that slot's
 [tagline record](../../src/rtl/storage/MAS_sdram.md#address-space-layout); a
 package may declare its own in its
 [software target](../sw/SPEC.md) instead, and declaring it in both places for
-one slot is refused, so a slot's tagline has one source. No entry declares one
-yet. Every package must carry a packaged runtime profile,
+one slot is refused, so a slot's tagline has one source. Omitting the key is
+how a slot declares no tagline, and its record packs zero; an empty string is
+refused rather than treated as none. Every package must carry a packaged
+runtime profile,
 the menu must be a package that runs in `dmg-loader-v1` (the contract's
 `profile == LOADER_ID` validity rule), a value may occupy one index only across
 both kinds, and each image must be exactly its profile's size: one 32 KiB slot

@@ -11,11 +11,11 @@ remainder of its 1 KiB region is zero. An entry's length is 24 bits, the 16-bit
 The copy engine compares CRC-32/ISO-HDLC over the whole image with the
 catalogue crc32, so the host verifies the same quantity after writing.
 """
-import re
 import zlib
 
 from .. import generated_interfaces as abi
-from ..profiles import PROFILE_IDS as PACKAGE_PROFILE_IDS, PROFILE_IMAGE_BYTES, LOADER_PROFILE_NAME
+from ..profiles import (PROFILE_IDS as PACKAGE_PROFILE_IDS, PROFILE_IMAGE_BYTES, LOADER_PROFILE_NAME,
+                        TAGLINE_TEXT, check_tagline)
 from ..interface_codec import SDRAM_LINE, pack_record, unpack_record
 
 # Every number below comes from cfg/interfaces.json through the generated
@@ -52,8 +52,9 @@ TAGLINE_CHARS = abi.LIBRARY_TAGLINE_CHARS
 TAGLINE_OFFSET = TAGLINE_ADDRESS - CATALOGUE_ADDRESS
 # What the menu font can draw: A-Z, 0-9, space and dash (menu SPEC, Font). Any
 # other byte would draw the dash, so an authored tagline carrying one is
-# refused here rather than shipped into the catalogue.
-TAGLINE_TEXT = re.compile(f'[A-Z0-9 -]{{1,{TAGLINE_CHARS}}}')
+# refused rather than shipped into the catalogue. The rule and `check_tagline`
+# live in the profile table, because the assembler's target validator applies
+# the same one and two spellings of it could drift apart.
 
 # Package profile name to the generated profile ID the image runs in: the
 # packager's own table, so the catalogue never carries a name it did not
@@ -110,13 +111,6 @@ def profile_bytes(profile):
     if profile not in PROFILE_BYTES:
         raise ValueError(f'library refuses images of profile ID {profile}')
     return PROFILE_BYTES[profile]
-
-
-def check_tagline(text, where):
-    """One authored tagline as catalogue bytes; anything the menu font cannot draw is refused by name."""
-    if not isinstance(text, str) or not TAGLINE_TEXT.fullmatch(text):
-        raise ValueError(f'tagline must be 1..{TAGLINE_CHARS} upper-case letters, digits, spaces or dashes: {where}')
-    return text.encode('ascii')
 
 
 def pack_tagline(tagline):
