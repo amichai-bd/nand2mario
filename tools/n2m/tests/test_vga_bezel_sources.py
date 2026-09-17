@@ -27,16 +27,6 @@ def decoded(palette_text, array_text):
     return palette, cells, pixels
 
 
-def mif_values(text):
-    """One generated memory initialization file as its address-ordered values."""
-    depth = int(re.search(r'DEPTH = (\d+);', text)[1])
-    width = int(re.search(r'WIDTH = (\d+);', text)[1])
-    entries = {int(address): int(value) for address, value in
-               re.findall(r'(\d+) : (\d+);', text.split('CONTENT BEGIN')[1])}
-    assert sorted(entries) == list(range(depth)), 'MIF addresses are not dense'
-    assert all(value < 2 ** width for value in entries.values()), 'MIF value exceeds its width'
-    return [entries[address] for address in range(depth)]
-
 
 class BezelSourceTests(unittest.TestCase):
     def setUp(self):
@@ -62,7 +52,7 @@ class BezelSourceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'generation drift'):
                     sources.generate(root, check=True)
                 (root / path).write_text(text)
-            (root / sources.MAP_OUTPUT).unlink()
+            (root / sources.ARRAY_OUTPUT).unlink()
             with self.assertRaisesRegex(ValueError, 'generation drift'):
                 sources.generate(root, check=True)
 
@@ -76,30 +66,14 @@ class BezelSourceTests(unittest.TestCase):
         palette_text = self.files[sources.PALETTE_OUTPUT]
         for name, value in (('BEZEL_TILES', 61), ('BEZEL_CELLS', 1560), ('BEZEL_TILE_PIXELS', 3904)):
             self.assertIn(f'{name} = {value};', palette_text)
-        # No memory template: the simulation form is constant, and the fitted
-        # design reads the MIFs through the explicit vendor ROM.
-        self.assertNotIn('initial', self.files[sources.ARRAY_OUTPUT])
-        self.assertNotIn('romstyle', self.files[sources.ARRAY_OUTPUT])
-
-    def test_initialization_files_carry_the_simulated_contents(self):
-        self.assertEqual(mif_values(self.files[sources.MAP_OUTPUT]), self.cells)
-        self.assertEqual(mif_values(self.files[sources.TILE_OUTPUT]), self.pixels)
-        # The fit copies both files into its attempt directory, so the ROM
-        # names them without a path; the builder owns that copy.
-        from n2m import fpga
+        # Constants only: no memory template, so the fitter infers no RAM and
+        # asks for no initialization file the device configuration cannot hold.
+        for text in self.files.values():
+            self.assertNotIn('initial', text)
+            self.assertNotIn('romstyle', text)
         scan = (ROOT / 'src/rtl/vga/n2m_vga_scan.sv').read_text(encoding='utf-8')
-        for path in (sources.MAP_OUTPUT, sources.TILE_OUTPUT):
-            self.assertIn(f'.init_file("{path.name}")', scan)
-            self.assertIn(path.as_posix(), fpga.BEZEL_INIT_FILES)
-        self.assertEqual(fpga.bezel_init_files({'top': 'v05_proof'}), list(fpga.BEZEL_INIT_FILES))
-        self.assertEqual(fpga.bezel_init_files({'top': 'vga_proof'}), [])
-        base = ROOT / 'workdir/builds/vga-bezel-unit'
-        base.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=base) as temporary:
-            empty = Path(temporary)
-            with self.assertRaisesRegex(ValueError, 'missing bezel memory initialization file'):
-                fpga.prepare(empty, empty, {'top': 'v05_proof', 'sources': [], 'constraints': [],
-                                            'pins': {}, 'virtual_pins': []})
+        for absent in ('altsyncram', 'init_file', '.mif'):
+            self.assertNotIn(absent, scan)
 
     def test_generated_rom_draws_the_independent_border_model(self):
         palette, cells, pixels = self.palette, self.cells, self.pixels
@@ -127,14 +101,6 @@ class BezelSourceTests(unittest.TestCase):
                 expected = (red // 17 << 8) | (green // 17 << 4) | blue // 17
                 if expected != shell.pixel(x, y):
                     self.fail(f'border model differs from the preview at {x},{y}')
-
-    def test_every_generated_source_is_a_tracked_file(self):
-        """The repository ignores *.mif; a build reading one needs it committed."""
-        ignore = (ROOT / '.gitignore').read_text(encoding='utf-8').splitlines()
-        for path in sources.OUTPUTS:
-            self.assertTrue((ROOT / path).is_file())
-            if path.suffix in {'.mif', '.hex', '.bin', '.mem'}:
-                self.assertIn('!' + path.as_posix(), ignore)
 
     def test_map_index_covers_every_border_cell_once(self):
         indices = [sources.map_index(column, row) for row in range(60) for column in range(80)

@@ -59,7 +59,8 @@ This is the chosen direction. The
 sources, [`vga_bezel_sources.py`](../../../../tools/n2m/vga_bezel_sources.py)
 writes them from `directions.json`, and the
 [border oracle](../../../../src/dv/python/vga/bezel_reference.py) checks the
-output against the direction itself.
+output against the direction itself. The tile ROM and the map are built from
+logic, not from block memory: the reason and the measured cost are below.
 
 - **RTL approach: ROM-backed tile border.** Rounded corners, the stripe and the
   grille are cheaper to store than to compute, and the art stays editable
@@ -128,6 +129,17 @@ frame it draws and the [focused test](../../../../tools/n2m/tests/test_vga_bezel
 holds this table to them. The logic-element figures are design-time estimates
 from the comparators and registers each approach needs, not a fit. An actual
 Quartus fit and both reference-frequency timing analyses decide them.
+
+The shell's memory row is superseded by what it cost to build. MAX 10 holds M9K
+initialization data in CFM1 and CFM2, which only the ERAM internal configuration
+modes reserve for it; this design's Single Comp Image mode gives that range to
+the user flash holding the game library, and a fit of the initialized form fails
+with "Current Internal Configuration mode does not support memory initialization
+or ROM". The implemented tile ROM and map are therefore logic: a measured 1,002
+logic elements, `n2m_vga_scan` rising from 242 to 1,207 logic cells, with block
+memory unchanged. The [VGA MAS](MAS_vga.md#border-selection) owns that fact. A
+coordinate pattern generator for the same art remains the named fallback if the
+logic budget becomes contested.
 
 ## What a bezel must not disturb
 

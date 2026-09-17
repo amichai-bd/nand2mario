@@ -6,7 +6,6 @@ import math
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import uuid
 
@@ -132,17 +131,6 @@ def target_definition(root, name):
     return target
 
 
-# The shell bezel's ROM contents. The fitted primitive names them by bare
-# filename, so a selecting image carries them into its own attempt directory
-# (wiki/src/rtl/vga/MAS_vga.md#border-selection).
-BEZEL_INIT_FILES = ("src/rtl/vga/n2m_vga_bezel_map.mif", "src/rtl/vga/n2m_vga_bezel_tiles.mif")
-
-
-def bezel_init_files(target):
-    """The memory initialization files this image needs; only v05_proof selects the shell."""
-    return list(BEZEL_INIT_FILES) if target.get("top") == "v05_proof" else []
-
-
 def identity_target(target):
     """Return whether the live target carries a configurable build identity."""
     return target.get("top") in ("controls_proof", "sdram_proof") or fpga_v05.board_target(target)
@@ -164,13 +152,6 @@ def sdram_target(target):
 
 
 def prepare(root, folder, target, build_id=None):
-    # The selecting image carries its ROM contents into its own attempt directory.
-    for name in bezel_init_files(target):
-        # The repository ignores *.mif by default; a missing file here means the
-        # generated contents were never committed, not that the fit is stale.
-        if not (root / name).is_file():
-            raise ValueError("missing bezel memory initialization file: " + name)
-        shutil.copyfile(root / name, folder / Path(name).name)
     # Configurations are data; quote every value rather than evaluating user Tcl.
     lines = ['set_global_assignment -name FAMILY "MAX 10"',
              f'set_global_assignment -name DEVICE {DEVICE}',
@@ -620,8 +601,7 @@ def build_fpga(root, build, args, provenance=None, progress=None):
         if not 1 <= args.timeout <= 3600:
             raise ValueError("FPGA stage timeout must be between 1 and 3600 seconds")
         target = target_definition(root, args.target)
-        inputs = [REGISTRY, "tools/build.py", *dependencies(root, target["sources"], synthesis=True),
-                  *target["constraints"], *bezel_init_files(target)]
+        inputs = [REGISTRY, "tools/build.py", *dependencies(root, target["sources"], synthesis=True), *target["constraints"]]
         if fpga_flash.flash_target(target):
             inputs.append(flash_library.REGISTRY)
         inputs += [p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")]

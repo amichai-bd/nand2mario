@@ -93,23 +93,5 @@ class BoardTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fpga_vga.verify_memory_netlist(changed, **args)
 
-    def test_bezel_rom_atoms_stay_out_of_the_bank_inventory(self):
-        """The board image's border ROMs are memory too, checked as their own group."""
-        from test_fpga_vga import memory_netlist
-        text = memory_netlist(lcd=True).replace('u_bridge|', 'u_system|u_bridge|')
-        text = text.replace('u_ppu|', 'u_system|u_ppu|')
-        text = text.replace(r'\clk_sys~inputclkctrl_outclk', fpga_pll.SYSTEM_NET)
-        args = dict(lcd=True, system_net=fpga_pll.SYSTEM_NET,
-                    bridge_prefix='u_system|u_bridge|', shade='u_system|u_ppu|source_shade')
-        roms = [f'u_system|u_bridge|u_scan|g_shell|{name}|auto_generated|ram_block1a0'
-                for name in ('bezel_map_rtl_0', 'bezel_tile_rom_rtl_0')]
-        with_roms = text + ''.join(
-            f'\nfiftyfivenm_ram_block \\{name} (\n.portadatain(gnd));\n' for name in roms)
-        self.assertEqual(fpga_vga.bezel_atom_names(text, bridge_prefix='u_system|u_bridge|'), [])
-        self.assertEqual(fpga_vga.bezel_atom_names(with_roms, bridge_prefix='u_system|u_bridge|'),
-                         sorted(roms))
-        self.assertEqual(len(fpga_vga.verify_memory_netlist(with_roms, **args)), 18)
-
-
 if __name__ == '__main__':
     unittest.main()

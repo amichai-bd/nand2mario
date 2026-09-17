@@ -173,9 +173,19 @@ The contents are generated from
 preview renderer by
 [`vga_bezel_sources.py`](../../../../tools/n2m/vga_bezel_sources.py); run
 `python tools/n2m/vga_bezel_sources.py` to regenerate and `--check` to prove no
-drift. It writes the colour table, the simulation arrays and the two MIFs. MAX 10
-synthesis instantiates explicit `altsyncram` ROMs initialized from those MIFs;
-Verilator reads the array form. No memory template is inferred on either path.
+drift. It writes the colour table and the map and tile arrays as constants.
+
+The map and the tile ROM are logic, not block memory. MAX 10 holds M9K
+initialization data in CFM1 and CFM2, which only the ERAM internal
+configuration modes reserve for it. This design's Single Comp Image mode gives
+that range to the user flash that holds the
+[game library](../storage/MAS_flash_library.md), so an initialized memory and the
+flash-resident library cannot both exist here: a fit of the initialized form
+fails with "Current Internal Configuration mode does not support memory
+initialization or ROM". The measured cost of the logic form is 1,002 logic
+elements, `n2m_vga_scan` rising from 242 to 1,207 logic cells, with block memory
+unchanged. That supersedes the three-M9K estimate in the
+[design note](BEZEL.md#cost-summary).
 
 ## Verification boundary
 

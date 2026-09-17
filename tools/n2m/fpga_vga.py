@@ -125,22 +125,9 @@ def audit(quote, *, lcd=False):
     return "\n".join(lines) + "\n"
 
 
-# The shell bezel's tile ROM and border map, when the build selects it.
-BEZEL_MEMORY_BITS = 24976
-
-
-def bezel_atom_names(text, *, bridge_prefix="u_bridge|"):
-    """The fitted memory atoms of the scanout's border stage, if any."""
-    return sorted(name for name in re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\(", text)
-                  if name.startswith(bridge_prefix + "u_scan|"))
-
-
 def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_sys~inputclkctrl_outclk", bridge_prefix="u_bridge|", shade="u_ppu|source_shade"):
     """Check the fitted MAX 10 atoms, including clocks and one-edge read shape."""
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
-    # The border stage's ROMs are checked separately; these are the three banks.
-    bezel = set(bezel_atom_names(text, bridge_prefix=bridge_prefix))
-    atoms = [(name, body) for name, body in atoms if name not in bezel]
     if controls or bridge_prefix != "u_bridge|":
         atoms = [(name, body) for name, body in atoms if name.startswith(bridge_prefix)]
     if len(atoms) != 18 or len({name for name, _ in atoms}) != 18:

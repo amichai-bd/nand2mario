@@ -78,19 +78,6 @@ class PublicationTests(unittest.TestCase):
                 site.checked_text(path, b"plain ASCII private data\n")
         self.assertEqual(site.checked_text("src/example.asm", b"nop\n"), "nop\n")
 
-    def test_only_the_named_generated_contents_escape_the_private_suffix(self):
-        """The bezel ROM contents are original generated art, named one by one."""
-        self.assertEqual(site.GENERATED_CONTENTS,
-                         {"src/rtl/vga/n2m_vga_bezel_map.mif",
-                          "src/rtl/vga/n2m_vga_bezel_tiles.mif"})
-        for path in site.GENERATED_CONTENTS:
-            self.assertTrue((site.ROOT / path).is_file())
-            self.assertEqual(site.checked_text(path, b"DEPTH = 1;\n"), "DEPTH = 1;\n")
-        for path in ("src/rtl/vga/other.mif", "src/rtl/vga/N2M_VGA_BEZEL_MAP.MIF",
-                     "private/src/rtl/vga/n2m_vga_bezel_map.mif"):
-            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "private content path"):
-                site.checked_text(path, b"DEPTH = 1;\n")
-
     def test_forced_tracked_private_file_stops_publication_scan(self):
         temporary = site.ROOT / "workdir/wiki/tests"
         temporary.mkdir(parents=True, exist_ok=True)
