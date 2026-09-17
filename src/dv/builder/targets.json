@@ -33955,7 +33955,7 @@
       "+fixture=scroll"
     ],
     "expected_exit": "zero",
-    "signature": "PASS menu-scroll checks=13 frames=10 selects=0 commands=6",
+    "signature": "PASS menu-scroll checks=15 frames=12 selects=0 commands=6",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300,
     "preload": "menu",

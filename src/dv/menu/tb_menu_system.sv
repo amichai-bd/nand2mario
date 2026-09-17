@@ -22,11 +22,12 @@
 // SDRAM is not ready: the list settles with slot numbers alone and draws one
 // title row per frame once the catalogue answers, except the frame that also
 // changes the nudge phase, which draws half a row; the two fixtures differ
-// only in which row that is) and `scroll`/`select-last` (a slot deposited
-// into the menu's Cursor byte at a frame's first pixel, which the menu treats
-// as a move: onto slot 15 the list scrolls one row up two pixels a frame, the
-// header with it, and off it the list scrolls back; every ramp frame is
-// compared, and `select-last` presses A on the scrolled slot 15). Every other
+// only in which row that is) and `scroll`/`select-last` (slot 14 deposited
+// into the menu's Cursor byte at a frame's first pixel, checked staged and
+// settled like a move, then Down onto slot 15: the list scrolls one row up
+// two pixels a frame, the header with it, and Up scrolls it back; every ramp
+// frame is compared, and `select-last` presses A on the scrolled slot 15
+// instead). Every other
 // fixture holds A through the boot instead, which
 // skips the splash: the first displayed frame draws half the wrapped rows and
 // the second is the settled menu, their frame 0, and the consumed press
@@ -45,7 +46,7 @@ module tb_menu_system;
     localparam int FRAME_PIXELS = 23040;
     // menu-frames.hex carries the scripted frames; menu-splash.hex the boot
     // splash frames, read only by the splash fixture, at SPLASH_FRAME.
-    localparam int SPLASH_FRAME = 26;
+    localparam int SPLASH_FRAME = 25;
     // The schedule of wiki/src/sw/menu/SPEC.md: four fade steps held two
     // frames each, then nine slide frames, the last of them the settled list.
     localparam int SPLASH_FRAMES = 17;
@@ -68,18 +69,16 @@ module tb_menu_system;
     localparam int FRAMES = SPLASH_FRAME +
         (DELAYED_WORST_FRAMES > SPLASH_FRAMES ? DELAYED_WORST_FRAMES : SPLASH_FRAMES);
     // The scroll ramp frames of fixture.py's scenario: the deposit onto slot
-    // 14 staged and settled, the four frames of the ramp onto slot 15, the
-    // three of the ramp back (the fourth is the settled slot 14 again) and
-    // the first ramp frame of a deposit straight onto slot 15.
+    // 14 staged and settled, the four frames of the ramp onto slot 15 and the
+    // three of the ramp back (the fourth is the settled slot 14 again).
     localparam int SCROLL_FRAME = 14;
     localparam int SCROLL_STAGED = SCROLL_FRAME;
     localparam int SCROLL_SETTLED = SCROLL_FRAME + 1;
     localparam int SCROLL_UP = SCROLL_FRAME + 2;
     localparam int SCROLL_DOWN = SCROLL_FRAME + 6;
-    localparam int SCROLL_DEPOSIT = SCROLL_FRAME + 9;
     localparam int SCROLL_STEPS = 4;
-    localparam int GAME_FRAME = 24;
-    localparam int PHASE_FRAME = 25;
+    localparam int GAME_FRAME = 23;
+    localparam int PHASE_FRAME = 24;
     localparam int LAST_SLOT = 15;
     // The button held through every other fixture's boot: A proves the skip
     // consumes its press, because an A the list saw would select slot 0.
@@ -595,42 +594,46 @@ module tb_menu_system;
         select_game(8'd1, PROFILE_DIRECT_ID, 1);
     endtask
 
-    // A slot into the menu's Cursor byte, at a frame's first pixel: the CPU
-    // is polling LY until VBlank, where the frame body reads the byte and
-    // treats the change as a move. The joypad would need two frames a slot to
-    // get here, which no target under the wall budget can afford; the moves
-    // across the scroll boundary are still real joypad edges.
-    task automatic deposit_cursor(input logic [7:0] slot);
+    // Test seam: slot 14 written straight into the menu's Cursor byte in WRAM
+    // (its address from menu-marks.hex), at a frame's first pixel. The CPU is
+    // then polling LY until VBlank, where the frame body reads the byte and
+    // treats the change as a move, so the two frames after it are checked as
+    // a navigated move's: the footer staged on 14, then settled, frames that
+    // fourteen Downs would also produce. The joypad needs two frames an edge,
+    // so walking there would cost about 28 frames and take the target past
+    // the 120-second wall; the crossings of the scroll boundary, 14 to 15 and
+    // back, are still real joypad edges. Nothing else is written.
+    task automatic deposit_cursor_14;
         frame_start(1200000);
-        dut.u_stores.wram.ram.words[mark_cursor[12:0]] = slot;
-        check_frame(0);                   // this frame still shows the boot
+        dut.u_stores.wram.ram.words[mark_cursor[12:0]] = 8'(LAST_SLOT - 1);
+        check_frame(0);                       // this frame still shows the boot
+        frame_check(8'h00, SCROLL_STAGED);    // the deposit shows as a move: footer staged
     endtask
 
-    // The scroll ramp: a deposit straight onto slot 15 ramps the list one
-    // row up over four frames, the footer staging on the first; Up on the
+    // The scroll ramp: Down from the settled slot 14 ramps the list one row
+    // up over four frames, the footer staging on the first; Up on the
     // scrolled frame ramps it back over four more, ending on the settled
     // slot 14. Every frame is compared, the pointer riding its row throughout.
     task automatic fixture_scroll;
         int step;
         boot_menu(8'h00);
-        deposit_cursor(8'(LAST_SLOT));
-        frame_check(8'h00, SCROLL_DEPOSIT);                     // step 1, footer staged (15, 0)
-        for (step = 1; step < SCROLL_STEPS - 1; step = step + 1)
-            frame_check(8'h00, SCROLL_UP + step);               // steps 2 and 3
+        deposit_cursor_14();
+        frame_check(BUTTON_DOWN, SCROLL_SETTLED);               // settled on 14; Down
+        for (step = 0; step < SCROLL_STEPS - 1; step = step + 1)
+            frame_check(8'h00, SCROLL_UP + step);               // steps 1..3, footer staged first
         frame_check(BUTTON_UP, SCROLL_UP + SCROLL_STEPS - 1);   // scrolled: slot 15 in view; Up
         for (step = 0; step < SCROLL_STEPS - 1; step = step + 1)
             frame_check(8'h00, SCROLL_DOWN + step);             // three steps back, footer staged first
         frame_check(8'h00, SCROLL_SETTLED);                     // settled on slot 14 again
     endtask
 
-    // Slot 15 reached by a joypad edge and selected: a deposit onto slot 14
-    // stages and settles like a move, Down crosses the boundary and the list
-    // ramps up, and A on the scrolled frame starts the game in the last slot.
+    // Slot 15 reached by a joypad edge and selected: Down from the settled
+    // slot 14 crosses the boundary, the list ramps up, and A on the scrolled
+    // frame starts the game in the last slot.
     task automatic fixture_select_last;
         int step;
         boot_menu(8'h00);
-        deposit_cursor(8'(LAST_SLOT - 1));
-        frame_check(8'h00, SCROLL_STAGED);
+        deposit_cursor_14();
         frame_check(BUTTON_DOWN, SCROLL_SETTLED);
         for (step = 0; step < SCROLL_STEPS - 1; step = step + 1)
             frame_check(8'h00, SCROLL_UP + step);

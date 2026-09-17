@@ -498,13 +498,13 @@ class Layout(unittest.TestCase):
         self.assertEqual(scrolled[(R.WINDOW_Y - 8) * 160:(R.WINDOW_Y - 8) * 160 + 8],
                          bytes(bank[R.TILE_POINTER][0]))
         # The scenario carries the ramp: the deposit staged and settled, four
-        # frames up, three back, and the deposit straight onto the last slot.
+        # frames up and three back, the fourth being the settled frame again.
         self.assertEqual([state.get('scy', R.SETTLED_SCY) for state in fixture.SCENARIO[fixture.SCROLL_FRAME:]],
-                         [144, 144, 146, 148, 150, 152, 150, 148, 146, 146])
+                         [144, 144, 146, 148, 150, 152, 150, 148, 146])
+        self.assertEqual(fixture.SCENARIO[fixture.SCROLL_FRAME]['footer'], (14, 0))
         self.assertEqual(fixture.SCENARIO[fixture.SCROLL_FRAME + 2]['footer'], (15, 14))
         self.assertEqual(fixture.SCENARIO[fixture.SCROLL_FRAME + 6]['footer'], (14, 15))
-        self.assertEqual(fixture.SCENARIO[fixture.SCROLL_FRAME + 9]['footer'], (15, 0))
-        self.assertEqual(fixture.GAME_FRAME, fixture.SCROLL_FRAME + 10)
+        self.assertEqual(fixture.GAME_FRAME, fixture.SCROLL_FRAME + 9)
 
     def test_the_pointer_draws_over_the_page_and_keeps_shade_0_clear(self):
         frame = reference.frame(self.entries, cursor=4)
@@ -573,7 +573,6 @@ class Layout(unittest.TestCase):
         self.assertEqual(reference.expected('cursor-14', self.entries), frames[fixture.SCROLL_FRAME + 1])
         self.assertEqual(reference.expected('footer-15-14', self.entries), frames[fixture.SCROLL_FRAME + 2])
         self.assertEqual(reference.expected('footer-14-15', self.entries), frames[fixture.SCROLL_FRAME + 6])
-        self.assertEqual(reference.expected('footer-15-0', self.entries), frames[fixture.SCROLL_FRAME + 9])
         self.assertEqual(reference.expected('footer-14-0', self.entries), frames[fixture.SCROLL_FRAME])
         for step in range(2, reference.SCROLL_FRAMES + 1):
             self.assertEqual(reference.expected(f'scroll-{step}', self.entries), frames[fixture.SCROLL_FRAME + 1 + step])

@@ -84,10 +84,12 @@ SCENARIO = [dict(cursor=0),                                     # 0 the boot fra
 # row at rest, so a move onto slot 15 scrolls the list one row up over
 # reference.SCROLL_FRAMES frames and a move off it scrolls back; the move's own
 # frame carries the first step and the staged footer. The joypad reaches slot
-# 14 only through fourteen Downs at two frames each, which no target can afford,
-# so the scroll fixtures deposit the slot into the menu's `Cursor` byte at a
-# frame's first pixel and the menu treats it as a move; `menu-marks.hex`
-# carries that byte's address.
+# 14 only through fourteen Downs at two frames each, which no target can afford
+# under the 120-second target, so the scroll fixtures deposit 14 into the
+# menu's `Cursor` byte at a frame's first pixel; the menu treats it as a move
+# and the frames that follow are checked staged and settled, as a navigated
+# move is. Both crossings of the scroll boundary are joypad edges.
+# `menu-marks.hex` carries the byte's address.
 LAST_SLOT = reference.SCROLL_SLOT
 RAMP_UP = reference.scroll_ramp(reference.SETTLED_SCY, LAST_SLOT)
 RAMP_DOWN = reference.scroll_ramp(reference.SCROLLED_SCY, LAST_SLOT - 1)
@@ -100,8 +102,7 @@ SCENARIO += [dict(cursor=LAST_SLOT - 1, footer=(LAST_SLOT - 1, 0)),          # 1
              dict(cursor=LAST_SLOT, scy=RAMP_UP[3]),                        # 19 scrolled: slot 15 in view
              dict(cursor=LAST_SLOT - 1, footer=(LAST_SLOT - 1, LAST_SLOT), scy=RAMP_DOWN[0]),   # 20 Up: back
              dict(cursor=LAST_SLOT - 1, scy=RAMP_DOWN[1]),                  # 21
-             dict(cursor=LAST_SLOT - 1, scy=RAMP_DOWN[2]),                  # 22; the next is frame 15 again
-             dict(cursor=LAST_SLOT, footer=(LAST_SLOT, 0), scy=RAMP_UP[0])]  # 23 deposited onto 15: step 1
+             dict(cursor=LAST_SLOT - 1, scy=RAMP_DOWN[2])]                  # 22; the next is frame 15 again
 # The exit-demo game frame and the nudge phase frame follow the scenario
 # frames in `menu-frames.hex`.
 GAME_FRAME = len(SCENARIO)

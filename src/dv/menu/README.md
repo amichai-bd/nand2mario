@@ -52,7 +52,7 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 | Requirement | Independent check |
 |---|---|
 | Boot frame | The first display-eligible frame equals reference frame 0: header, fifteen numbered rows above the window's plate, the star field's eight cells, nine titles with a blank last cell on the CGB-flagged slots 8 and 10, `BANKED GAME` once at slot 5, blank rows for slots 3, 6 and 11..14, the `SHORT IMAGE` title of slot 4, cursor on slot 0, the dim press-A badge, slot 0's `DIRECT   32 KB` and its tagline on the footer's two rows; `LIBRARY_STATUS` shows bank 34 and result `OK` |
-| Scroll ramp | A slot deposited into the menu's `Cursor` byte at a frame's first pixel is treated as a move. `menu-scroll` deposits 15: the next four frames carry SCY 146, 148, 150 and 152 with the header sliding off, slot 15's `LAST SLOT` row sliding in above the plate and the pointer riding its row over the plate, the footer staged on the first; Up on the scrolled frame ramps back over four frames to the settled slot 14. `menu-select-last` deposits 14, which stages and settles like a move, then Down crosses the boundary by a real joypad edge and the same four frames follow. Every frame is pixel-exact |
+| Scroll ramp | Both scroll fixtures start from the [deposit seam](#the-cursor-deposit): slot 14 in the menu's `Cursor` byte, checked staged and settled exactly as a navigated move. `menu-scroll` then presses Down: the next four frames carry SCY 146, 148, 150 and 152 with the header sliding off, slot 15's `LAST SLOT` row sliding in above the plate and the pointer riding its row over the plate, the footer staged on the first; Up on the scrolled frame ramps back over four frames to the settled slot 14. `menu-select-last` presses the same Down and the same four frames follow. Every frame is pixel-exact and both boundary crossings are joypad edges |
 | Last slot | A on the scrolled frame commits 15 to the select register and `LAST SLOT` boots in `DIRECT_ID` with epoch + 1 and result `OK` index 15, so every slot 0..15 is reachable and selectable |
 | Press-A pulse | The badge in the footer's first plate cell is dim in nudge phase 0 and ink in phase 1: frame 0 and `menu-phase`'s frame 15 carry the dim cell, its frame 16 the ink one, in the same frame as the pointer nudge and the star twinkle |
 | Footer | Every cursor move is compared twice: the frame that shows it carries the new slot on the footer's upper row and the slot before it on the lower one, and the frame after it is settled. `menu-frame` covers two direct slots, `menu-refused` the empty slot and the message that replaces the tagline, `menu-select-mbc1` the 64 KiB entry's `MBC1     64 KB` |
@@ -78,7 +78,7 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 | `menu-exit` | `exit` | `PASS menu-exit checks=14 frames=4 selects=1 commands=11` |
 | `menu-phase` | `phase` | `PASS menu-phase checks=6 frames=3 selects=0 commands=6` |
 | `menu-refused` | `refused` | `PASS menu-refused checks=15 frames=8 selects=1 commands=9` |
-| `menu-scroll` | `scroll` | `PASS menu-scroll checks=13 frames=10 selects=0 commands=6` |
+| `menu-scroll` | `scroll` | `PASS menu-scroll checks=15 frames=12 selects=0 commands=6` |
 | `menu-select-last` | `select-last` | `PASS menu-select-last checks=14 frames=8 selects=1 commands=8` |
 | `menu-delayed` | `delayed` | `PASS menu-delayed checks=22 frames=19 selects=0 commands=6` |
 | `menu-delayed-worst` | `delayed-worst` | `PASS menu-delayed-worst checks=29 frames=26 selects=0 commands=6` |
@@ -97,10 +97,21 @@ declared wall allowance; `system` is the aggregate above one RTL owner, not an
 ordinary 300-second one, so every aggregate stays
 inside the ordinary 300-second budget with headroom; `menu-phase` has to
 display 18 frames to reach the phase boundary, which no shorter check can
-prove. The scroll fixtures deposit a slot into the menu's `Cursor` byte
-through the testbench rather than walk the joypad there: fourteen Downs at
-two frames each would cost more than the per-simulation target, and the moves
-that cross the scroll boundary are still joypad edges.
+prove.
+
+## The cursor deposit
+
+The scroll fixtures use one test seam. `deposit_cursor_14` in
+[`tb_menu_system`](tb_menu_system.sv) writes the byte 14 into the menu's
+`Cursor` variable in WRAM, at the address `menu-marks.hex` carries from the
+build's symbols, at the first pixel of a displayed frame; nothing else is
+written. The CPU is polling `LY` then, so the VBlank at the end of that frame
+reads the byte as a cursor change and the two frames after it are compared
+with the reference's staged and settled slot-14 frames, the same frames
+fourteen navigated Downs end on. The seam exists because the menu reads button
+edges: fourteen Downs cost two frames each, about 28 frames, which would take
+the target past the 120-second per-simulation wall. The moves that cross the
+scroll boundary, 14 to 15 and back, are joypad edges in both fixtures.
 Verilator evidence is preliminary; the board evidence is the
 [game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions),
 with the exit register in
