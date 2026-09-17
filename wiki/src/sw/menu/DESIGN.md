@@ -25,20 +25,28 @@ command; the shade JSON under `src/sw/menu/assets/design/` owns the new pixels.
 
 ## Cost model
 
-Every cycle figure below comes from one model, read off the
-[menu image](../../../../src/sw/menu/main.asm). VBlank is ten lines of 456 dots,
-1140 M-cycles. Costs are M-cycles.
+Every cycle figure below is counted, not measured: each instruction of the
+[menu image](../../../../src/sw/menu/main.asm) is added up from its SM83
+timing, branch by branch. Measuring the real frames would mean instrumenting
+`src/dv/menu/tb_menu_system.sv`, which this work keeps unchanged, so an
+implementer should confirm the chosen direction's frame against the hardware
+before trusting the last ten percent. VBlank is ten lines of 456 dots, 1140
+M-cycles. Costs are M-cycles.
 
 | Work | Cost | Where |
 |---|---|---|
 | Plain map-write loop | 8 per cell | `LD [DE],A`, `INC DE`, `DEC B`, `JR NZ` in `BlankLoop` |
-| Inverse toggle loop | 10 per cell | the plain loop with `LD A,[HL]` and `ADD A,39` instead of a held constant |
-| Text path | 24 per cell | `DrawText` plus the `CharTile` call, body and return |
-| Base frame work | 120 | `ReadButtons`, `Navigate`, `Catalogue` and the two unchanged-state compares |
+| Inverse toggle loop | 10 per cell | `LD A,[HL]`, `ADD A,39`, `LD [HL+],A`, `DEC B`, `JR NZ`. The `DE` form of the same loop costs 12, because it needs `LD [DE],A` and a separate `INC DE` |
+| Text path | 26 to 49 per cell | `DrawText`'s body is 16; `CharTile` adds 10 for a zero, 14 for a space, 18 for a dash, 26 for a digit and 33 for a letter, because it tests the ranges in that order |
+| Base frame work | 200 | `ReadButtons` 67, idle `Navigate` 29, finished `Catalogue` 19, `ShowCursor` early-out 15, `ShowStatus` preamble 37, and 33 for the five `CALL`/`RET` pairs and the loop's `JR` |
 
-Today's cheapest frame is the base work alone, about 120 (11%). Today's peak is
-a twenty-cell status redraw through the text path, 480 plus base, about 600
-(53%). Both bound every figure below.
+The text path's spread is why a status row is expensive: `NOT READY` padded to
+twenty cells is eight letters and twelve spaces, 8 x 49 + 12 x 30, about 750.
+
+Today's cheapest frame is the base work alone, 200 (18%). A cursor move adds
+`ShowCursor`'s two `CursorCell` calls and writes, about 265 (23%). Today's peak
+is that twenty-cell status redraw, 750 plus base, about 950 (83%). Both bound
+every figure below, and the peak already uses most of VBlank.
 
 ## A. Plated list
 
@@ -58,11 +66,13 @@ the bar.
   current 1380 bytes. ROM0 has 14492 bytes free, so this is about 6% of the
   headroom.
 - Per frame: a cursor move rewrites both affected rows through the inverse
-  toggle loop, 40 cells at 10, so 400 plus base, about 520 of 1140 (46%) -
-  under today's peak. An animation phase costs one cell. A's own peak is the
-  status row, whose text path gains the `ADD A,39` at 26 per cell: 520 plus
-  base, about 640 (56%), against 600 (53%) today. The peak grows by about one
-  twenty-eighth of VBlank and stays near half of it.
+  toggle loop, 40 cells at 10, so 400, plus about 50 of row setup and arrow
+  writes, plus base, about 650 of 1140 (57%). An animation phase costs one
+  cell. A's peak is the status row, whose text path gains an `ADD A,39` per
+  cell: about 790 plus base, about 990 (87%), against 950 (83%) today. **That
+  leaves about 150 M-cycles of headroom, 13% of VBlank.** The direction fits,
+  but there is no room for a second full-width redraw in the same frame, and
+  the implementer should confirm the real frame on hardware.
 - Reference: [`tilemap`](../../../../src/dv/menu/reference.py) gains a `phase`
   argument, builds the inverse bank as `3 - shade` from the same font JSON, and
   adds 39 to every tile of the cursor row. `expected` gains `phase-N` names.
@@ -84,14 +94,14 @@ from the row to the hint bar.
 - Bytes: 304 of tile data plus about 320 bytes of code for the window top,
   staged redraw and hint bar; about 4% of the free ROM0.
 - Per frame: a cursor move costs two chevron writes and the hint bar's two
-  digits, about 40 plus base, about 160 (14%). A scroll step is the cost:
+  digits, about 45 plus base, about 245 (21%). A scroll step is the cost:
   twelve rows of sixteen title cells re-read through the banked window on the
-  text path, 4608 plus about 480 of per-row setup, about 5100 - four and a half
-  VBlanks. Staged one row per frame it fits (384 plus setup plus base, about
-  545, 48%) but the list visibly rebuilds for twelve frames, about 0.2 s per
-  step. A 256-byte WRAM shadow of the titles drops the cells to the inverse
-  toggle's 10, about 2100 in total, which stages as four rows per frame over
-  three frames (about 760, 67%).
+  text path, where titles are letter-heavy, about 7900 plus per-row setup,
+  about 8600 - seven and a half VBlanks. Staged one row per frame it barely
+  fits, about 900 to 960 (around 84%), at today's peak, and the list visibly
+  rebuilds for twelve frames, about 0.2 s per step. A 256-byte WRAM shadow of
+  the titles drops the cells to the inverse toggle's 10, about 2600 in total,
+  which stages as three rows per frame over four frames (about 880, 77%).
 - Reference: `tilemap` gains `phase` and derives the window top from the cursor
   (`min(max(cursor - 6, 0), 4)`). The staged redraw needs a `drawn_rows`
   argument of the same shape as today's `drawn_slots`, and the test has to model
@@ -114,10 +124,10 @@ nothing to report. The grid is today's grid.
 - Bytes: 160 of tile data plus about 120 bytes of code; about 2% of the free
   ROM0. The cheapest direction.
 - Per frame: a cursor move clears and redraws a caret and a bracket, four
-  direct writes with their address setup, about 60 plus base, about 180 (16%).
-  A phase frame writes two cells, about 145 (13%). The status row is unchanged,
-  so the peak stays today's 600 (53%); the rule row replaces it with the plain
-  loop, 160 plus base.
+  direct writes with their address setup, about 90 plus base, about 290 (25%).
+  A phase frame writes two cells, about 230 (20%). The status row is unchanged,
+  so the peak stays today's 950 (83%); the rule row replaces it with the plain
+  loop, 160 plus base, about 360 (32%).
 - Reference: `tilemap` gains `phase`, picks caret `phase % 4` and dot
   `phase % 3` exactly as the preview does, and draws the rule row when the
   status text is blank. The palette is applied once, so `frame` gains the BGP
