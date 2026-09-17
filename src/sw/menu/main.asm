@@ -1110,10 +1110,10 @@ RET
 ; A = slot. Its catalogue entry is at window offset slot * 32; a valid entry
 ; draws its 16 title bytes, any other entry a blank title. The 16th byte is
 ; header $0143: the CGB flag values draw blank, any other byte follows
-; CharTile.
-; A = slot: its title row in the map. Inline, not a call to RowCells and
-; EntryCells below: this is the menu's most expensive frame and each call
-; costs it 10 M-cycles of a VBlank it has 15 to spare in.
+; CharTile. The address arithmetic is inline rather than a call to RowCells
+; and EntryCells below, which draw the halves: this is the menu's most
+; expensive frame and each call costs it 10 of the 16 M-cycles it has to
+; spare.
 DrawSlot:
 PUSH AF
 ADD A,LIST_MAP_ROW + SLOT_ROW
