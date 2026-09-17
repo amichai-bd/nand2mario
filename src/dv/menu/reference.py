@@ -33,6 +33,10 @@ STAR_ART = ROOT / 'src/sw/menu/assets/design/v2-stars-tiles.json'
 WIDTH, HEIGHT = 160, 144
 COLUMNS, ROWS = 20, 18
 SLOTS = 16
+# A slot row's sixteen title cells, and the half a delayed frame draws when it
+# also changes the nudge phase (wiki/src/sw/menu/SPEC.md).
+TITLE_CELLS = 16
+TITLE_HALF = TITLE_CELLS // 2
 PACKED_BYTES = WIDTH * HEIGHT // 4
 # Font atlas order: A-Z, 0-9, dash, blank, cursor arrow.
 TILE_DIGIT, TILE_DASH, TILE_BLANK, TILE_ARROW = 26, 36, 37, 38
@@ -185,8 +189,12 @@ def header_row():
     return [TILE_CAP_LEFT] + cells + [TILE_CAP_RIGHT]
 
 
-def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sdram_ready=True, drawn_slots=SLOTS):
+def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sdram_ready=True,
+              drawn_slots=SLOTS, partial_cells=0):
     """The list's own 18 rows; `drawn_slots` counts the title rows already drawn on the delayed path.
+
+    `partial_cells` is the first cells of the row after them, the half a
+    delayed frame draws when it also changes the nudge phase.
 
     The selection is the pointer object, not a map cell, so `cursor` does not
     change the background at all; `frame` uses it. `phase` does: it is the
@@ -200,13 +208,16 @@ def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sd
         raise ValueError('cursor must select a slot 0..15')
     if phase not in range(PHASES):
         raise ValueError('phase must be 0 or 1')
+    if not 0 <= partial_cells < TITLE_CELLS:
+        raise ValueError(f'a partial row draws 0..{TITLE_CELLS - 1} cells')
     rows = [[TILE_BLANK] * COLUMNS for _ in range(ROWS)]
     rows[0] = header_row()
     for slot in range(SLOTS):
         row = rows[SLOT_ROW + slot]
         row[NUMBER_COLUMN:NUMBER_COLUMN + 2] = text_tiles(f'{slot:02d}')
-        if slot < drawn_slots and slot < len(entries) and entries[slot]['valid'] == 1:
-            row[TITLE_COLUMN:TITLE_COLUMN + 16] = title_tiles(entries[slot]['title'])
+        cells = TITLE_CELLS if slot < drawn_slots else partial_cells if slot == drawn_slots else 0
+        if cells and slot < len(entries) and entries[slot]['valid'] == 1:
+            row[TITLE_COLUMN:TITLE_COLUMN + cells] = title_tiles(entries[slot]['title'])[:cells]
         map_row = (LIST_MAP_ROW + SLOT_ROW + slot) % MAP_ROWS
         for column in STAR_COLUMNS:
             if star_here(column, map_row):

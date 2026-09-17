@@ -6,7 +6,8 @@ sixteen-slot SDRAM library around them (seven 32 KiB stub games, the built
 `exit-demo` image in slot 1, one 64 KiB MBC1 stub game in two slots, one
 empty slot, one entry that is valid but has a foreign length, the rest
 empty) and writes the bytes the testbench reads with `$readmemh`, plus the
-reference frames of the scripted scenario and the `exit-demo` game frame. The catalogue entry layout is
+reference frames of the scripted scenario, the `exit-demo` game frame, the
+boot splash schedule and the delayed catalogue path. The catalogue entry layout is
 the `catalogue_entry_t` record of cfg/interfaces.json: valid, profile,
 length (bits 15:0), crc32, title, length_high (bits 23:16), 7 reserved bytes.
 The tagline table follows the entries in the same region, 24 bytes per slot.
@@ -67,6 +68,23 @@ PHASE_FRAME = GAME_FRAME + 1
 # blank page to the settled list, which is the boot frame again.
 SPLASH_FRAME = PHASE_FRAME + 1
 SPLASH_FRAMES = reference.SETTLED_FRAME + 1
+# The delayed catalogue frames go in `menu-delayed.hex` and
+# `menu-delayed-worst.hex`, each read by one fixture. The menu boots with
+# `sdram_ready` clear, so it starts settled with slot numbers alone and
+# `NOT READY` on the plate; the testbench releases the ready bit after
+# displayed frame `hold` and the frame after it commits the bank. Each frame
+# after that draws one row, except the frame that also changes the nudge
+# phase, which draws half a row and leaves the rest to the next one: so the 16
+# rows take 17 frames and the path is `hold` + 19 frames long. The half falls
+# on the row the hold chooses, at frame PHASE_HOLD: DELAYED_HOLD is the
+# shortest run, where that row is an empty slot, and DELAYED_WORST_HOLD puts
+# it on WORST_SLOT, whose sixteen title cells are all letters, which is the
+# most expensive row the path can draw. `menu-delayed-marks.hex` carries these
+# numbers to `tb_menu_system`, which fails if its own constants differ.
+WORST_SLOT = 7
+DELAYED_HOLD = 0
+DELAYED_WORST_HOLD = reference.PHASE_HOLD - WORST_SLOT - 2
+DELAYED_ROWS_FRAMES = 3 + reference.SLOTS
 
 
 def game_image(index, title):
@@ -197,6 +215,47 @@ def splash_frames(menu_image):
     return [reference.expected(f'splash-{number}', rows) for number in range(SPLASH_FRAMES)]
 
 
+def delayed_marks():
+    """The shape of both delayed alignments: hold and frame count, in fixture order.
+
+    The testbench reads these four bytes and fails when its own constants
+    differ, so the hold cannot drift between the frames written here and the
+    frames compared there.
+    """
+    return bytes([DELAYED_HOLD, DELAYED_HOLD + DELAYED_ROWS_FRAMES,
+                  DELAYED_WORST_HOLD, DELAYED_WORST_HOLD + DELAYED_ROWS_FRAMES])
+
+
+def delayed_frames(menu_image, hold=DELAYED_HOLD):
+    """Every displayed frame of the delayed catalogue path, in order.
+
+    Displayed frame `number` shows loop iteration `number`'s writes, so it
+    carries the nudge phase of that frame number and, once the ready bit is
+    released after frame `hold`, the rows the iterations before it drew. The
+    frame after the release commits the bank and draws nothing; each frame
+    after that draws one row, except the frame that also changes the nudge
+    phase, which draws the first half of its row and leaves the rest to the
+    next one. So one frame shows a half-drawn row and the path takes 17 frames
+    to draw its 16 rows.
+    """
+    rows = entries(menu_image)
+    frames, drawn, partial, shown_phase = [], 0, 0, 0
+    for number in range(hold + DELAYED_ROWS_FRAMES):
+        ready = number > hold
+        phase = reference.phase_of_frame(number)
+        if ready and number > hold + 1 and drawn < reference.SLOTS:
+            if partial:
+                drawn, partial = drawn + 1, 0
+            elif phase != shown_phase:
+                partial = reference.TITLE_HALF
+            else:
+                drawn += 1
+        shown_phase = phase
+        frames.append(reference.frame(rows, sdram_ready=ready, drawn_slots=drawn,
+                                      partial_cells=partial, phase=phase))
+    return frames
+
+
 def frame_marks(run):
     """The `Frame` address and the address after its `CALL WaitVBlank`.
 
@@ -238,6 +297,10 @@ def build(root, destination):
         hex_lines(bytes([marks[0] & 255, marks[0] >> 8, marks[1] & 255, marks[1] >> 8])), encoding='ascii')
     (destination / 'menu-frames.hex').write_text(''.join(hex_lines(frame) for frame in scenario_frames(image)), encoding='ascii')
     (destination / 'menu-splash.hex').write_text(''.join(hex_lines(frame) for frame in splash_frames(image)), encoding='ascii')
+    (destination / 'menu-delayed.hex').write_text(''.join(hex_lines(frame) for frame in delayed_frames(image)), encoding='ascii')
+    (destination / 'menu-delayed-worst.hex').write_text(
+        ''.join(hex_lines(frame) for frame in delayed_frames(image, DELAYED_WORST_HOLD)), encoding='ascii')
+    (destination / 'menu-delayed-marks.hex').write_text(hex_lines(delayed_marks()), encoding='ascii')
     (destination / 'program.gb').write_bytes(image)
     return image
 

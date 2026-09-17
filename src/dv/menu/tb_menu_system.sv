@@ -18,7 +18,12 @@
 // to animate: displayed frame 15 still carries the plain arrow and frame 16
 // the nudged one, which pins the phase boundary) and `splash` (the boot
 // splash left alone: every frame of the fade and the slide, ending on the
-// settled list). Every other fixture holds A through the boot instead, which
+// settled list) and `delayed`/`delayed-worst` (the menu booted while the
+// SDRAM is not ready: the list settles with slot numbers alone and draws one
+// title row per frame once the catalogue answers, except the frame that also
+// changes the nudge phase, which draws half a row; the two fixtures differ
+// only in which row that is). Every other
+// fixture holds A through the boot instead, which
 // skips the splash: the first displayed frame draws half the wrapped rows and
 // the second is the settled menu, their frame 0, and the consumed press
 // neither moves the cursor nor selects a game. A frame shows what the
@@ -40,7 +45,24 @@ module tb_menu_system;
     // The schedule of wiki/src/sw/menu/SPEC.md: four fade steps held two
     // frames each, then nine slide frames, the last of them the settled list.
     localparam int SPLASH_FRAMES = 17;
-    localparam int FRAMES = SPLASH_FRAME + SPLASH_FRAMES;
+    // menu-delayed.hex and menu-delayed-worst.hex carry the delayed catalogue
+    // frames. No run reads them with the splash file, so they share its base.
+    // The nudge phase changes at PHASE_HOLD, so the hold alone decides which
+    // row is drawn in halves, and which row shares its VBlank
+    // with the twinkle: DELAYED_HOLD is the shortest run, DELAYED_WORST_HOLD
+    // puts the twinkle on slot 7, whose sixteen title cells are all letters.
+    // menu-delayed-marks.hex carries fixture.py's own numbers, and the run
+    // fails with MENU_DELAYED_SHAPE when they differ from these.
+    localparam int DELAYED_FRAME = SPLASH_FRAME;
+    localparam int DELAYED_HOLD = 0;
+    localparam int DELAYED_WORST_HOLD = 7;
+    // 16 rows in 17 frames, plus the not-ready frame and the bank commit: the
+    // frame that changes the phase draws half a row and the next one the rest.
+    localparam int DELAYED_ROWS_FRAMES = 19;
+    localparam int DELAYED_FRAMES = DELAYED_HOLD + DELAYED_ROWS_FRAMES;
+    localparam int DELAYED_WORST_FRAMES = DELAYED_WORST_HOLD + DELAYED_ROWS_FRAMES;
+    localparam int FRAMES = SPLASH_FRAME +
+        (DELAYED_WORST_FRAMES > SPLASH_FRAMES ? DELAYED_WORST_FRAMES : SPLASH_FRAMES);
     localparam int GAME_FRAME = 7;
     localparam int PHASE_FRAME = 8;
     // The button held through every other fixture's boot: A proves the skip
@@ -73,6 +95,14 @@ module tb_menu_system;
     logic [1:0] source_shade;
     logic [7:0] source_x, source_y;
     logic sdram_initialized, sdram_request_valid, sdram_request_write, sdram_request_ready, sdram_response_valid, sdram_idle;
+    // The delayed fixtures' not-ready SDRAM. The loader reports bit 5 of
+    // $A000 as sdram_initialized and no boot copy, so holding this line low
+    // is exactly the not-ready SDRAM the menu reads at boot. The controller
+    // and the device model keep the real signal; only the system sees the
+    // hold, and it goes on after the swap has copied the menu image in.
+    logic sdram_hold;
+    bit delayed_boot;
+    wire dut_sdram_initialized = sdram_initialized && !sdram_hold;
     logic [25:0] sdram_request_address;
     logic [127:0] sdram_request_data, sdram_response_data;
     logic [12:0] dram_addr;
@@ -115,6 +145,7 @@ module tb_menu_system;
     logic retirement_valid;
     retirement_t retirement;
     logic [7:0] marks_mem [0:3];
+    logic [7:0] delayed_marks_mem [0:3];
     logic [15:0] mark_frame, mark_body;
     longint unsigned cost_start;
     bit cost_armed;
@@ -130,7 +161,7 @@ module tb_menu_system;
         .source_valid, .source_start, .source_abort, .source_display_eligible, .source_shade,
         .source_x, .source_y, .source_epoch(), .source_dot(), .fault,
         .retirement_valid(retirement_valid), .retirement(retirement),
-        .key1_n, .sdram_initialized, .sdram_request_valid, .sdram_request_write, .sdram_request_address,
+        .key1_n, .sdram_initialized(dut_sdram_initialized), .sdram_request_valid, .sdram_request_write, .sdram_request_address,
         .sdram_request_data, .sdram_request_ready, .sdram_response_valid, .sdram_response_data
     );
     n2m_sdram_ctrl u_sdram (
@@ -211,8 +242,8 @@ module tb_menu_system;
     // Every map cell the menu writes names a tile in its bank, on the
     // background map and on the window map alike. A row drawn with the wrong
     // bank offset lands outside it, either above the bank or wrapped past
-    // zero, so this bounds that whole class wherever it runs, including the
-    // delayed catalogue path no fixture reaches yet.
+    // zero, so this bounds that whole class wherever it runs, the delayed
+    // catalogue path included.
     always @(posedge clk_sys) begin
         if (!reset_sys && dut.bus_commit && dut.write_enable && dut.profile == PROFILE_LOADER_ID
             && dut.address >= 16'h9800 && dut.address <= 16'h9FFF && dut.write_data >= 8'(BANK_TILES))
@@ -439,6 +470,10 @@ module tb_menu_system;
         read_host(HOST_REG_STATE, STATE_PAUSE);
         write_host(HOST_REG_LIBRARY_CONTROL, LIBRARY_CONTROL_RETURN);
         wait_copy(SWAP_BOUND, "menu swap");
+        // The delayed fixtures boot the menu with the SDRAM not ready. The
+        // swap itself reads SDRAM, so the hold goes on here, after the image
+        // is in and before the console runs, which is what the menu reads.
+        if (delayed_boot) sdram_hold = 1;
         read_host(HOST_REG_PROFILE, PROFILE_LOADER_ID);
         write_host(HOST_REG_INPUT_SOURCE, INPUT_SOURCE_PHYSICAL);
         press_buttons(hold);
@@ -475,6 +510,28 @@ module tb_menu_system;
             check_frame(SPLASH_FRAME + number);
         end
         check_frame(0);
+        read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd34, 8'hFF, LIBRARY_RESULT_OK, 8'h60});
+    endtask
+
+    // The delayed catalogue path: the menu boots while the SDRAM is not
+    // ready, so it starts settled with the slot numbers alone, no titles and
+    // NOT READY on the plate. The ready bit is released at the first pixel of
+    // frame `hold`, which the VBlank at the end of that frame reads: the next
+    // frame carries the committed bank and the cleared plate, and every frame
+    // after it one more title row, until the list is whole. Every one of them
+    // is compared, and the cost monitor measures each row's VBlank against
+    // the budget.
+    task automatic fixture_delayed(input int hold, input int count);
+        int number;
+        delayed_boot = 1;
+        start_menu(8'h00);
+        for (number = 0; number < count; number = number + 1) begin
+            frame_start(6000000);
+            if (number == hold) sdram_hold = 0;
+            check_frame(DELAYED_FRAME + number);
+        end
+        // The delayed path ends where the settled boot starts: bank 34 in the
+        // window, no select, both window bits set.
         read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd34, 8'hFF, LIBRARY_RESULT_OK, 8'h60});
     endtask
 
@@ -611,6 +668,7 @@ module tb_menu_system;
         for (command_count=0;command_count<256;command_count=command_count+1) expected_mask[command_count]=8'hFF;
         command_count = 0;
         capturing = 0; frame_complete = 0; select_seen = 0; select_data = 0;
+        sdram_hold = 0; delayed_boot = 0;
         cost_armed = 0; cost_start = 0; cost_samples = 0; cost_min = 1 << 30; cost_max = 0; cost_last = 0;
         cost_spanned = 0; cost_epoch = 0; expected_swaps = 0;
         if (!$value$plusargs("fixture=%s", fixture)) fixture = "frame";
@@ -618,6 +676,16 @@ module tb_menu_system;
         $readmemh("menu-library.hex", library_mem);
         $readmemh("menu-frames.hex", frames_mem);
         if (fixture == "splash") $readmemh("menu-splash.hex", frames_mem, SPLASH_FRAME * FRAME_PIXELS);
+        if (fixture == "delayed" || fixture == "delayed-worst") begin
+            $readmemh(fixture == "delayed" ? "menu-delayed.hex" : "menu-delayed-worst.hex",
+                frames_mem, DELAYED_FRAME * FRAME_PIXELS);
+            $readmemh("menu-delayed-marks.hex", delayed_marks_mem);
+            if (delayed_marks_mem[0] != 8'(DELAYED_HOLD) || delayed_marks_mem[1] != 8'(DELAYED_FRAMES)
+                || delayed_marks_mem[2] != 8'(DELAYED_WORST_HOLD) || delayed_marks_mem[3] != 8'(DELAYED_WORST_FRAMES))
+                $fatal(1, "MENU_DELAYED_SHAPE fixture=%0d/%0d/%0d/%0d testbench=%0d/%0d/%0d/%0d",
+                    delayed_marks_mem[0], delayed_marks_mem[1], delayed_marks_mem[2], delayed_marks_mem[3],
+                    DELAYED_HOLD, DELAYED_FRAMES, DELAYED_WORST_HOLD, DELAYED_WORST_FRAMES);
+        end
         $readmemh("menu-marks.hex", marks_mem);
         mark_frame = {marks_mem[1], marks_mem[0]};
         mark_body = {marks_mem[3], marks_mem[2]};
@@ -635,6 +703,8 @@ module tb_menu_system;
             "exit": fixture_exit();
             "phase": fixture_phase();
             "splash": fixture_splash();
+            "delayed": fixture_delayed(DELAYED_HOLD, DELAYED_FRAMES);
+            "delayed-worst": fixture_delayed(DELAYED_WORST_HOLD, DELAYED_WORST_FRAMES);
             default: $fatal(1, "MENU_SYS_FIXTURE %s", fixture);
         endcase
         if (cost_samples == 0) $fatal(1, "MENU_COST_MISSING");

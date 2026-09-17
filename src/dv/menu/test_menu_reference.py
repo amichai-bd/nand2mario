@@ -417,6 +417,61 @@ class Layout(unittest.TestCase):
         with self.assertRaises(ValueError):
             reference.expected('title', self.entries)
 
+    def test_delayed_catalogue_frames(self):
+        """The delayed path: a not-ready plate, one title row a frame, and the split row."""
+        R = reference
+        for hold in (fixture.DELAYED_HOLD, fixture.DELAYED_WORST_HOLD):
+            frames = fixture.delayed_frames(MENU_IMAGE, hold)
+            self.assertEqual(len(frames), hold + fixture.DELAYED_ROWS_FRAMES)
+            # While the SDRAM is not ready the plate says so and no title is drawn.
+            for number in range(hold + 1):
+                self.assertEqual(frames[number], R.frame(
+                    self.entries, sdram_ready=False, drawn_slots=0,
+                    phase=R.phase_of_frame(number)), (hold, number))
+            # The frame that commits the bank clears the plate and lists nothing.
+            self.assertEqual(frames[hold + 1], R.frame(
+                self.entries, drawn_slots=0, phase=R.phase_of_frame(hold + 1)))
+            # The frame that changes the nudge phase draws half its row, and the
+            # next frame draws the rest; that is the one frame a half row shows.
+            split = R.PHASE_HOLD
+            slot = split - hold - 2
+            self.assertEqual(R.phase_of_frame(split - 1), 0)
+            self.assertEqual(R.phase_of_frame(split), 1)
+            self.assertEqual(frames[split], R.frame(
+                self.entries, drawn_slots=slot, partial_cells=R.TITLE_HALF, phase=1))
+            self.assertEqual(frames[split + 1], R.frame(self.entries, drawn_slots=slot + 1, phase=1))
+            # One whole row a frame either side of the split, ending on the list.
+            for drawn in range(1, slot + 1):
+                self.assertEqual(frames[hold + 1 + drawn], R.frame(
+                    self.entries, drawn_slots=drawn, phase=R.phase_of_frame(hold + 1 + drawn)), (hold, drawn))
+            for drawn in range(slot + 1, R.SLOTS + 1):
+                number = hold + 2 + drawn
+                self.assertEqual(frames[number], R.frame(
+                    self.entries, drawn_slots=drawn, phase=R.phase_of_frame(number)), (hold, drawn))
+            self.assertEqual(frames[-1], R.frame(self.entries, phase=R.phase_of_frame(len(frames) - 1)))
+        # One more row a frame changes the map exactly when the slot it drew has
+        # a title; an empty slot draws the blank cells that were already there.
+        for slot in range(R.SLOTS):
+            drew = (R.tilemap(self.entries, drawn_slots=slot + 1)
+                    != R.tilemap(self.entries, drawn_slots=slot))
+            self.assertEqual(drew, self.entries[slot]['valid'] == 1
+                             and any(self.entries[slot]['title']), slot)
+        # A half row is the first TITLE_HALF cells of its title and nothing else.
+        rows = R.tilemap(self.entries, drawn_slots=7, partial_cells=R.TITLE_HALF)
+        self.assertEqual(rows[8][4:12], R.text_tiles('SIXTEEN '))
+        self.assertEqual(rows[8][12:20], [R.TILE_BLANK] * 8)
+        with self.assertRaises(ValueError):
+            R.tilemap(self.entries, drawn_slots=7, partial_cells=R.TITLE_CELLS)
+        # The shortest run splits slot 14, which has no title; the worst
+        # alignment splits WORST_SLOT, whose sixteen cells are all letters.
+        self.assertEqual(fixture.DELAYED_WORST_HOLD + fixture.WORST_SLOT + 2, R.PHASE_HOLD)
+        self.assertEqual(fixture.GAMES[fixture.WORST_SLOT], b'SIXTEEN CHAR ROW')
+        self.assertEqual(self.entries[R.PHASE_HOLD - fixture.DELAYED_HOLD - 2]['valid'], 0)
+        # The testbench reads this shape and fails when its constants differ.
+        self.assertEqual(fixture.delayed_marks(), bytes(
+            [fixture.DELAYED_HOLD, fixture.DELAYED_HOLD + fixture.DELAYED_ROWS_FRAMES,
+             fixture.DELAYED_WORST_HOLD, fixture.DELAYED_WORST_HOLD + fixture.DELAYED_ROWS_FRAMES]))
+
     def test_hex_lines(self):
         self.assertEqual(fixture.hex_lines(b'\x00\xff\x10'), '00\nff\n10\n')
 

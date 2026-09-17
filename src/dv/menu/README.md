@@ -15,7 +15,9 @@ builds the menu image through `sw build menu` and the
 [`exit-demo`](../../sw/exit-demo/main.asm) game through `sw build exit-demo`,
 writes the sixteen-slot SDRAM library (`menu-library.hex`), the reference
 frames (`menu-frames.hex`: the scripted menu frames, the exit-demo game frame,
-then the boot frame in nudge phase 1) and `menu-marks.hex` (the built image's
+then the boot frame in nudge phase 1; `menu-splash.hex` the splash schedule and
+`menu-delayed.hex` and `menu-delayed-worst.hex` the delayed catalogue path at
+each alignment, one file per fixture) and `menu-marks.hex` (the built image's
 `Frame` address and the address after its `CALL WaitVBlank`, taken from the
 build's own symbol and listing records) into the attempt directory. Slot 1
 holds the built `EXIT DEMO` image: a solid bar on map row 8 (pixel rows 64..71 shade 3, the rest shade 0) and,
@@ -53,7 +55,8 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 | Refused select | Cursor on the empty slot 3, A: `LIBRARY_STATUS` result `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up moves the cursor while the message stays; A on slot 2 starts that game with select data 2; `window_ready` stays set across the refused select |
 | Nudge phase | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and the star field's first phase, frame 16 the nudged arrow and its second, both pixel-exact, which pins the phase boundary at 16 for the pointer and the stars together. The return to phase 0 at frame 32 is not simulated; it costs sixteen more simulated frames and follows from the bit-4 constant the image and `reference.phase_of_frame` share, which `test_menu_reference.py` covers |
 | Frame budget | Every menu frame body, measured between the marks from the retirement stream, stays inside VBlank's 1140 M-cycles; the run prints each `MENU_COST` and fails with `MENU_VBLANK_OVERRUN` above it. An image swap resets the core and its dot counter, so a measurement that would span one is discarded and the first frame after a return is measured from the new epoch's first `WaitVBlank` exit; the discarded count must equal the swaps the fixture scripts, or the run fails with `MENU_COST_SPANS` |
-| Tile range | Every map cell the menu writes, on the background map and the window map alike, names a tile in its 98-tile bank; a write outside it fails with `MENU_TILE_RANGE`. This bounds a row drawn with the wrong bank offset wherever it runs, including the delayed catalogue path no fixture reaches yet |
+| Delayed catalogue | The menu boots with `sdram_ready` clear: the list settles with the slot numbers alone, no titles and `NOT READY` on the plate. The testbench releases the ready bit after a named frame, the next frame carries the committed bank and the cleared plate, and each frame after it one more title row, every one pixel-exact, ending on the whole list with bank 34 and both window bits set. The frame that changes the nudge phase draws half its row and the next frame draws the rest, so one compared frame shows a half-drawn row. `menu-delayed` releases the bit at once, which splits an empty slot; `menu-delayed-worst` holds it seven frames longer, which splits the sixteen-letter title of slot 7, the most expensive row the path can draw |
+| Tile range | Every map cell the menu writes, on the background map and the window map alike, names a tile in its 98-tile bank; a write outside it fails with `MENU_TILE_RANGE`. This bounds a row drawn with the wrong bank offset wherever it runs, the delayed catalogue path included |
 | Checker | `+pixel_fault` forces the source shade to 2 for the boot frame and must fail with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 | Reference | `test_menu_reference.py`: font tiles equal the approved core glyphs, glyph mapping, the CGB flag rule in the last title cell only, layout rows, status texts, fixture library bytes and catalogue entry packing, snapshot unpacking and the negative pixel check |
 
@@ -67,13 +70,19 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 | `menu-exit` | `exit` | `PASS menu-exit checks=14 frames=4 selects=1 commands=11` |
 | `menu-phase` | `phase` | `PASS menu-phase checks=6 frames=3 selects=0 commands=6` |
 | `menu-refused` | `refused` | `PASS menu-refused checks=13 frames=6 selects=1 commands=9` |
+| `menu-delayed` | `delayed` | `PASS menu-delayed checks=22 frames=19 selects=0 commands=6` |
+| `menu-delayed-worst` | `delayed-worst` | `PASS menu-delayed-worst checks=29 frames=26 selects=0 commands=6` |
 | `menu-frame-fault` | `frame` with `+pixel_fault` | nonzero exit with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 the boot frames with `python3 tools/build.py tests run --label menu --tag
-<tag>` and the selection paths with `--label menu-library`; `menu-phase` and
+<tag>` and the selection paths with `--label menu-library` and the delayed draw with `--label menu-delayed`, which needs a label of its own because the three do not fit one 300-second aggregate; `menu-phase` and
 `menu-splash` carry `menu-animation`, `menu-select-mbc1` the `mbc1` and
-`system` labels, and `menu-exit` the `system` label, so every aggregate stays
+`system` labels, `menu-exit` the `system` label, and `menu-delayed-worst` a
+label of its own beside `system`, because its alignment is structurally seven
+frames longer than the ordinary per-simulation target permits and it runs as a
+declared wall allowance; `system` is the aggregate above one RTL owner, not an
+ordinary 300-second one, so every aggregate stays
 inside the ordinary 300-second budget with headroom; `menu-phase` has to
 display 18 frames to reach the phase boundary, which no shorter check can
 prove.

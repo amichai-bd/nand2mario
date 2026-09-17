@@ -69,7 +69,12 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
    `sdram_ready` is now set, commit it; when it has been committed and
    `window_ready` is set, draw one remaining title row per frame. Every row
    is drawn the same way, because the cursor is an object and never re-banks
-   a row.
+   a row. A frame whose nudge phase differs from the shown one draws the first
+   eight cells of its row instead, and the next frame draws the other eight,
+   so no VBlank carries a whole row and the [twinkle](#star-field) together;
+   the [frame budget](#frame-budget) is why. The phase itself is untouched: it
+   still follows the frame counter alone, and the sixteen rows take seventeen
+   frames.
 6. Move the cursor object only when the cursor changed, redraw the status
    row only when its key or index changed, and when the nudge phase changed
    rewrite the object's tile and the [star field](#star-field)'s own cells.
@@ -107,7 +112,7 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$08A5` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, drawing routines and text tables (1702 bytes) |
+| `$0200`-`$0929` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, drawing routines and text tables (1834 bytes) |
 | `$0C00`-`$0FAF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"`, the eight badge cells from `ASSET "Splash"` and the four star cells from `ASSET "Stars"`, 944 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
@@ -117,7 +122,7 @@ The menu itself is unchanged by it.
 | `$9800`-`$9BFF` | [Background map](#background-map), all 32 rows: the boot splash above the list |
 | `$9C00`-`$9FFF` | [Window map](#window): blank but for the plate's two rows |
 | `$FE00`-`$FE9F` | Object table; cleared at boot, then object 0 alone is the cursor |
-| `$C000`-`$C0FE` | `vars`, 255 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, the splash's `SplashOn`, `SplashNumber`, `SplashRows`, `SplashSkip`, `BootSlots` and `BootDraw`, the star field's `StarCount`, `StarPtr` and `StarTable`, `SplashRowCells`, the four 20-cell wrapped rows built at boot, and `StatusCells`, the six 18-cell status rows |
+| `$C000`-`$C0FF` | `vars`, 256 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `Half` for the row split in two frames, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, the splash's `SplashOn`, `SplashNumber`, `SplashRows`, `SplashSkip`, `BootSlots` and `BootDraw`, the star field's `StarCount`, `StarPtr` and `StarTable`, `SplashRowCells`, the four 20-cell wrapped rows built at boot, and `StatusCells`, the six 18-cell status rows |
 | `$DFFE` | Stack pointer |
 
 Interrupts stay disabled; frame sync polls `LY`. The joypad rows are
@@ -363,18 +368,29 @@ measured from the new epoch's first poll rather than across the swap.
 | Boot splash slide frame after the map is whole | 199-260 | 17-23% |
 | Skipped splash frame, two wrapped rows | 599-663 | 53-58% |
 | Refused select with a 20-character status redraw | 555 | 49% |
+| Delayed catalogue: the not-ready boot frame, idle | 233 | 20% |
+| Delayed catalogue: the bank commit and the plate's status redraw | 499 | 44% |
+| Delayed catalogue: one title row | 476-1124 | 42-99% |
+| Delayed catalogue: the first half of a row and the nudge phase change | 616-940 | 54-82% |
+| Delayed catalogue: the second half of that row | 443-780 | 39-68% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
-select from `menu-refused` and the splash rows from `menu-splash` and
-`menu-frame-fault`, each measured on the image this page specifies. The first
+select from `menu-refused`, the splash rows from `menu-splash` and
+`menu-frame-fault` and the delayed rows from `menu-delayed`, each measured on
+the image this page specifies. The first
 list frame is no longer a class of its own: the bottom plate is built into the
 window map with the LCD off, so that frame writes nothing and measures the idle
 238 rather than the 483 a status redraw used to add.
 
-A skipped splash frame is the peak, 663, 477 M-cycles inside the budget, and
-the idle frame is the floor at 238. The peak is `menu-frame-fault`'s own
-second frame: its skip settles the list, which is the frame that turns the
-window on, so it carries the LCDC write too. The cap on the skip is what holds that
+A delayed title row is the peak, 1124, 16 M-cycles inside the budget, and the
+idle frame is the floor at 233. The peak is the sixteen letter cells of
+`SIXTEEN CHAR ROW`, the fixture's widest title, drawn one row to the frame. It
+is the one frame with no room left, so anything added to the title path has to
+be measured here first. The
+peak of every settled path is lower: a skipped splash frame costs 663, 477
+M-cycles inside the budget, and it is `menu-frame-fault`'s own second frame,
+whose skip settles the list, turns the window on and carries the LCDC write
+too. The cap on the skip is what holds that
 margin: a skip that finished the map in one VBlank cost 1342 and overran, and
 1010 with the rows prebuilt as cells. Two
 things keep the ordinary splash cheap: the four wrapped rows are built as
@@ -383,13 +399,39 @@ walking the text path, and no frame draws more than two of them. The cursor
 object pulled the list's own peak down the same way: a move used to rewrite
 two rows of 19 map cells for 722 M-cycles, and it now writes one byte.
 
-The delayed catalogue path draws one title row per frame and the matrix below
-never reaches it, because the fixture's SDRAM is ready before the menu boots.
-Every row is drawn the same way now that no row is re-banked under a bar; the
-counted worst case, sixteen letter cells, is about 1080 of the 1140. The
-overrun check bounds it wherever it does run, and
-[issue #777](https://github.com/amichai-bd/nand2mario/issues/777) tracks
-measuring it.
+The delayed catalogue path draws one title row per frame, and `menu-delayed`
+measures every one of them: the menu boots with `sdram_ready` clear, so the
+list settles with the slot numbers alone and each frame after the bank commit
+draws one more row. Every row is drawn the same way now that no row is
+re-banked under a bar, so the row's own text is the whole difference: a blank
+title costs 476 and the sixteen letter cells of the widest one 1124, which is
+99% of the budget and the most expensive frame the menu draws.
+
+Those row frames are consecutive, so one of them always falls on a multiple of
+16, where the [nudge phase](#cursor-object) changes and the pointer's tile and
+the eight star cells are rewritten: 194 M-cycles, the 432 of a nudge frame
+against the 238 of an idle one. A whole row plus that is past the budget, so
+that frame draws the first half of its row and the next frame the other half,
+as the [behavior](#behavior) states. `menu-delayed` measured the pair at 616
+and 443 on a blank row. Which row is split follows from when the SDRAM answers,
+so `menu-delayed-worst` splits the widest title, the most expensive row the
+path can carry: 940 for the half that also twinkles and 780 for the other,
+against the 1124 the whole row costs. The split is what holds the margin; the
+sum would be 1318.
+
+No flow boots the menu with the bit clear today. The boot copier holds
+`sdram_ready` low only in `WAIT_SDRAM`, `CHECK` and `COPY` and raises the menu
+select in `BOOT`, after them
+([boot copier](../../../../src/rtl/storage/n2m_boot_copier.sv)); every other menu boot is
+a swap the [loader engine](../../../../src/rtl/cartridge/n2m_loader_engine.sv)
+performs, and it reads SDRAM only while `sdram_ready` is set, so the swap
+cannot finish before the bit is; and the bit never falls after reset, because
+the controller's `initialized` is set once
+([SDRAM controller](../../../../src/rtl/storage/n2m_sdram_ctrl.sv)) and the
+copier only moves forward. The path is therefore the image's defence against a
+loader that boots the menu before the library answers, and the fixture drives
+it at the system boundary by holding the system's `sdram_initialized` line low
+across the boot.
 
 Title bytes map to font tiles: `A`-`Z` to tiles 0..25, `0`-`9` to 26..35,
 `-` to 36, zero and space to the blank tile 37; any other byte draws the
@@ -485,9 +527,11 @@ writes the game exit register), stub games in slots 0, 2, 7, 8, 9, 10 and
 header `$0143`), a 64 KiB MBC1 stub game in slots 5-6 whose bank 2 returns
 through the game exit register, an empty slot 3, a valid entry with a
 foreign length in slot 4 and the menu at 16, and writes `menu-library.hex`,
-`menu-frames.hex` (the scripted menu frames, then the exit-demo game frame)
-and `menu-splash.hex` (every displayed frame of the splash schedule, which
-only the splash fixture reads) for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
+`menu-frames.hex` (the scripted menu frames, then the exit-demo game frame),
+`menu-splash.hex` (every displayed frame of the splash schedule, which
+only the splash fixture reads) and `menu-delayed.hex` and
+`menu-delayed-worst.hex` (every displayed frame of the delayed catalogue path
+at each alignment, one file per fixture) for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 runs the real `n2m_v05_system` with the SDRAM controller and device model,
 swaps the menu in through the host return, selects the board joypad and
 compares every captured display-eligible frame; the
@@ -502,17 +546,31 @@ compares every captured display-eligible frame; the
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and the star field's first phase, frame 16 the nudged arrow and its second, both pixel-exact, which pins the phase boundary for the pointer and the [stars](#star-field) together. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
 | `menu-splash` | The untouched [boot splash](#boot-splash) runs its schedule: all 17 displayed frames match the reference frame by frame, fade then slide, and the last of them is pixel-identical to the menu's own frame 0. The nine slide frames are nine scroll offsets of the 32-row map, so they are also where the [star field](#star-field) is checked riding the list |
+| `menu-delayed` | The delayed catalogue path: the menu boots with `sdram_ready` clear and shows the settled list with slot numbers alone, no titles and `NOT READY` on the plate; the frame after the ready bit rises carries the committed bank and the cleared plate, and each frame after it one more title row, except the frame that changes the nudge phase, which draws half its row and leaves the rest to the next one: nineteen frames, all pixel-exact, ending on the whole list with bank 34 and both window bits set. Every row's VBlank is measured against the [frame budget](#frame-budget) |
+| `menu-delayed-worst` | The same path held seven frames longer, so the row split by the frame that changes the nudge phase is the sixteen-letter title rather than an empty slot: the most expensive delayed frame the path can produce, measured at 940 against the 1140 budget. A declared target wall allowance, in a label of its own, because that alignment is structurally seven frames longer than the ordinary per-simulation target permits |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
-Every target runs within the ordinary wall budget, and every label aggregate
-stays inside the ordinary 300-second budget with room for the work still to
-come. Every target except `menu-splash` also measures under the 120-second
-per-simulation target; `menu-splash` measured 120.96 seconds and `menu-phase`
-118.74, so the margin there is about a second. The
+Every target runs within the ordinary wall budget and every label aggregate
+inside the ordinary 300-second one, but three of these sit on the 120-second
+per-simulation target rather than under it, and their frame counts say why:
+`menu-phase` cannot see the phase boundary before frame 16, `menu-splash`
+displays the whole splash schedule, and `menu-delayed` draws sixteen rows one
+to the frame with one of them split in two. None of the three can be shortened
+without dropping what it proves. `menu-delayed` measured 123.60 seconds with
+the model already built and 171.97 as the last run of its own label, which
+rebuilt it; `menu-delayed-worst` measured 182.91, seven frames longer again and
+a declared wall allowance rather than a target of the ordinary budget. The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
-each target's last run. `menu-frame` and `menu-frame-fault` carry `menu`;
+each target's last run, so a run that rebuilt the model after an image change
+records the build with it. `menu-frame` and `menu-frame-fault` carry `menu`;
 `menu-select` and `menu-refused` carry `menu-library`, the selection paths;
+`menu-delayed` carries a label of its own, because `menu-library` cannot hold
+its wall as well - the three together exhausted the 300-second aggregate
+budget and left `menu-select` unrun; `menu-delayed-worst` carries one of its
+own too, so its declared allowance enters no ordinary aggregate. Both carry
+`system` beside it, which is the aggregate above one RTL owner, a
+milestone-scale label rather than a 300-second one;
 `menu-phase` and `menu-splash` carry `menu-animation`; `menu-select-mbc1`
 carries `mbc1`. `menu-exit` carries only `system`, the aggregate above one
 RTL owner, so it is run as a single target.
@@ -523,7 +581,9 @@ that shows the previous press's result, and only a repeated mask takes a
 release frame. What is left is a floor. `menu-splash` displays the whole
 18-frame schedule, which is why the fade holds two frames a step rather than
 three. `menu-phase` displays 18 frames because the nudge is bit 4 of the
-frame counter, so frame 16 cannot arrive sooner, and `menu-exit` boots three
+frame counter, so frame 16 cannot arrive sooner, `menu-delayed` displays 19
+because the path draws one row a frame, sixteen rows cannot arrive sooner and
+the split row costs a frame more, and `menu-exit` boots three
 images (menu, game, menu) because the returned menu only starts settled after
 a real select left the slot in `$A003`. What remains in those three is the
 testbench's fixed cost per boot rather than stimulus;
