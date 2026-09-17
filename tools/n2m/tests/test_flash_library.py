@@ -73,6 +73,49 @@ class AssemblyTests(unittest.TestCase):
             self.assertEqual(flash_library.flash_word(library.slot_address(index)), DATA_BASE + index * SLOT_WORDS)
         self.assertEqual(flash_library.USER_WORDS, 0x2E7FF - DATA_BASE + 1)
 
+    def test_taglines_reach_the_catalogue_words_without_moving_an_image_or_an_entry(self):
+        tagged = {index: (image, profile, {'tagline_bytes': f'SLOT {index} TAGLINE'.encode()})
+                  for index, (image, profile) in self.images.items()}
+        assembled = flash_library.assemble(tagged)
+        # No image word and no entry byte moves: only the tagline table differs.
+        self.assertEqual({word: value for word, value in assembled['words'].items()
+                          if word < flash_library.avalon_word(library.CATALOGUE_ADDRESS)},
+                         {word: value for word, value in self.words.items()
+                          if word < flash_library.avalon_word(library.CATALOGUE_ADDRESS)})
+        self.assertEqual(assembled['catalogue'][:library.TAGLINE_OFFSET], self.assembled['catalogue'][:library.TAGLINE_OFFSET])
+        self.assertEqual(self.assembled['catalogue'][library.TAGLINE_OFFSET:],
+                         bytes(library.CATALOGUE_BYTES - library.TAGLINE_OFFSET))
+        rows = library.parse_catalogue(assembled['catalogue'])
+        self.assertEqual([row['tagline'] for row in rows if row['valid']],
+                         [f'SLOT {index} TAGLINE'.encode() for index in sorted(self.images)])
+        self.assertEqual([row['tagline'] for row in rows if not row['valid']], [b''] * (library.IMAGE_COUNT - len(self.images)))
+        # The summary row reports the tagline as text beside the title, and the
+        # raw bytes never leak into it.
+        row = next(row for row in assembled['rows'] if row['index'] == 0)
+        self.assertEqual(row['tagline'], 'SLOT 0 TAGLINE')
+        self.assertNotIn('tagline_bytes', row)
+        # The table is inside the catalogue's own flash words; nothing beyond it is defined.
+        base = flash_library.avalon_word(library.TAGLINE_ADDRESS)
+        self.assertEqual(assembled['words'][base], int.from_bytes(b'SLOT', 'little'))
+        self.assertEqual(max(assembled['words']), max(self.words))
+
+    def test_two_builds_of_the_same_inputs_write_the_same_digests(self):
+        tagged = {index: (image, profile, {'tagline_bytes': b'STEADY BYTES'})
+                  for index, (image, profile) in self.images.items()}
+        digests = []
+        for _run in range(2):
+            with tempfile.TemporaryDirectory() as folder:
+                digests.append(flash_library.write(Path(folder), flash_library.assemble(tagged)))
+        self.assertEqual(digests[0], digests[1])
+        self.assertEqual(sorted(digests[0]), [flash_library.CATALOGUE_NAME, flash_library.DAT_NAME, flash_library.HEX_NAME])
+        # A tagline changes the catalogue and the flash image, and no image byte:
+        # the per-slot image digests are the ones the untagged build recorded.
+        with tempfile.TemporaryDirectory() as folder:
+            plain = flash_library.write(Path(folder), self.assembled)
+        self.assertNotEqual(plain[flash_library.CATALOGUE_NAME], digests[0][flash_library.CATALOGUE_NAME])
+        self.assertEqual({index: hashlib.sha256(image).hexdigest() for index, (image, _p) in self.images.items()},
+                         {index: hashlib.sha256(tagged[index][0]).hexdigest() for index in tagged})
+
     def test_slot_words_are_little_endian_at_the_contract_addresses(self):
         for index, (image, _profile) in self.images.items():
             base = index * SLOT_WORDS
