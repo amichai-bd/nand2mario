@@ -17,11 +17,12 @@ record the programmed `.pof`, the power-up to the menu and the read-back
 library state on the board; the programming section below is the contract
 those slices derive from. The board's current flash-resident image is the
 [session 9](../../board-bring-up.md#session-9-reflash-with-the-plated-list-menu)
-`v05-board` fit, packed `catalogue.bin` SHA-256 `696868ab…`. That digest is
-what is programmed into the board, not what the packer writes today: no game
-declares a tagline yet, so the packer still writes those bytes zero and the
-digest still matches, and the first declared tagline changes it and needs a
-reflash before the board shows one.
+`v05-board` fit, packed `catalogue.bin` SHA-256 `696868ab…`. That digest
+records what is programmed into the board, not what the packer writes today:
+the catalogue carries each image's CRC-32 and title, so every change to the
+menu image since that session already moved it, and the board keeps the bytes
+of its own session until it is reflashed. The tagline table did not move it
+either, because no entry declares a tagline yet.
 
 ## Scope
 
