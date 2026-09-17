@@ -61,7 +61,7 @@ SPLASH_HINT_BYTES EQU 13
 ; and the last slide frame is the menu's own first frame.
 SCREEN_ROWS EQU 18
 FADE_STEPS EQU 4
-FADE_HOLD EQU 3
+FADE_HOLD EQU 2
 FADE_FRAMES EQU FADE_STEPS * FADE_HOLD
 SLIDE_STEP EQU 16
 SLIDE_FRAMES EQU SETTLED_SCY / SLIDE_STEP
@@ -71,6 +71,10 @@ SETTLED_FRAME EQU FADE_FRAMES + SLIDE_FRAMES - 1
 ; above them is drawn at boot, with the LCD off.
 WRAPPED_ROWS EQU LIST_MAP_ROW + SCREEN_ROWS - MAP_ROWS
 BOOT_SLOTS EQU LIBRARY_SLOTS - WRAPPED_ROWS + 1
+; The four rows are built as cells at boot, with the LCD off, so a slide frame
+; costs a flat copy and a skip can finish the whole map inside one VBlank.
+SCREEN_COLUMNS EQU 20
+SPLASH_ROW_CELLS EQU WRAPPED_ROWS * SCREEN_COLUMNS
 HEADER_COLUMN EQU 4
 SLOT_ROW EQU 1
 NUMBER_COLUMN EQU 1
@@ -138,6 +142,8 @@ SplashSkip:
 DS 1
 BootSlots:
 DS 1
+SplashRowCells:
+DS SPLASH_ROW_CELLS
 StatusCells:
 DS STATUS_CELLS
 
@@ -357,6 +363,58 @@ LD B,A
 LD A,[BootSlots]
 CP A,B
 JR NZ,DrawAll
+; The four rows the slide draws, built as cells while the LCD is off: the
+; last three slot rows, then the bottom plate around the blank status row.
+LD HL,SplashRowCells
+LD C,BOOT_SLOTS
+BuildSlotRow:
+PUSH HL
+LD D,H
+LD E,L
+LD A,TILE_BLANK
+LD [DE],A
+INC DE
+LD A,C
+PUSH BC
+LD C,TILE_DIGIT
+CALL DrawDigits
+POP BC
+LD A,TILE_BLANK
+LD [DE],A
+INC DE
+LD A,C
+PUSH BC
+CALL DrawTitleAt
+POP BC
+POP HL
+LD A,SCREEN_COLUMNS
+ADD A,L
+LD L,A
+LD A,0
+ADC A,H
+LD H,A
+INC C
+LD A,C
+CP A,LIBRARY_SLOTS
+JR NZ,BuildSlotRow
+LD D,H
+LD E,L
+LD A,TILE_CAP_LEFT
+LD [DE],A
+INC DE
+LD HL,StatusCells
+LD B,PLATE_CELLS
+BuildPlate:
+LD A,[HL+]
+LD [DE],A
+INC DE
+DEC B
+JR NZ,BuildPlate
+LD A,TILE_CAP_RIGHT
+LD [DE],A
+; Every title row is read now, so a select is live as soon as the list is.
+LD A,LIBRARY_SLOTS
+LD [Pending],A
 EnableLCD:
 ; The cursor object: X at the left edge, phase 0. Its Y stays 0, off screen,
 ; while the splash runs; the settled frame brings it on. The bottom plate is
@@ -421,14 +479,20 @@ SplashScheduled:
 LD A,[SplashSkip]
 OR A,A
 JR Z,SplashFrame
+; The skip: whatever the map still wants, then the settled frame, all in this
+; one VBlank, so the frame the button is held in is already the menu.
 LD A,[SplashRows]
+SkipRows:
 CP A,WRAPPED_ROWS
 JR NC,SkipSettled
-ADD A,FADE_FRAMES
-JR SkipTo
+PUSH AF
+CALL DrawWrapped
+POP AF
+INC A
+JR SkipRows
 SkipSettled:
+LD [SplashRows],A
 LD A,SETTLED_FRAME
-SkipTo:
 LD [SplashNumber],A
 SplashFrame:
 LD A,[SplashNumber]
@@ -506,36 +570,95 @@ ADD A,CURSOR_Y
 LD [OAM_CURSOR],A
 RET
 
-; A = the wrapped list row the slide draws, 0..WRAPPED_ROWS-1: the last three
-; slot rows, then the bottom plate. Map rows 0..3 carry them and DrawSlot
-; already wraps its own address into them.
+; A = the wrapped list row, 0..WRAPPED_ROWS-1: its twenty prebuilt cells into
+; map row A, the row the splash leaves blank until the slide has carried it
+; off the top of the screen.
 DrawWrapped:
-CP A,WRAPPED_ROWS - 1
-JR Z,StatusPlate
-PUSH AF
-ADD A,A
-ADD A,A
-ADD A,A
-ADD A,A
-ADD A,A
-LD E,A
-LD D,0
-LD HL,MAP + NUMBER_COLUMN
+LD L,A
+LD H,0
+LD B,H
+LD C,L
+ADD HL,HL
+ADD HL,HL
+PUSH HL
+ADD HL,HL
+ADD HL,HL
+POP DE
+ADD HL,DE
+LD DE,SplashRowCells
 ADD HL,DE
 LD D,H
 LD E,L
-POP AF
-PUSH AF
-ADD A,BOOT_SLOTS
-LD C,TILE_DIGIT
-CALL DrawDigits
-POP AF
-ADD A,BOOT_SLOTS
-PUSH AF
-CALL DrawSlot
-POP AF
-INC A
-LD [Pending],A
+LD A,C
+ADD A,A
+ADD A,A
+ADD A,A
+ADD A,A
+ADD A,A
+LD L,A
+LD H,HIGH(MAP)
+; The twenty cells, unrolled: a skip copies four rows inside one VBlank, and
+; the loop's counter and branch would cost more than the copy itself.
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
 RET
 
 ; The bottom plate: its two caps and the status row between them.
@@ -675,19 +798,7 @@ RET
 ; header $0143: the CGB flag values draw blank, any other byte follows
 ; CharTile.
 DrawSlot:
-LD C,A
-LD L,A
-LD H,0
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-LD A,H
-ADD A,HIGH(GB_ROM1_START)
-LD H,A
-PUSH HL
-LD A,C
+PUSH AF
 ADD A,LIST_MAP_ROW + SLOT_ROW
 LD L,A
 LD H,0
@@ -704,7 +815,19 @@ OR A,HIGH(MAP)
 LD H,A
 LD D,H
 LD E,L
-POP HL
+POP AF
+; A = slot, DE = its sixteen title cells: wherever the caller wants them.
+DrawTitleAt:
+LD L,A
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD A,H
+ADD A,HIGH(GB_ROM1_START)
+LD H,A
 LD A,[HL]
 CP A,LIBRARY_CATALOGUE_VALID
 JR NZ,BlankTitle

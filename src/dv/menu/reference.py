@@ -68,7 +68,7 @@ WRAPPED_ROWS = LIST_MAP_ROW + ROWS - MAP_ROWS
 # and mirrored in the image; they are chosen as the longest splash whose
 # frame-by-frame target still fits the simulation wall budget.
 FADE = (0x00, 0x40, 0x90, 0xE4)
-FADE_HOLD = 3
+FADE_HOLD = 2
 SLIDE_STEP = 16
 FADE_FRAMES = len(FADE) * FADE_HOLD
 SLIDE_FRAMES = SETTLED_SCY // SLIDE_STEP
@@ -227,15 +227,22 @@ def phase_of_frame(number):
     return number // PHASE_HOLD % PHASES
 
 
-def splash_state(number):
+def splash_state(number, skipped=False):
     """The boot splash state of displayed frame `number`: (bgp, scy, wrapped rows drawn).
 
     The frame counter alone decides it, as it does the nudge phase. Loop
     iteration `number` writes one register and, while the slide runs, draws
     one wrapped list row, and its writes appear in the frame it numbers.
+
+    `skipped` is a button press sampled in this frame. The image holds the
+    four wrapped rows as cells built at boot, so it finishes the map and
+    settles inside that one VBlank: the frame that takes the press is already
+    the settled frame, and the press is consumed by the splash.
     """
     if number < 0:
         raise ValueError('a frame number counts from the menu\'s first frame')
+    if skipped:
+        number = SETTLED_FRAME
     if number < FADE_FRAMES:
         return FADE[number // FADE_HOLD], 0, 0
     step = min(number - FADE_FRAMES + 1, SLIDE_FRAMES)

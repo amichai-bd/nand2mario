@@ -242,6 +242,10 @@ class Layout(unittest.TestCase):
             self.assertGreater(top, row)
             self.assertLessEqual(top + reference.ROWS, reference.MAP_ROWS + row)
         self.assertEqual(reference.splash_state(reference.SETTLED_FRAME)[1], reference.SETTLED_SCY)
+        # A press settles the frame that samples it, whichever frame that is.
+        for number in range(reference.SETTLED_FRAME + 1):
+            self.assertEqual(reference.splash_state(number, skipped=True),
+                             reference.splash_state(reference.SETTLED_FRAME), number)
         with self.assertRaises(ValueError):
             reference.splash_state(-1)
         # The first frame is the page alone and the last is the menu itself.

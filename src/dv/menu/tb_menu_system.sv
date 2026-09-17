@@ -16,7 +16,11 @@
 // bar frame; Start makes it write the game exit value and the menu is back,
 // pixel-exact, with the epoch advanced) and `phase` (the untouched menu left
 // to animate: displayed frame 15 still carries the plain arrow and frame 16
-// the nudged one, which pins the phase boundary).
+// the nudged one, which pins the phase boundary) and `splash` (the boot
+// splash left alone: every frame of the fade and the slide, ending on the
+// settled list). Every other fixture holds A through the boot instead, which
+// ends the splash in its first displayed frame: their frame 0 is the settled
+// menu, and the consumed press neither moves the cursor nor selects a game.
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
 /* verilator lint_off WIDTHTRUNC */
@@ -24,9 +28,18 @@ module tb_menu_system;
     import n2m_interfaces_pkg::*;
     localparam int LIBRARY_BYTES = 32'h8C000;
     localparam int FRAME_PIXELS = 23040;
-    localparam int FRAMES = 9;
+    // menu-frames.hex carries the scripted frames; menu-splash.hex the boot
+    // splash frames, read only by the splash fixture, at SPLASH_FRAME.
+    localparam int SPLASH_FRAME = 9;
+    // The schedule of wiki/src/sw/menu/SPEC.md: four fade steps held two
+    // frames each, then nine slide frames, the last of them the settled list.
+    localparam int SPLASH_FRAMES = 17;
+    localparam int FRAMES = SPLASH_FRAME + SPLASH_FRAMES;
     localparam int GAME_FRAME = 7;
     localparam int PHASE_FRAME = 8;
+    // The button held through every other fixture's boot: A proves the skip
+    // consumes its press, because an A the list saw would select slot 0.
+    localparam logic [7:0] BOOT_SKIP = BUTTON_A;
     // Frames the cursor holds each nudge phase (wiki/src/sw/menu/SPEC.md).
     localparam int PHASE_HOLD = 16;
     localparam int EXIT_SLOT = 1;
@@ -405,20 +418,43 @@ module tb_menu_system;
 
     // Power-up: no image, paused. The return swaps the menu in from SDRAM;
     // the board's joypad is selected and the console runs.
-    task automatic boot_menu;
+    // Up to the RUN, with `hold` pressed on the board's joypad before it, so
+    // the menu's first frame samples it.
+    task automatic start_menu(input logic [7:0] hold);
         expected_swaps = expected_swaps + 1;     // the host return swaps the menu in
         read_host(HOST_REG_STATE, STATE_PAUSE);
         write_host(HOST_REG_LIBRARY_CONTROL, LIBRARY_CONTROL_RETURN);
         wait_copy(SWAP_BOUND, "menu swap");
         read_host(HOST_REG_PROFILE, PROFILE_LOADER_ID);
         write_host(HOST_REG_INPUT_SOURCE, INPUT_SOURCE_PHYSICAL);
+        press_buttons(hold);
         simple(COMMAND_RUN);
         // The checker must reject a wrong shade on the very first pixel.
         if (pixel_fault) force dut.source_shade = 2'd2;
-        // The first display-eligible frame is the complete menu.
+    endtask
+
+    task automatic boot_menu;
+        start_menu(BOOT_SKIP);
+        // A is held through the boot, so the splash ends in the frame that
+        // samples it: the first display-eligible frame is the complete menu.
         frame_start(6000000);
         check_frame(0);
+        press_buttons(8'h00);
         // The catalogue window is bank 34; the return swapped index 16 without a select commit.
+        read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd34, 8'hFF, LIBRARY_RESULT_OK, 8'h60});
+    endtask
+
+    // The boot splash left alone: every displayed frame of the schedule, in
+    // order, against the reference. The last of them is the settled list,
+    // which is frame 0, so the splash ends exactly where the menu begins.
+    task automatic fixture_splash;
+        int number;
+        start_menu(8'h00);
+        for (number = 0; number < SPLASH_FRAMES; number = number + 1) begin
+            frame_start(6000000);
+            check_frame(SPLASH_FRAME + number);
+        end
+        check_frame(0);
         read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd34, 8'hFF, LIBRARY_RESULT_OK, 8'h60});
     endtask
 
@@ -557,6 +593,7 @@ module tb_menu_system;
         pixel_fault = $test$plusargs("pixel_fault");
         $readmemh("menu-library.hex", library_mem);
         $readmemh("menu-frames.hex", frames_mem);
+        if (fixture == "splash") $readmemh("menu-splash.hex", frames_mem, SPLASH_FRAME * FRAME_PIXELS);
         $readmemh("menu-marks.hex", marks_mem);
         mark_frame = {marks_mem[1], marks_mem[0]};
         mark_body = {marks_mem[3], marks_mem[2]};
@@ -573,6 +610,7 @@ module tb_menu_system;
             "select-mbc1": fixture_select_mbc1();
             "exit": fixture_exit();
             "phase": fixture_phase();
+            "splash": fixture_splash();
             default: $fatal(1, "MENU_SYS_FIXTURE %s", fixture);
         endcase
         if (cost_samples == 0) $fatal(1, "MENU_COST_MISSING");
