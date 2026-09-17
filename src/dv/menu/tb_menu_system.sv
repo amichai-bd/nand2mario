@@ -21,7 +21,12 @@
 // settled list). Every other fixture holds A through the boot instead, which
 // skips the splash: the first displayed frame draws half the wrapped rows and
 // the second is the settled menu, their frame 0, and the consumed press
-// neither moves the cursor nor selects a game.
+// neither moves the cursor nor selects a game. A frame shows what the
+// previous VBlank left, so a press is made on the frame that shows the
+// previous press's result and one frame carries both; only a repeated mask
+// needs a release frame, and that frame is compared too. Simulated frames
+// are this testbench's wall, so no fixture displays a frame it does not
+// need.
 // Lint waiver: integer arithmetic on byte and address values.
 /* verilator lint_off WIDTHEXPAND */
 /* verilator lint_off WIDTHTRUNC */
@@ -388,24 +393,31 @@ module tb_menu_system;
         checks = checks + 1;
         $display("MENU_SYS frame=%0d matched time_ns=%0t", index, $time);
     endtask
-    // One joypad step: press at the start of a visible frame so the menu
-    // samples it in that frame's VBlank; release at the start of the next
-    // frame, which shows the result, and compare that frame.
-    task automatic step(input logic [7:0] mask, input int index);
+    // One displayed frame of stimulus: press `mask` on the board joypad at the
+    // frame's first pixel, so the menu samples it in that frame's VBlank.
+    task automatic frame_press(input logic [7:0] mask);
         frame_start(1200000);
         press_buttons(mask);
-        frame_start(1200000);
-        press_buttons(8'h00);
+    endtask
+    // The same frame, compared with reference `index`. A frame shows what the
+    // previous VBlank left, and the comparison ends at its last pixel, before
+    // the VBlank that samples this press, so one frame carries both the result
+    // of the previous press and the next press. The menu reads button edges,
+    // so a changed mask is a new press; the same mask twice needs an 8'h00
+    // frame between them, and those frames carry a comparison too.
+    task automatic frame_check(input logic [7:0] mask, input int index);
+        frame_press(mask);
         check_frame(index);
     endtask
-    // A on the cursor: the select register receives `slot` and the game boots in `game_profile`.
-    task automatic select_game(input logic [7:0] slot, input logic [7:0] game_profile);
+    // A on the cursor, pressed on the frame that shows it (compared with
+    // reference `index`): the select register receives `slot` and the game
+    // boots in `game_profile`.
+    task automatic select_game(input logic [7:0] slot, input logic [7:0] game_profile, input int index);
         logic [31:0] epoch_before;
         epoch_before = epoch;
         select_seen = 0;
         expected_swaps = expected_swaps + 1;     // the accepted select swaps the game in
-        frame_start(1200000);
-        press_buttons(BUTTON_A);
+        frame_check(BUTTON_A, index);
         wait_profile(game_profile, 1200000, "game");
         if (!select_seen || select_data != slot) $fatal(1, "MENU_SYS_SELECT expected=%0d seen=%b data=%0d", slot, select_seen, select_data);
         if (epoch != epoch_before + 1) $fatal(1, "MENU_SYS_GAME_EPOCH slot=%0d", slot);
@@ -435,15 +447,19 @@ module tb_menu_system;
         if (pixel_fault) force dut.source_shade = 2'd2;
     endtask
 
-    task automatic boot_menu;
+    // The boot, ending on frame 0 with `next` pressed on it: releasing the
+    // held A and pressing another button is one commit and one new edge, so
+    // the fixture's first press costs no frame of its own. 8'h00 is the plain
+    // release for a fixture that presses nothing next.
+    task automatic boot_menu(input logic [7:0] next);
         start_menu(BOOT_SKIP);
         // A is held through the boot, so the splash skips: the frame that
         // samples the press draws half the wrapped rows and the next one is
         // the complete menu, the frame every fixture counts as frame 0.
         frame_start(6000000);
         frame_start(6000000);
+        press_buttons(next);
         check_frame(0);
-        press_buttons(8'h00);
         // The catalogue window is bank 34; the return swapped index 16 without a select commit.
         read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd34, 8'hFF, LIBRARY_RESULT_OK, 8'h60});
     endtask
@@ -474,7 +490,7 @@ module tb_menu_system;
     // sixteen more simulated frames and is left to the host reference test,
     // which shares the same constant.
     task automatic fixture_phase;
-        boot_menu();
+        boot_menu(8'h00);
         idle_frames(PHASE_HOLD - 1);
         check_frame(0);
         idle_frames(1);
@@ -482,19 +498,21 @@ module tb_menu_system;
     endtask
 
     task automatic fixture_frame;
-        boot_menu();
-        step(BUTTON_DOWN, 1);
-        step(BUTTON_DOWN, 2);
-        step(BUTTON_UP, 1);
-        // Up at the top and a held button change nothing.
-        step(BUTTON_UP, 0);
-        step(BUTTON_UP, 0);
+        boot_menu(BUTTON_DOWN);
+        frame_check(8'h00, 1);            // Down moved the cursor; release for the next Down
+        frame_press(BUTTON_DOWN);
+        frame_check(BUTTON_UP, 2);        // the second Down shows, and Up is the next press
+        frame_check(8'h00, 1);            // Up moved back; release for the next Up
+        frame_press(BUTTON_UP);
+        // Up at the top and a repeated Up change nothing.
+        frame_check(8'h00, 0);
+        frame_press(BUTTON_UP);
+        frame_check(8'h00, 0);
     endtask
 
     task automatic fixture_select;
-        boot_menu();
-        step(BUTTON_DOWN, 1);
-        select_game(8'd1, PROFILE_DIRECT_ID);
+        boot_menu(BUTTON_DOWN);
+        select_game(8'd1, PROFILE_DIRECT_ID, 1);
     endtask
 
     // The 64 KiB MBC1 entry: listed once at slot 5 (slot 6 blank), it boots
@@ -503,22 +521,21 @@ module tb_menu_system;
     task automatic fixture_select_mbc1;
         int edges;
         logic [31:0] epoch_before;
-        boot_menu();
+        boot_menu(BUTTON_DOWN);
+        // The boot press left the cursor on slot 1; four more Downs reach slot
+        // 5. The mask repeats, so each one needs a release frame first; the
+        // frame after the last press is the one that shows slot 5.
         for (edges = 1; edges < MBC1_SLOT; edges = edges + 1) begin
-            frame_start(1200000);
-            press_buttons(BUTTON_DOWN);
-            frame_start(1200000);
-            press_buttons(8'h00);
+            frame_press(8'h00);
+            frame_press(BUTTON_DOWN);
         end
-        step(BUTTON_DOWN, 6);
-        // A: the select carries 5 and the game boots in MBC1_ID. Its bank 2
-        // exits within a few instructions, so the host reads wait for the
-        // menu to be back instead of racing the return.
+        // A on the frame that shows slot 5: the select carries 5 and the game
+        // boots in MBC1_ID. Its bank 2 exits within a few instructions, so the
+        // host reads wait for the menu to be back instead of racing the return.
         epoch_before = epoch;
         select_seen = 0;
         expected_swaps = expected_swaps + 2;     // the select, then the game's own exit
-        frame_start(1200000);
-        press_buttons(BUTTON_A);
+        frame_check(BUTTON_A, 6);
         wait_profile(PROFILE_MBC1_ID, 1200000, "mbc1 game");
         if (!select_seen || select_data != MBC1_SLOT) $fatal(1, "MENU_SYS_SELECT expected=%0d seen=%b data=%0d", MBC1_SLOT, select_seen, select_data);
         if (epoch != epoch_before + 1) $fatal(1, "MENU_SYS_GAME_EPOCH slot=%0d", MBC1_SLOT);
@@ -541,10 +558,9 @@ module tb_menu_system;
     // kept, result OK) and the menu runs without a host RUN, pixel-exact.
     task automatic fixture_exit;
         logic [31:0] epoch_before;
-        boot_menu();
-        step(BUTTON_DOWN, EXIT_SLOT);
+        boot_menu(BUTTON_DOWN);
         epoch_before = epoch;
-        select_game(8'(EXIT_SLOT), PROFILE_DIRECT_ID);
+        select_game(8'(EXIT_SLOT), PROFILE_DIRECT_ID, EXIT_SLOT);
         frame_start(6000000);
         check_frame(GAME_FRAME);
         // The swap's core reset returned the input source to its UART
@@ -571,16 +587,20 @@ module tb_menu_system;
     endtask
 
     task automatic fixture_refused;
-        boot_menu();
-        step(BUTTON_DOWN, 1);
-        step(BUTTON_DOWN, 2);
-        step(BUTTON_DOWN, 3);
+        boot_menu(BUTTON_DOWN);
+        frame_check(8'h00, 1);
+        frame_press(BUTTON_DOWN);
+        frame_check(8'h00, 2);
+        frame_press(BUTTON_DOWN);
         // Slot 3 is empty: the select is refused and the status row says so.
-        // The refused select leaves the filled window's window_ready set.
-        step(BUTTON_A, 4);
+        // The refused select leaves the filled window's window_ready set, and
+        // the status is read before any further press, so no cursor move can
+        // race the read.
+        frame_check(BUTTON_A, 3);
+        frame_check(8'h00, 4);
         read_status({2'b0, 6'd34, 8'd3, LIBRARY_RESULT_INVALID_SLOT, 8'h60}, 32'h3FFFFFFF);
-        step(BUTTON_UP, 5);
-        select_game(8'd2, PROFILE_DIRECT_ID);
+        frame_press(BUTTON_UP);
+        select_game(8'd2, PROFILE_DIRECT_ID, 5);
     endtask
 
     initial begin
