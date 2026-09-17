@@ -64,9 +64,11 @@ SETTLED_SCY = 8 * LIST_MAP_ROW
 WRAPPED_ROWS = LIST_MAP_ROW + ROWS - MAP_ROWS
 # The fade: the page first, then the ink, then the mid shades, ending on the
 # identity palette. Each step holds FADE_HOLD frames; the slide then raises
-# SCY by SLIDE_STEP a frame.
+# SCY by SLIDE_STEP a frame. These two constants are the whole schedule, here
+# and mirrored in the image; they are chosen as the longest splash whose
+# frame-by-frame target still fits the simulation wall budget.
 FADE = (0x00, 0x40, 0x90, 0xE4)
-FADE_HOLD = 1
+FADE_HOLD = 3
 SLIDE_STEP = 16
 FADE_FRAMES = len(FADE) * FADE_HOLD
 SLIDE_FRAMES = SETTLED_SCY // SLIDE_STEP
