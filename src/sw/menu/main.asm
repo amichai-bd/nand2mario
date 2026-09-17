@@ -1,8 +1,8 @@
 ; Original on-board game menu for the loader profile. Contract:
 ; wiki/src/sw/menu/SPEC.md; hardware registers from
 ; wiki/src/rtl/cartridge/MAS_loader_profile.md. The low 16 KiB holds this
-; code, the font and the grey plate art; the upper 16 KiB is the banked window
-; into SDRAM.
+; code, the font, the grey plate art and the boot splash badge; the upper
+; 16 KiB is the banked window into SDRAM.
 ; Loader profile registers (CPU addresses fixed by the contract; the
 ; generated table owns the status and result values).
 LOADER_BANK EQU 8192
@@ -33,13 +33,58 @@ GREY_ART_BYTES EQU GREY_ART_TILES * 16
 ; The two pointer phases are object tiles; no map cell ever names them.
 TILE_POINTER EQU 84
 POINTER_BYTES EQU 32
+; The boot splash badge, four cells by two.
+TILE_BADGE EQU 86
+BADGE_COLUMNS EQU 4
+BADGE_BYTES EQU 128
 ; Frame layout in 8x8 map cells.
 MAP EQU GB_VIEW_MAP0_START
+MAP_ROWS EQU 32
+; The background map is 32 rows: the splash fills the 18 rows the screen shows
+; at SCY 0 and the list follows it, so the list's last four rows wrap over the
+; splash's own top rows. The settled view is SCY 144, at which the visible
+; rows are the list alone.
+LIST_MAP_ROW EQU 18
+LIST_MAP EQU MAP + LIST_MAP_ROW * 32
+SETTLED_SCY EQU LIST_MAP_ROW * 8
+; The splash art, from the approved design sheet.
+SPLASH_BADGE_ROW EQU 4
+SPLASH_BADGE_COLUMN EQU 8
+SPLASH_TITLE_ROW EQU 8
+SPLASH_TITLE_COLUMN EQU 4
+SPLASH_HINT_ROW EQU 10
+SPLASH_HINT_COLUMN EQU 3
+SPLASH_HINT_BYTES EQU 13
+; The splash schedule, the same constants as src/dv/menu/reference.py: four
+; BGP steps held FADE_HOLD frames each, then an SCY ramp of SLIDE_STEP a
+; frame up to the settled view. The frame number alone decides every write,
+; and the last slide frame is the menu's own first frame.
+SCREEN_ROWS EQU 18
+FADE_STEPS EQU 4
+FADE_HOLD EQU 2
+FADE_FRAMES EQU FADE_STEPS * FADE_HOLD
+SLIDE_STEP EQU 16
+SLIDE_FRAMES EQU SETTLED_SCY / SLIDE_STEP
+SETTLED_FRAME EQU FADE_FRAMES + SLIDE_FRAMES - 1
+; The list's last rows wrap over the splash's own top rows, so the slide
+; draws them: the last three slot rows and then the bottom plate. Everything
+; above them is drawn at boot, with the LCD off.
+WRAPPED_ROWS EQU LIST_MAP_ROW + SCREEN_ROWS - MAP_ROWS
+BOOT_SLOTS EQU LIBRARY_SLOTS - WRAPPED_ROWS + 1
+; The four rows are built as cells at boot, with the LCD off, so a slide frame
+; costs a flat copy and a skip frame stays well inside its VBlank.
+SCREEN_COLUMNS EQU 20
+SPLASH_ROW_CELLS EQU WRAPPED_ROWS * SCREEN_COLUMNS
+; A skip draws at most this many of those rows in one VBlank, the same
+; constant as SKIP_ROWS in src/dv/menu/reference.py.
+SKIP_ROWS EQU 2
 HEADER_COLUMN EQU 4
 SLOT_ROW EQU 1
 NUMBER_COLUMN EQU 1
 TITLE_COLUMN EQU 4
 STATUS_ROW EQU 17
+; The list's bottom plate, wrapped into the map's fourth row.
+STATUS_MAP_ROW EQU LIST_MAP_ROW + STATUS_ROW - MAP_ROWS
 TITLE_BYTES EQU 16
 ; The header and bottom plates: a grey cap in each outer column and 18 cells
 ; between them, filled with a dithered gradient behind the grey text.
@@ -90,6 +135,20 @@ FrameCount:
 DS 1
 ShownPhase:
 DS 1
+SplashOn:
+DS 1
+SplashNumber:
+DS 1
+SplashRows:
+DS 1
+SplashSkip:
+DS 1
+BootSlots:
+DS 1
+BootDraw:
+DS 1
+SplashRowCells:
+DS SPLASH_ROW_CELLS
 StatusCells:
 DS STATUS_CELLS
 
@@ -111,12 +170,48 @@ LD [BankDone],A
 LD [ShownCursor],A
 LD [FrameCount],A
 LD [ShownPhase],A
+LD [SplashOn],A
+LD [SplashNumber],A
+LD [SplashRows],A
+LD [SplashSkip],A
 LD A,KEY_NONE
 LD [ShownKey],A
 LD [ShownIndex],A
 LD A,$E4
-LDH [GB_REG_BGP],A
 LDH [GB_REG_OBP0],A
+; The boot splash owns BGP and SCY: it starts on the blank page at SCY 0 and
+; ends on the identity palette at the settled 144, where the visible rows are
+; the list alone. Two conditions arm it, and both are read once here.
+; The catalogue must list at boot: a menu that must wait for the SDRAM starts
+; settled and draws every row here as before. BootDraw keeps that answer,
+; because it alone decides whether the titles are drawn at boot.
+LD A,[LOADER_STATUS]
+AND A,LIBRARY_STATUS_SDRAM_READY
+LD [BootDraw],A
+JR Z,BootSettled
+; And this must be the first boot since reset. The loader keeps the last
+; selected index, which is $FF only until the first selection, so a menu that
+; has been here before - a return from a game, or a reboot after any select,
+; refused or not - starts settled and the list is there at once.
+LD A,[LOADER_INDEX]
+INC A
+JR NZ,BootSettled
+LD A,1
+LD [SplashOn],A
+LD A,[FadeSteps]
+LDH [GB_REG_BGP],A
+XOR A,A
+LDH [GB_REG_SCY],A
+LD A,BOOT_SLOTS
+JR BootRows
+BootSettled:
+LD A,$E4
+LDH [GB_REG_BGP],A
+LD A,SETTLED_SCY
+LDH [GB_REG_SCY],A
+LD A,LIBRARY_SLOTS
+BootRows:
+LD [BootSlots],A
 ; Font tiles into VRAM while the LCD is off.
 LD DE,Font
 LD HL,GB_VIEW_TILES_START
@@ -163,6 +258,14 @@ INC DE
 LD [HL+],A
 DEC B
 JR NZ,CopyPointer
+LD DE,Splash
+LD B,BADGE_BYTES
+CopyBadge:
+LD A,[DE]
+INC DE
+LD [HL+],A
+DEC B
+JR NZ,CopyBadge
 ; Every object but the cursor stays off screen, so clear the table.
 LD HL,OAM_CURSOR
 LD B,OAM_BYTES
@@ -182,9 +285,36 @@ DEC BC
 LD A,B
 OR A,C
 JR NZ,ClearMap
+; The boot splash: the badge and its two lines above the list, drawn while the
+; LCD is off. The list rides SCY below them.
+LD HL,MAP + SPLASH_BADGE_ROW * 32 + SPLASH_BADGE_COLUMN
+LD A,TILE_BADGE
+LD B,BADGE_COLUMNS
+BadgeTop:
+LD [HL+],A
+INC A
+DEC B
+JR NZ,BadgeTop
+LD HL,MAP + (SPLASH_BADGE_ROW + 1) * 32 + SPLASH_BADGE_COLUMN
+LD B,BADGE_COLUMNS
+BadgeBottom:
+LD [HL+],A
+INC A
+DEC B
+JR NZ,BadgeBottom
+LD HL,Header
+LD DE,MAP + SPLASH_TITLE_ROW * 32 + SPLASH_TITLE_COLUMN
+LD B,12
+LD C,0
+CALL DrawText
+LD HL,SplashHint
+LD DE,MAP + SPLASH_HINT_ROW * 32 + SPLASH_HINT_COLUMN
+LD B,SPLASH_HINT_BYTES
+LD C,0
+CALL DrawText
 ; Header plate: a grey cap in each outer column, the 3-to-2 gradient between
 ; them and the title on the grey page.
-LD HL,MAP
+LD HL,LIST_MAP
 LD A,TILE_CAP_LEFT
 LD [HL+],A
 LD A,TILE_FADE32
@@ -196,22 +326,17 @@ JR NZ,HeaderPlate
 LD A,TILE_CAP_RIGHT
 LD [HL],A
 LD HL,Header
-LD DE,MAP + HEADER_COLUMN
+LD DE,LIST_MAP + HEADER_COLUMN
 LD B,12
 LD C,TILE_GREY
 CALL DrawText
-; Bottom plate caps; ShowStatus fills the 18 cells between them.
-LD A,TILE_CAP_LEFT
-LD [MAP + STATUS_ROW * 32],A
-LD A,TILE_CAP_RIGHT
-LD [MAP + STATUS_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
 ; The six status rows as grey cells, once, while the LCD is off.
 LD HL,StatusText
 LD DE,StatusCells
 LD B,STATUS_CELLS
 CALL DrawPlateText
 ; The sixteen slot numbers.
-LD DE,MAP + SLOT_ROW * 32 + NUMBER_COLUMN
+LD DE,LIST_MAP + SLOT_ROW * 32 + NUMBER_COLUMN
 LD C,0
 Numbers:
 LD A,C
@@ -224,15 +349,19 @@ ADD A,30
 LD E,A
 LD A,D
 ADC A,0
+AND A,MAP_ROWS * 32 / 256 - 1
+OR A,HIGH(MAP)
 LD D,A
 INC C
-LD A,C
-CP A,LIBRARY_SLOTS
+LD A,[BootSlots]
+CP A,C
 JR NZ,Numbers
 ; With the SDRAM ready, fill the window and draw every title before the
 ; LCD turns on; otherwise the frame loop retries and draws one row per frame.
-LD A,[LOADER_STATUS]
-AND A,LIBRARY_STATUS_SDRAM_READY
+; The rows drawn here and the rows the slide draws always account for all
+; sixteen, because BootSlots came from the same read as BootDraw.
+LD A,[BootDraw]
+OR A,A
 JR Z,EnableLCD
 CALL CommitBank
 WaitWindow:
@@ -245,35 +374,334 @@ CALL DrawSlot
 LD A,[Pending]
 INC A
 LD [Pending],A
-CP A,LIBRARY_SLOTS
+LD B,A
+LD A,[BootSlots]
+CP A,B
 JR NZ,DrawAll
+; The four rows the slide draws, built as cells while the LCD is off: the
+; last three slot rows, then the bottom plate around the blank status row.
+; A settled boot has drawn them into the map already and needs none of this.
+LD A,[SplashOn]
+OR A,A
+JR Z,BootListed
+LD HL,SplashRowCells
+LD C,BOOT_SLOTS
+BuildSlotRow:
+PUSH HL
+LD D,H
+LD E,L
+LD A,TILE_BLANK
+LD [DE],A
+INC DE
+LD A,C
+PUSH BC
+LD C,TILE_DIGIT
+CALL DrawDigits
+POP BC
+LD A,TILE_BLANK
+LD [DE],A
+INC DE
+LD A,C
+PUSH BC
+CALL DrawTitleAt
+POP BC
+POP HL
+LD A,SCREEN_COLUMNS
+ADD A,L
+LD L,A
+LD A,0
+ADC A,H
+LD H,A
+INC C
+LD A,C
+CP A,LIBRARY_SLOTS
+JR NZ,BuildSlotRow
+LD D,H
+LD E,L
+LD A,TILE_CAP_LEFT
+LD [DE],A
+INC DE
+LD HL,StatusCells
+LD B,PLATE_CELLS
+BuildPlate:
+LD A,[HL+]
+LD [DE],A
+INC DE
+DEC B
+JR NZ,BuildPlate
+LD A,TILE_CAP_RIGHT
+LD [DE],A
+; Every title row is read now, so a select is live as soon as the list is.
+BootListed:
+LD A,LIBRARY_SLOTS
+LD [Pending],A
 EnableLCD:
-; The cursor object: X at the left edge, Y on slot 0, phase 0.
-LD A,CURSOR_Y
-LD [OAM_CURSOR],A
+; The cursor object: X at the left edge, phase 0. Its Y stays 0, off screen,
+; while the splash runs; the settled frame brings it on. The bottom plate is
+; the last row the slide draws, so it waits with it.
 LD A,CURSOR_X
 LD [OAM_CURSOR + 1],A
 LD A,TILE_POINTER
 LD [OAM_CURSOR + 2],A
-CALL ShowStatus
+LD A,[SplashOn]
+OR A,A
+JR NZ,LCDOn
+CALL RevealCursor
+CALL StatusPlate
+LCDOn:
 ; Background and objects on.
 LD A,$93
 LDH [GB_REG_LCDC],A
 ; One sampled update per frame, all map and object writes inside VBlank.
+; While the splash runs it owns the frame: no navigation, no catalogue row and
+; no status redraw, so the press that skips it never reaches the list.
 Frame:
 CALL WaitVBlank
 CALL ReadButtons
+LD A,[SplashOn]
+OR A,A
+JR Z,ListFrame
+CALL SplashStep
+LD A,[SplashOn]
+OR A,A
+JR NZ,Frame
+JR Advance
+ListFrame:
 CALL Navigate
 CALL Catalogue
 CALL ShowCursor
 CALL ShowStatus
 ; One loop iteration per displayed frame, and an iteration's writes appear in
 ; the frame it numbers, so the counter names that frame and bit 4 of it is
-; that frame's nudge phase. It advances after the writes, not before.
+; that frame's nudge phase. It advances after the writes, not before. The
+; settled frame of the splash is the menu's own frame 0, so the counter
+; starts there.
+Advance:
 LD A,[FrameCount]
 INC A
 LD [FrameCount],A
 JR Frame
+
+; One displayed frame of the boot splash, numbered by SplashNumber: the fade
+; writes BGP, the slide writes SCY and draws at most one wrapped list row, and
+; the last slide frame settles. A button edge latches SplashSkip; from then on
+; each frame draws up to SKIP_ROWS wrapped rows and takes the schedule's own
+; number for the rows drawn, ending on the settled frame, so a skip is two
+; frames and every one of them is a frame of the same schedule. The edge is consumed
+; here, and a held button raises no further edge, so the list never acts on it.
+SplashStep:
+LD A,[Pressed]
+OR A,A
+JR Z,SplashScheduled
+LD A,1
+LD [SplashSkip],A
+SplashScheduled:
+LD A,[SplashSkip]
+OR A,A
+JR Z,SplashFrame
+; The skip: at most SKIP_ROWS wrapped rows this VBlank, then the schedule's
+; own frame for the rows now drawn, so no VBlank carries more than half the
+; map, the map finishes in two frames and every frame shown is a frame of the
+; same schedule. The last of them is the settled frame.
+LD A,[SplashRows]
+CP A,WRAPPED_ROWS
+JR NC,SkipSettled
+LD B,SKIP_ROWS
+SkipRows:
+PUSH BC
+PUSH AF
+CALL DrawWrapped
+POP AF
+POP BC
+INC A
+CP A,WRAPPED_ROWS
+JR NC,SkipDone
+DEC B
+JR NZ,SkipRows
+SkipDone:
+LD [SplashRows],A
+CP A,WRAPPED_ROWS
+JR NC,SkipSettled
+ADD A,FADE_FRAMES - 1
+JR SkipTo
+SkipSettled:
+LD A,SETTLED_FRAME
+SkipTo:
+LD [SplashNumber],A
+SplashFrame:
+LD A,[SplashNumber]
+CP A,FADE_FRAMES
+JR NC,SplashSlide
+; The fade: the step this frame's hold puts it in, straight into BGP.
+LD B,0
+FadeStep:
+CP A,FADE_HOLD
+JR C,FadeFound
+SUB A,FADE_HOLD
+INC B
+JR FadeStep
+FadeFound:
+LD A,B
+LD HL,FadeSteps
+ADD A,L
+LD L,A
+LD A,0
+ADC A,H
+LD H,A
+LD A,[HL]
+LDH [GB_REG_BGP],A
+JR SplashNext
+; The slide: the identity palette, whatever step a skip left the fade on, and
+; SCY at SLIDE_STEP a frame. The frame that first counts a wrapped row draws it, after its splash row has left the top of the screen and before
+; the list row it carries reaches the bottom.
+SplashSlide:
+PUSH AF
+LD A,[FadeSteps + FADE_STEPS - 1]
+LDH [GB_REG_BGP],A
+POP AF
+SUB A,FADE_FRAMES - 1
+LD D,A
+LD B,A
+LD C,SLIDE_STEP
+XOR A,A
+SlideScroll:
+ADD A,C
+DEC B
+JR NZ,SlideScroll
+LDH [GB_REG_SCY],A
+LD A,[SplashRows]
+CP A,WRAPPED_ROWS
+JR NC,SplashNext
+CP A,D
+JR NC,SplashNext
+PUSH AF
+CALL DrawWrapped
+POP AF
+INC A
+LD [SplashRows],A
+SplashNext:
+LD A,[SplashNumber]
+CP A,SETTLED_FRAME
+JR Z,SplashSettle
+INC A
+LD [SplashNumber],A
+RET
+; The settled frame: the list is whole, the cursor comes on screen and the
+; frame counter starts its count of menu frames here.
+SplashSettle:
+XOR A,A
+LD [SplashOn],A
+LD [FrameCount],A
+LD [ShownPhase],A
+
+; The cursor object's Y byte: column 0 of the selected slot's row.
+RevealCursor:
+LD A,[Cursor]
+ADD A,A
+ADD A,A
+ADD A,A
+ADD A,CURSOR_Y
+LD [OAM_CURSOR],A
+RET
+
+; A = the wrapped list row, 0..WRAPPED_ROWS-1: its twenty prebuilt cells into
+; map row A, the row the splash leaves blank until the slide has carried it
+; off the top of the screen.
+DrawWrapped:
+LD L,A
+LD H,0
+LD B,H
+LD C,L
+ADD HL,HL
+ADD HL,HL
+PUSH HL
+ADD HL,HL
+ADD HL,HL
+POP DE
+ADD HL,DE
+LD DE,SplashRowCells
+ADD HL,DE
+LD D,H
+LD E,L
+LD A,C
+ADD A,A
+ADD A,A
+ADD A,A
+ADD A,A
+ADD A,A
+LD L,A
+LD H,HIGH(MAP)
+; The twenty cells, unrolled: a skip copies four rows inside one VBlank, and
+; the loop's counter and branch would cost more than the copy itself.
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+LD A,[DE]
+INC DE
+LD [HL+],A
+RET
+
+; The bottom plate: its two caps and the status row between them.
+StatusPlate:
+LD A,TILE_CAP_LEFT
+LD [MAP + STATUS_MAP_ROW * 32],A
+LD A,TILE_CAP_RIGHT
+LD [MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
+JP ShowStatus
 
 WaitVBlank:
 LDH A,[GB_REG_LY]
@@ -404,7 +832,26 @@ RET
 ; header $0143: the CGB flag values draw blank, any other byte follows
 ; CharTile.
 DrawSlot:
-LD C,A
+PUSH AF
+ADD A,LIST_MAP_ROW + SLOT_ROW
+LD L,A
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD BC,MAP + TITLE_COLUMN
+ADD HL,BC
+LD A,H
+AND A,MAP_ROWS * 32 / 256 - 1
+OR A,HIGH(MAP)
+LD H,A
+LD D,H
+LD E,L
+POP AF
+; A = slot, DE = its sixteen title cells: wherever the caller wants them.
+DrawTitleAt:
 LD L,A
 LD H,0
 ADD HL,HL
@@ -415,21 +862,6 @@ ADD HL,HL
 LD A,H
 ADD A,HIGH(GB_ROM1_START)
 LD H,A
-PUSH HL
-LD A,C
-INC A
-LD L,A
-LD H,0
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-LD BC,MAP + TITLE_COLUMN
-ADD HL,BC
-LD D,H
-LD E,L
-POP HL
 LD A,[HL]
 CP A,LIBRARY_CATALOGUE_VALID
 JR NZ,BlankTitle
@@ -625,7 +1057,7 @@ ADD HL,HL
 ADD HL,DE
 LD DE,StatusCells
 ADD HL,DE
-LD DE,MAP + STATUS_ROW * 32 + PLATE_COLUMN
+LD DE,MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN
 LD B,PLATE_CELLS
 CopyStatus:
 LD A,[HL+]
@@ -646,7 +1078,7 @@ CP A,NO_DIGITS
 RET Z
 LD E,A
 LD D,0
-LD HL,MAP + STATUS_ROW * 32 + PLATE_COLUMN
+LD HL,MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN
 ADD HL,DE
 LD D,H
 LD E,L
@@ -662,8 +1094,14 @@ INC DE
 LD [DE],A
 RET
 
+; The four fade steps: the page first, then the ink, then the mid shades,
+; ending on the identity palette. src/dv/menu/reference.py holds the same four.
+FadeSteps:
+DB $00,$40,$90,$E4
 Header:
 DB "GAME LIBRARY"
+SplashHint:
+DB "SELECT A GAME"
 ; The six status rows, each already centred in the plate's 18 cells exactly as
 ; the contract states. A pad byte keeps the plate's gradient fill; the zeros
 ; are placeholders the index digits overwrite.
@@ -690,3 +1128,5 @@ GreyArt:
 ASSET "GreyArt"
 Pointer:
 ASSET "Pointer"
+Splash:
+ASSET "Splash"

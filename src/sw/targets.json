@@ -259,6 +259,10 @@
         "Pointer": {
           "source": "assets/design/v2-cursor-tiles.json",
           "author": "Original two-phase cursor pointer of the menu v2 design by the nand2mario project; no external source"
+        },
+        "Splash": {
+          "source": "assets/design/v2-splash-tiles.json",
+          "author": "Original boot splash badge of the menu v2 design by the nand2mario project; no external source"
         }
       },
       "layout": "layout.json",

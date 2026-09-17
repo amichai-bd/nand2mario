@@ -15,37 +15,57 @@ the menu's behavior, memory use, frame layout and verification.
 
 Boot, from the direct entry state with the LCD off:
 
-1. Load the 86-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
-   a mid-grey page, the six authored grey cells and the two pointer phases.
-   Clear the object table, blank the background map at `$9800`, set BGP and
-   OBP0 to `$E4` and zero scroll, draw the header plate, the bottom plate's
-   two caps and the sixteen slot numbers, build the six status rows in WRAM,
-   and put the cursor object on slot 0.
-2. If `$A000` bit 5 (`sdram_ready`) is set, commit bank 34 (the catalogue,
+1. Load the 94-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
+   a mid-grey page, the six authored grey cells, the two pointer phases and
+   the eight boot splash badge cells. Clear the object table, blank the
+   background map at `$9800`, set OBP0 to `$E4` and draw the
+   [boot splash](#background-map), the header plate and the six status rows
+   in WRAM.
+2. Read `$A000` bit 5 (`sdram_ready`) and `$A003` (the last selected index)
+   once each. The status bit alone decides whether the titles are drawn at
+   boot. Both together arm the [boot splash](#boot-splash): it needs the
+   catalogue listed at boot, and it needs `$A003` to be `$FF`, which the
+   loader leaves it only until the first selection since reset.
+   - Armed, so this is the first boot and the catalogue lists: the splash
+     runs. BGP starts on the first fade step and SCY at 0. Boot draws the slot
+     numbers and titles of slots 0..12 only; the last three slot rows and the
+     bottom plate row wrap over the splash and are built instead as four
+     finished 20-cell rows in WRAM, with the LCD off, for the slide to copy.
+     The cursor object stays off screen and the bottom plate waits with its
+     row. The rows drawn here and the rows the slide draws account for all
+     sixteen.
+   - Not armed: no splash. BGP is `$E4` and SCY the settled 144, the bottom
+     plate is drawn and the cursor object goes on slot 0. A menu that has been
+     here before still lists every title at boot, so the list is whole in its
+     first frame; a menu waiting for the SDRAM skips the catalogue and the
+     frame loop retries it below.
+3. With the catalogue available, commit bank 34 (the catalogue,
    `LIBRARY_CATALOGUE_ADDRESS / LIBRARY_WINDOW_BYTES`) to the bank register,
-   wait for bit 6 (`window_ready`) and draw the sixteen title rows from the
-   window. Otherwise skip the catalogue; the frame loop retries below.
-3. Draw the status row and turn the LCD on (`LCDC = $93`, background and
-   objects).
+   wait for bit 6 (`window_ready`) and draw the title rows from the window.
+   Every title is read here, so a select is live as soon as the list is.
+4. Turn the LCD on (`LCDC = $93`, background and objects).
 
 Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
 
 1. Read both JOYP rows, settling at least 24 dots after each row select, and
    keep the released-to-pressed edges in the generated `BUTTON_*` bit order.
    A held button acts once.
-2. A Down edge moves the cursor one slot down, then an Up edge one slot up,
+2. While the [boot splash](#boot-splash) runs it owns the frame and the steps
+   below wait: no navigation, no catalogue row and no status redraw, so the
+   press that skips the splash never reaches the list.
+3. A Down edge moves the cursor one slot down, then an Up edge one slot up,
    clamped to slots 0..15; no wrap.
-3. An A edge, once all sixteen title rows are listed, writes the cursor's
+4. An A edge, once all sixteen title rows are listed, writes the cursor's
    slot index to the select register and polls `$A000` bit 7 until the
    loader is idle. An accepted select swaps the image and resets the core;
    the menu never resumes. A refused select leaves its result in `$A002` and
    the index in `$A003`. Before the catalogue is listed, A does nothing.
-4. Delayed catalogue path: when bank 34 has not been committed and
+5. Delayed catalogue path: when bank 34 has not been committed and
    `sdram_ready` is now set, commit it; when it has been committed and
    `window_ready` is set, draw one remaining title row per frame. Every row
    is drawn the same way, because the cursor is an object and never re-banks
    a row.
-5. Move the cursor object only when the cursor changed, redraw the status
+6. Move the cursor object only when the cursor changed, redraw the status
    row only when its key or index changed, and rewrite the object's tile
    alone when the nudge phase changed. An idle frame writes nothing.
 
@@ -79,16 +99,16 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$05B0` | `code` section: entry `Start`, frame loop, drawing routines and text tables (945 bytes) |
-| `$0800`-`$0AEF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"` and the two pointer phases from `ASSET "Pointer"`, 752 bytes |
+| `$0200`-`$077F` | `code` section: entry `Start`, frame loop, boot splash schedule, drawing routines and text tables (1440 bytes) |
+| `$0800`-`$0B6F` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"` and the eight badge cells from `ASSET "Splash"`, 880 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
 | `$6000`-`$7FFF` write | Select register: the cursor's slot on an A edge |
 | `$A000`, `$A002`, `$A003` | Status byte, last result, last selected index |
-| `$8000`-`$855F` | The 86-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85 |
-| `$9800`-`$9BFF` | Background map; only the visible 20x18 cells are written |
+| `$8000`-`$85DF` | The 94-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85, the badge 86..93 |
+| `$9800`-`$9BFF` | [Background map](#background-map), all 32 rows: the boot splash above the list |
 | `$FE00`-`$FE9F` | Object table; cleared at boot, then object 0 alone is the cursor |
-| `$C000`-`$C075` | `vars`, 118 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, and `StatusCells`, the six 18-cell status rows |
+| `$C000`-`$C0CB` | `vars`, 204 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, the splash's `SplashOn`, `SplashNumber`, `SplashRows`, `SplashSkip`, `BootSlots` and `BootDraw`, `SplashRowCells`, the four 20-cell wrapped rows built at boot, and `StatusCells`, the six 18-cell status rows |
 | `$DFFE` | Stack pointer |
 
 Interrupts stay disabled; frame sync polls `LY`. The joypad rows are
@@ -96,8 +116,85 @@ deselected (`PROFILE_JOYP_SELECT`) after each read.
 
 ## Frame layout
 
+### Background map
+
+The map at `$9800` is 32 rows of 32 cells and carries the boot splash above
+the list. The splash fills map rows 0..17, the 18 rows the screen shows at
+SCY 0; the list's own 18 rows start at map row 18, so its last four rows wrap
+into map rows 0..3, over the splash's own top rows, which the splash leaves
+blank. The settled view is SCY 144: the screen then shows map rows 18..31 and
+0..3, which are the list alone, and nothing of the splash is on screen. Only
+map columns 0..19 are written.
+
+The splash is the badge and its two lines, from the
+[approved sheet](../../../../src/sw/menu/assets/design/v2-splash-tiles.json):
+
+| Map row | Columns | Content |
+|---|---|---|
+| 4 and 5 | 8..11 | The badge, bank tiles 86..89 over 90..93 |
+| 8 | 4..15 | `GAME LIBRARY` |
+| 10 | 3..15 | `SELECT A GAME` |
+
+Every other splash cell is the blank tile. The badge and both lines are drawn
+once, with the LCD off at boot.
+
+### Boot splash
+
+The splash runs on the first menu boot after a reset, when the catalogue is
+available at boot. A return from a game re-boots this image, so the menu
+decides again, and `$A003` is what tells the two apart: the loader keeps the
+last selected index across the return, and leaves it `$FF` only until the
+first selection. So the splash plays once, at power-up or after a host reset,
+and a return from a game shows the settled list in its first frame, pixel
+for pixel what it showed before. Any reboot after a selection starts settled
+the same way, including one after a select the loader refused, because a
+refused select writes `$A003` too.
+
+The splash fades the page in through BGP
+and then slides the list up through SCY, and the frame counter
+alone decides every write, as it does the nudge phase. The schedule is four
+constants, held here, in the [image](../../../../src/sw/menu/main.asm) and in
+[`reference.py`](../../../../src/dv/menu/reference.py), which read the same
+values: the fade `$00`, `$40`, `$90`, `$E4`, `FADE_HOLD` 2 frames a step,
+`SLIDE_STEP` 16 and `SKIP_ROWS` 2. That makes 8 fade frames, 9 slide frames
+and 17 displayed frames in all.
+
+| Displayed frame | BGP | SCY | Wrapped rows drawn |
+|---|---|---|---|
+| 0, 1 | `$00` | 0 | 0 |
+| 2, 3 | `$40` | 0 | 0 |
+| 4, 5 | `$90` | 0 | 0 |
+| 6, 7 | `$E4` | 0 | 0 |
+| 8 | `$E4` | 16 | 1 |
+| 9 | `$E4` | 32 | 2 |
+| 10 | `$E4` | 48 | 3 |
+| 11 | `$E4` | 64 | 4 |
+| 12..15 | `$E4` | 80, 96, 112, 128 | 4 |
+| 16 | `$E4` | 144 | 4 |
+
+A slide frame draws the wrapped row its step first counts, after that row's
+splash cells have left the top of the screen and before the list row it
+carries reaches the bottom. The row is a flat copy of the twenty cells built
+at boot, not the text path.
+
+Any button skips. The edge latches; from then on each frame draws at most
+`SKIP_ROWS` wrapped rows and takes the schedule's own number for the rows
+drawn so far, ending on the settled frame. So a skip is two frames, each of
+them a frame of the same schedule, and no VBlank carries more than half the
+map. The edge is consumed by the splash and a held button raises no further
+edge, so the list never acts on it and a skip cannot move the cursor or
+select a game.
+
+Frame 16 is the settled frame: SCY is 144, the list is whole, the bottom
+plate is in place and the cursor object comes on screen. It is also the
+menu's own frame 0, because the frame counter and the shown nudge phase are
+reset there, so the [nudge phase](#cursor-object) still follows from the menu
+frame number alone whether the splash ran, was skipped, or never ran at all.
+
+### The list
+
 The visible frame is 20 by 18 background cells and one object, identity
-palette for both, no scroll and no window. Shade 0 is the page, shade 3 the
+palette for both, and no window. Shade 0 is the page, shade 3 the
 ink and shade 2 the plates. The header and bottom rows are mid-grey plates: a
 dithered gradient fill with a rounded grey cap in each outer column, carrying
 text on the grey page, where the font's shade 0 becomes 2 and its ink stays 3.
@@ -177,14 +274,29 @@ measured from the new epoch's first poll rather than across the swap.
 
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|
-| Idle | 230 | 20% |
-| Nudge phase change, one object byte | 246 | 22% |
-| Cursor move, one object byte | 254 | 22% |
-| Refused select with a 20-character status redraw | 547 | 48% |
+| Idle | 238 | 21% |
+| Cursor move or a sampled press, one object byte | 245-262 | 21-23% |
+| Nudge phase change, one object byte | 254 | 22% |
+| The first list frame, which draws the 18-cell status row | 483 | 42% |
+| Boot splash fade frame, one BGP write | 166-196 | 15-17% |
+| Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
+| Boot splash slide frame after the map is whole | 199-255 | 17-22% |
+| Skipped splash frame, two wrapped rows | 599-658 | 53-58% |
+| Refused select with a 20-character status redraw | 555 | 49% |
 
-The status redraw is the peak, 593 M-cycles inside the budget. The cursor
-object is what pulled the peak down: a move used to rewrite two rows of 19
-map cells for 722 M-cycles, and it now writes one byte.
+The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
+select from `menu-refused` and the splash rows from `menu-splash` and
+`menu-frame-fault`, each measured on the image this page specifies.
+
+A skipped splash frame is the peak, 658, 482 M-cycles inside the budget, and
+the idle frame is the floor at 238. The cap on the skip is what holds that
+margin: a skip that finished the map in one VBlank cost 1342 and overran, and
+1010 with the rows prebuilt as cells. Two
+things keep the ordinary splash cheap: the four wrapped rows are built as
+cells with the LCD off, so a slide frame copies twenty bytes instead of
+walking the text path, and no frame draws more than two of them. The cursor
+object pulled the list's own peak down the same way: a move used to rewrite
+two rows of 19 map cells for 722 M-cycles, and it now writes one byte.
 
 The delayed catalogue path draws one title row per frame and the matrix below
 never reaches it, because the fixture's SDRAM is ready before the menu boots.
@@ -252,8 +364,8 @@ its result records `profile: dmg-loader-v1` and `profile_id: 2`.
 
 [`reference.py`](../../../../src/dv/menu/reference.py) composes the expected
 frame from this page's layout rules and the font's shade JSON, never from
-the ROM or the DUT, and builds the 86-tile bank from the font, the grey copy
-of each glyph, the authored grey cells and the two pointer phases. `frame`
+the ROM or the DUT, and builds the 94-tile bank from the font, the grey copy
+of each glyph, the authored grey cells, the two pointer phases and the badge. `frame`
 draws the background and then the cursor object over it, with shade 0
 transparent.
 `frame(entries, cursor=0, phase=0, result=0, index=255, sdram_ready=True)`
@@ -262,9 +374,14 @@ returns the 23040 row-major shades for a catalogue given as
 `title` bytes per slot). `check_pixels(packed, entries, **state)` compares a
 `host snapshot` frame (5760 packed bytes) pixel for pixel and raises
 `MENU_PIXEL x= y= expected= actual=` at the first difference;
-`expected('menu', entries)`, `expected('cursor-N', entries)` and
-`expected('phase-N', entries)` name the fresh menu, a moved cursor and a
-nudge phase. The board session reads the stored catalogue
+`expected('menu', entries)`, `expected('cursor-N', entries)`,
+`expected('phase-N', entries)` and `expected('splash-N', entries)` name the
+fresh menu, a moved cursor, a nudge phase and a
+[boot splash](#boot-splash) frame. `splash_state(number)` is the schedule
+itself, the BGP, SCY and rows drawn of displayed frame `number`, and
+`skip_schedule(number)` the frames a press in that frame shows.
+`splash_at_boot(index, sdram_ready)` is the boot decision itself, which
+`test_menu_reference.py` covers for the cold boot and the return. The board session reads the stored catalogue
 with `host library status` and passes its rows.
 
 [`fixture.py`](../../../../src/dv/menu/fixture.py) is the registered `menu`
@@ -275,9 +392,10 @@ writes the game exit register), stub games in slots 0, 2, 7, 8, 9, 10 and
 15 (slot 10 carries the CGB flag `$80` and slot 8 the CGB-only flag `$C0` in
 header `$0143`), a 64 KiB MBC1 stub game in slots 5-6 whose bank 2 returns
 through the game exit register, an empty slot 3, a valid entry with a
-foreign length in slot 4 and the menu at 16, and writes `menu-library.hex`
-and `menu-frames.hex` (the scripted menu frames, then the exit-demo game
-frame) for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
+foreign length in slot 4 and the menu at 16, and writes `menu-library.hex`,
+`menu-frames.hex` (the scripted menu frames, then the exit-demo game frame)
+and `menu-splash.hex` (every displayed frame of the splash schedule, which
+only the splash fixture reads) for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 runs the real `n2m_v05_system` with the SDRAM controller and device model,
 swaps the menu in through the host return, selects the board joypad and
 compares every captured display-eligible frame; the
@@ -288,15 +406,20 @@ compares every captured display-eligible frame; the
 | `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a repeated Up at slot 0 change nothing (each step is one sampled press; a hold across frames is not simulated) |
 | `menu-select` | Down then A commits 1 to the select register; the game boots in `DIRECT_ID` with epoch + 1 and `LIBRARY_STATUS` result `OK` index 1 |
 | `menu-select-mbc1` | Five Downs reach the 64 KiB entry listed once at slot 5 (pixel-exact frame, slot 6 blank); A commits 5 and the game boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; its bank 2 code returns to the menu through the game exit register (epoch + 2, index still 5, the menu running in `LOADER_ID`) |
-| `menu-exit` | Down then A starts the built `exit-demo` image in slot 1 with a pixel-exact bar frame; Start makes it write `$10` to `$6000` and the menu returns by itself: `LOADER_ID`, epoch + 2, result `OK` index 1, running without a host `RUN`, the boot frame pixel-exact again |
+| `menu-exit` | Down then A starts the built `exit-demo` image in slot 1 with a pixel-exact bar frame; Start makes it write `$10` to `$6000` and the menu returns by itself: `LOADER_ID`, epoch + 2, result `OK` index 1, running without a host `RUN`, the boot frame pixel-exact again. The returned menu starts settled, with no splash, because `$A003` kept the slot |
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and frame 16 the nudged one, both pixel-exact, which pins the phase boundary. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
+| `menu-splash` | The untouched [boot splash](#boot-splash) runs its schedule: all 17 displayed frames match the reference frame by frame, fade then slide, and the last of them is pixel-identical to the menu's own frame 0 |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
 Every target runs within the ordinary wall budget; `menu-select-mbc1`,
-`menu-exit` and `menu-phase` carry the `mbc1`/`system` and `system` labels so
-the `menu` label aggregate stays inside it. `menu-phase` also carries
-`menu-animation`, a label of its own, so the one target can be run alone
-without the `system` aggregate. Every target also measures each
-menu frame body against the [frame budget](#frame-budget).
+`menu-exit`, `menu-phase` and `menu-splash` carry the `mbc1`/`system` and
+`system` labels so the `menu` label aggregate stays inside it. `menu-phase`
+and `menu-splash` also carry `menu-animation`, a label of their own, so
+either can be run alone without the `system` aggregate. `menu-splash` is the
+longest single target here: it simulates 18 frames, which is why the fade
+holds two frames a step rather than three. Every target also measures each
+menu frame body against the [frame budget](#frame-budget); the fixtures other
+than `menu-splash` hold A through the boot, which skips the splash and proves
+the press is consumed, because an A the list saw would select slot 0.

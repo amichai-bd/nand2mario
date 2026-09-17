@@ -168,7 +168,7 @@ class Layout(unittest.TestCase):
         self.assertEqual(len(bank), reference.BANK_TILES)
         # The two pointer phases are the committed art, the same arrow one pixel apart.
         art = reference.atlas_tiles(reference.POINTER_ART, reference.POINTER_TILES)
-        self.assertEqual(bank[reference.TILE_POINTER:], art)
+        self.assertEqual(bank[reference.TILE_POINTER:reference.TILE_POINTER + reference.POINTER_TILES], art)
         self.assertEqual(art[1], [[0] + row[:7] for row in art[0]])
         self.assertTrue(all(row[0] == 0 for row in art[1]))
         # The grey bank is the font on a mid-grey page: shade 0 becomes 2, the ink stays.
@@ -176,6 +176,9 @@ class Layout(unittest.TestCase):
             self.assertEqual(bank[reference.TILE_GREY + tile], reference.greyed(bank[tile]), tile)
             self.assertLessEqual({shade for row in bank[tile] for shade in row}, {0, 3}, tile)
         self.assertEqual(bank[reference.TILE_GREY + reference.TILE_BLANK], [[2] * 8] * 8)
+        # The splash badge is the committed art, four cells by two above the list's bank.
+        self.assertEqual(bank[reference.TILE_BADGE:],
+                         reference.atlas_tiles(reference.SPLASH_ART, reference.BADGE_TILES))
 
     def test_plates_match_the_published_grey_preview(self):
         """The header and bottom plates are the published mid-grey design, pixel for pixel."""
@@ -189,6 +192,96 @@ class Layout(unittest.TestCase):
             frame = reference.frame(self.entries, **state)
             for y in plate_rows:
                 self.assertEqual(list(frame[y * 160:(y + 1) * 160]), pixels[y], (label, y))
+
+    def test_the_boot_splash_layout_and_schedule(self):
+        """The 32-row map, the fade through BGP and the slide, all from the frame number."""
+        splash = reference.splash_rows()
+        self.assertEqual(len(splash), reference.ROWS)
+        badge = [reference.TILE_BADGE + cell for cell in range(reference.BADGE_TILES)]
+        self.assertEqual(splash[reference.BADGE_ROW][reference.BADGE_COLUMN:
+                                                     reference.BADGE_COLUMN + reference.BADGE_COLUMNS],
+                         badge[:reference.BADGE_COLUMNS])
+        self.assertEqual(splash[reference.BADGE_ROW + 1][reference.BADGE_COLUMN:
+                                                         reference.BADGE_COLUMN + reference.BADGE_COLUMNS],
+                         badge[reference.BADGE_COLUMNS:])
+        for row, column, text in ((reference.SPLASH_TITLE_ROW, reference.SPLASH_TITLE_COLUMN, reference.SPLASH_TITLE),
+                                  (reference.SPLASH_HINT_ROW, reference.SPLASH_HINT_COLUMN, reference.SPLASH_HINT)):
+            self.assertEqual(splash[row][column:column + len(text)], reference.text_tiles(text))
+        # The map is the splash above the list, with the list's last rows wrapped
+        # over the splash's own top rows.
+        listing = reference.list_rows(self.entries)
+        drawn = reference.background_map(self.entries)
+        undrawn = reference.background_map(self.entries, wrapped=0)
+        self.assertEqual(len(drawn), reference.MAP_ROWS)
+        self.assertEqual(undrawn[:reference.ROWS], splash)
+        self.assertEqual(drawn[:reference.WRAPPED_ROWS], listing[reference.ROWS - reference.WRAPPED_ROWS:])
+        self.assertEqual(drawn[reference.LIST_MAP_ROW:], listing[:reference.MAP_ROWS - reference.LIST_MAP_ROW])
+        # The settled view is the list alone, so every menu frame is unchanged.
+        self.assertEqual(reference.tilemap(self.entries), listing)
+        with self.assertRaises(ValueError):
+            reference.tilemap(self.entries, scy=4)
+        with self.assertRaises(ValueError):
+            reference.background_map(self.entries, wrapped=reference.WRAPPED_ROWS + 1)
+        # The schedule: every fade step in order, then the slide, from the frame
+        # number alone. No frame number is named here that the constants do not give.
+        steps = [reference.splash_state(frame * reference.FADE_HOLD)[0] for frame in range(len(reference.FADE))]
+        self.assertEqual(steps, list(reference.FADE))
+        for number in range(reference.FADE_FRAMES):
+            self.assertEqual(reference.splash_state(number), (reference.FADE[number // reference.FADE_HOLD], 0, 0))
+        for step in range(1, reference.SLIDE_FRAMES + 1):
+            palette, scy, wrapped = reference.splash_state(reference.FADE_FRAMES + step - 1)
+            self.assertEqual((palette, scy), (reference.FADE[-1], reference.SLIDE_STEP * step))
+            self.assertEqual(wrapped, min(step, reference.WRAPPED_ROWS))
+        # Each wrapped row is drawn on the slide frame that first counts it, after
+        # its splash row has left the top of the screen and before the list row it
+        # carries reaches the bottom.
+        for row in range(reference.WRAPPED_ROWS):
+            drawing = next(number for number in range(reference.SETTLED_FRAME + 1)
+                           if reference.splash_state(number)[2] == row + 1)
+            top = reference.splash_state(drawing)[1] // 8
+            self.assertGreater(top, row)
+            self.assertLessEqual(top + reference.ROWS, reference.MAP_ROWS + row)
+        self.assertEqual(reference.splash_state(reference.SETTLED_FRAME)[1], reference.SETTLED_SCY)
+        # A press skips in at most two frames, each of them a frame of the
+        # schedule, the last settled, and no frame draws more than SKIP_ROWS.
+        for number in range(reference.SETTLED_FRAME + 1):
+            shown = reference.skip_schedule(number)
+            self.assertLessEqual(len(shown), 2, number)
+            self.assertEqual(shown[-1], reference.SETTLED_FRAME, number)
+            drawn = reference.splash_state(number)[2]
+            for frame in shown:
+                rows = reference.splash_state(frame)[2]
+                self.assertLessEqual(rows - drawn, reference.SKIP_ROWS, number)
+                drawn = rows
+            self.assertEqual(drawn, reference.WRAPPED_ROWS, number)
+        with self.assertRaises(ValueError):
+            reference.splash_state(-1)
+        # The splash is the cold boot's alone: the catalogue must list at boot
+        # and no selection can have happened since reset.
+        self.assertTrue(reference.splash_at_boot())
+        self.assertFalse(reference.splash_at_boot(sdram_ready=False))
+        for index in (0, 1, 3, reference.SLOTS, 16):
+            self.assertFalse(reference.splash_at_boot(index), index)
+        self.assertTrue(reference.splash_at_boot(reference.NO_INDEX))
+        # The first frame is the page alone and the last is the menu itself.
+        self.assertEqual(set(reference.expected('splash-0', self.entries)), {0})
+        self.assertEqual(reference.expected(f'splash-{reference.SETTLED_FRAME}', self.entries),
+                         reference.frame(self.entries))
+        self.assertNotEqual(reference.expected(f'splash-{reference.SETTLED_FRAME - 1}', self.entries),
+                            reference.frame(self.entries))
+        # The fade is a palette, not a redraw: every shade maps through BGP.
+        cells = reference.tilemap(self.entries, scy=0, wrapped=0)
+        bank = reference.bank_tiles()
+        for number in range(reference.FADE_FRAMES):
+            palette, scy, wrapped = reference.splash_state(number)
+            pixels = reference.frame(self.entries, bgp=palette, scy=scy, wrapped=wrapped)
+            for y in (0, 37, 84, 143):
+                for x in (0, 67, 159):
+                    shade = bank[cells[y // 8][x // 8]][y % 8][x % 8]
+                    self.assertEqual(pixels[y * reference.WIDTH + x], (palette >> (2 * shade)) & 3, (number, x, y))
+        # The cursor object rides no scroll, so it waits for the settled view.
+        self.assertEqual(reference.objects(scy=0), [])
+        self.assertEqual(reference.objects(scy=reference.SETTLED_SCY), reference.objects())
 
     def test_the_pointer_draws_over_the_page_and_keeps_shade_0_clear(self):
         frame = reference.frame(self.entries, cursor=4)

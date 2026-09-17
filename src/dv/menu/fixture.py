@@ -55,6 +55,11 @@ SCENARIO = [dict(cursor=0), dict(cursor=1), dict(cursor=2), dict(cursor=3),
 # frames in `menu-frames.hex`.
 GAME_FRAME = len(SCENARIO)
 PHASE_FRAME = GAME_FRAME + 1
+# The boot splash frames go in their own file, `menu-splash.hex`, which only
+# the splash fixture reads: every displayed frame of the schedule from the
+# blank page to the settled list, which is the boot frame again.
+SPLASH_FRAME = PHASE_FRAME + 1
+SPLASH_FRAMES = reference.SETTLED_FRAME + 1
 
 
 def game_image(index, title):
@@ -169,6 +174,12 @@ def scenario_frames(menu_image):
             + [exit_frame(), reference.frame(rows, phase=1)])
 
 
+def splash_frames(menu_image):
+    """Every displayed frame of the boot splash, in schedule order."""
+    rows = entries(menu_image)
+    return [reference.expected(f'splash-{number}', rows) for number in range(SPLASH_FRAMES)]
+
+
 def frame_marks(run):
     """The `Frame` address and the address after its `CALL WaitVBlank`.
 
@@ -209,6 +220,7 @@ def build(root, destination):
     (destination / 'menu-marks.hex').write_text(
         hex_lines(bytes([marks[0] & 255, marks[0] >> 8, marks[1] & 255, marks[1] >> 8])), encoding='ascii')
     (destination / 'menu-frames.hex').write_text(''.join(hex_lines(frame) for frame in scenario_frames(image)), encoding='ascii')
+    (destination / 'menu-splash.hex').write_text(''.join(hex_lines(frame) for frame in splash_frames(image)), encoding='ascii')
     (destination / 'program.gb').write_bytes(image)
     return image
 
