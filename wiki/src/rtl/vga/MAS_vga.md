@@ -141,12 +141,41 @@ with inactive sync. The first valid output corresponds to raster coordinate zero
 | 2, dark gray | `5` |
 | 3, black | `0` |
 
-All three channels have the same value. Borders, blanking and invalid display
-banks are black. This is presentation conversion after DMG palette selection;
-it does not change stored shades or the snapshot ABI. The
-[bezel design directions](BEZEL.md) publish mockups of what decoration in that
-black border would look like and what it would cost; none of it is implemented
-here.
+All three channels have the same value. Blanking and invalid display banks are
+black. This is presentation conversion after DMG palette selection; it does not
+change stored shades or the snapshot ABI.
+
+The final output register holds twelve bits of RGB and is the last stage. It
+selects, on the coordinates the shade is registered with, white inside the
+blanked image, the image shade, the border colour outside the image, and black
+outside active video. Its asynchronous reset still shows black with a stopped
+pixel clock, and no pipeline stage is added.
+
+### Border selection
+
+`SHELL_BEZEL` selects the border art at compile time. The default is none: the
+border is black, which is what every simulation target expects. `n2m_frame_bridge`
+and `n2m_v05_system` pass the parameter through, and the DE10-Lite top
+[`v05_proof`](../../../../src/fpga/de10_lite/v05_proof.sv) selects the shell, so
+both `v05` fits carry it and no other build does.
+
+The shell is the [handheld shell direction](BEZEL.md#1-handheld-shell) as a
+ROM-backed tile border. The border is 1,560 whole 8x8 cells holding 61 distinct
+tiles and 12 colours. A cell number addresses the border map, the map's tile
+number and the pixel's position address the tile ROM, and the tile's four-bit
+palette index selects the colour. The map read is issued from the next pixel's
+cell, so both reads land in the two stages the frame RAM read already uses. The
+two read registers have no reset and no initialization, like the frame RAM, and
+prime from the free-running raster while reset is held.
+
+The contents are generated from
+[`directions.json`](../../../../tools/sw/vga_bezel/directions.json) and the
+preview renderer by
+[`vga_bezel_sources.py`](../../../../tools/n2m/vga_bezel_sources.py); run
+`python tools/n2m/vga_bezel_sources.py` to regenerate and `--check` to prove no
+drift. It writes the colour table, the simulation arrays and the two MIFs. MAX 10
+synthesis instantiates explicit `altsyncram` ROMs initialized from those MIFs;
+Verilator reads the array form. No memory template is inferred on either path.
 
 ## Verification boundary
 
@@ -154,6 +183,15 @@ The focused [source-to-VGA preservation plan](../../../../src/dv/python/vga/READ
 defines two original frames, canonical CRCs, current clock rates and independent
 public RGB reconstruction. It retains physical monitor acceptance as a separate
 requirement.
+
+The [bezel fixture](../../../../src/dv/vga/tb_vga_bezel.sv) runs one bridge with
+the shell and one without on the same stimulus. It proves the coordinates, sync,
+observer stream and all 5,760 SNAPSHOT/READ_FRAME bytes are identical and that
+the bezel-less build still drives a black border, while its
+[checker](../../../../src/dv/python/vga/test_vga_bezel.py) compares every active
+pixel of one displayed raster against an
+[independent border model](../../../../src/dv/python/vga/bezel_reference.py)
+computed from the direction, not from the tile ROM or map.
 
 The [test plan](../../../../src/dv/vga/README.md) and
 [independent source oracle](../../../../src/dv/vga/tb_vga.sv) supply asymmetric frame/row/column patterns and

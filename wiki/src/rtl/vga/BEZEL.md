@@ -1,11 +1,11 @@
 # VGA bezel design directions
 
 Three mockups of what a bezel drawn by the FPGA would look like on the monitor,
-with the RTL each one needs. Nothing here is implemented: the
-[VGA MAS](MAS_vga.md#scanout) still owns the current output, where borders,
-blanking and invalid display banks are black. The mockups change no RTL, no menu
-and no image geometry; they exist so the owner can pick a direction and a cost
-before any of that is written.
+with the RTL each one needs. The owner chose the handheld shell. The
+[VGA MAS](MAS_vga.md#border-selection) owns what the scanout draws: the shell is
+a ROM-backed tile border behind a compile-time selection whose default is no
+bezel, and the DE10-Lite image selects it. The other two directions stay here as
+the compared alternatives. No mockup changes the menu or the image geometry.
 
 ## What the border is
 
@@ -53,6 +53,13 @@ A moulded shell around a recessed screen: a light body with a bevelled outer
 rim and rounded screen corners, a dark well two steps down into the image, a
 power dot, an accent stripe on the left band and a slanted speaker grille on the
 right. It is the only direction that uses colour.
+
+This is the chosen direction. The
+[scanout](../../../../src/rtl/vga/n2m_vga_scan.sv) draws it from generated
+sources, [`vga_bezel_sources.py`](../../../../tools/n2m/vga_bezel_sources.py)
+writes them from `directions.json`, and the
+[border oracle](../../../../src/dv/python/vga/bezel_reference.py) checks the
+output against the direction itself.
 
 - **RTL approach: ROM-backed tile border.** Rounded corners, the stripe and the
   grille are cheaper to store than to compute, and the art stays editable
@@ -148,9 +155,9 @@ rules.
   every active pixel outside the image, so a bezel fails them until they compute
   the same border function themselves. The cheap route is a compile-time
   selection defaulting to no bezel: the existing `vga`, `vga-lcd` and
-  `python-vga-crc` targets keep their black-border expectation, and one new
-  target checks the bezel against an independent border model. The frozen frame
-  CRCs cover the reconstructed image only and do not change.
+  `python-vga-crc` targets keep their black-border expectation with their frozen
+  CRCs, and [`python-vga-bezel`](../../../../src/dv/vga/tb_vga_bezel.sv) checks
+  the bezel against an independent border model.
 
 One thing the mockups cannot settle: the shell direction is the first colour
 this project would put on the VGA pins. The
