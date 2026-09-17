@@ -2494,6 +2494,24 @@ are removed as links; their targets are untouched and never counted, so the
 file count and byte total are the tag's own files. When `workdir/latest.txt`
 names the removed tag it is deleted and the result records `latest_cleared`.
 
+## VGA bezel source generation
+
+The [bezel direction](../../src/rtl/vga/BEZEL.md) owns the art and
+[`directions.json`](../../../tools/sw/vga_bezel/directions.json) owns its colours
+and band widths. [`vga_bezel_sources.py`](../../../tools/n2m/vga_bezel_sources.py)
+evaluates the chosen shell direction over the 1,560 border cells outside the
+scaled image and writes four checked-in files: the colour table and the border
+map and tile ROM arrays the simulation reads, and the two memory initialization
+files the fitted vendor ROMs read.
+
+Run `python tools/n2m/vga_bezel_sources.py` to regenerate them and
+`--check` to render in memory and fail on any drift. More than sixteen border
+colours, a border map that is not a dense range, or a colour outside the
+four-bit VGA codes fails. The [generator tests](../../../tools/n2m/tests/test_vga_bezel_sources.py)
+hold the drift check, the encoding facts, the equality of the initialization
+files with the arrays, and the agreement of both with the
+[independent border model](../../../src/dv/python/vga/bezel_reference.py).
+
 ## Interface generation
 
 The [interface contract](../../src/rtl/interfaces/MAS_interfaces.md) owns shared
