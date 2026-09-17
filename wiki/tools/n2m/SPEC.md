@@ -1174,12 +1174,15 @@ The Windows [doctor](#environment-doctor) with `--sim questa` adds the
 and the exact command, and reports PASS without running the gate. The
 simulation smoke's runtime license status does not affect that check.
 
-## Feedback selection gap
+## Feedback and budgets
 
-Required validation still follows the [PR check policy](../../agents/pull-requests.md#hosted-and-local-checks).
-Conservative affected-test selection and shared fixture preflight are planned in
-[the verification feedback redesign](https://github.com/amichai-bd/nand2mario/issues/507).
-Until implemented and reviewed, that plan does not replace required checks.
+Required validation follows the [PR check policy](../../agents/pull-requests.md#hosted-and-local-checks).
+Affected-test selection never owns, replaces or reduces a required check: the
+[affected-test report](#advisory-affected-test-report) is advisory, and the
+[conservativeness proof](#conservativeness-proof) is what makes its reasons
+reviewable. Setup defects have their own host-only gate in
+[Python fixture preflight](#python-fixture-preflight), which is preparation, not
+acceptance. Every simulation still obeys the budgets below.
 
 ### Test wall budget
 
