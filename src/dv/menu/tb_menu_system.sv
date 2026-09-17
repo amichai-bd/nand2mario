@@ -22,7 +22,11 @@
 // SDRAM is not ready: the list settles with slot numbers alone and draws one
 // title row per frame once the catalogue answers, except the frame that also
 // changes the nudge phase, which draws half a row; the two fixtures differ
-// only in which row that is). Every other
+// only in which row that is) and `scroll`/`select-last` (a slot deposited
+// into the menu's Cursor byte at a frame's first pixel, which the menu treats
+// as a move: onto slot 15 the list scrolls one row up two pixels a frame, the
+// header with it, and off it the list scrolls back; every ramp frame is
+// compared, and `select-last` presses A on the scrolled slot 15). Every other
 // fixture holds A through the boot instead, which
 // skips the splash: the first displayed frame draws half the wrapped rows and
 // the second is the settled menu, their frame 0, and the consumed press
@@ -41,7 +45,7 @@ module tb_menu_system;
     localparam int FRAME_PIXELS = 23040;
     // menu-frames.hex carries the scripted frames; menu-splash.hex the boot
     // splash frames, read only by the splash fixture, at SPLASH_FRAME.
-    localparam int SPLASH_FRAME = 16;
+    localparam int SPLASH_FRAME = 26;
     // The schedule of wiki/src/sw/menu/SPEC.md: four fade steps held two
     // frames each, then nine slide frames, the last of them the settled list.
     localparam int SPLASH_FRAMES = 17;
@@ -63,8 +67,20 @@ module tb_menu_system;
     localparam int DELAYED_WORST_FRAMES = DELAYED_WORST_HOLD + DELAYED_ROWS_FRAMES;
     localparam int FRAMES = SPLASH_FRAME +
         (DELAYED_WORST_FRAMES > SPLASH_FRAMES ? DELAYED_WORST_FRAMES : SPLASH_FRAMES);
-    localparam int GAME_FRAME = 14;
-    localparam int PHASE_FRAME = 15;
+    // The scroll ramp frames of fixture.py's scenario: the deposit onto slot
+    // 14 staged and settled, the four frames of the ramp onto slot 15, the
+    // three of the ramp back (the fourth is the settled slot 14 again) and
+    // the first ramp frame of a deposit straight onto slot 15.
+    localparam int SCROLL_FRAME = 14;
+    localparam int SCROLL_STAGED = SCROLL_FRAME;
+    localparam int SCROLL_SETTLED = SCROLL_FRAME + 1;
+    localparam int SCROLL_UP = SCROLL_FRAME + 2;
+    localparam int SCROLL_DOWN = SCROLL_FRAME + 6;
+    localparam int SCROLL_DEPOSIT = SCROLL_FRAME + 9;
+    localparam int SCROLL_STEPS = 4;
+    localparam int GAME_FRAME = 24;
+    localparam int PHASE_FRAME = 25;
+    localparam int LAST_SLOT = 15;
     // The button held through every other fixture's boot: A proves the skip
     // consumes its press, because an A the list saw would select slot 0.
     localparam logic [7:0] BOOT_SKIP = BUTTON_A;
@@ -80,8 +96,9 @@ module tb_menu_system;
     localparam int VBLANK_MCYCLES = 1140;
     // The menu's tile bank: font, the font on the grey page, the six authored
     // grey cells, the two pointer phases, the boot splash badge, the four
-    // star cells and the two footer cells (wiki/src/sw/menu/SPEC.md).
-    localparam int BANK_TILES = 100;
+    // star cells, the two footer cells and the two press-A badge phases
+    // (wiki/src/sw/menu/SPEC.md).
+    localparam int BANK_TILES = 102;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
     logic physical_commit;
@@ -143,11 +160,13 @@ module tb_menu_system;
     // after a return is measured from the new epoch's first WaitVBlank exit.
     // `cost_spanned` counts those discards and must equal the fixture's own
     // count of swaps, so a monitor left disarmed cannot hide a frame.
+    // The third mark is the menu's `Cursor` byte, which the scroll fixtures
+    // deposit a slot into.
     logic retirement_valid;
     retirement_t retirement;
-    logic [7:0] marks_mem [0:3];
+    logic [7:0] marks_mem [0:5];
     logic [7:0] delayed_marks_mem [0:3];
-    logic [15:0] mark_frame, mark_body;
+    logic [15:0] mark_frame, mark_body, mark_cursor;
     longint unsigned cost_start;
     bit cost_armed;
     integer cost_samples, cost_min, cost_max, cost_last, cost_spanned, expected_swaps;
@@ -576,6 +595,48 @@ module tb_menu_system;
         select_game(8'd1, PROFILE_DIRECT_ID, 1);
     endtask
 
+    // A slot into the menu's Cursor byte, at a frame's first pixel: the CPU
+    // is polling LY until VBlank, where the frame body reads the byte and
+    // treats the change as a move. The joypad would need two frames a slot to
+    // get here, which no target under the wall budget can afford; the moves
+    // across the scroll boundary are still real joypad edges.
+    task automatic deposit_cursor(input logic [7:0] slot);
+        frame_start(1200000);
+        dut.u_stores.wram.ram.words[mark_cursor[12:0]] = slot;
+        check_frame(0);                   // this frame still shows the boot
+    endtask
+
+    // The scroll ramp: a deposit straight onto slot 15 ramps the list one
+    // row up over four frames, the footer staging on the first; Up on the
+    // scrolled frame ramps it back over four more, ending on the settled
+    // slot 14. Every frame is compared, the pointer riding its row throughout.
+    task automatic fixture_scroll;
+        int step;
+        boot_menu(8'h00);
+        deposit_cursor(8'(LAST_SLOT));
+        frame_check(8'h00, SCROLL_DEPOSIT);                     // step 1, footer staged (15, 0)
+        for (step = 1; step < SCROLL_STEPS - 1; step = step + 1)
+            frame_check(8'h00, SCROLL_UP + step);               // steps 2 and 3
+        frame_check(BUTTON_UP, SCROLL_UP + SCROLL_STEPS - 1);   // scrolled: slot 15 in view; Up
+        for (step = 0; step < SCROLL_STEPS - 1; step = step + 1)
+            frame_check(8'h00, SCROLL_DOWN + step);             // three steps back, footer staged first
+        frame_check(8'h00, SCROLL_SETTLED);                     // settled on slot 14 again
+    endtask
+
+    // Slot 15 reached by a joypad edge and selected: a deposit onto slot 14
+    // stages and settles like a move, Down crosses the boundary and the list
+    // ramps up, and A on the scrolled frame starts the game in the last slot.
+    task automatic fixture_select_last;
+        int step;
+        boot_menu(8'h00);
+        deposit_cursor(8'(LAST_SLOT - 1));
+        frame_check(8'h00, SCROLL_STAGED);
+        frame_check(BUTTON_DOWN, SCROLL_SETTLED);
+        for (step = 0; step < SCROLL_STEPS - 1; step = step + 1)
+            frame_check(8'h00, SCROLL_UP + step);
+        select_game(8'(LAST_SLOT), PROFILE_DIRECT_ID, SCROLL_UP + SCROLL_STEPS - 1);
+    endtask
+
     // The 64 KiB MBC1 entry: listed once at slot 5 (slot 6 blank), it boots
     // in MBC1_ID and its bank 2 code returns to the menu through the exit
     // register; the restarted menu runs in LOADER_ID with the index kept.
@@ -698,6 +759,9 @@ module tb_menu_system;
         $readmemh("menu-marks.hex", marks_mem);
         mark_frame = {marks_mem[1], marks_mem[0]};
         mark_body = {marks_mem[3], marks_mem[2]};
+        mark_cursor = {marks_mem[5], marks_mem[4]};
+        if (mark_cursor < GB_WRAM_START || mark_cursor > GB_WRAM_END)
+            $fatal(1, "MENU_SYS_CURSOR_MARK address=%04h", mark_cursor);
         repeat (5) @(negedge clk_sys);
         reset_sys = 0; reset_pix = 0;
         repeat (3) @(negedge clk_sys);
@@ -714,6 +778,8 @@ module tb_menu_system;
             "splash": fixture_splash();
             "delayed": fixture_delayed(DELAYED_HOLD, DELAYED_FRAMES);
             "delayed-worst": fixture_delayed(DELAYED_WORST_HOLD, DELAYED_WORST_FRAMES);
+            "scroll": fixture_scroll();
+            "select-last": fixture_select_last();
             default: $fatal(1, "MENU_SYS_FIXTURE %s", fixture);
         endcase
         if (cost_samples == 0) $fatal(1, "MENU_COST_MISSING");

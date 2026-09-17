@@ -41,6 +41,7 @@ labels:
   menu-delayed: "The menu's delayed catalogue draw, one title row a frame; its own label because the menu-library aggregate cannot hold its wall too."
   menu-delayed-worst: "The delayed catalogue draw at its worst alignment: a declared target wall allowance, kept out of every ordinary aggregate."
   menu-library: "The menu's catalogue selection paths: the accepted select and the refused one, kept out of the menu label so that aggregate keeps headroom."
+  menu-scroll: "The menu's scroll ramp onto and off the last slot and the select of that slot; its own label because neither the menu nor the menu-library aggregate can hold two more ramps."
   milestone: "Carries the owner-authorized 1500-second Mooneye allowance."
   mooneye: "Pinned upstream Mooneye fixtures."
   needs-cocotb: "Imports cocotb; runs only on the pinned src/dv/python interpreter."
@@ -290,7 +291,9 @@ units:
   menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 52.47}
   menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 141.70}
   menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 98.03}
+  menu-scroll: {kind: sim, level: 1, labels: [menu-scroll, system], duration_seconds: null}
   menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 55.92}
+  menu-select-last: {kind: sim, level: 1, labels: [menu-scroll, system], duration_seconds: null}
   menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 103.85}
   menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 129.19}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
@@ -522,7 +525,7 @@ units:
   snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: 61.12}
   src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.27, inputs: [src/sw/generated/interfaces.inc]}
   src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.13, inputs: []}
-  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 1.92, inputs: [src/sw/menu/assets/design/direction-a-tiles.json, src/sw/menu/assets/design/v2-cursor-tiles.json, src/sw/menu/assets/design/v2-footer-tiles.json, src/sw/menu/assets/design/v2-grey-tiles.json, src/sw/menu/assets/design/v2-splash-tiles.json, src/sw/menu/assets/design/v2-stars-tiles.json, src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
+  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 1.92, inputs: [src/sw/menu/assets/design/direction-a-tiles.json, src/sw/menu/assets/design/v2-cursor-tiles.json, src/sw/menu/assets/design/v2-footer-tiles.json, src/sw/menu/assets/design/v2-grey-tiles.json, src/sw/menu/assets/design/v2-pulse-tiles.json, src/sw/menu/assets/design/v2-splash-tiles.json, src/sw/menu/assets/design/v2-stars-tiles.json, src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
   src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 1.22, inputs: [src/dv/v05/program.json]}
   src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.17, inputs: []}
   src/dv/springtrail/test_acquisition_host.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: null, inputs: [cfg/interfaces.json, src/dv/integration, src/dv/springtrail/thrower_route.py, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/sw/opcodes.json]}

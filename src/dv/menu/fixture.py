@@ -80,6 +80,28 @@ SCENARIO = [dict(cursor=0),                                     # 0 the boot fra
             dict(cursor=SHORT_SLOT),                            # 11 the foreign length, settled
             dict(cursor=MBC1_SLOT, footer=(MBC1_SLOT, SHORT_SLOT)),
             dict(cursor=MBC1_SLOT)]                             # 13 the 64 KiB entry, settled
+# The scroll ramp frames, from SCROLL_FRAME on. The window hides the last slot
+# row at rest, so a move onto slot 15 scrolls the list one row up over
+# reference.SCROLL_FRAMES frames and a move off it scrolls back; the move's own
+# frame carries the first step and the staged footer. The joypad reaches slot
+# 14 only through fourteen Downs at two frames each, which no target can afford,
+# so the scroll fixtures deposit the slot into the menu's `Cursor` byte at a
+# frame's first pixel and the menu treats it as a move; `menu-marks.hex`
+# carries that byte's address.
+LAST_SLOT = reference.SCROLL_SLOT
+RAMP_UP = reference.scroll_ramp(reference.SETTLED_SCY, LAST_SLOT)
+RAMP_DOWN = reference.scroll_ramp(reference.SCROLLED_SCY, LAST_SLOT - 1)
+SCROLL_FRAME = len(SCENARIO)
+SCENARIO += [dict(cursor=LAST_SLOT - 1, footer=(LAST_SLOT - 1, 0)),          # 14 deposited onto 14, staged
+             dict(cursor=LAST_SLOT - 1),                                    # 15 settled on 14
+             dict(cursor=LAST_SLOT, footer=(LAST_SLOT, LAST_SLOT - 1), scy=RAMP_UP[0]),   # 16 Down: step 1
+             dict(cursor=LAST_SLOT, scy=RAMP_UP[1]),                        # 17 step 2, footer settled
+             dict(cursor=LAST_SLOT, scy=RAMP_UP[2]),                        # 18 step 3
+             dict(cursor=LAST_SLOT, scy=RAMP_UP[3]),                        # 19 scrolled: slot 15 in view
+             dict(cursor=LAST_SLOT - 1, footer=(LAST_SLOT - 1, LAST_SLOT), scy=RAMP_DOWN[0]),   # 20 Up: back
+             dict(cursor=LAST_SLOT - 1, scy=RAMP_DOWN[1]),                  # 21
+             dict(cursor=LAST_SLOT - 1, scy=RAMP_DOWN[2]),                  # 22; the next is frame 15 again
+             dict(cursor=LAST_SLOT, footer=(LAST_SLOT, 0), scy=RAMP_UP[0])]  # 23 deposited onto 15: step 1
 # The exit-demo game frame and the nudge phase frame follow the scenario
 # frames in `menu-frames.hex`.
 GAME_FRAME = len(SCENARIO)
@@ -283,18 +305,20 @@ def delayed_frames(menu_image, hold=DELAYED_HOLD):
 
 
 def frame_marks(run):
-    """The `Frame` address and the address after its `CALL WaitVBlank`.
+    """The `Frame` address, the address after its `CALL WaitVBlank` and the `Cursor` byte's address.
 
-    The testbench measures the menu's VBlank work between those two points,
-    so the marks come from the build's own symbol and listing records rather
-    than from a constant that could drift with the image.
+    The testbench measures the menu's VBlank work between the first two
+    points and deposits a slot into the third for the scroll fixtures, so the
+    marks come from the build's own symbol and listing records rather than
+    from constants that could drift with the image.
     """
     run = Path(run)
     symbols = json.loads((run / 'symbols.json').read_text(encoding='utf-8'))['symbols']
     frame = next(row['value'] for row in symbols if row['symbol'] == 'Frame')
+    cursor = next(row['value'] for row in symbols if row['symbol'] == 'Cursor')
     lines = json.loads((run / 'listing.json').read_text(encoding='utf-8'))['lines']
     call = next(row for row in lines if row['address'] == frame and row['instruction'])
-    return frame, frame + call['size']
+    return frame, frame + call['size'], cursor
 
 
 def hex_lines(data):
@@ -320,7 +344,7 @@ def build(root, destination):
     (destination / 'menu-library.hex').write_text(hex_lines(library_bytes(image, exit_image)), encoding='ascii')
     marks = frame_marks((Path(root) / report['rom']).parent)
     (destination / 'menu-marks.hex').write_text(
-        hex_lines(bytes([marks[0] & 255, marks[0] >> 8, marks[1] & 255, marks[1] >> 8])), encoding='ascii')
+        hex_lines(b''.join(bytes([mark & 255, mark >> 8]) for mark in marks)), encoding='ascii')
     (destination / 'menu-frames.hex').write_text(''.join(hex_lines(frame) for frame in scenario_frames(image)), encoding='ascii')
     (destination / 'menu-splash.hex').write_text(''.join(hex_lines(frame) for frame in splash_frames(image)), encoding='ascii')
     (destination / 'menu-delayed.hex').write_text(''.join(hex_lines(frame) for frame in delayed_frames(image)), encoding='ascii')
