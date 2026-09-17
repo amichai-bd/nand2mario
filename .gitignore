@@ -48,6 +48,10 @@ output_files/
 *.state
 *.rtc
 
+# Generated bezel ROM contents; the fitted primitive reads these.
+!src/rtl/vga/n2m_vga_bezel_map.mif
+!src/rtl/vga/n2m_vga_bezel_tiles.mif
+
 # Private runtime inputs and credentials (never force-add)
 private/
 .env

@@ -164,6 +164,13 @@ def sdram_target(target):
 
 
 def prepare(root, folder, target, build_id=None):
+    # The selecting image carries its ROM contents into its own attempt directory.
+    for name in bezel_init_files(target):
+        # The repository ignores *.mif by default; a missing file here means the
+        # generated contents were never committed, not that the fit is stale.
+        if not (root / name).is_file():
+            raise ValueError("missing bezel memory initialization file: " + name)
+        shutil.copyfile(root / name, folder / Path(name).name)
     # Configurations are data; quote every value rather than evaluating user Tcl.
     lines = ['set_global_assignment -name FAMILY "MAX 10"',
              f'set_global_assignment -name DEVICE {DEVICE}',
@@ -218,8 +225,6 @@ def prepare(root, folder, target, build_id=None):
         lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to key1_n')
     for port in target["virtual_pins"]:
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
-    for name in bezel_init_files(target):
-        shutil.copyfile(root / name, folder / Path(name).name)
     (folder / "design.qsf").write_text('\n'.join(lines) + '\n', encoding="utf-8")
     (folder / "design.qpf").write_text('PROJECT_REVISION = "design"\n', encoding="utf-8")
     audit = AUDIT

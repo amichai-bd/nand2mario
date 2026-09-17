@@ -93,6 +93,13 @@ class BezelSourceTests(unittest.TestCase):
             self.assertIn(path.as_posix(), fpga.BEZEL_INIT_FILES)
         self.assertEqual(fpga.bezel_init_files({'top': 'v05_proof'}), list(fpga.BEZEL_INIT_FILES))
         self.assertEqual(fpga.bezel_init_files({'top': 'vga_proof'}), [])
+        base = ROOT / 'workdir/builds/vga-bezel-unit'
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as temporary:
+            empty = Path(temporary)
+            with self.assertRaisesRegex(ValueError, 'missing bezel memory initialization file'):
+                fpga.prepare(empty, empty, {'top': 'v05_proof', 'sources': [], 'constraints': [],
+                                            'pins': {}, 'virtual_pins': []})
 
     def test_generated_rom_draws_the_independent_border_model(self):
         palette, cells, pixels = self.palette, self.cells, self.pixels
@@ -120,6 +127,14 @@ class BezelSourceTests(unittest.TestCase):
                 expected = (red // 17 << 8) | (green // 17 << 4) | blue // 17
                 if expected != shell.pixel(x, y):
                     self.fail(f'border model differs from the preview at {x},{y}')
+
+    def test_every_generated_source_is_a_tracked_file(self):
+        """The repository ignores *.mif; a build reading one needs it committed."""
+        ignore = (ROOT / '.gitignore').read_text(encoding='utf-8').splitlines()
+        for path in sources.OUTPUTS:
+            self.assertTrue((ROOT / path).is_file())
+            if path.suffix in {'.mif', '.hex', '.bin', '.mem'}:
+                self.assertIn('!' + path.as_posix(), ignore)
 
     def test_map_index_covers_every_border_cell_once(self):
         indices = [sources.map_index(column, row) for row in range(60) for column in range(80)
