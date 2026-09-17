@@ -281,7 +281,7 @@ class FailureTests(unittest.TestCase):
         client = Fake()
         message = self.start(client, ValueError('external image hash mismatch: libbet'))
         self.assertIn('does not match its pinned digest', message)
-        self.assertIn('workdir/private/external-roms', message)
+        self.assertIn('N2M_EXTERNAL_ROM_CACHE', message)
         self.assertNotIn('Traceback', message)
         # A refused image never reaches the board; only the preconditions were read.
         self.assertEqual([event for event in client.events

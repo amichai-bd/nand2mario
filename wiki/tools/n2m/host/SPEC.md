@@ -135,9 +135,10 @@ and peek callers omit it.
 [dependency manifest](../../../../tools/n2m/dependencies.json) instead. The pin
 records the https source URL, SHA-256, size and license, and optional upstream
 notices with their own URL, hash and size. The image is fetched at run time into
-ignored `workdir/private/external-roms/<name>/`; no image bytes enter the
-repository. Size is checked first, then SHA-256, on the downloaded bytes before
-the cache is written and again on every cached read. An unknown pin, a missing
+the host's [shared external cache](../SPEC.md#external-rom-cache), one location
+for every worktree; no image bytes enter the repository. Size is checked first,
+then SHA-256, on the downloaded bytes before the cache is written and again on
+every cached read. An unknown pin, a missing
 field, a non-https pinned URL, a redirect that lands off https, a size differing
 from the direct-profile image size, or any hash mismatch fails before the serial
 port opens, so no partial image is written. Verified bytes replace the cache
@@ -155,7 +156,7 @@ external image (`host library load` takes packages only), so the fallback is
 exercised by `sw library` and the flash image; a later `--external` option of
 `host library load` must pass the pin title through the same argument. `read_external` returns it as `title` (None when absent) and
 refuses any other form, and `offline=True` reads only the cache, failing by
-name instead of fetching.
+name with the seeding command instead of fetching.
 The [Libbet play record](../../../../src/dv/libbet/README.md) drives the pinned
 image through these commands on the board and retains its frames.
 

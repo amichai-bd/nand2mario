@@ -160,7 +160,7 @@ def parser():
     cartridge.add_argument("--json", action="store_true")
     flash_library = sw.add_parser("library", help="assemble the flash library image (library.hex, library.dat) from src/fpga/de10_lite/library.json; no Quartus")
     flash_library.add_argument("--rebuild", action="store_true")
-    flash_library.add_argument("--offline", action="store_true", help="never fetch: refuse an external image whose cache under workdir/private/external-roms is missing")
+    flash_library.add_argument("--offline", action="store_true", help="never fetch: refuse by name an external image the shared cache (N2M_EXTERNAL_ROM_CACHE, else the per-user default) does not hold")
     flash_library.add_argument("--tag")
     flash_library.add_argument("--json", action="store_true")
     proof = sw.add_parser("conformance", help="compare complete original instruction matrix against RGBDS")

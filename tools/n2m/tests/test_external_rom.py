@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import shutil
+import os
 import sys
 import tempfile
 import threading
@@ -16,7 +17,8 @@ from n2m import generated_interfaces as abi
 from n2m import profiles
 from n2m.cli import main
 from n2m.doctor import select_uart
-from n2m.host.external import read_external
+from n2m.host import external
+from n2m.host.external import cache_root, read_external
 from n2m.host.transport import session
 
 from test_host import DEVICE, Endpoint, ROOT
@@ -61,8 +63,13 @@ class ExternalRomTests(unittest.TestCase):
         self.image = fixture_image()
         self.digest = hashlib.sha256(self.image).hexdigest()
         self.name = 'fixture-' + self.folder.name.rsplit(' ', 1)[-1].lower().replace('_', '-')
-        self.cache = ROOT / 'workdir/private/external-roms' / self.name
-        self.addCleanup(shutil.rmtree, self.cache, True)
+        # The shared cache is host-wide, so every test points it at its own folder
+        # and no run touches the developer's real images.
+        self.shared = self.folder / 'cache'
+        variable = patch.dict(os.environ, {external.CACHE_VARIABLE: str(self.shared)})
+        variable.start()
+        self.addCleanup(variable.stop)
+        self.cache = self.shared / self.name
 
     def pins(self, drop=None, **overrides):
         pin = {'url': 'https://example.invalid/' + self.name + '.gb', 'sha256': self.digest,
@@ -205,6 +212,69 @@ class ExternalRomTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'hash mismatch'):
                 read_external(ROOT, self.name, self.pins())
         self.assertEqual(download.calls, [])
+
+    def test_cache_location_follows_the_variable_then_the_per_user_default(self):
+        home = self.folder / 'home'
+        default = Path(*external.CACHE_FOLDER)
+        self.assertEqual(cache_root(ROOT, {external.CACHE_VARIABLE: str(self.folder / 'elsewhere')}), self.folder / 'elsewhere')
+        # A relative variable lands under the checkout, never on an unnamed path.
+        self.assertEqual(cache_root(ROOT, {external.CACHE_VARIABLE: 'workdir/shared'}), Path(ROOT).resolve() / 'workdir/shared')
+        # An unset or blank variable falls through to the per-user default.
+        for environment in ({external.CACHE_VARIABLE: '  ', 'XDG_CACHE_HOME': str(home / '.cache')},
+                            {'XDG_CACHE_HOME': str(home / '.cache')},
+                            {'HOME': str(home)}):
+            self.assertEqual(cache_root(ROOT, environment), home / '.cache' / default)
+        # The host's own default lies outside the checkout, so worktrees share it.
+        clean = {key: value for key, value in os.environ.items() if key != external.CACHE_VARIABLE}
+        self.assertNotIn(Path(ROOT).resolve(), cache_root(ROOT, clean).parents)
+        self.assertEqual(cache_root(ROOT, clean).parts[-2:], external.CACHE_FOLDER)
+        with patch('n2m.host.external.WINDOWS', True):
+            self.assertEqual(cache_root(ROOT, {'LOCALAPPDATA': str(home / 'AppData')}), home / 'AppData' / default)
+
+    def test_two_checkouts_share_one_verified_cache(self):
+        other = self.folder / 'second-worktree'
+        other.mkdir()
+        pins = self.pins()
+        download = Download(self.image)
+        with patch('n2m.host.external.urllib.request.urlopen', download):
+            self.assertEqual(read_external(ROOT, self.name, pins)[0], self.image)
+        # The second checkout holds no cache of its own and never opens the network.
+        with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            self.assertEqual(read_external(other, self.name, pins, offline=True)[0], self.image)
+        self.assertFalse((other / 'workdir').exists())
+        self.assertEqual(len(download.calls), 1)
+        # Every read verifies the shared bytes, so a corrupt cache is refused in both checkouts.
+        (self.cache / 'image.gb').write_bytes(bytes(len(self.image)))
+        with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            for root in (ROOT, other):
+                with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                    read_external(root, self.name, pins, offline=True)
+
+    def test_missing_pin_fails_by_name_with_the_seeding_command(self):
+        with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            with self.assertRaises(ValueError) as raised:
+                read_external(ROOT, self.name, self.pins(), offline=True)
+        message = str(raised.exception)
+        self.assertIn(f'not cached: {self.name}', message)
+        self.assertIn('python tools/build.py sw library --tag', message)
+        self.assertIn(external.CACHE_VARIABLE, message)
+        self.assertIn(str(self.shared), message)
+
+    def test_a_verified_per_checkout_cache_is_adopted_and_a_corrupt_one_is_not(self):
+        checkout = self.folder / 'checkout'
+        legacy = checkout / external.CACHE / self.name
+        legacy.mkdir(parents=True)
+        (legacy / 'image.gb').write_bytes(bytes(len(self.image)))
+        offline = patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline'))
+        # Corrupt per-checkout bytes are never shared; the pin still fails by name.
+        with offline:
+            with self.assertRaisesRegex(ValueError, f'not cached: {self.name}'):
+                read_external(checkout, self.name, self.pins(), offline=True)
+        self.assertFalse(self.cache.exists())
+        (legacy / 'image.gb').write_bytes(self.image)
+        with offline:
+            self.assertEqual(read_external(checkout, self.name, self.pins(), offline=True)[0], self.image)
+        self.assertEqual((self.cache / 'image.gb').read_bytes(), self.image)
 
     def fake_session(self, endpoint):
         def opened(folder, args, state_root):

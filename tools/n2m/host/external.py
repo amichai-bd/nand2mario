@@ -1,6 +1,7 @@
 """Pinned freely licensed external images, fetched at run time and never committed."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import urllib.request
@@ -10,8 +11,14 @@ from ..records import atomic_bytes, published_bytes
 from ..profiles import PROFILE_IDS, IMAGE_BYTES, DIRECT_PROFILE_NAME, MBC1_PROFILE_NAME
 
 PIN_FILE = 'tools/n2m/dependencies.json'
-# Ignored private location required by the source and provenance policy.
+# Ignored private location required by the source and provenance policy. The cache
+# lives outside the checkout so every worktree on a host reads the same verified
+# bytes; CACHE remains the per-checkout location earlier runs filled.
 CACHE = 'workdir/private/external-roms'
+CACHE_VARIABLE = 'N2M_EXTERNAL_ROM_CACHE'
+CACHE_FOLDER = ('nand2mario', 'external-roms')
+SEED_COMMAND = 'python tools/build.py sw library --tag <tag>'
+WINDOWS = os.name == 'nt'
 FIELDS = ('url', 'sha256', 'size', 'license')
 # Package profile name a pin runs in; absent means the 32 KiB direct profile.
 # The loader profile is the menu's own image and never a pin.
@@ -19,6 +26,42 @@ PROFILE_NAMES = {name: (PROFILE_IDS[name], IMAGE_BYTES[name]) for name in (DIREC
 # A pinned display title stands in for an all-zero header title: the menu
 # font's own alphabet, so the catalogue never carries a byte it cannot draw.
 TITLE = re.compile('[A-Z0-9][A-Z0-9 -]{0,15}')
+
+
+def cache_root(root, environment=None):
+    """Where this host keeps the verified pinned images, outside any checkout.
+
+    ``N2M_EXTERNAL_ROM_CACHE`` wins when it names a path; otherwise the per-user
+    default under the platform cache folder. A relative variable is resolved
+    against the checkout so a caller cannot land the cache on an unknown path.
+    """
+    environment = os.environ if environment is None else environment
+    override = (environment.get(CACHE_VARIABLE) or '').strip()
+    if override:
+        path = Path(override).expanduser()
+        return path if path.is_absolute() else Path(root).resolve() / path
+    base = (environment.get('XDG_CACHE_HOME') or '').strip()
+    if not base and WINDOWS:
+        base = (environment.get('LOCALAPPDATA') or '').strip()
+    base = Path(base).expanduser() if base else Path(environment.get('HOME') or Path.home()).expanduser() / '.cache'
+    return base.joinpath(*CACHE_FOLDER)
+
+
+def adopt(path, legacy, pin, name):
+    """Publish a verified per-checkout image into the shared cache.
+
+    An earlier per-checkout run keeps its value: the legacy bytes are verified
+    against the pin exactly like a download before they are shared, and a
+    mismatch is left alone for the caller to fetch or refuse.
+    """
+    if path.exists() or legacy is None or legacy.is_symlink() or not legacy.is_file():
+        return False
+    try:
+        data = verify(published_bytes(legacy), pin, name)
+    except (ValueError, OSError):
+        return False
+    atomic_bytes(path, data)
+    return True
 
 
 def fallback_title(pin, name):
@@ -40,17 +83,21 @@ def verify(data, pin, name):
     return data
 
 
-def fetch(pin, path, name, offline=False):
+def fetch(pin, path, name, offline=False, legacy=None, cache=None):
     """Verify before writing the cache and again after reading it back.
 
     ``offline`` never opens the network: a missing cache is refused by name so
-    an FPGA build cannot stall on a download.
+    an FPGA build cannot stall on a download. ``legacy`` is the per-checkout
+    path an earlier run may have filled; its bytes are adopted once verified.
+    ``cache`` is the shared cache root the missing-image message names.
     """
     if not str(pin['url']).startswith('https://'):
         raise ValueError(f'external pin must use an https source URL: {name}')
+    adopt(path, legacy, pin, name)
     if not path.exists():
         if offline:
-            raise ValueError(f'external image is not cached: {name}; run `sw library` online first')
+            raise ValueError(f'external image is not cached: {name}; run `{SEED_COMMAND}` online once on this '
+                             f'host to seed {cache}, or set {CACHE_VARIABLE} to a seeded cache')
         with urllib.request.urlopen(pin['url'], timeout=60) as response:
             # A redirect may downgrade the pinned https URL; the final response must stay https.
             if not str(response.url).startswith('https://'):
@@ -86,11 +133,13 @@ def read_external(root, name, pin_file=None, offline=False):
     profile_id, image_bytes = PROFILE_NAMES[profile]
     if pin['size'] != image_bytes:
         raise ValueError(f'pinned size differs from the generated image size of profile {profile}: {name}')
-    cache = root / CACHE / name
-    image = fetch(pin, cache / 'image.gb', name, offline)
+    shared = cache_root(root)
+    cache = shared / name
+    legacy = root / CACHE / name
+    image = fetch(pin, cache / 'image.gb', name, offline, legacy / 'image.gb', shared)
     for notice, item in pin.get('notices', {}).items():
         if not re.fullmatch('[A-Za-z0-9][A-Za-z0-9._-]{0,63}', notice):
             raise ValueError(f'external notice name is not a plain file name: {name}')
-        fetch(item, cache / 'notices' / notice, name + '/' + notice, offline)
+        fetch(item, cache / 'notices' / notice, name + '/' + notice, offline, legacy / 'notices' / notice, shared)
     return image, {'pin': name, **{field: pin[field] for field in FIELDS}, 'profile': profile, 'profile_id': profile_id,
                    'title': fallback_title(pin, name), 'notices': sorted(pin.get('notices', {}))}

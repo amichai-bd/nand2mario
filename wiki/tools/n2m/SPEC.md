@@ -1845,8 +1845,8 @@ the Intel HEX byte address of slot byte `b` of slot `i` is
 checks the first and last word of every slot, the catalogue words, the erased
 fill, the record format, the registry rules and the external resolution against
 a fake pin table and fake cached files. Its `sw library` stage test reads the
-real registry offline and skips, naming the missing pins, when the private
-cache under `workdir/private/external-roms/` has not been filled by one online
+real registry offline and skips, naming the missing pins, when the
+[shared external cache](#external-rom-cache) has not been filled by one online
 `sw library` run.
 
 The registry [`src/fpga/de10_lite/library.json`](../../../src/fpga/de10_lite/library.json)
@@ -1890,8 +1890,8 @@ its own issues.
 
 The external slots hold the [homebrew games that run on this hardware](../../showcase/homebrew-library.md).
 Their bytes follow the pin file's redistribution rule: fetched at build time
-into the ignored `workdir/private/external-roms/<name>/`, verified by size and
-SHA-256 on write and on every read, never committed; the `library.hex`,
+into the host's [shared external cache](#external-rom-cache) as `<cache>/<name>/`,
+verified by size and SHA-256 on write and on every read, never committed; the `library.hex`,
 `library.dat` and `.pof` that contain them are build artifacts under
 `workdir/`. Each image is validated by its size before packing: a 32768-byte
 image must carry header byte `0x147` = `0x00` (ROM ONLY) and `0x148` = `0x00`
@@ -1998,6 +1998,30 @@ no numeric margin beyond fitting CFM0, so the numbers are recorded, not
 thresholded. The text output names the `.pof` and the CFM0
 usage after the bitstream only when the record carries `evidence.onchip_flash`;
 a non-flash image, whose `.pof` Quartus also writes, prints neither line.
+
+#### External ROM cache
+
+The verified pinned images live in one cache per host, so every worktree reads
+the same bytes and a fresh checkout never refetches.
+[`host/external.py`](../../../tools/n2m/host/external.py) `cache_root` resolves
+it: `N2M_EXTERNAL_ROM_CACHE` wins when it names a path (a relative value is
+taken against the checkout), otherwise the per-user default outside every
+checkout, `$XDG_CACHE_HOME/nand2mario/external-roms`, on Windows
+`%LOCALAPPDATA%\nand2mario\external-roms`, else `~/.cache/nand2mario/external-roms`.
+Each pin keeps `<cache>/<name>/image.gb` and `<cache>/<name>/notices/<file>`.
+
+The path is never trust: size then SHA-256 are checked against the pin on write
+and on every read, so a shared, stale or damaged cache is refused by name and
+never silently replaced. A checkout that still holds the earlier per-checkout
+cache `workdir/private/external-roms/<name>/` seeds the host with it: those
+bytes are verified against the pin exactly like a download and then published
+into the shared cache, and a mismatch is left alone for the caller to fetch or
+refuse. Both locations stay ignored and no image byte is ever committed.
+
+Offline reads fetch nothing. A pin the cache does not hold fails by name with
+the command that seeds it, `python tools/build.py sw library --tag <tag>` online
+once on this host, and names the cache root and the variable, so a fresh
+worktree or a Quartus build says what to run instead of stalling on the network.
 
 ### Flash programming
 
