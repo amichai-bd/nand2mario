@@ -1,0 +1,10 @@
+`verilator_config
+// Lint waivers for warnings the bezel testbench induces in src/rtl.
+// Each waiver names the rule, the RTL file and signal, and the testbench
+// construct that causes the report. RTL lint comments stay reserved for
+// warnings the RTL itself owns. A comment here must not open with the word
+// "verilator": the lexer would read it as a lint meta-comment.
+
+// MULTIDRIVEN: tb_vga_bezel forces the shell instance's tile ROM read for its
+// corrupt fault; the force counts as a second driver of the register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/vga/n2m_vga_scan.sv" -match "*'tile_pixel'"

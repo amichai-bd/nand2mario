@@ -96,8 +96,8 @@ module n2m_vga_scan #(
         end
         // Memory read registers, like the frame RAM: no reset and no
         // initialization, so they prime from the raster while reset is held.
-        `DFF(tile, BEZEL_MAP[cell_index], clk_pix)
-        `DFF(tile_pixel, BEZEL_TILE_ROM[{tile, y[2:0], x[2:0]}], clk_pix)
+        `DFF(tile, bezel_map[cell_index], clk_pix)
+        `DFF(tile_pixel, bezel_tile_rom[{tile, y[2:0], x[2:0]}], clk_pix)
         assign bezel_rgb = BEZEL_PALETTE[tile_pixel];
     end else begin : g_none
         assign bezel_rgb = 12'h000;

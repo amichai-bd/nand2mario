@@ -14713,6 +14713,94 @@
     },
     "preload": "mooneye-reg-f"
   },
+  "python-vga-bezel": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/vga/tb_vga_bezel.sv",
+      "src/dv/vga/vga_bezel_lint.vlt"
+    ],
+    "vendor_model": "intel-memory",
+    "top": "tb_vga_bezel",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS vga-bezel shell border model image snapshot unchanged",
+    "timeout_seconds": 300,
+    "testbench": "python",
+    "python": {
+      "module": "test_vga_bezel",
+      "test": "vga_bezel",
+      "inputs": [
+        "src/dv/python/vga/test_vga_bezel.py",
+        "src/dv/python/vga/bezel_reference.py",
+        "tools/sw/vga_bezel/directions.json"
+      ],
+      "waves": [
+        "clk_sys",
+        "clk_pix",
+        "reset_sys",
+        "reset_pix",
+        "source_valid",
+        "source_start",
+        "source_shade",
+        "public_raster"
+      ]
+    }
+  },
+  "python-vga-bezel-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/vga/tb_vga_bezel.sv",
+      "src/dv/vga/vga_bezel_lint.vlt"
+    ],
+    "vendor_model": "intel-memory",
+    "top": "tb_vga_bezel",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+bezel_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "BEZEL_RGB sample=640 x=639 y=0 expected=2223 actual=3bb7",
+    "timeout_seconds": 300,
+    "testbench": "python",
+    "python": {
+      "module": "test_vga_bezel",
+      "test": "vga_bezel",
+      "inputs": [
+        "src/dv/python/vga/test_vga_bezel.py",
+        "src/dv/python/vga/bezel_reference.py",
+        "tools/sw/vga_bezel/directions.json"
+      ],
+      "waves": [
+        "clk_sys",
+        "clk_pix",
+        "reset_sys",
+        "reset_pix",
+        "source_valid",
+        "source_start",
+        "source_shade",
+        "public_raster"
+      ]
+    }
+  },
   "python-vga-crc": {
     "sources": [
       "src/rtl/common/n2m_sim_dual_port_ram.sv",

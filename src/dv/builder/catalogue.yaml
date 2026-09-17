@@ -481,6 +481,8 @@ units:
   python-v05-startup: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 149.11}
   python-v05-timer: {kind: sim, level: 2, labels: [composed-smoke, integration, python-tb, system, v05], duration_seconds: 6.01}
   python-v05-timer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 5.72}
+  python-vga-bezel: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 13.20}
+  python-vga-bezel-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 5.78}
   python-vga-crc: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 9.56}
   python-vga-crc-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 3.98}
   python-vram-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.64}
