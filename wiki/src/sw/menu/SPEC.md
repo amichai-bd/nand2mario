@@ -105,7 +105,7 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$0897` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, drawing routines and text tables (1688 bytes) |
+| `$0200`-`$08A5` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, drawing routines and text tables (1702 bytes) |
 | `$0C00`-`$0FAF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"`, the eight badge cells from `ASSET "Splash"` and the four star cells from `ASSET "Stars"`, 944 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
