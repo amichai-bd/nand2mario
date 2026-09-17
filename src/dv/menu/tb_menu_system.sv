@@ -38,8 +38,9 @@ module tb_menu_system;
     // body of the menu's loop must finish inside it (wiki/src/sw/menu/SPEC.md).
     localparam int VBLANK_MCYCLES = 1140;
     // The menu's tile bank: font, the font on the grey page, the six authored
-    // grey cells and the two pointer phases (wiki/src/sw/menu/SPEC.md).
-    localparam int BANK_TILES = 86;
+    // grey cells, the two pointer phases and the boot splash badge
+    // (wiki/src/sw/menu/SPEC.md).
+    localparam int BANK_TILES = 94;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
     logic physical_commit;

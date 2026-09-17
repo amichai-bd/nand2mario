@@ -113,9 +113,10 @@ background frame with all sixteen slots and no window.
 Grey plates and a sprite cursor together retire the inverse bank: with no
 inverse bar and no black plate, nothing is drawn as `3 - shade` any more, and
 the [direction A](DESIGN.md) caps and nudged arrow leave the image with it. The
-shipped bank is 86 tiles, listed in the [SPEC](SPEC.md#frame-layout): the 39
-font tiles, the same 39 on a mid-grey page, the six authored grey cells and the
-two pointer phases. Both derived banks cost zero ROM bytes, because the font
+shipped bank is the 94 tiles listed in the [SPEC](SPEC.md#frame-layout): the 39
+font tiles, the same 39 on a mid-grey page, the six authored grey cells, the
+two pointer phases and the eight badge cells of the boot splash. Both derived
+banks cost zero ROM bytes, because the font
 uses only shade 0 and shade 3, so the grey copy is the font's low plane with
 the high plane set.
 

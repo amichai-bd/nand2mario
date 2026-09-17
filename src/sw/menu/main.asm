@@ -1,8 +1,8 @@
 ; Original on-board game menu for the loader profile. Contract:
 ; wiki/src/sw/menu/SPEC.md; hardware registers from
 ; wiki/src/rtl/cartridge/MAS_loader_profile.md. The low 16 KiB holds this
-; code, the font and the grey plate art; the upper 16 KiB is the banked window
-; into SDRAM.
+; code, the font, the grey plate art and the boot splash badge; the upper
+; 16 KiB is the banked window into SDRAM.
 ; Loader profile registers (CPU addresses fixed by the contract; the
 ; generated table owns the status and result values).
 LOADER_BANK EQU 8192
@@ -33,13 +33,35 @@ GREY_ART_BYTES EQU GREY_ART_TILES * 16
 ; The two pointer phases are object tiles; no map cell ever names them.
 TILE_POINTER EQU 84
 POINTER_BYTES EQU 32
+; The boot splash badge, four cells by two.
+TILE_BADGE EQU 86
+BADGE_COLUMNS EQU 4
+BADGE_BYTES EQU 128
 ; Frame layout in 8x8 map cells.
 MAP EQU GB_VIEW_MAP0_START
+MAP_ROWS EQU 32
+; The background map is 32 rows: the splash fills the 18 rows the screen shows
+; at SCY 0 and the list follows it, so the list's last four rows wrap over the
+; splash's own top rows. The settled view is SCY 144, at which the visible
+; rows are the list alone.
+LIST_MAP_ROW EQU 18
+LIST_MAP EQU MAP + LIST_MAP_ROW * 32
+SETTLED_SCY EQU LIST_MAP_ROW * 8
+; The splash art, from the approved design sheet.
+SPLASH_BADGE_ROW EQU 4
+SPLASH_BADGE_COLUMN EQU 8
+SPLASH_TITLE_ROW EQU 8
+SPLASH_TITLE_COLUMN EQU 4
+SPLASH_HINT_ROW EQU 10
+SPLASH_HINT_COLUMN EQU 3
+SPLASH_HINT_BYTES EQU 13
 HEADER_COLUMN EQU 4
 SLOT_ROW EQU 1
 NUMBER_COLUMN EQU 1
 TITLE_COLUMN EQU 4
 STATUS_ROW EQU 17
+; The list's bottom plate, wrapped into the map's fourth row.
+STATUS_MAP_ROW EQU LIST_MAP_ROW + STATUS_ROW - MAP_ROWS
 TITLE_BYTES EQU 16
 ; The header and bottom plates: a grey cap in each outer column and 18 cells
 ; between them, filled with a dithered gradient behind the grey text.
@@ -117,6 +139,9 @@ LD [ShownIndex],A
 LD A,$E4
 LDH [GB_REG_BGP],A
 LDH [GB_REG_OBP0],A
+; The list sits below the splash in the map, so the settled view is SCY 144.
+LD A,SETTLED_SCY
+LDH [GB_REG_SCY],A
 ; Font tiles into VRAM while the LCD is off.
 LD DE,Font
 LD HL,GB_VIEW_TILES_START
@@ -163,6 +188,14 @@ INC DE
 LD [HL+],A
 DEC B
 JR NZ,CopyPointer
+LD DE,Splash
+LD B,BADGE_BYTES
+CopyBadge:
+LD A,[DE]
+INC DE
+LD [HL+],A
+DEC B
+JR NZ,CopyBadge
 ; Every object but the cursor stays off screen, so clear the table.
 LD HL,OAM_CURSOR
 LD B,OAM_BYTES
@@ -182,9 +215,36 @@ DEC BC
 LD A,B
 OR A,C
 JR NZ,ClearMap
+; The boot splash: the badge and its two lines above the list, drawn while the
+; LCD is off. The list rides SCY below them.
+LD HL,MAP + SPLASH_BADGE_ROW * 32 + SPLASH_BADGE_COLUMN
+LD A,TILE_BADGE
+LD B,BADGE_COLUMNS
+BadgeTop:
+LD [HL+],A
+INC A
+DEC B
+JR NZ,BadgeTop
+LD HL,MAP + (SPLASH_BADGE_ROW + 1) * 32 + SPLASH_BADGE_COLUMN
+LD B,BADGE_COLUMNS
+BadgeBottom:
+LD [HL+],A
+INC A
+DEC B
+JR NZ,BadgeBottom
+LD HL,Header
+LD DE,MAP + SPLASH_TITLE_ROW * 32 + SPLASH_TITLE_COLUMN
+LD B,12
+LD C,0
+CALL DrawText
+LD HL,SplashHint
+LD DE,MAP + SPLASH_HINT_ROW * 32 + SPLASH_HINT_COLUMN
+LD B,SPLASH_HINT_BYTES
+LD C,0
+CALL DrawText
 ; Header plate: a grey cap in each outer column, the 3-to-2 gradient between
 ; them and the title on the grey page.
-LD HL,MAP
+LD HL,LIST_MAP
 LD A,TILE_CAP_LEFT
 LD [HL+],A
 LD A,TILE_FADE32
@@ -196,22 +256,22 @@ JR NZ,HeaderPlate
 LD A,TILE_CAP_RIGHT
 LD [HL],A
 LD HL,Header
-LD DE,MAP + HEADER_COLUMN
+LD DE,LIST_MAP + HEADER_COLUMN
 LD B,12
 LD C,TILE_GREY
 CALL DrawText
 ; Bottom plate caps; ShowStatus fills the 18 cells between them.
 LD A,TILE_CAP_LEFT
-LD [MAP + STATUS_ROW * 32],A
+LD [MAP + STATUS_MAP_ROW * 32],A
 LD A,TILE_CAP_RIGHT
-LD [MAP + STATUS_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
+LD [MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
 ; The six status rows as grey cells, once, while the LCD is off.
 LD HL,StatusText
 LD DE,StatusCells
 LD B,STATUS_CELLS
 CALL DrawPlateText
 ; The sixteen slot numbers.
-LD DE,MAP + SLOT_ROW * 32 + NUMBER_COLUMN
+LD DE,LIST_MAP + SLOT_ROW * 32 + NUMBER_COLUMN
 LD C,0
 Numbers:
 LD A,C
@@ -224,6 +284,8 @@ ADD A,30
 LD E,A
 LD A,D
 ADC A,0
+AND A,MAP_ROWS * 32 / 256 - 1
+OR A,HIGH(MAP)
 LD D,A
 INC C
 LD A,C
@@ -417,7 +479,7 @@ ADD A,HIGH(GB_ROM1_START)
 LD H,A
 PUSH HL
 LD A,C
-INC A
+ADD A,LIST_MAP_ROW + SLOT_ROW
 LD L,A
 LD H,0
 ADD HL,HL
@@ -427,6 +489,10 @@ ADD HL,HL
 ADD HL,HL
 LD BC,MAP + TITLE_COLUMN
 ADD HL,BC
+LD A,H
+AND A,MAP_ROWS * 32 / 256 - 1
+OR A,HIGH(MAP)
+LD H,A
 LD D,H
 LD E,L
 POP HL
@@ -625,7 +691,7 @@ ADD HL,HL
 ADD HL,DE
 LD DE,StatusCells
 ADD HL,DE
-LD DE,MAP + STATUS_ROW * 32 + PLATE_COLUMN
+LD DE,MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN
 LD B,PLATE_CELLS
 CopyStatus:
 LD A,[HL+]
@@ -646,7 +712,7 @@ CP A,NO_DIGITS
 RET Z
 LD E,A
 LD D,0
-LD HL,MAP + STATUS_ROW * 32 + PLATE_COLUMN
+LD HL,MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN
 ADD HL,DE
 LD D,H
 LD E,L
@@ -664,6 +730,8 @@ RET
 
 Header:
 DB "GAME LIBRARY"
+SplashHint:
+DB "SELECT A GAME"
 ; The six status rows, each already centred in the plate's 18 cells exactly as
 ; the contract states. A pad byte keeps the plate's gradient fill; the zeros
 ; are placeholders the index digits overwrite.
@@ -690,3 +758,5 @@ GreyArt:
 ASSET "GreyArt"
 Pointer:
 ASSET "Pointer"
+Splash:
+ASSET "Splash"

@@ -15,10 +15,12 @@ the menu's behavior, memory use, frame layout and verification.
 
 Boot, from the direct entry state with the LCD off:
 
-1. Load the 86-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
-   a mid-grey page, the six authored grey cells and the two pointer phases.
+1. Load the 94-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
+   a mid-grey page, the six authored grey cells, the two pointer phases and
+   the eight boot splash badge cells.
    Clear the object table, blank the background map at `$9800`, set BGP and
-   OBP0 to `$E4` and zero scroll, draw the header plate, the bottom plate's
+   OBP0 to `$E4` and SCY to the settled 144, draw the
+   [boot splash](#background-map), the header plate, the bottom plate's
    two caps and the sixteen slot numbers, build the six status rows in WRAM,
    and put the cursor object on slot 0.
 2. If `$A000` bit 5 (`sdram_ready`) is set, commit bank 34 (the catalogue,
@@ -79,14 +81,14 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$05B0` | `code` section: entry `Start`, frame loop, drawing routines and text tables (945 bytes) |
-| `$0800`-`$0AEF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"` and the two pointer phases from `ASSET "Pointer"`, 752 bytes |
+| `$0200`-`$0607` | `code` section: entry `Start`, frame loop, drawing routines and text tables (1032 bytes) |
+| `$0800`-`$0B6F` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"` and the eight badge cells from `ASSET "Splash"`, 880 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
 | `$6000`-`$7FFF` write | Select register: the cursor's slot on an A edge |
 | `$A000`, `$A002`, `$A003` | Status byte, last result, last selected index |
-| `$8000`-`$855F` | The 86-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85 |
-| `$9800`-`$9BFF` | Background map; only the visible 20x18 cells are written |
+| `$8000`-`$85DF` | The 94-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85, the badge 86..93 |
+| `$9800`-`$9BFF` | [Background map](#background-map), all 32 rows: the boot splash above the list |
 | `$FE00`-`$FE9F` | Object table; cleared at boot, then object 0 alone is the cursor |
 | `$C000`-`$C075` | `vars`, 118 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, and `StatusCells`, the six 18-cell status rows |
 | `$DFFE` | Stack pointer |
@@ -96,8 +98,32 @@ deselected (`PROFILE_JOYP_SELECT`) after each read.
 
 ## Frame layout
 
+### Background map
+
+The map at `$9800` is 32 rows of 32 cells and carries the boot splash above
+the list. The splash fills map rows 0..17, the 18 rows the screen shows at
+SCY 0; the list's own 18 rows start at map row 18, so its last four rows wrap
+into map rows 0..3, over the splash's own top rows, which the splash leaves
+blank. The settled view is SCY 144: the screen then shows map rows 18..31 and
+0..3, which are the list alone, and nothing of the splash is on screen. Only
+map columns 0..19 are written.
+
+The splash is the badge and its two lines, from the
+[approved sheet](../../../../src/sw/menu/assets/design/v2-splash-tiles.json):
+
+| Map row | Columns | Content |
+|---|---|---|
+| 4 and 5 | 8..11 | The badge, bank tiles 86..89 over 90..93 |
+| 8 | 4..15 | `GAME LIBRARY` |
+| 10 | 3..15 | `SELECT A GAME` |
+
+Every other splash cell is the blank tile. The badge and both lines are drawn
+once, with the LCD off at boot.
+
+### The list
+
 The visible frame is 20 by 18 background cells and one object, identity
-palette for both, no scroll and no window. Shade 0 is the page, shade 3 the
+palette for both, and no window. Shade 0 is the page, shade 3 the
 ink and shade 2 the plates. The header and bottom rows are mid-grey plates: a
 dithered gradient fill with a rounded grey cap in each outer column, carrying
 text on the grey page, where the font's shade 0 becomes 2 and its ink stays 3.
@@ -252,8 +278,8 @@ its result records `profile: dmg-loader-v1` and `profile_id: 2`.
 
 [`reference.py`](../../../../src/dv/menu/reference.py) composes the expected
 frame from this page's layout rules and the font's shade JSON, never from
-the ROM or the DUT, and builds the 86-tile bank from the font, the grey copy
-of each glyph, the authored grey cells and the two pointer phases. `frame`
+the ROM or the DUT, and builds the 94-tile bank from the font, the grey copy
+of each glyph, the authored grey cells, the two pointer phases and the badge. `frame`
 draws the background and then the cursor object over it, with shade 0
 transparent.
 `frame(entries, cursor=0, phase=0, result=0, index=255, sdram_ready=True)`
