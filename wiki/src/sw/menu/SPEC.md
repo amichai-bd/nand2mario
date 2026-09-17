@@ -363,18 +363,26 @@ measured from the new epoch's first poll rather than across the swap.
 | Boot splash slide frame after the map is whole | 199-260 | 17-23% |
 | Skipped splash frame, two wrapped rows | 599-663 | 53-58% |
 | Refused select with a 20-character status redraw | 555 | 49% |
+| Delayed catalogue: the not-ready boot frame, idle | 233 | 20% |
+| Delayed catalogue: the bank commit and the plate's status redraw | 499 | 44% |
+| Delayed catalogue: one title row | 460-1108 | 40-97% |
+| Delayed catalogue: one title row and the nudge phase change | 654 | 57% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
-select from `menu-refused` and the splash rows from `menu-splash` and
-`menu-frame-fault`, each measured on the image this page specifies. The first
+select from `menu-refused`, the splash rows from `menu-splash` and
+`menu-frame-fault` and the delayed rows from `menu-delayed`, each measured on
+the image this page specifies. The first
 list frame is no longer a class of its own: the bottom plate is built into the
 window map with the LCD off, so that frame writes nothing and measures the idle
 238 rather than the 483 a status redraw used to add.
 
-A skipped splash frame is the peak, 663, 477 M-cycles inside the budget, and
-the idle frame is the floor at 238. The peak is `menu-frame-fault`'s own
-second frame: its skip settles the list, which is the frame that turns the
-window on, so it carries the LCDC write too. The cap on the skip is what holds that
+A delayed title row is the peak, 1108, 32 M-cycles inside the budget, and the
+idle frame is the floor at 233. The peak is the sixteen letter cells of
+`SIXTEEN CHAR ROW`, the fixture's widest title, drawn one row to the frame. The
+peak of every settled path is lower: a skipped splash frame costs 663, 477
+M-cycles inside the budget, and it is `menu-frame-fault`'s own second frame,
+whose skip settles the list, turns the window on and carries the LCDC write
+too. The cap on the skip is what holds that
 margin: a skip that finished the map in one VBlank cost 1342 and overran, and
 1010 with the rows prebuilt as cells. Two
 things keep the ordinary splash cheap: the four wrapped rows are built as
@@ -387,16 +395,18 @@ The delayed catalogue path draws one title row per frame, and `menu-delayed`
 measures every one of them: the menu boots with `sdram_ready` clear, so the
 list settles with the slot numbers alone and each frame after the bank commit
 draws one more row. Every row is drawn the same way now that no row is
-re-banked under a bar. MEASURED-LATER: the measured row frames and the worst of
-them go in the table above; the counted worst case, sixteen letter cells, is
-about 1080 of the 1140.
+re-banked under a bar, so the row's own text is the whole difference: a blank
+title costs 460 and the sixteen letter cells of the widest one 1108, which is
+97% of the budget and the most expensive frame the menu draws.
 
 Those sixteen row frames are sixteen consecutive frames, so exactly one of them
 is a multiple of 16: on the delayed path one title row is always drawn in the
 same VBlank as the [nudge phase](#cursor-object) change, which rewrites the
-pointer's tile and the eight star cells. The hold alone decides which row that
-is, which is why `menu-delayed-worst` runs the alignment that puts it on the
-sixteen-letter title. MEASURED-LATER: the measured collision frame.
+pointer's tile and the eight star cells. `menu-delayed` measured that frame at
+654, on a blank row that costs 460 alone, so the phase change adds 194. Only
+the alignment decides which row it falls on, and 194 above the 1108 of the
+widest title is past the 1140 budget. MEASURED-LATER: `menu-delayed-worst`
+runs that alignment.
 
 No flow boots the menu with the bit clear today. The boot copier holds
 `sdram_ready` low only in `WAIT_SDRAM`, `CHECK` and `COPY` and raises the menu
@@ -535,7 +545,8 @@ stays inside the ordinary 300-second budget with room for the work still to
 come. Every target except `menu-splash` and `menu-delayed-worst` also measures
 under the 120-second per-simulation target; `menu-splash` measured 120.96
 seconds and `menu-phase` 118.74, so the margin there is about a second.
-MEASURED-LATER: `menu-delayed` and the declared allowance `menu-delayed-worst`.
+`menu-delayed` measured 114.82 seconds for its 18 frames. MEASURED-LATER: the
+declared allowance `menu-delayed-worst`.
 The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
 each target's last run. `menu-frame` and `menu-frame-fault` carry `menu`;
