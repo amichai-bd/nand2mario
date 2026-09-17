@@ -581,9 +581,9 @@ that shows the previous press's result, and only a repeated mask takes a
 release frame. What is left is a floor. `menu-splash` displays the whole
 18-frame schedule, which is why the fade holds two frames a step rather than
 three. `menu-phase` displays 18 frames because the nudge is bit 4 of the
-frame counter, so frame 16 cannot arrive sooner, `menu-delayed` displays 18
-because the path draws one row a frame and sixteen rows cannot arrive sooner,
-and `menu-exit` boots three
+frame counter, so frame 16 cannot arrive sooner, `menu-delayed` displays 19
+because the path draws one row a frame, sixteen rows cannot arrive sooner and
+the split row costs a frame more, and `menu-exit` boots three
 images (menu, game, menu) because the returned menu only starts settled after
 a real select left the slot in `$A003`. What remains in those three is the
 testbench's fixed cost per boot rather than stimulus;
