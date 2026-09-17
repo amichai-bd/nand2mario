@@ -41,7 +41,7 @@ module tb_menu_system;
     localparam int FRAME_PIXELS = 23040;
     // menu-frames.hex carries the scripted frames; menu-splash.hex the boot
     // splash frames, read only by the splash fixture, at SPLASH_FRAME.
-    localparam int SPLASH_FRAME = 9;
+    localparam int SPLASH_FRAME = 16;
     // The schedule of wiki/src/sw/menu/SPEC.md: four fade steps held two
     // frames each, then nine slide frames, the last of them the settled list.
     localparam int SPLASH_FRAMES = 17;
@@ -63,8 +63,8 @@ module tb_menu_system;
     localparam int DELAYED_WORST_FRAMES = DELAYED_WORST_HOLD + DELAYED_ROWS_FRAMES;
     localparam int FRAMES = SPLASH_FRAME +
         (DELAYED_WORST_FRAMES > SPLASH_FRAMES ? DELAYED_WORST_FRAMES : SPLASH_FRAMES);
-    localparam int GAME_FRAME = 7;
-    localparam int PHASE_FRAME = 8;
+    localparam int GAME_FRAME = 14;
+    localparam int PHASE_FRAME = 15;
     // The button held through every other fixture's boot: A proves the skip
     // consumes its press, because an A the list saw would select slot 0.
     localparam logic [7:0] BOOT_SKIP = BUTTON_A;
@@ -79,9 +79,9 @@ module tb_menu_system;
     // body of the menu's loop must finish inside it (wiki/src/sw/menu/SPEC.md).
     localparam int VBLANK_MCYCLES = 1140;
     // The menu's tile bank: font, the font on the grey page, the six authored
-    // grey cells, the two pointer phases, the boot splash badge and the four
-    // star cells (wiki/src/sw/menu/SPEC.md).
-    localparam int BANK_TILES = 98;
+    // grey cells, the two pointer phases, the boot splash badge, the four
+    // star cells and the two footer cells (wiki/src/sw/menu/SPEC.md).
+    localparam int BANK_TILES = 100;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
     logic physical_commit;
@@ -554,16 +554,19 @@ module tb_menu_system;
         check_frame(PHASE_FRAME);
     endtask
 
+    // A cursor move draws the footer's upper row in the frame that shows the
+    // move and its lower row in the frame after, so every frame of this
+    // fixture carries a comparison: the staged pair and then the settled one.
     task automatic fixture_frame;
         boot_menu(BUTTON_DOWN);
-        frame_check(8'h00, 1);            // Down moved the cursor; release for the next Down
-        frame_press(BUTTON_DOWN);
-        frame_check(BUTTON_UP, 2);        // the second Down shows, and Up is the next press
-        frame_check(8'h00, 1);            // Up moved back; release for the next Up
-        frame_press(BUTTON_UP);
-        // Up at the top and a repeated Up change nothing.
-        frame_check(8'h00, 0);
-        frame_press(BUTTON_UP);
+        frame_check(8'h00, 1);            // Down moved the cursor, footer staged; release
+        frame_check(BUTTON_DOWN, 2);      // the footer settled on slot 1, and Down is next
+        frame_check(BUTTON_UP, 3);        // the second Down shows staged, and Up is next
+        frame_check(8'h00, 2);            // Up moved back to a footer already on slot 1
+        frame_check(BUTTON_UP, 2);        // nothing left to settle; Up is next
+        // Up at the top and a repeated Up change nothing but the footer stage.
+        frame_check(8'h00, 8);
+        frame_check(BUTTON_UP, 0);
         frame_check(8'h00, 0);
     endtask
 
@@ -586,13 +589,16 @@ module tb_menu_system;
             frame_press(8'h00);
             frame_press(BUTTON_DOWN);
         end
+        // The frame that shows slot 5 carries the 64 KiB entry on the footer's
+        // upper row with the row below it still on slot 4; the next one settles.
+        frame_check(8'h00, 12);
         // A on the frame that shows slot 5: the select carries 5 and the game
         // boots in MBC1_ID. Its bank 2 exits within a few instructions, so the
         // host reads wait for the menu to be back instead of racing the return.
         epoch_before = epoch;
         select_seen = 0;
         expected_swaps = expected_swaps + 2;     // the select, then the game's own exit
-        frame_check(BUTTON_A, 6);
+        frame_check(BUTTON_A, 13);
         wait_profile(PROFILE_MBC1_ID, 1200000, "mbc1 game");
         if (!select_seen || select_data != MBC1_SLOT) $fatal(1, "MENU_SYS_SELECT expected=%0d seen=%b data=%0d", MBC1_SLOT, select_seen, select_data);
         if (epoch != epoch_before + 1) $fatal(1, "MENU_SYS_GAME_EPOCH slot=%0d", MBC1_SLOT);
@@ -646,18 +652,20 @@ module tb_menu_system;
     task automatic fixture_refused;
         boot_menu(BUTTON_DOWN);
         frame_check(8'h00, 1);
-        frame_press(BUTTON_DOWN);
-        frame_check(8'h00, 2);
-        frame_press(BUTTON_DOWN);
-        // Slot 3 is empty: the select is refused and the status row says so.
-        // The refused select leaves the filled window's window_ready set, and
-        // the status is read before any further press, so no cursor move can
-        // race the read.
-        frame_check(BUTTON_A, 3);
-        frame_check(8'h00, 4);
+        frame_check(BUTTON_DOWN, 2);
+        frame_check(8'h00, 3);
+        frame_check(BUTTON_DOWN, 4);      // the footer settled on slot 2, tagline and all
+        // Slot 3 is empty: its footer names the empty slot, the select is
+        // refused and the message takes the footer's lower row. The refused
+        // select leaves the filled window's window_ready set, and the status is
+        // read before any further press, so no cursor move can race the read.
+        frame_check(BUTTON_A, 5);
+        frame_check(8'h00, 6);
         read_status({2'b0, 6'd34, 8'd3, LIBRARY_RESULT_INVALID_SLOT, 8'h60}, 32'h3FFFFFFF);
         frame_press(BUTTON_UP);
-        select_game(8'd2, PROFILE_DIRECT_ID, 5);
+        // The Up moves the footer's upper row to slot 2; the message keeps the
+        // lower one.
+        select_game(8'd2, PROFILE_DIRECT_ID, 7);
     endtask
 
     initial begin

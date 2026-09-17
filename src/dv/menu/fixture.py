@@ -10,7 +10,9 @@ reference frames of the scripted scenario, the `exit-demo` game frame, the
 boot splash schedule and the delayed catalogue path. The catalogue entry layout is
 the `catalogue_entry_t` record of cfg/interfaces.json: valid, profile,
 length (bits 15:0), crc32, title, length_high (bits 23:16), 7 reserved bytes.
-The tagline table follows the entries in the same region, 24 bytes per slot.
+The tagline table follows the entries in the same region, 24 bytes per slot;
+five slots declare one, so the footer's lower row is exercised beside slots
+that declare none.
 """
 import json
 from pathlib import Path
@@ -54,11 +56,30 @@ SHORT_SLOT, EMPTY_SLOT = 4, 3
 # The 64 KiB MBC1 stub game fills slots 5 and 6 under one entry at 5; the
 # menu lists it once and shows slot 6 as empty.
 MBC1_SLOT, MBC1_TITLE = 5, b'BANKED GAME'
-# Scripted frames in `menu-frames.hex` order.
-SCENARIO = [dict(cursor=0), dict(cursor=1), dict(cursor=2), dict(cursor=3),
-            dict(cursor=3, result=reference.RESULT_INVALID_SLOT, index=3),
-            dict(cursor=2, result=reference.RESULT_INVALID_SLOT, index=3),
-            dict(cursor=MBC1_SLOT)]
+# Taglines for five of the slots, so the footer's lower row is proved at the
+# full plate width, at both centrings and against slots that declare none.
+# Every character is one the menu font draws (n2m.profiles.TAGLINE_TEXT).
+TAGLINES = {0: b'BRISK PLATFORM HOP', EXIT_SLOT: b'WALK OUT THE DOOR',
+            2: b'TEST EVERY BUTTON', SHORT_SLOT: b'HALF AN IMAGE',
+            MBC1_SLOT: b'TWO BANKS OF FUN'}
+# Scripted frames in `menu-frames.hex` order. A cursor move settles the footer
+# over two frames: the frame that shows the move carries the new slot on the
+# upper row and the old one on the lower, and the frame after it is settled.
+# `footer` names that pair wherever it is not the cursor's own slot twice.
+SCENARIO = [dict(cursor=0),                                     # 0 the boot frame, settled
+            dict(cursor=1, footer=(1, 0)),                      # 1 the first Down, staged
+            dict(cursor=1),                                     # 2 settled on slot 1
+            dict(cursor=2, footer=(2, 1)),                      # 3 the second Down, staged
+            dict(cursor=2),                                     # 4 settled on slot 2
+            dict(cursor=EMPTY_SLOT, footer=(EMPTY_SLOT, 2)),    # 5 staged onto the empty slot
+            dict(cursor=EMPTY_SLOT, result=reference.RESULT_INVALID_SLOT, index=EMPTY_SLOT),
+            dict(cursor=2, result=reference.RESULT_INVALID_SLOT, index=EMPTY_SLOT),
+            dict(cursor=0, footer=(0, 1)),                      # 8 Up to the top, staged
+            dict(cursor=EMPTY_SLOT),                            # 9 settled on the empty slot
+            dict(cursor=SHORT_SLOT, footer=(SHORT_SLOT, EMPTY_SLOT)),
+            dict(cursor=SHORT_SLOT),                            # 11 the foreign length, settled
+            dict(cursor=MBC1_SLOT, footer=(MBC1_SLOT, SHORT_SLOT)),
+            dict(cursor=MBC1_SLOT)]                             # 13 the 64 KiB entry, settled
 # The exit-demo game frame and the nudge phase frame follow the scenario
 # frames in `menu-frames.hex`.
 GAME_FRAME = len(SCENARIO)
@@ -136,7 +157,8 @@ def entries(menu_image, exit_image=None):
     """Seventeen catalogue rows shaped like n2m.host.library.unpack_entry."""
     rows = []
     for index in range(IMAGES):
-        row = {'valid': 0, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(16), 'tagline': b''}
+        row = {'valid': 0, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(16),
+               'tagline': TAGLINES.get(index, b'')}
         if index == MENU:
             image = menu_image
             row.update(valid=1, profile=PROFILE_LOADER, length=SLOT_BYTES)
@@ -251,8 +273,12 @@ def delayed_frames(menu_image, hold=DELAYED_HOLD):
             else:
                 drawn += 1
         shown_phase = phase
+        # No frame here carries a footer: the image draws its upper row from
+        # the branch the catalogue path takes once the list is whole, which is
+        # the iteration after the one that draws the last row, and this path
+        # ends on that row.
         frames.append(reference.frame(rows, sdram_ready=ready, drawn_slots=drawn,
-                                      partial_cells=partial, phase=phase))
+                                      partial_cells=partial, phase=phase, footer=(None, None)))
     return frames
 
 

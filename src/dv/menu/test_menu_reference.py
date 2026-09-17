@@ -105,25 +105,27 @@ class Layout(unittest.TestCase):
         with self.assertRaises(ValueError):
             fixture.library_bytes(b'short')
 
-    def test_the_tagline_table_follows_the_entries_and_draws_no_pixel_yet(self):
+    def test_the_tagline_table_follows_the_entries_and_draws_the_footer_row(self):
         library = fixture.library_bytes(MENU_IMAGE)
         start = fixture.TAGLINE_ADDRESS
         self.assertEqual(start, fixture.CATALOGUE_ADDRESS + fixture.IMAGES * fixture.ENTRY_BYTES)
-        # The fixture declares no tagline, so the table and the rest of the
-        # 1 KiB region are zero: these are the bytes the menu targets preloaded
-        # before the table existed.
-        self.assertEqual(library[start:fixture.CATALOGUE_ADDRESS + 1024],
-                         bytes(fixture.CATALOGUE_ADDRESS + 1024 - start))
-        self.assertEqual([row['tagline'] for row in self.entries], [b''] * fixture.IMAGES)
-        # A catalogue that does carry taglines packs them behind the entries and
-        # still renders the same frame: no cell of this reference reads one.
-        tagged = [dict(row, tagline=f'SLOT {index} TAGLINE'.encode()) for index, row in enumerate(self.entries)]
-        table = b''.join(fixture.pack_tagline(row) for row in tagged)
-        self.assertEqual(table[:fixture.TAGLINE_CHARS], b'SLOT 0 TAGLINE'.ljust(fixture.TAGLINE_CHARS, b'\0'))
-        self.assertEqual(len(table), fixture.IMAGES * fixture.TAGLINE_BYTES)
-        self.assertEqual([fixture.pack_entry(row) for row in tagged], [fixture.pack_entry(row) for row in self.entries])
-        self.assertEqual(reference.frame(tagged), reference.frame(self.entries))
-        self.assertEqual(reference.expected('menu', tagged), reference.expected('menu', self.entries))
+        # The table is the fixture's own taglines, then zero to the end of the
+        # 1 KiB catalogue region. An entry without one packs an all-zero record.
+        table = b''.join(fixture.pack_tagline(row) for row in self.entries)
+        self.assertEqual(library[start:start + len(table)], table)
+        self.assertEqual(library[start + len(table):fixture.CATALOGUE_ADDRESS + 1024],
+                         bytes(fixture.CATALOGUE_ADDRESS + 1024 - start - len(table)))
+        self.assertEqual(self.entries[fixture.EMPTY_SLOT]['tagline'], b'')
+        self.assertEqual(self.entries[0]['tagline'], fixture.TAGLINES[0])
+        # The tagline is the footer's lower row, so a catalogue that carries one
+        # and the same catalogue without it no longer render the same frame; the
+        # entry bytes are untouched either way.
+        plain = [dict(row, tagline=b'') for row in self.entries]
+        self.assertEqual([fixture.pack_entry(row) for row in plain],
+                         [fixture.pack_entry(row) for row in self.entries])
+        self.assertNotEqual(reference.frame(plain), reference.frame(self.entries))
+        self.assertEqual(reference.frame(plain),
+                         reference.frame(self.entries, footer=(0, fixture.EMPTY_SLOT)))
         with self.assertRaises(ValueError):
             fixture.pack_tagline({'tagline': b'X' * (fixture.TAGLINE_CHARS + 1)})
 
@@ -207,9 +209,13 @@ class Layout(unittest.TestCase):
         # The splash badge is the committed art, four cells by two above the list's bank.
         self.assertEqual(bank[reference.TILE_BADGE:reference.TILE_BADGE + reference.BADGE_TILES],
                          reference.atlas_tiles(reference.SPLASH_ART, reference.BADGE_TILES))
-        # The star field's four cells close the bank.
-        self.assertEqual(bank[reference.TILE_STAR:],
+        # The star field's four cells, then the footer's two on the grey page.
+        self.assertEqual(bank[reference.TILE_STAR:reference.TILE_STAR + reference.STAR_TILES],
                          reference.atlas_tiles(reference.STAR_ART, reference.STAR_TILES))
+        footer = reference.atlas_tiles(reference.FOOTER_ART, reference.FOOTER_ART_TILES)
+        self.assertEqual(bank[reference.TILE_CART:], [reference.greyed(tile) for tile in footer])
+        for tile in footer:
+            self.assertLessEqual({shade for row in tile for shade in row}, {0, 3})
 
     def test_the_star_field_is_the_rule_the_spec_states(self):
         """Eight cells, in the two columns the list always leaves blank, twinkling on the nudge bit."""
@@ -239,7 +245,7 @@ class Layout(unittest.TestCase):
         sliding = reference.frame(self.entries, scy=reference.SETTLED_SCY - reference.SLIDE_STEP,
                                   wrapped=reference.WRAPPED_ROWS)
         bank = reference.bank_tiles()
-        plate = reference.window_rows()
+        plate = reference.window_rows(self.entries)
         for y in range(reference.WINDOW_Y, reference.HEIGHT):
             for x in range(reference.WIDTH):
                 row, column = y - reference.WINDOW_Y, x - (reference.WINDOW_X - 7)
@@ -249,13 +255,82 @@ class Layout(unittest.TestCase):
         self.assertNotEqual(sliding[reference.WINDOW_Y * reference.WIDTH:],
                             settled[reference.WINDOW_Y * reference.WIDTH:])
 
+    def test_the_information_footer(self):
+        """The window's two rows: the badge, the profile and size, and the tagline or the message."""
+        R = reference
+        self.assertEqual(R.footer_line({'valid': 1, 'profile': 1, 'length': 32768}), 'DIRECT   32 KB##')
+        self.assertEqual(R.footer_line({'valid': 1, 'profile': 3, 'length': 65536}), 'MBC1     64 KB##')
+        self.assertEqual(R.footer_line({'valid': 1, 'profile': 2, 'length': 32768}), 'LOADER   32 KB##')
+        self.assertEqual(R.footer_line({'valid': 1, 'profile': 1, 'length': 16384}), 'DIRECT   16 KB##')
+        self.assertEqual(R.footer_line({'valid': 0}), 'EMPTY SLOT######')
+        self.assertEqual(R.footer_line(None), 'EMPTY SLOT######')
+        # An unknown profile, a length that is not whole kibibytes and one the
+        # three-digit field cannot hold all draw dashes rather than a wrong number.
+        self.assertEqual(R.footer_line({'valid': 1, 'profile': 9, 'length': 32768}), '------   32 KB##')
+        self.assertEqual(R.footer_line({'valid': 1, 'profile': 1, 'length': 32769}), 'DIRECT  --- KB##')
+        self.assertEqual(R.footer_line({'valid': 1, 'profile': 1, 'length': 1024 * 1000}), 'DIRECT  --- KB##')
+        # A row with no profile or length at all still renders: the host's
+        # preview builders pass `valid` and `title` alone.
+        self.assertEqual(R.footer_line({'valid': 1, 'title': b''}), '------    0 KB##')
+        self.assertEqual(len(R.frame([{'valid': 1, 'title': b'PREVIEW'.ljust(16, b'\0')}])), 23040)
+        # The upper row: the caps, the badge, the text cells and the plate's
+        # own fill wherever the line pads.
+        row = R.footer_row(self.entries[0])
+        self.assertEqual((row[0], row[-1]), (R.TILE_CAP_LEFT, R.TILE_CAP_RIGHT))
+        self.assertEqual(row[1 + R.FOOTER_BADGE_COLUMN], R.TILE_CART)
+        self.assertEqual(row[1], R.TILE_FADE21)
+        self.assertEqual(row[1 + R.FOOTER_TEXT_COLUMN:1 + R.FOOTER_TEXT_COLUMN + 6],
+                         [R.TILE_GREY + tile for tile in R.text_tiles('DIRECT')])
+        self.assertEqual(row[-3:-1], [R.TILE_FADE21] * 2)
+        self.assertEqual(len(row), R.COLUMNS)
+        # The lower row: the tagline centred as the status text is, the plate
+        # alone for a slot that declares none.
+        self.assertEqual(R.tagline_line(self.entries[0]), 'BRISK PLATFORM HOP')
+        self.assertEqual(R.tagline_line(self.entries[fixture.EMPTY_SLOT]), '')
+        self.assertEqual(R.tagline_line(None), '')
+        self.assertEqual(R.window_rows(self.entries, footer=(0, 0))[1],
+                         R.plate(R.TILE_FADE21, 'BRISK PLATFORM HOP'))
+        self.assertEqual(R.window_rows(self.entries, footer=(0, fixture.EMPTY_SLOT))[1],
+                         R.plate(R.TILE_FADE21))
+        self.assertEqual(R.window_rows(self.entries, footer=(2, 2))[1],
+                         R.plate(R.TILE_FADE21, 'TEST EVERY BUTTON'))
+        # A message owns the lower row while it is shown, whatever the tagline.
+        refused = R.window_rows(self.entries, footer=(0, 0), result=R.RESULT_INVALID_SLOT, index=3)
+        self.assertEqual(refused[1], R.plate(R.TILE_FADE21, 'SLOT 03 INVALID'))
+        self.assertEqual(refused[0], R.footer_row(self.entries[0]))
+        # The two rows settle over two frames, so they may name different slots.
+        staged = R.window_rows(self.entries, footer=(1, 0))
+        self.assertEqual(staged, [R.footer_row(self.entries[1]),
+                                  R.plate(R.TILE_FADE21, 'BRISK PLATFORM HOP')])
+        self.assertEqual(R.footer_slots(cursor=4), (4, 4))
+        self.assertEqual(R.footer_slots(cursor=4, footer=(4, 2)), (4, 2))
+        with self.assertRaises(ValueError):
+            R.footer_slots(cursor=0, footer=(16, 0))
+        # A row the image has not drawn is the plate's own fill, and there is no
+        # footer at all until the list is whole: the frames of the delayed
+        # catalogue path have neither row, and the message is the whole plate.
+        self.assertEqual(R.footer_slots(cursor=0, drawn_slots=R.SLOTS - 1), (None, None))
+        self.assertEqual(R.footer_slots(cursor=0, sdram_ready=False), (None, None))
+        self.assertEqual(R.footer_slots(cursor=3), (3, 3))
+        waiting = R.window_rows(self.entries, footer=(None, None), sdram_ready=False)
+        self.assertEqual(waiting, [R.plate(R.TILE_FADE21), R.plate(R.TILE_FADE21, 'NOT READY')])
+        listing = R.window_rows(self.entries, footer=(None, None))
+        self.assertEqual(listing, [R.plate(R.TILE_FADE21), R.plate(R.TILE_FADE21)])
+        # The frames the delayed catalogue fixture draws carry no footer.
+        self.assertEqual(R.frame(self.entries, drawn_slots=2, sdram_ready=True)[reference.WINDOW_Y * 160:],
+                         R.frame(self.entries, drawn_slots=2, footer=(None, None))[reference.WINDOW_Y * 160:])
+
     def test_plates_match_the_published_grey_preview(self):
         """The header and bottom plates are the published mid-grey design, pixel for pixel."""
         sys.path.insert(0, str(ROOT))
         from tools.sw.menu_v2 import grey
         published = dict(grey(ROOT, reference)[2])
+        # The sheet predates the information footer, so it pins the header row
+        # and the plate's lower row alone: a slot with no tagline leaves that
+        # row the plate fill the sheet drew, and the refused message is the
+        # text the sheet drew over it.
         plate_rows = list(range(8)) + list(range(136, 144))
-        for label, state in (('GREY PLATES', {}),
+        for label, state in (('GREY PLATES', dict(footer=(0, fixture.EMPTY_SLOT))),
                              ('REFUSED', dict(result=reference.RESULT_INVALID_SLOT, index=3))):
             pixels = published[label]['pixels']
             frame = reference.frame(self.entries, **state)
@@ -405,7 +480,12 @@ class Layout(unittest.TestCase):
         packed = fixture.pack(frames[0])
         self.assertEqual(reference.check_pixels(packed, self.entries), 23040)
         self.assertEqual(reference.unpack(packed), reference.expected('menu', self.entries))
-        self.assertEqual(reference.expected('cursor-2', self.entries), frames[2])
+        # 'cursor-N' is the settled footer of slot N; 'footer-A-B' is the frame
+        # after a move, whose lower row still carries slot B's tagline.
+        self.assertEqual(reference.expected('cursor-1', self.entries), frames[2])
+        self.assertEqual(reference.expected('footer-1-0', self.entries), frames[1])
+        self.assertEqual(reference.expected('footer-2-1', self.entries), frames[3])
+        self.assertEqual(reference.expected('cursor-2', self.entries), frames[4])
         self.assertEqual(reference.expected('phase-1', self.entries), frames[fixture.PHASE_FRAME])
         self.assertEqual(reference.expected('phase-0', self.entries), frames[0])
         broken = bytearray(packed)
@@ -444,11 +524,16 @@ class Layout(unittest.TestCase):
             for drawn in range(1, slot + 1):
                 self.assertEqual(frames[hold + 1 + drawn], R.frame(
                     self.entries, drawn_slots=drawn, phase=R.phase_of_frame(hold + 1 + drawn)), (hold, drawn))
+            # The footer is drawn from the branch the catalogue path takes once
+            # the list is whole, which is the iteration after the last row, so
+            # no frame of this path carries one, the last one included.
             for drawn in range(slot + 1, R.SLOTS + 1):
                 number = hold + 2 + drawn
                 self.assertEqual(frames[number], R.frame(
-                    self.entries, drawn_slots=drawn, phase=R.phase_of_frame(number)), (hold, drawn))
-            self.assertEqual(frames[-1], R.frame(self.entries, phase=R.phase_of_frame(len(frames) - 1)))
+                    self.entries, drawn_slots=drawn, phase=R.phase_of_frame(number),
+                    footer=(None, None)), (hold, drawn))
+            self.assertEqual(frames[-1], R.frame(self.entries, phase=R.phase_of_frame(len(frames) - 1),
+                                                 footer=(None, None)))
         # One more row a frame changes the map exactly when the slot it drew has
         # a title; an empty slot draws the blank cells that were already there.
         for slot in range(R.SLOTS):

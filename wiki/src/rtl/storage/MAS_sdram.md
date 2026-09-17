@@ -308,8 +308,8 @@ slot a 64 KiB image spills into has an empty entry:
 | 25-31 | 7 | Reserved, zero |
 
 Tagline table: the 480 bytes behind the entries were specified zero, so the
-taglines the [menu info footer](../../sw/menu/DESIGN_V2.md#3-info-footer) needs
-live there rather than in a wider entry. Tagline `i` is at
+taglines the [menu info footer](../../sw/menu/SPEC.md#the-information-footer)
+draws live there rather than in a wider entry. Tagline `i` is at
 `0x0088220 + 24 * i`: 18 characters, zero-padded, then 6 zero bytes. The
 characters are what the [menu font](../../sw/menu/SPEC.md#font) draws, `A`-`Z`,
 `0`-`9`, space and dash; an all-zero record is no tagline, which is what a

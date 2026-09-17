@@ -114,13 +114,14 @@ a cursor on slot 15 sits on the plate's upper row with no title beside it.
 Grey plates and a sprite cursor together retire the inverse bank: with no
 inverse bar and no black plate, nothing is drawn as `3 - shade` any more, and
 the [direction A](DESIGN.md) caps and nudged arrow leave the image with it. The
-shipped bank is the 98 tiles listed in the [SPEC](SPEC.md#frame-layout): the 39
+shipped bank is the 100 tiles listed in the [SPEC](SPEC.md#frame-layout): the 39
 font tiles, the same 39 on a mid-grey page, the six authored grey cells, the
-two pointer phases, the eight badge cells of the boot splash and the four star
-cells. Both derived
-banks cost zero ROM bytes, because the font
-uses only shade 0 and shade 3, so the grey copy is the font's low plane with
-the high plane set.
+two pointer phases, the eight badge cells of the boot splash, the four star
+cells and the footer's two cells on the grey page. Every derived
+bank costs zero ROM bytes, because the font and the footer art
+use only shade 0 and shade 3, so the grey copy is the low plane with
+the high plane set. The footer needs no plain copy of its two cells, because
+no cell of the frame draws them off the plate.
 
 ## 1. Boot splash
 
@@ -211,6 +212,16 @@ the list shows fifteen slots and slot 15 needs idea 6 or a shorter list.
   `profile` and `length`, which
   [`unpack_entry`](../../../../tools/n2m/host/library.py) already returns, so
   the fixture and the host reader need no change for those two fields.
+- Built: the two rows of the [SPEC](SPEC.md#the-information-footer), on the
+  window's bottom plate. The badge is one grey cell written with the LCD off,
+  the upper row is the profile word and the size in whole kibibytes, and the
+  lower row is the tagline unless a message is on it. A cursor move draws the
+  upper row and the frame after it the lower one, so no VBlank writes two
+  plate rows, and both rows of the boot cursor's slot are built with the LCD
+  off. A 256-byte plate table built at boot replaces the text path's range
+  ladder for these rows; the title rows keep their own path. There is no
+  footer until the list is whole, so a frame that draws a catalogue row spends
+  nothing on it. The separator dot is loaded and drawn by no cell.
 - **The tagline is a catalogue field.** A
   [`catalogue_entry`](../../../../cfg/interfaces.json) is 32 bytes with 7
   reserved and an 18-character tagline does not fit them, so the tagline table
