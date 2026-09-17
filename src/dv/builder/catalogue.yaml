@@ -290,7 +290,7 @@ units:
   menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 156.47}
   menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 110.59}
   menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 51.68}
-  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 85.05}
+  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 81.72}
   menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 127.22}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
   mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 113.39}
