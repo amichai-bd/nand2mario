@@ -103,6 +103,10 @@ def load_registry(root):
             raise ValueError(f"flash library slot must be 0..{library.GAME_SLOTS - 1}: {key!r}")
         slots[int(key)] = name
     externals = {}
+    # One authored tagline per slot, or None: the pin carries an external's and
+    # the software target carries a package's, both checked against the menu
+    # font's alphabet here so a bad one fails before anything is built.
+    taglines = {}
     for index, value in sorted(slots.items()) + [(library.MENU_INDEX, data["menu"])]:
         if not isinstance(value, str):
             raise ValueError(f"invalid flash library package name at {library.slot_name(index)}")
@@ -124,18 +128,22 @@ def load_registry(root):
                 if taken != index and taken in slots:
                     raise ValueError(f"external image {name} at {library.slot_name(index)} also fills {library.slot_name(taken)}, which is registered")
             externals[index] = {"pin": name, "licence": pin["license"], "source": pin["url"], "sha256": pin["sha256"]}
+            taglines[index] = external.tagline(pin, name)
             continue
         if not NAME.fullmatch(name):
             raise ValueError(f"invalid flash library package name at {library.slot_name(index)}")
         package = packages["targets"].get(name)
         if not isinstance(package, dict) or package.get("profile") not in library.PROFILE_IDS:
             raise ValueError(f"flash library {library.slot_name(index)} names no packaged software target: {name}")
+        if "tagline" in package:
+            taglines[index] = library.check_tagline(package["tagline"], f"software target {name}")
     if packages["targets"][data["menu"]]["profile"] != library.LOADER_PROFILE_NAME:
         raise ValueError(f"the menu image must run in {library.LOADER_PROFILE_NAME}")
     names = list(slots.values()) + [data["menu"]]
     if len(set(names)) != len(names):
         raise ValueError("a package may occupy only one flash library slot")
-    return {"slots": slots, "menu": data["menu"], "externals": externals, "sha256": file_hash(root / REGISTRY)}
+    return {"slots": slots, "menu": data["menu"], "externals": externals, "taglines": taglines,
+            "sha256": file_hash(root / REGISTRY)}
 
 
 def check_external_header(image, name, fallback_title=None):
@@ -192,7 +200,8 @@ def build_images(root, build, registry, provenance, rebuild=False, offline=False
         if kind == "external":
             image, profile, record = external_image(root, name, offline)
             row = {"kind": "external", **registry["externals"][index], "image_sha256": record["sha256"],
-                   "notices": record["notices"], "fallback_title": record["title"]}
+                   "notices": record["notices"], "fallback_title": record["title"],
+                   "tagline_bytes": registry["taglines"].get(index)}
             images[index] = (image, profile, row)
             continue
         report = build_target(root, build, SimpleNamespace(target=name, rebuild=rebuild), provenance)
@@ -204,6 +213,7 @@ def build_images(root, build, registry, provenance, rebuild=False, offline=False
         if file_hash(rom) != report["artifacts"].get(report["rom"]) or len(image) != expected:
             raise ValueError(f"software build of {name} left no complete {expected}-byte image")
         images[index] = (image, report["profile"], {"kind": "package", "package": name, "attempt": report["attempt"],
+                                                    "tagline_bytes": registry["taglines"].get(index),
                                                     "result": (Path(root) / report["rom"]).parent.joinpath("result.json").relative_to(Path(root)).as_posix(),
                                                     "image_sha256": report["artifacts"][report["rom"]],
                                                     "fingerprint": report["fingerprint"]})
@@ -217,7 +227,9 @@ def assemble(images):
     empty. A 64 KiB image at ``index`` fills the next slot too, so that slot
     must be absent. ``extra`` rows are copied into the summary; its
     ``fallback_title`` is the pinned display title used only for an all-zero
-    header title.
+    header title, and its ``tagline_bytes`` the authored tagline, or None for a
+    slot that declares none. Both feed the entry rather than the summary row,
+    which reports the tagline as text like the title.
     """
     words = {}
     entries = {}
@@ -229,7 +241,8 @@ def assemble(images):
         if type(index) is not int or not 0 <= index < library.IMAGE_COUNT:
             raise ValueError(f"library index must be 0..{library.MENU_INDEX}")
         extra = images[index][2] if len(images[index]) > 2 else {}
-        entry = library.image_entry(image, library.profile_id(profile), extra.get("fallback_title"))
+        entry = library.image_entry(image, library.profile_id(profile), extra.get("fallback_title"),
+                                    extra.get("tagline_bytes"))
         for slot in library.slot_range(index, len(image)):
             if slot in filled:
                 raise ValueError(f"{library.slot_name(slot)} is filled by both {library.slot_name(filled[slot])} and {library.slot_name(index)}")
@@ -240,7 +253,7 @@ def assemble(images):
             words[base + offset // WORD_BYTES] = int.from_bytes(image[offset:offset + WORD_BYTES], "little")
         row = library.describe(index, entry)
         row.update(flash_word=f"0x{flash_word(library.slot_address(index)):05X}", profile_name=profile)
-        row.update({key: value for key, value in extra.items() if key != "fallback_title"})
+        row.update({key: value for key, value in extra.items() if key not in ("fallback_title", "tagline_bytes")})
         rows.append(row)
     if library.MENU_INDEX not in entries:
         raise ValueError("the flash library requires the menu image at index 16")

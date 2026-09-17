@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import urllib.request
 
+from . import library
 from .. import generated_interfaces as abi
 from ..records import atomic_bytes, published_bytes
 from ..profiles import PROFILE_IDS, IMAGE_BYTES, DIRECT_PROFILE_NAME, MBC1_PROFILE_NAME
@@ -72,6 +73,17 @@ def fallback_title(pin, name):
     if not isinstance(title, str) or not TITLE.fullmatch(title):
         raise ValueError(f'external pin title must be 1-16 upper-case letters, digits, spaces or dashes: {name}')
     return title.encode('ascii')
+
+
+def tagline(pin, name):
+    """The pin's `tagline` as catalogue bytes, or None when the pin has none.
+
+    The catalogue owns the character rule, so this only names the pin that
+    broke it; a pin without a tagline leaves that slot's record zero.
+    """
+    if 'tagline' not in pin:
+        return None
+    return library.check_tagline(pin['tagline'], f'external pin {name}')
 
 
 def verify(data, pin, name):
@@ -142,4 +154,5 @@ def read_external(root, name, pin_file=None, offline=False):
             raise ValueError(f'external notice name is not a plain file name: {name}')
         fetch(item, cache / 'notices' / notice, name + '/' + notice, offline, legacy / 'notices' / notice, shared)
     return image, {'pin': name, **{field: pin[field] for field in FIELDS}, 'profile': profile, 'profile_id': profile_id,
-                   'title': fallback_title(pin, name), 'notices': sorted(pin.get('notices', {}))}
+                   'title': fallback_title(pin, name), 'tagline': tagline(pin, name),
+                   'notices': sorted(pin.get('notices', {}))}

@@ -389,7 +389,8 @@ class ExternalImageTests(unittest.TestCase):
     def test_build_images_stages_external_slots_beside_the_packages(self):
         registry = {'slots': {0: 'springtrail', 3: 'external:named', 4: 'external:blank'}, 'menu': 'menu',
                     'externals': {3: {'pin': 'named', 'licence': 'MIT', 'source': self.pins['named']['url'], 'sha256': self.pins['named']['sha256']},
-                                  4: {'pin': 'blank', 'licence': 'MIT', 'source': self.pins['blank']['url'], 'sha256': self.pins['blank']['sha256']}}}
+                                  4: {'pin': 'blank', 'licence': 'MIT', 'source': self.pins['blank']['url'], 'sha256': self.pins['blank']['sha256']}},
+                    'taglines': {}}
         build = self.root / 'workdir/builds/unit'
 
         def fake_build(root, build, args, provenance):
@@ -407,7 +408,7 @@ class ExternalImageTests(unittest.TestCase):
         self.assertEqual(sorted(images), [0, 3, 4, library.MENU_INDEX])
         self.assertEqual(images[3][:2], (self.images['named'], abi.PROFILE_NAME))
         self.assertEqual(images[3][2], {'kind': 'external', **registry['externals'][3], 'image_sha256': self.pins['named']['sha256'],
-                                        'notices': [], 'fallback_title': None})
+                                        'notices': [], 'fallback_title': None, 'tagline_bytes': None})
         self.assertEqual(images[4][2]['fallback_title'], b'BLANK TITLE')
         self.assertEqual(images[0][2]['kind'], 'package')
         assembled = flash_library.assemble(images)
@@ -430,7 +431,8 @@ class ExternalImageTests(unittest.TestCase):
     def test_build_images_places_a_registered_64_kib_external_in_two_slots(self):
         registry = {'slots': {0: 'springtrail', 10: 'external:banked'}, 'menu': 'menu',
                     'externals': {10: {'pin': 'banked', 'licence': 'MIT', 'source': self.pins['banked']['url'],
-                                       'sha256': self.pins['banked']['sha256']}}}
+                                       'sha256': self.pins['banked']['sha256']}},
+                    'taglines': {}}
         build = self.root / 'workdir/builds/unit'
 
         def fake_build(root, build, args, provenance):

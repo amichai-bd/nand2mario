@@ -2,9 +2,12 @@
 
 The frame is composed from the font's authoritative shade JSON and literal
 layout rules, never from the assembled ROM, its tilemap or DUT output. A
-catalogue is a list of entries shaped like `n2m.host.library.unpack_entry`
-rows: `valid` (int) and `title` (16 bytes); index i is slot i, and an
-entry 16 (the menu itself) is ignored. `check_pixels` compares a packed
+catalogue is a list of entries shaped like `n2m.host.library.parse_catalogue`
+rows: `valid` (int), `title` (16 bytes) and `tagline` (up to 18 bytes, empty
+for none); index i is slot i, and an entry 16 (the menu itself) is ignored.
+The tagline reaches no cell of this frame: the status plate still draws the
+selection message alone, so a catalogue with taglines and one without render
+the same pixels. `check_pixels` compares a packed
 `host snapshot` frame (5760 bytes, four 2-bit pixels per byte, first pixel
 in the low bits) pixel for pixel and names the first mismatch.
 
