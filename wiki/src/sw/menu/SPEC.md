@@ -149,7 +149,9 @@ VBlank is ten lines of 456 dots, 1140 M-cycles, and every frame body finishes
 inside it. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 measures each body from the `RET` that leaves the `LY == 144` poll to the next
 call into it, prints it as `MENU_COST` and fails with `MENU_VBLANK_OVERRUN`
-above the budget, so the figures below are measured, not counted.
+above the budget, so the figures below are measured, not counted. An image
+swap resets the core and its dot counter, so the first frame after a return is
+measured from the new epoch's first poll rather than across the swap.
 
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|

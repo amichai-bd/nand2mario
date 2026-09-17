@@ -84,13 +84,19 @@ module tb_menu_system;
     // address after its `CALL WaitVBlank`, so the RET that leaves WaitVBlank
     // is the unique retirement whose pc_after is that body address. The dots
     // from there to the next `CALL WaitVBlank` are the whole frame body.
+    // An image swap resets the core and its dot counter, so a measurement
+    // that would span one is discarded instead of reported: the first frame
+    // after a return is measured from the new epoch's first WaitVBlank exit.
+    // `cost_spanned` counts those discards and must equal the fixture's own
+    // count of swaps, so a monitor left disarmed cannot hide a frame.
     logic retirement_valid;
     retirement_t retirement;
     logic [7:0] marks_mem [0:3];
     logic [15:0] mark_frame, mark_body;
     longint unsigned cost_start;
     bit cost_armed;
-    integer cost_samples, cost_min, cost_max, cost_last;
+    integer cost_samples, cost_min, cost_max, cost_last, cost_spanned, expected_swaps;
+    logic [31:0] cost_epoch;
 
     n2m_v05_system #(.UART_BAUD(3125000)) dut (
         .clk_sys, .reset_sys, .clk_pix, .reset_pix, .uart_rx, .uart_tx,
@@ -157,7 +163,11 @@ module tb_menu_system;
     // Menu frame body cost in M-cycles, bounded by VBlank. Only the menu
     // image runs in the loader profile, so no game image can match a mark.
     always @(posedge clk_sys) begin
-        if (!reset_sys && retirement_valid && dut.profile == PROFILE_LOADER_ID) begin
+        if (!reset_sys && epoch != cost_epoch) begin
+            cost_epoch = epoch;
+            cost_spanned = cost_spanned + 1;
+            cost_armed = 0;
+        end else if (!reset_sys && retirement_valid && dut.profile == PROFILE_LOADER_ID) begin
             if (retirement.pc_after == mark_body) begin
                 cost_start = retirement.dot;
                 cost_armed = 1;
@@ -363,6 +373,7 @@ module tb_menu_system;
         logic [31:0] epoch_before;
         epoch_before = epoch;
         select_seen = 0;
+        expected_swaps = expected_swaps + 1;     // the accepted select swaps the game in
         frame_start(1200000);
         press_buttons(BUTTON_A);
         wait_profile(game_profile, 1200000, "game");
@@ -380,6 +391,7 @@ module tb_menu_system;
     // Power-up: no image, paused. The return swaps the menu in from SDRAM;
     // the board's joypad is selected and the console runs.
     task automatic boot_menu;
+        expected_swaps = expected_swaps + 1;     // the host return swaps the menu in
         read_host(HOST_REG_STATE, STATE_PAUSE);
         write_host(HOST_REG_LIBRARY_CONTROL, LIBRARY_CONTROL_RETURN);
         wait_copy(SWAP_BOUND, "menu swap");
@@ -449,6 +461,7 @@ module tb_menu_system;
         // menu to be back instead of racing the return.
         epoch_before = epoch;
         select_seen = 0;
+        expected_swaps = expected_swaps + 2;     // the select, then the game's own exit
         frame_start(1200000);
         press_buttons(BUTTON_A);
         wait_profile(PROFILE_MBC1_ID, 1200000, "mbc1 game");
@@ -484,6 +497,7 @@ module tb_menu_system;
         // board joypad again before Start.
         write_host(HOST_REG_INPUT_SOURCE, INPUT_SOURCE_PHYSICAL);
         select_seen = 0;
+        expected_swaps = expected_swaps + 1;     // Start makes the game exit back to the menu
         press_buttons(BUTTON_START);
         wait_profile(PROFILE_LOADER_ID, SWAP_BOUND + 1200000, "game exit");
         if (!select_seen || select_data != LIBRARY_GAME_EXIT_VALUE)
@@ -523,6 +537,7 @@ module tb_menu_system;
         command_count = 0;
         capturing = 0; frame_complete = 0; select_seen = 0; select_data = 0;
         cost_armed = 0; cost_start = 0; cost_samples = 0; cost_min = 1 << 30; cost_max = 0; cost_last = 0;
+        cost_spanned = 0; cost_epoch = 0; expected_swaps = 0;
         if (!$value$plusargs("fixture=%s", fixture)) fixture = "frame";
         pixel_fault = $test$plusargs("pixel_fault");
         $readmemh("menu-library.hex", library_mem);
@@ -546,7 +561,10 @@ module tb_menu_system;
             default: $fatal(1, "MENU_SYS_FIXTURE %s", fixture);
         endcase
         if (cost_samples == 0) $fatal(1, "MENU_COST_MISSING");
-        $display("MENU_COST_SUMMARY frames=%0d min=%0d max=%0d budget=%0d", cost_samples, cost_min, cost_max, VBLANK_MCYCLES);
+        if (cost_spanned != expected_swaps)
+            $fatal(1, "MENU_COST_SPANS discarded=%0d swaps=%0d", cost_spanned, expected_swaps);
+        $display("MENU_COST_SUMMARY frames=%0d spanning=%0d min=%0d max=%0d budget=%0d",
+            cost_samples, cost_spanned, cost_min, cost_max, VBLANK_MCYCLES);
         $display("PASS menu-%s checks=%0d frames=%0d selects=%0d commands=%0d", fixture, checks, frames_checked, selects, command_count);
         $finish;
     end
