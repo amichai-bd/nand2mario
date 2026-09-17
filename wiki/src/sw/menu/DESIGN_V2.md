@@ -81,8 +81,9 @@ header and **fifteen slot rows**. Slot 15 is below the window at rest.
 ramp scrolls the header off the top when the cursor passes the last visible
 row, which puts sixteen slot rows in the fifteen the window leaves. The cursor
 reaches every slot 0..15 exactly as it does today; only the resting view is
-shorter. Until that slice lands the menu keeps the shipped eighteen-row
-background frame with all sixteen slots and no window.
+shorter. That is the shipped frame now: the window carries the plate, the
+[SPEC](SPEC.md#the-list) owns the fifteen resting rows, and until idea 6 lands
+a cursor on slot 15 sits on the plate's upper row with no title beside it.
 
 ### What each idea does under this decision
 
@@ -113,9 +114,10 @@ background frame with all sixteen slots and no window.
 Grey plates and a sprite cursor together retire the inverse bank: with no
 inverse bar and no black plate, nothing is drawn as `3 - shade` any more, and
 the [direction A](DESIGN.md) caps and nudged arrow leave the image with it. The
-shipped bank is the 94 tiles listed in the [SPEC](SPEC.md#frame-layout): the 39
+shipped bank is the 98 tiles listed in the [SPEC](SPEC.md#frame-layout): the 39
 font tiles, the same 39 on a mid-grey page, the six authored grey cells, the
-two pointer phases and the eight badge cells of the boot splash. Both derived
+two pointer phases, the eight badge cells of the boot splash and the four star
+cells. Both derived
 banks cost zero ROM bytes, because the font
 uses only shade 0 and shade 3, so the grey copy is the font's low plane with
 the high plane set.
@@ -244,6 +246,12 @@ plate. A one-row band costs one slot instead.
   must be a rule the reference reproduces, not a blob. `expected` gains
   `scroll-N`; the scroll offset follows from the frame counter, as the nudge
   phase does.
+- Built: the stars fill the two columns the list always leaves blank, eight
+  cells of the 32-row map, and the bottom plate moved to the window at WX 7
+  and WY 128. There is no independent scroll and no `scroll-N` sample: the
+  field rides the list's own SCY, which the splash slide already exercises at
+  nine offsets, and at rest it twinkles on the nudge phase instead. The
+  [SPEC](SPEC.md#star-field) owns the rule, the window and the measurements.
 
 ## 5. Mid-grey plates and dithered gradients
 

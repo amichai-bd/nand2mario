@@ -8,8 +8,9 @@ entry 16 (the menu itself) is ignored. `check_pixels` compares a packed
 `host snapshot` frame (5760 bytes, four 2-bit pixels per byte, first pixel
 in the low bits) pixel for pixel and names the first mismatch.
 
-The frame is the background map with one object on top: the cursor pointer.
-Object shade 0 is transparent, the rest map through OBP0.
+The frame is the background map, the window over its bottom two rows and one
+object on top: the cursor pointer. Object shade 0 is transparent, the rest map
+through OBP0; the window draws through BGP like the background.
 
 The background map is 32 rows: the boot splash above the list. A frame is
 read from it at the slide's `scy` and drawn through the fade's `bgp`, so the
@@ -25,6 +26,7 @@ FONT = ROOT / 'src/sw/menu/assets/font-tiles.json'
 GREY_ART = ROOT / 'src/sw/menu/assets/design/v2-grey-tiles.json'
 POINTER_ART = ROOT / 'src/sw/menu/assets/design/v2-cursor-tiles.json'
 SPLASH_ART = ROOT / 'src/sw/menu/assets/design/v2-splash-tiles.json'
+STAR_ART = ROOT / 'src/sw/menu/assets/design/v2-stars-tiles.json'
 WIDTH, HEIGHT = 160, 144
 COLUMNS, ROWS = 20, 18
 SLOTS = 16
@@ -45,14 +47,29 @@ TILE_FADE32, TILE_FADE21, TILE_FADE10, TILE_SHADOW = 80, 81, 82, 83
 TILE_POINTER = 84
 # The boot splash badge, four cells by two, the only cells above the list.
 TILE_BADGE, BADGE_COLUMNS, BADGE_TILES = 86, 4, 8
-BANK_TILES = 94
+# The star field's four cells, the last tiles of the bank.
+TILE_STAR, STAR_TILES = 94, 4
+BANK_TILES = 98
 # The grey page shade: the font's shade 0 becomes 2, its ink stays 3.
 GREY_PAGE = 2
 # Cells between the two plate caps of the header and bottom plates.
 PLATE_CELLS = COLUMNS - 2
-# Frames the cursor holds each nudge phase.
+# Frames the cursor holds each nudge phase. The same bit twinkles the stars.
 PHASE_HOLD = 16
 PHASES = 2
+# The star field: the two columns the list always leaves blank, column 0 (the
+# page the cursor object draws on) and column 3 (between the slot number and
+# the title). The rule reads map coordinates, so the field wraps with the
+# 32-row map and rides the list's own SCY; DMG has one background layer and
+# the composite layout spends it on the list, so there is no second band and
+# no SCX drift. A title cell is never a star: the star set must not depend on
+# the catalogue, and the slot-row draw path stays off the star rule.
+STAR_COLUMNS = (0, 3)
+STAR_MASK = 3
+# The window: the bottom plate alone, pinned to the last two screen rows.
+WINDOW_X, WINDOW_Y = 7, 128
+WINDOW_ROWS = 2
+FOOTER_ROW, WINDOW_STATUS_ROW = 0, 1
 # The boot splash (wiki/src/sw/menu/SPEC.md#boot-splash). The background map is
 # 32 rows: the splash fills the 18 rows the screen shows at SCY 0, the list
 # follows it, and the list's last four rows wrap into map rows 0..3 as the
@@ -137,6 +154,26 @@ def plate(fill, text=''):
     return [TILE_CAP_LEFT] + cells + [TILE_CAP_RIGHT]
 
 
+def star_here(column, map_row):
+    """Whether the star field puts a star in this map cell.
+
+    An incremental rule: walking a row adds 3, walking a column adds 5, so the
+    image carries the sum rather than multiplying, and the exclusive-or of the
+    row's own high bits breaks the lattice the plain sum would draw.
+    """
+    return ((3 * column + 5 * map_row) ^ (map_row >> 2)) & STAR_MASK == 0
+
+
+def star_tile(column, map_row, phase=0):
+    """The star cell of this map cell in nudge phase `phase`.
+
+    The four star cells cycle with the same frame-counter bit that nudges the
+    cursor, so the field twinkles once every PHASE_HOLD frames and follows
+    from the frame number alone.
+    """
+    return TILE_STAR + (column + map_row + phase) % STAR_TILES
+
+
 def header_row():
     """The header plate: the title on the grey page over the 3-to-2 gradient fill."""
     cells = [TILE_FADE32] * PLATE_CELLS
@@ -148,8 +185,13 @@ def header_row():
 def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sdram_ready=True, drawn_slots=SLOTS):
     """The list's own 18 rows; `drawn_slots` counts the title rows already drawn on the delayed path.
 
-    The selection is the pointer object, not a map cell, so `cursor` and
-    `phase` do not change the background at all; `frame` uses them.
+    The selection is the pointer object, not a map cell, so `cursor` does not
+    change the background at all; `frame` uses it. `phase` does: it is the
+    twinkle of the star field in the two gutter columns.
+
+    Row 17 is the page. The bottom plate left the background for the window,
+    and the row it used to fill is behind the window whenever the list is
+    settled.
     """
     if not 0 <= cursor < SLOTS:
         raise ValueError('cursor must select a slot 0..15')
@@ -162,8 +204,27 @@ def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sd
         row[NUMBER_COLUMN:NUMBER_COLUMN + 2] = text_tiles(f'{slot:02d}')
         if slot < drawn_slots and slot < len(entries) and entries[slot]['valid'] == 1:
             row[TITLE_COLUMN:TITLE_COLUMN + 16] = title_tiles(entries[slot]['title'])
-    rows[STATUS_ROW] = plate(TILE_FADE21, status_text(result, index, sdram_ready).strip())
+        map_row = (LIST_MAP_ROW + SLOT_ROW + slot) % MAP_ROWS
+        for column in STAR_COLUMNS:
+            if star_here(column, map_row):
+                row[column] = star_tile(column, map_row, phase)
     return rows
+
+
+def window_rows(result=RESULT_NONE, index=NO_INDEX, sdram_ready=True):
+    """The window's two rows: the bottom plate, its status text on the lower one.
+
+    The window is opaque from its top left corner to the bottom right of the
+    screen, so it cannot be a band: it is pinned to the last two screen rows
+    and carries the plate alone. The upper row is the plate's own fill, the
+    two rows the information footer will use.
+    """
+    return [plate(TILE_FADE21), plate(TILE_FADE21, status_text(result, index, sdram_ready).strip())]
+
+
+def window_on(scy=SETTLED_SCY):
+    """Whether the window is on: the image enables it on the settled frame, with the cursor."""
+    return scy == SETTLED_SCY
 
 
 def splash_rows():
@@ -257,7 +318,12 @@ def splash_at_boot(index=NO_INDEX, sdram_ready=True):
 
 
 def skip_schedule(number):
-    """The frames the splash shows from a press sampled in frame `number`.
+    """The frames the splash shows after a skip, counted from displayed frame `number`.
+
+    `number` is the last frame whose draw has completed when the press is
+    sampled, which is the frame before the one that samples it: the image
+    reads the wrapped-row count its previous iteration left. During the fade,
+    where no row has been drawn yet, both readings give the same frames.
 
     A skip draws at most SKIP_ROWS wrapped rows a frame, so no VBlank carries
     more than half the map and the map finishes in two frames. Each of those
@@ -291,27 +357,35 @@ def greyed(tile):
 
 
 def bank_tiles():
-    """The 94-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge."""
+    """The 98-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge, the stars."""
     font = font_tiles()
     bank = (font + [greyed(tile) for tile in font]
             + atlas_tiles(GREY_ART, GREY_ART_TILES) + atlas_tiles(POINTER_ART, POINTER_TILES)
-            + atlas_tiles(SPLASH_ART, BADGE_TILES))
+            + atlas_tiles(SPLASH_ART, BADGE_TILES) + atlas_tiles(STAR_ART, STAR_TILES))
     if len(bank) != BANK_TILES:
         raise ValueError(f'the menu bank is {BANK_TILES} tiles')
     return bank
 
 
 def frame(entries, bgp=FADE[-1], **state):
-    """Row-major shade bytes of the whole 160x144 frame: the background through BGP, then the pointer.
+    """Row-major shade bytes of the whole 160x144 frame: the background through BGP, then the window, then the pointer.
 
     `bgp` is the background palette the fade steps through and `scy` the
     slide's scroll; both default to the settled menu, so a frame asked for
-    without them is the menu the list shows.
+    without them is the menu the list shows. The window carries the bottom
+    plate and comes on with the cursor, on the settled frame.
     """
     tiles = bank_tiles()
     rows = tilemap(entries, **state)
     palette = [(bgp >> (2 * shade)) & 3 for shade in range(4)]
     pixels = [palette[tiles[rows[y // 8][x // 8]][y % 8][x % 8]] for y in range(HEIGHT) for x in range(WIDTH)]
+    if window_on(state.get('scy', SETTLED_SCY)):
+        cells = window_rows(**{key: state[key] for key in ('result', 'index', 'sdram_ready') if key in state})
+        for y in range(WINDOW_Y, HEIGHT):
+            for x in range(max(WINDOW_X - 7, 0), WIDTH):
+                row, column = y - WINDOW_Y, x - (WINDOW_X - 7)
+                shade = tiles[cells[row // 8][column // 8]][row % 8][column % 8]
+                pixels[y * WIDTH + x] = palette[shade]
     for left, top, tile in objects(**{key: state[key] for key in ('cursor', 'phase', 'scy') if key in state}):
         for y in range(8):
             for x in range(8):

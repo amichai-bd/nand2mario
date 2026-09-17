@@ -15,12 +15,15 @@ the menu's behavior, memory use, frame layout and verification.
 
 Boot, from the direct entry state with the LCD off:
 
-1. Load the 94-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
-   a mid-grey page, the six authored grey cells, the two pointer phases and
-   the eight boot splash badge cells. Clear the object table, blank the
-   background map at `$9800`, set OBP0 to `$E4` and draw the
+1. Load the 98-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
+   a mid-grey page, the six authored grey cells, the two pointer phases, the
+   eight boot splash badge cells and the four star cells. Clear the object
+   table, blank the background map at `$9800`, paint the
+   [star field](#star-field) over it, set OBP0 to `$E4` and draw the
    [boot splash](#background-map), the header plate and the six status rows
-   in WRAM.
+   in WRAM. Blank the window map at `$9C00`, build the
+   [bottom plate](#window) into it and set WX and WY; the window itself stays
+   off until the list settles.
 2. Read `$A000` bit 5 (`sdram_ready`) and `$A003` (the last selected index)
    once each. The status bit alone decides whether the titles are drawn at
    boot. Both together arm the [boot splash](#boot-splash): it needs the
@@ -29,13 +32,13 @@ Boot, from the direct entry state with the LCD off:
    - Armed, so this is the first boot and the catalogue lists: the splash
      runs. BGP starts on the first fade step and SCY at 0. Boot draws the slot
      numbers and titles of slots 0..12 only; the last three slot rows and the
-     bottom plate row wrap over the splash and are built instead as four
+     page row below them wrap over the splash and are built instead as four
      finished 20-cell rows in WRAM, with the LCD off, for the slide to copy.
-     The cursor object stays off screen and the bottom plate waits with its
-     row. The rows drawn here and the rows the slide draws account for all
-     sixteen.
-   - Not armed: no splash. BGP is `$E4` and SCY the settled 144, the bottom
-     plate is drawn and the cursor object goes on slot 0. A menu that has been
+     The cursor object stays off screen and the window stays off, so the
+     splash shows neither the cursor nor the plate. The rows drawn here and
+     the rows the slide draws account for all sixteen.
+   - Not armed: no splash. BGP is `$E4` and SCY the settled 144, the window is
+     on with its plate and the cursor object goes on slot 0. A menu that has been
      here before still lists every title at boot, so the list is whole in its
      first frame; a menu waiting for the SDRAM skips the catalogue and the
      frame loop retries it below.
@@ -43,7 +46,9 @@ Boot, from the direct entry state with the LCD off:
    `LIBRARY_CATALOGUE_ADDRESS / LIBRARY_WINDOW_BYTES`) to the bank register,
    wait for bit 6 (`window_ready`) and draw the title rows from the window.
    Every title is read here, so a select is live as soon as the list is.
-4. Turn the LCD on (`LCDC = $93`, background and objects).
+4. Turn the LCD on: `LCDC = $93`, background and objects, while the splash
+   runs, and `$F3` once the list is settled, which adds the window and names
+   the second map.
 
 Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
 
@@ -66,8 +71,9 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
    is drawn the same way, because the cursor is an object and never re-banks
    a row.
 6. Move the cursor object only when the cursor changed, redraw the status
-   row only when its key or index changed, and rewrite the object's tile
-   alone when the nudge phase changed. An idle frame writes nothing.
+   row only when its key or index changed, and when the nudge phase changed
+   rewrite the object's tile and the [star field](#star-field)'s own cells.
+   An idle frame writes nothing.
 
 The catalogue is read once, at boot or through the delayed path; the drawn
 map is the menu's copy of the titles. Nothing after a selection depends on
@@ -99,16 +105,17 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$077F` | `code` section: entry `Start`, frame loop, boot splash schedule, drawing routines and text tables (1440 bytes) |
-| `$0800`-`$0B6F` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"` and the eight badge cells from `ASSET "Splash"`, 880 bytes |
+| `$0200`-`$0897` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, drawing routines and text tables (1688 bytes) |
+| `$0C00`-`$0FAF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"`, the eight badge cells from `ASSET "Splash"` and the four star cells from `ASSET "Stars"`, 944 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
 | `$6000`-`$7FFF` write | Select register: the cursor's slot on an A edge |
 | `$A000`, `$A002`, `$A003` | Status byte, last result, last selected index |
-| `$8000`-`$85DF` | The 94-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85, the badge 86..93 |
+| `$8000`-`$861F` | The 98-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85, the badge 86..93, the star cells 94..97 |
 | `$9800`-`$9BFF` | [Background map](#background-map), all 32 rows: the boot splash above the list |
+| `$9C00`-`$9FFF` | [Window map](#window): blank but for the plate's two rows |
 | `$FE00`-`$FE9F` | Object table; cleared at boot, then object 0 alone is the cursor |
-| `$C000`-`$C0CB` | `vars`, 204 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, the splash's `SplashOn`, `SplashNumber`, `SplashRows`, `SplashSkip`, `BootSlots` and `BootDraw`, `SplashRowCells`, the four 20-cell wrapped rows built at boot, and `StatusCells`, the six 18-cell status rows |
+| `$C000`-`$C0FE` | `vars`, 255 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, the splash's `SplashOn`, `SplashNumber`, `SplashRows`, `SplashSkip`, `BootSlots` and `BootDraw`, the star field's `StarCount`, `StarPtr` and `StarTable`, `SplashRowCells`, the four 20-cell wrapped rows built at boot, and `StatusCells`, the six 18-cell status rows |
 | `$DFFE` | Stack pointer |
 
 Interrupts stay disabled; frame sync polls `LY`. The joypad rows are
@@ -116,13 +123,28 @@ deselected (`PROFILE_JOYP_SELECT`) after each read.
 
 ## Frame layout
 
+The frame is three layers, as the
+[composite layout](DESIGN_V2.md#composite-layout) decided them.
+
+| Layer | Carries | Registers |
+|---|---|---|
+| Background | The header row, the sixteen slot rows and the [star field](#star-field), in the 32-row map | SCY for the splash slide; SCX unused |
+| [Window](#window) | The bottom plate alone | LCDC bits 5 and 6, WX 7, WY 128 |
+| Objects | The [cursor pointer](#cursor-object), one entry | LCDC bit 1, OBP0 |
+
+No frame writes a scroll register mid-frame, so interrupts stay disabled and
+the frame loop keeps polling `LY`.
+
 ### Background map
 
 The map at `$9800` is 32 rows of 32 cells and carries the boot splash above
 the list. The splash fills map rows 0..17, the 18 rows the screen shows at
 SCY 0; the list's own 18 rows start at map row 18, so its last four rows wrap
 into map rows 0..3, over the splash's own top rows, which the splash leaves
-blank. The settled view is SCY 144: the screen then shows map rows 18..31 and
+blank. The list's last row is the page: the bottom plate rides the
+[window](#window) and the row it used to fill is behind the plate whenever the
+list is settled. The slot rows carry the [star field](#star-field) in the two
+columns they always leave blank. The settled view is SCY 144: the screen then shows map rows 18..31 and
 0..3, which are the list alone, and nothing of the splash is on screen. Only
 map columns 0..19 are written.
 
@@ -185,31 +207,42 @@ map. The edge is consumed by the splash and a held button raises no further
 edge, so the list never acts on it and a skip cannot move the cursor or
 select a game.
 
-Frame 16 is the settled frame: SCY is 144, the list is whole, the bottom
-plate is in place and the cursor object comes on screen. It is also the
+Frame 16 is the settled frame: SCY is 144, the list is whole, and the
+[window](#window) and the cursor object come on together, which is when the
+bottom plate first appears. It is also the
 menu's own frame 0, because the frame counter and the shown nudge phase are
 reset there, so the [nudge phase](#cursor-object) still follows from the menu
 frame number alone whether the splash ran, was skipped, or never ran at all.
 
 ### The list
 
-The visible frame is 20 by 18 background cells and one object, identity
-palette for both, and no window. Shade 0 is the page, shade 3 the
+The visible frame is 20 by 18 cells and one object, identity palette
+throughout: sixteen background rows, the window's two and the pointer. Shade 0
+is the page, shade 3 the
 ink and shade 2 the plates. The header and bottom rows are mid-grey plates: a
 dithered gradient fill with a rounded grey cap in each outer column, carrying
 text on the grey page, where the font's shade 0 becomes 2 and its ink stays 3.
 The selection is the [cursor object](#cursor-object), not a map cell, so the
 list itself is the same cells whatever the cursor does.
 
-| Row | Columns | Content |
-|---|---|---|
-| 0 | 0 and 19 | Left and right grey plate cap |
-| 0 | 1..18 | Header plate, the 3-to-2 gradient cell; `GAME LIBRARY` on the grey page at columns 4..15 |
-| 1..16 | 0 and 3 | Blank; column 0 is the page the cursor object draws on |
-| 1..16 | 1..2 | Slot number `00`..`15` |
-| 1..16 | 4..19 | The 16 title bytes of a valid entry; blank for any other entry |
-| 17 | 0 and 19 | Left and right grey plate cap |
-| 17 | 1..18 | Bottom plate, the 2-to-1 gradient cell; the status text on the grey page, centred |
+| Row | Layer | Columns | Content |
+|---|---|---|---|
+| 0 | Background | 0 and 19 | Left and right grey plate cap |
+| 0 | Background | 1..18 | Header plate, the 3-to-2 gradient cell; `GAME LIBRARY` on the grey page at columns 4..15 |
+| 1..16 | Background | 0 and 3 | The page or a [star](#star-field); column 0 is also where the cursor object draws |
+| 1..16 | Background | 1..2 | Slot number `00`..`15` |
+| 1..16 | Background | 4..19 | The 16 title bytes of a valid entry; blank for any other entry |
+| 16 and 17 | [Window](#window) | 0 and 19 | Left and right grey plate cap |
+| 16 | Window | 1..18 | The plate's own 2-to-1 gradient fill |
+| 17 | Window | 1..18 | Bottom plate, the 2-to-1 gradient cell; the status text on the grey page, centred |
+
+The window covers screen rows 16 and 17 whenever the list is settled, so the
+background shows the header and fifteen slot rows and slot 15's own row is
+behind the plate. The cursor still visits every slot 0..15, and on slot 15 the
+pointer draws over the plate's upper row with no title beside it. The
+[composite layout](DESIGN_V2.md#slot-count) owns that: the smooth scroll of
+[issue #793](https://github.com/amichai-bd/nand2mario/issues/793) is what
+brings the sixteenth row back into view.
 
 The status text is unchanged; it is centred in the plate's 18 cells with the
 leftover space biased left, so `SLOT 03 INVALID` starts at column 2 and
@@ -241,6 +274,51 @@ Status row, from the status bytes each frame:
 The text is centred in the plate's 18 cells as above; an empty one leaves the
 plate's fill.
 
+### Star field
+
+The two columns the list always leaves blank carry a star field: column 0, the
+page the cursor object draws on, and column 3, between the slot number and the
+title. DMG has one background layer and the
+[composite layout](DESIGN_V2.md#what-each-idea-does-under-this-decision) spends
+it on the list, so the stars are cells of the list's own map rather than a band
+of their own: they wrap with its 32 rows and ride its SCY, and there is no SCX
+drift. No title cell is ever a star, so the field does not depend on the
+catalogue and the slot-row draw path never evaluates the rule.
+
+A map cell at column `x` of map row `y` carries a star when
+
+```text
+((3 * x + 5 * y) xor (y >> 2)) and 3 == 0
+```
+
+and only on the sixteen slot rows, map rows 19..31 and 0..2. That names eight
+cells, all of them on screen when the list is settled. The rule is incremental
+by design: a step along a row adds 3 and a step down a column adds 5, so the
+image carries the sum instead of multiplying, and the exclusive-or of the row's
+own high bits breaks the lattice the plain sum would draw.
+
+A star's cell is star tile `(x + y + phase) mod 4` of the four, where `phase`
+is the [nudge phase](#cursor-object): the same frame-counter bit that nudges
+the cursor. The field therefore twinkles once every 16 frames, follows from the
+frame number alone, and changes in the same frame as the pointer. The image
+keeps the cells it painted in a short table, so a twinkle rewrites eight cells
+rather than walking the map.
+
+### Window
+
+The window carries the bottom plate alone. It is opaque from its top left
+corner to the bottom right of the screen, so it cannot be a band: at WX 7 and
+WY 128 it takes the last two screen rows and nothing else. Its map is the
+second one, `$9C00`, which LCDC bit 6 selects while bit 5 turns the window on;
+the background keeps `$9800`. The map is blanked and the plate built into it
+with the LCD off, and the window comes on with the cursor, on the settled
+frame, so the splash shows neither.
+
+The plate's lower row is the status row and its upper row is the plate's own
+fill, the two rows the information footer of
+[idea 3](DESIGN_V2.md#3-info-footer) will use. The window draws through BGP,
+like the background.
+
 ### Cursor object
 
 The cursor is object 0 and the only object the menu uses. Its X is `8`, the
@@ -255,7 +333,8 @@ alone and touches no map cell.
 A frame counter byte advances once per frame
 loop iteration, after that iteration's writes, and bit 4 of it is the nudge
 phase: on phase 1 the object's tile is the second pointer, the same arrow one
-pixel to the right, so the cursor ticks every 16 frames. The loop runs exactly once
+pixel to the right, so the cursor ticks every 16 frames. The same bit twinkles
+the [star field](#star-field), so the page and the pointer change together. The loop runs exactly once
 per displayed frame and an iteration's writes appear in the frame its counter
 names, so the phase follows from the frame number alone with no console
 state: displayed frame `m`, counted from the menu's first display-eligible
@@ -276,20 +355,26 @@ measured from the new epoch's first poll rather than across the swap.
 |---|---|---|
 | Idle | 238 | 21% |
 | Cursor move or a sampled press, one object byte | 245-262 | 21-23% |
-| Nudge phase change, one object byte | 254 | 22% |
-| The first list frame, which draws the 18-cell status row | 483 | 42% |
+| Nudge phase change: one object byte and the eight star cells | 380 (estimated) | 33% |
 | Boot splash fade frame, one BGP write | 166-196 | 15-17% |
 | Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
 | Boot splash slide frame after the map is whole | 199-255 | 17-22% |
-| Skipped splash frame, two wrapped rows | 599-658 | 53-58% |
+| Skipped splash frame, two wrapped rows | 599-663 | 53-58% |
 | Refused select with a 20-character status redraw | 555 | 49% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
 select from `menu-refused` and the splash rows from `menu-splash` and
-`menu-frame-fault`, each measured on the image this page specifies.
+`menu-frame-fault`, each measured on the image this page specifies. The row
+marked estimated is the twinkle frame; it carries the counted figure until a
+measured run replaces it. The first list frame is no longer a class of its
+own: the bottom plate is built into the window map with the LCD off, so that
+frame writes nothing and measures the idle 238 rather than the 483 a status
+redraw used to add.
 
-A skipped splash frame is the peak, 658, 482 M-cycles inside the budget, and
-the idle frame is the floor at 238. The cap on the skip is what holds that
+A skipped splash frame is the peak, 663, 477 M-cycles inside the budget, and
+the idle frame is the floor at 238. The peak is `menu-frame-fault`'s own
+second frame: its skip settles the list, which is the frame that turns the
+window on, so it carries the LCDC write too. The cap on the skip is what holds that
 margin: a skip that finished the map in one VBlank cost 1342 and overran, and
 1010 with the rows prebuilt as cells. Two
 things keep the ordinary splash cheap: the four wrapped rows are built as
@@ -335,10 +420,12 @@ the checkerboard is the review tool's transparency convention, not menu pixels.
 
 ![Cursor pointer phases](previews/v2/2-sprite-cursor-new-art.svg)
 
-The eight authored tiles are the
-[six grey plate cells](../../../../src/sw/menu/assets/design/v2-grey-tiles.json)
+The twelve authored tiles are the
+[six grey plate cells](../../../../src/sw/menu/assets/design/v2-grey-tiles.json),
+the
+[two pointer phases](../../../../src/sw/menu/assets/design/v2-cursor-tiles.json)
 and the
-[two pointer phases](../../../../src/sw/menu/assets/design/v2-cursor-tiles.json);
+[four star cells](../../../../src/sw/menu/assets/design/v2-stars-tiles.json);
 the 39 grey glyphs are derived from the font at boot rather than stored. The
 owner chose the plated list in [design directions](DESIGN.md) and then the six
 [menu v2 ideas](DESIGN_V2.md), whose composite layout owns how the remaining
@@ -364,10 +451,13 @@ its result records `profile: dmg-loader-v1` and `profile_id: 2`.
 
 [`reference.py`](../../../../src/dv/menu/reference.py) composes the expected
 frame from this page's layout rules and the font's shade JSON, never from
-the ROM or the DUT, and builds the 94-tile bank from the font, the grey copy
-of each glyph, the authored grey cells, the two pointer phases and the badge. `frame`
-draws the background and then the cursor object over it, with shade 0
-transparent.
+the ROM or the DUT, and builds the 98-tile bank from the font, the grey copy
+of each glyph, the authored grey cells, the two pointer phases, the badge and
+the four star cells. `frame`
+draws the background, then the window over its last two rows when the list is
+settled, then the cursor object, with shade 0 transparent.
+`star_here` and `star_tile` are the [star field](#star-field)'s own rule, so
+the field is reproduced rather than stored.
 `frame(entries, cursor=0, phase=0, result=0, index=255, sdram_ready=True)`
 returns the 23040 row-major shades for a catalogue given as
 [`unpack_entry`](../../../../tools/n2m/host/library.py) rows (`valid` and 16
@@ -379,7 +469,8 @@ returns the 23040 row-major shades for a catalogue given as
 fresh menu, a moved cursor, a nudge phase and a
 [boot splash](#boot-splash) frame. `splash_state(number)` is the schedule
 itself, the BGP, SCY and rows drawn of displayed frame `number`, and
-`skip_schedule(number)` the frames a press in that frame shows.
+`skip_schedule(number)` the frames a skip shows counted from displayed frame
+`number`, the last frame whose draw has completed when the press is sampled.
 `splash_at_boot(index, sdram_ready)` is the boot decision itself, which
 `test_menu_reference.py` covers for the cold boot and the return. The board session reads the stored catalogue
 with `host library status` and passes its rows.
@@ -408,8 +499,8 @@ compares every captured display-eligible frame; the
 | `menu-select-mbc1` | Five Downs reach the 64 KiB entry listed once at slot 5 (pixel-exact frame, slot 6 blank); A commits 5 and the game boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; its bank 2 code returns to the menu through the game exit register (epoch + 2, index still 5, the menu running in `LOADER_ID`) |
 | `menu-exit` | Down then A starts the built `exit-demo` image in slot 1 with a pixel-exact bar frame; Start makes it write `$10` to `$6000` and the menu returns by itself: `LOADER_ID`, epoch + 2, result `OK` index 1, running without a host `RUN`, the boot frame pixel-exact again. The returned menu starts settled, with no splash, because `$A003` kept the slot |
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
-| `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and frame 16 the nudged one, both pixel-exact, which pins the phase boundary. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
-| `menu-splash` | The untouched [boot splash](#boot-splash) runs its schedule: all 17 displayed frames match the reference frame by frame, fade then slide, and the last of them is pixel-identical to the menu's own frame 0 |
+| `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and the star field's first phase, frame 16 the nudged arrow and its second, both pixel-exact, which pins the phase boundary for the pointer and the [stars](#star-field) together. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
+| `menu-splash` | The untouched [boot splash](#boot-splash) runs its schedule: all 17 displayed frames match the reference frame by frame, fade then slide, and the last of them is pixel-identical to the menu's own frame 0. The nine slide frames are nine scroll offsets of the 32-row map, so they are also where the [star field](#star-field) is checked riding the list |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 

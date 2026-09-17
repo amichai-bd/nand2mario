@@ -129,11 +129,13 @@ class Layout(unittest.TestCase):
         self.assertEqual(rows[12][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[16][1:3], reference.text_tiles('15'))
         self.assertEqual(rows[16][4:20], reference.text_tiles('LAST SLOT       '))
+        # The plate moved to the window, so the list's last row is the page.
+        self.assertEqual(rows[17], [reference.TILE_BLANK] * 20)
         # A blank bottom plate is the gradient fill alone between the two caps.
-        self.assertEqual(rows[17], [reference.TILE_CAP_LEFT] + [reference.TILE_FADE21] * 18
-                         + [reference.TILE_CAP_RIGHT])
+        self.assertEqual(reference.window_rows()[1], [reference.TILE_CAP_LEFT]
+                         + [reference.TILE_FADE21] * 18 + [reference.TILE_CAP_RIGHT])
         # A message sits on the plate, biased left, with the fill either side of it.
-        message = reference.tilemap(self.entries, result=reference.RESULT_INVALID_SLOT, index=3)[17]
+        message = reference.window_rows(result=reference.RESULT_INVALID_SLOT, index=3)[1]
         self.assertEqual(message[1], reference.TILE_FADE21)
         self.assertEqual(message[2:17], [grey + tile for tile in reference.text_tiles('SLOT 03 INVALID')])
         self.assertEqual(message[17:19], [reference.TILE_FADE21] * 2)
@@ -147,10 +149,14 @@ class Layout(unittest.TestCase):
         self.assertEqual(partial[2][4:20], [reference.TILE_BLANK] * 16)
 
     def test_the_cursor_is_an_object_and_the_phase_is_its_tile(self):
-        # Neither the slot nor the phase changes a map cell.
-        for state in (dict(cursor=2), dict(cursor=2, phase=1), dict(phase=1)):
-            self.assertEqual(reference.tilemap(self.entries, **state),
-                             reference.tilemap(self.entries), state)
+        # The slot never changes a map cell; the phase changes the star cells alone.
+        self.assertEqual(reference.tilemap(self.entries, cursor=2), reference.tilemap(self.entries))
+        settled = reference.tilemap(self.entries)
+        twinkled = reference.tilemap(self.entries, phase=1)
+        moved = {(row, column) for row in range(18) for column in range(20)
+                 if settled[row][column] != twinkled[row][column]}
+        self.assertEqual(moved, {(row, column) for row in range(18) for column in range(20)
+                                 if settled[row][column] >= reference.TILE_STAR})
         self.assertEqual(reference.objects(), [(0, 8, reference.TILE_POINTER)])
         self.assertEqual(reference.objects(cursor=5, phase=1), [(0, 48, reference.TILE_POINTER + 1)])
         self.assertEqual(reference.objects(cursor=15), [(0, 128, reference.TILE_POINTER)])
@@ -177,8 +183,49 @@ class Layout(unittest.TestCase):
             self.assertLessEqual({shade for row in bank[tile] for shade in row}, {0, 3}, tile)
         self.assertEqual(bank[reference.TILE_GREY + reference.TILE_BLANK], [[2] * 8] * 8)
         # The splash badge is the committed art, four cells by two above the list's bank.
-        self.assertEqual(bank[reference.TILE_BADGE:],
+        self.assertEqual(bank[reference.TILE_BADGE:reference.TILE_BADGE + reference.BADGE_TILES],
                          reference.atlas_tiles(reference.SPLASH_ART, reference.BADGE_TILES))
+        # The star field's four cells close the bank.
+        self.assertEqual(bank[reference.TILE_STAR:],
+                         reference.atlas_tiles(reference.STAR_ART, reference.STAR_TILES))
+
+    def test_the_star_field_is_the_rule_the_spec_states(self):
+        """Eight cells, in the two columns the list always leaves blank, twinkling on the nudge bit."""
+        starred = [(column, map_row) for map_row in range(reference.MAP_ROWS)
+                   for column in range(reference.COLUMNS) if reference.star_here(column, map_row)
+                   and (column, map_row) in {(c, (reference.LIST_MAP_ROW + reference.SLOT_ROW + slot)
+                                             % reference.MAP_ROWS)
+                                            for slot in range(reference.SLOTS)
+                                            for c in reference.STAR_COLUMNS}]
+        self.assertEqual(len(starred), 8)
+        self.assertLessEqual({column for column, _ in starred}, set(reference.STAR_COLUMNS))
+        # A star's cell follows from its coordinates and the phase alone.
+        for column, map_row in starred:
+            for phase in range(reference.PHASES):
+                tile = reference.star_tile(column, map_row, phase)
+                self.assertEqual(tile, reference.TILE_STAR + (column + map_row + phase) % 4)
+                self.assertLess(tile, reference.BANK_TILES)
+        # No title cell is ever a star, whatever the catalogue holds.
+        for cells in reference.list_rows(self.entries)[1:17]:
+            self.assertTrue(all(tile < reference.TILE_STAR for tile in cells[1:3] + cells[4:]))
+
+    def test_the_window_carries_the_plate_and_comes_on_when_the_list_settles(self):
+        """The window is the last two screen rows, and only once the slide has settled."""
+        self.assertTrue(reference.window_on(reference.SETTLED_SCY))
+        self.assertFalse(reference.window_on(reference.SETTLED_SCY - reference.SLIDE_STEP))
+        settled = reference.frame(self.entries)
+        sliding = reference.frame(self.entries, scy=reference.SETTLED_SCY - reference.SLIDE_STEP,
+                                  wrapped=reference.WRAPPED_ROWS)
+        bank = reference.bank_tiles()
+        plate = reference.window_rows()
+        for y in range(reference.WINDOW_Y, reference.HEIGHT):
+            for x in range(reference.WIDTH):
+                row, column = y - reference.WINDOW_Y, x - (reference.WINDOW_X - 7)
+                self.assertEqual(settled[y * reference.WIDTH + x],
+                                 bank[plate[row // 8][column // 8]][row % 8][column % 8], (x, y))
+        # A sliding frame has no window at all: those rows are the background's.
+        self.assertNotEqual(sliding[reference.WINDOW_Y * reference.WIDTH:],
+                            settled[reference.WINDOW_Y * reference.WIDTH:])
 
     def test_plates_match_the_published_grey_preview(self):
         """The header and bottom plates are the published mid-grey design, pixel for pixel."""
@@ -294,10 +341,14 @@ class Layout(unittest.TestCase):
             for x in range(8):
                 self.assertEqual(frame[(top + y) * 160 + x], bank[reference.TILE_POINTER][y][x], (x, y))
         self.assertTrue(any(bank[reference.TILE_POINTER][y][x] == 0 for y in range(8) for x in range(8)))
-        # A phase change moves nothing outside the pointer's own eight rows.
+        # A phase change moves the pointer's own eight rows and the star cells, nothing else.
+        stars = {(row, column) for row, cells in enumerate(reference.tilemap(self.entries, cursor=4))
+                 for column, tile in enumerate(cells) if tile >= reference.TILE_STAR}
+        allowed = set(range(top, top + 8)) | {8 * row + line for row, _ in stars for line in range(8)}
         differing = {position // 160 for position in range(23040) if frame[position] != plain[position]}
         self.assertTrue(differing)
-        self.assertLessEqual(differing, set(range(top, top + 8)))
+        self.assertLessEqual(differing, allowed)
+        self.assertEqual(len(stars), 8)
 
     def test_status_row(self):
         R = reference
