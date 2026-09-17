@@ -602,10 +602,13 @@ the published SVGs reproduce exactly.
 `python -m tools.sw.menu_v2 --tag menu-v2` renders the
 [menu v2 ideas](../../src/sw/menu/DESIGN_V2.md) under
 `workdir/builds/<tag>/menu-v2/<idea>/`, from the menu's
-[font atlas](../../../src/sw/menu/assets/font-tiles.json), the 82-tile bank
-[`reference.py`](../../../src/dv/menu/reference.py) builds and the idea's shade
-JSON in `src/sw/menu/assets/design/v2-*.json`. Nothing is assembled, linked or
-run: these are mockups of ideas nobody has chosen.
+[font atlas](../../../src/sw/menu/assets/font-tiles.json), the 82-tile plated
+list the command pins and the idea's shade JSON in
+`src/sw/menu/assets/design/v2-*.json`. Nothing is assembled, linked or run:
+these are the original mockups, and they keep the bank the menu loaded when
+they were published so the sheets reproduce byte for byte, while
+[`reference.py`](../../../src/dv/menu/reference.py) owns what the image draws
+now.
 
 The ideas need more than a background, so this command draws each frame layer by
 layer: a 32 by 32 background map at any pixel scroll, an opaque window from

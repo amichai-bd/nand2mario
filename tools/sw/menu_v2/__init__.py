@@ -1,10 +1,15 @@
 """Render the menu v2 ideas of wiki/src/sw/menu/DESIGN_V2.md as 160x144 screens.
 
 The committed shade JSON under `src/sw/menu/assets/design/v2-*.json` owns the new
-pixels, `src/dv/menu/reference.py` the 82-tile bank and the shipped layout, and this
-helper the review layouts, the sample catalogue and the animation phases. Nothing is
-assembled, built or run: these are mockups of ideas the owner has not chosen yet, and
-no menu source, fixture or reference changes with them.
+pixels and this helper owns the review layouts, the sample catalogue and the
+animation phases. Nothing is assembled, built or run.
+
+Every sheet is drawn over the 82-tile plated list the menu loaded when the ideas
+were published, which this module pins below. The shipped bank has moved on since:
+`src/dv/menu/reference.py` owns what the image draws now, and these sheets stay as
+the proposals the composite decision was made from, so they must keep reproducing
+byte for byte. Only the glyph mapping and the status text come from the reference,
+and those rules are unchanged.
 
 Unlike the background-only composer of the first design pass, the frame here is drawn
 layer by layer, because the ideas need them: a 32x32 background map at any pixel
@@ -37,6 +42,56 @@ SHIPPED_TILES = 82
 FADE = (0x00, 0x40, 0x90, IDENTITY_BGP)
 # The object palette that keeps a dark pointer readable on the inverse bar.
 INVERTED_BGP = 0x1B
+
+
+# The plated list the ideas were drawn over: the 39 font tiles, their inverses,
+# the nudged arrow, the two plate caps and the inverse nudged arrow.
+PLATED_INVERSE = 39
+PLATED_NUDGE, PLATED_CAP_LEFT, PLATED_CAP_RIGHT, PLATED_NUDGE_INVERSE = 78, 79, 80, 81
+PLATED_SLOTS = 16
+PLATED_HEADER, PLATED_HEADER_COLUMN = 'GAME LIBRARY', 4
+PLATED_CELLS = COLUMNS - 2
+
+
+def invert(tile):
+    """The inverse of a tile: every shade becomes 3 - shade."""
+    return [[3 - shade for shade in row] for row in tile]
+
+
+def plated_bank(root, reference):
+    """The 82 tiles the menu loaded when these ideas were published."""
+    font = reference.font_tiles()
+    nudge, left, right = authored(root, 'direction-a-tiles.json')
+    bank = font + [invert(tile) for tile in font] + [nudge, left, right, invert(nudge)]
+    if len(bank) != SHIPPED_TILES:
+        raise ValueError('the plated-list bank is 82 tiles')
+    return bank
+
+
+def plated_plate(reference, cells):
+    """A header or status plate: the 18 inverse cells of `cells` between the two caps."""
+    return [PLATED_CAP_LEFT] + [PLATED_INVERSE + tile for tile in cells] + [PLATED_CAP_RIGHT]
+
+
+def plated_tilemap(reference, entries, cursor=0, phase=0, result=0, index=None):
+    """The visible 20x18 plated-list cells: header plate, slot rows, inverse bar, status plate."""
+    index = reference.NO_INDEX if index is None else index
+    rows = [[reference.TILE_BLANK] * COLUMNS for _ in range(ROWS)]
+    header = [reference.TILE_BLANK] * PLATED_CELLS
+    header[PLATED_HEADER_COLUMN - 1:PLATED_HEADER_COLUMN - 1 + len(PLATED_HEADER)] = \
+        reference.text_tiles(PLATED_HEADER)
+    rows[0] = plated_plate(reference, header)
+    for slot in range(PLATED_SLOTS):
+        row = rows[1 + slot]
+        row[1:3] = reference.text_tiles(f'{slot:02d}')
+        if slot < len(entries) and entries[slot]['valid'] == 1:
+            row[4:20] = reference.title_tiles(entries[slot]['title'])
+    bar = [PLATED_INVERSE + tile for tile in rows[1 + cursor]]
+    bar[0] = PLATED_NUDGE_INVERSE if phase else PLATED_INVERSE + reference.TILE_ARROW
+    rows[1 + cursor] = bar
+    text = reference.status_text(result, index).strip().center(PLATED_CELLS)
+    rows[17] = plated_plate(reference, reference.text_tiles(text))
+    return rows
 
 
 def render(bank, bgmap, bgp, scx=0, scy=0, window=None, wx=7, wy=0, objects=(), obp=IDENTITY_BGP):
@@ -72,26 +127,21 @@ def place(row, column, cells):
     row[column:column + len(cells)] = cells
 
 
-def base_bank(reference):
-    """The 82 tiles the menu ships: font, inverse font, nudged arrow, plate caps, inverse arrow."""
-    return reference.bank_tiles()
-
-
 def authored(root, name):
     return tiles_of(load_bank(root, f'design/{name}'))
 
 
 def plate(reference, text):
     """A header or status plate: the 18 inverse cells of `text` between the two caps."""
-    return reference.plate(reference.text_tiles(text.center(COLUMNS - 2)))
+    return plated_plate(reference, reference.text_tiles(text.center(COLUMNS - 2)))
 
 
 def splash(root, reference):
     """Boot splash: a badge that fades in through BGP, then the list slides up from below."""
-    tiles = base_bank(reference) + authored(root, 'v2-splash-tiles.json')
+    tiles = plated_bank(root, reference) + authored(root, 'v2-splash-tiles.json')
     names = ['BADGE 0', 'BADGE 1', 'BADGE 2', 'BADGE 3', 'BADGE 4', 'BADGE 5', 'BADGE 6', 'BADGE 7']
     bank, badge = bank_from(tiles), SHIPPED_TILES
-    listing = reference.tilemap(entries(), cursor=0)
+    listing = plated_tilemap(reference, entries(), cursor=0)
     screen = [[reference.TILE_BLANK] * COLUMNS for _ in range(ROWS)]
     place(screen[4], 8, [badge + i for i in range(4)])
     place(screen[5], 8, [badge + 4 + i for i in range(4)])
@@ -107,15 +157,15 @@ def splash(root, reference):
 
 def cursor(root, reference):
     """Sprite cursor: an object pointer in two phases, with and without the inverse bar."""
-    tiles = base_bank(reference) + authored(root, 'v2-cursor-tiles.json')
+    tiles = plated_bank(root, reference) + authored(root, 'v2-cursor-tiles.json')
     names = ['POINT 0', 'POINT 1']
     bank, pointer, slot = bank_from(tiles), SHIPPED_TILES, 2
     states = []
     for kept in (True, False):
         for phase in range(2):
-            rows = [list(row) for row in reference.tilemap(entries(), cursor=slot)]
+            rows = [list(row) for row in plated_tilemap(reference, entries(), cursor=slot)]
             if not kept:
-                plain = [tile - reference.TILE_INVERSE for tile in rows[1 + slot]]
+                plain = [tile - PLATED_INVERSE for tile in rows[1 + slot]]
                 plain[0] = reference.TILE_BLANK
                 rows[1 + slot] = plain
             objects = [(8 * (1 + slot), phase, pointer + phase, False)]
@@ -129,22 +179,22 @@ def cursor(root, reference):
 
 def footer_rows(reference, badge, text, tagline):
     """The two-row information plate: a cartridge badge with the profile line, then the tagline."""
-    top = reference.plate(reference.text_tiles(f'  {text}'.ljust(COLUMNS - 2)))
+    top = plated_plate(reference, reference.text_tiles(f'  {text}'.ljust(COLUMNS - 2)))
     top[2] = badge + 2
-    return [top, reference.plate(reference.text_tiles(tagline.center(COLUMNS - 2)))]
+    return [top, plated_plate(reference, reference.text_tiles(tagline.center(COLUMNS - 2)))]
 
 
 def footer(root, reference):
     """Info footer: profile, size and a one-line tagline under a fifteen-slot list."""
     art = authored(root, 'v2-footer-tiles.json')
-    tiles = base_bank(reference) + art + [reference.invert(tile) for tile in art]
+    tiles = plated_bank(root, reference) + art + [invert(tile) for tile in art]
     names = ['CART', 'DOT']
     bank, badge = bank_from(tiles), SHIPPED_TILES
     lines = {2: ('DIRECT   32 KB', 'BRISK PLATFORM HOP'), 3: ('EMPTY SLOT', 'NOTHING LOADED HERE'),
              13: ('EMPTY SLOT', 'NOTHING LOADED HERE')}
     states = []
     for slot, label, refused in ((2, 'INFO FOOTER', 0), (3, 'EMPTY SLOT', 0), (13, 'REFUSED', 2)):
-        rows = [list(row) for row in reference.tilemap(entries(), cursor=slot)]
+        rows = [list(row) for row in plated_tilemap(reference, entries(), cursor=slot)]
         text, tagline = lines[slot]
         if refused:
             tagline = reference.status_text(refused, slot).strip()
@@ -155,7 +205,7 @@ def footer(root, reference):
 
 def stars(root, reference):
     """Moving background: a star band scrolled by SCX/SCY, with everything else on the window."""
-    tiles = base_bank(reference) + authored(root, 'v2-stars-tiles.json')
+    tiles = plated_bank(root, reference) + authored(root, 'v2-stars-tiles.json')
     names = ['STAR A', 'STAR B', 'STAR C', 'SPARK']
     bank, star = bank_from(tiles), SHIPPED_TILES
     # A sparse 32x32 star map: a fixed scatter, so the band never repeats on a short scroll.
@@ -164,7 +214,7 @@ def stars(root, reference):
         for x in range(MAP_CELLS):
             if (7 * x + 13 * y + x * y) % 11 == 0:
                 field[y][x] = star + (x + y) % 4
-    listing = reference.tilemap(entries(), cursor=2)
+    listing = plated_tilemap(reference, entries(), cursor=2)
     # The window is opaque from its top edge down, so the band costs the last two slot rows.
     window = [listing[0]] + listing[1:15] + [listing[17]]
     states = [(f'SCROLL {offset}PX', render(bank, field, IDENTITY_BGP, scx=offset, scy=offset // 2,
@@ -179,19 +229,19 @@ def grey(root, reference):
     font = reference.font_tiles()
     # The grey bank is the font on a mid-grey page: shade 0 becomes 2, the ink stays 3.
     shaded = [[[2 if shade == 0 else shade for shade in row] for row in tile] for tile in font]
-    tiles = base_bank(reference) + shaded + art
+    tiles = plated_bank(root, reference) + shaded + art
     names = ['CAP L GREY', 'CAP R GREY', 'FADE 32', 'FADE 21', 'FADE 10', 'SHADOW']
     bank, shade_bank = bank_from(tiles), SHIPPED_TILES
     cap_l, cap_r, fade32, fade21 = (shade_bank + 39 + i for i in range(4))
     states = []
     for slot, label, refused in ((2, 'GREY PLATES', 0), (5, 'CURSOR ON SLOT 5', 0), (3, 'REFUSED', 2)):
-        rows = [list(row) for row in reference.tilemap(entries(), cursor=slot, result=refused,
-                                                       index=slot if refused else reference.NO_INDEX)]
+        rows = [list(row) for row in plated_tilemap(reference, entries(), cursor=slot, result=refused,
+                                                    index=slot if refused else reference.NO_INDEX)]
         header = [fade32] * (COLUMNS - 2)
         place(header, 3, [shade_bank + tile for tile in reference.text_tiles('GAME LIBRARY')])
         rows[0] = [cap_l] + header + [cap_r]
         rows[1 + slot] = [shade_bank + tile if tile < reference.FONT_TILES else tile
-                          for tile in [t - reference.TILE_INVERSE for t in rows[1 + slot]]]
+                          for tile in [t - PLATED_INVERSE for t in rows[1 + slot]]]
         rows[1 + slot][0] = shade_bank + reference.TILE_ARROW
         status = reference.status_text(refused, slot if refused else reference.NO_INDEX).strip()
         cells = [fade21] * (COLUMNS - 2)
@@ -214,10 +264,10 @@ def pulse(root, reference):
     """Smooth scroll and a press-A pulse: the list rides SCY while the hint stays on the window."""
     art = authored(root, 'v2-pulse-tiles.json')
     # The hint sits on an inverse plate, so the badge is stored inverted like the plate text.
-    tiles = base_bank(reference) + art + [reference.invert(tile) for tile in art]
+    tiles = plated_bank(root, reference) + art + [invert(tile) for tile in art]
     names = ['A DIM', 'A BRIGHT']
     bank, badge = bank_from(tiles), SHIPPED_TILES + 2
-    listing = reference.tilemap(entries(), cursor=15)
+    listing = plated_tilemap(reference, entries(), cursor=15)
     field = blank_map(reference.TILE_BLANK, listing[:17])
     states = [(f'SCROLL {offset}PX', render(bank, field, IDENTITY_BGP, scy=offset,
                                             window=hint(reference, badge, 0), wy=8 * 16))

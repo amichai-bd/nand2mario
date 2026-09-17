@@ -252,9 +252,13 @@
           "source": "assets/font-tiles.json",
           "author": "Original approved core font glyphs A-Z, 0-9 and dash (CORE_ART.md tiles 56..92) plus an original blank and cursor arrow by the nand2mario project; no external source"
         },
-        "Plate": {
-          "source": "assets/design/direction-a-tiles.json",
-          "author": "Original nudged cursor arrow and two plate caps of the plated-list menu design by the nand2mario project; no external source"
+        "GreyArt": {
+          "source": "assets/design/v2-grey-tiles.json",
+          "author": "Original mid-grey plate caps, dithered gradient cells and plate shadow of the menu v2 design by the nand2mario project; no external source"
+        },
+        "Pointer": {
+          "source": "assets/design/v2-cursor-tiles.json",
+          "author": "Original two-phase cursor pointer of the menu v2 design by the nand2mario project; no external source"
         }
       },
       "layout": "layout.json",

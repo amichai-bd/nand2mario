@@ -6,7 +6,7 @@ import tempfile
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from tools.sw.assets import validate_shades
-from tools.sw.menu_v2 import IDEAS, SHIPPED_TILES, bank_from, generate, tiles_of
+from tools.sw.menu_v2 import IDEAS, SHIPPED_TILES, bank_from, generate, plated_bank, tiles_of
 from tools.sw.program_art import load_module
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -50,10 +50,10 @@ class MenuV2Tests(unittest.TestCase):
             self.assertEqual(entry['tiles'], SHIPPED_TILES + added, name)
             self.assertLess(entry['tiles'], 256, name)
 
-    def test_every_idea_keeps_the_shipped_bank(self):
-        """A mockup only adds tiles: the first 82 are the bank the menu draws today."""
+    def test_every_idea_keeps_the_plated_list_bank(self):
+        """A mockup only adds tiles: the first 82 are the plated list it was drawn over."""
         reference = load_module('menu_reference', ROOT / 'src/dv/menu/reference.py')
-        shipped = bank_from(reference.bank_tiles())
+        shipped = bank_from(plated_bank(ROOT, reference))
         for name in IDEAS:
             bank = json.loads((self.out / name / 'tile-bank.json').read_text())
             self.assertEqual([row[:8 * SHIPPED_TILES] for row in bank['pixels']],

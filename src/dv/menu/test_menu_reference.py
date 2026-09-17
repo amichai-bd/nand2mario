@@ -107,15 +107,15 @@ class Layout(unittest.TestCase):
 
     def test_tilemap_rows(self):
         rows = reference.tilemap(self.entries)
-        inverse = reference.TILE_INVERSE
-        # The header is an inverse plate between the two caps.
-        self.assertEqual((rows[0][0], rows[0][19]), (reference.TILE_PLATE_LEFT, reference.TILE_PLATE_RIGHT))
-        self.assertEqual(rows[0][4:16], [inverse + tile for tile in reference.text_tiles('GAME LIBRARY')])
-        self.assertEqual(rows[0][1:4], [inverse + reference.TILE_BLANK] * 3)
-        # The selected slot is a full-width inverse bar carrying the arrow.
-        self.assertEqual(rows[1][0], inverse + reference.TILE_ARROW)
-        self.assertEqual(rows[1][1:3], [inverse + tile for tile in reference.text_tiles('00')])
-        self.assertEqual(rows[1][4:20], [inverse + tile for tile in reference.text_tiles('SPRINGTRAIL     ')])
+        grey = reference.TILE_GREY
+        # The header is a grey plate: two caps, the 3-to-2 gradient and grey text.
+        self.assertEqual((rows[0][0], rows[0][19]), (reference.TILE_CAP_LEFT, reference.TILE_CAP_RIGHT))
+        self.assertEqual(rows[0][4:16], [grey + tile for tile in reference.text_tiles('GAME LIBRARY')])
+        self.assertEqual(rows[0][1:4], [reference.TILE_FADE32] * 3)
+        # Every slot row is plain: the cursor is an object, so no row is re-banked.
+        self.assertEqual(rows[1][0], reference.TILE_BLANK)
+        self.assertEqual(rows[1][1:3], reference.text_tiles('00'))
+        self.assertEqual(rows[1][4:20], reference.text_tiles('SPRINGTRAIL     '))
         self.assertEqual(rows[4][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[5][4:20], reference.text_tiles('SHORT IMAGE     '))
         # The 64 KiB entry is listed once: slot 5 carries its title, slot 6 (its upper half) is blank.
@@ -129,52 +129,82 @@ class Layout(unittest.TestCase):
         self.assertEqual(rows[12][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[16][1:3], reference.text_tiles('15'))
         self.assertEqual(rows[16][4:20], reference.text_tiles('LAST SLOT       '))
-        # A blank status row is still a plate: two caps and 18 inverse blanks.
-        self.assertEqual(rows[17], [reference.TILE_PLATE_LEFT]
-                         + [reference.TILE_INVERSE + reference.TILE_BLANK] * 18
-                         + [reference.TILE_PLATE_RIGHT])
+        # A blank bottom plate is the gradient fill alone between the two caps.
+        self.assertEqual(rows[17], [reference.TILE_CAP_LEFT] + [reference.TILE_FADE21] * 18
+                         + [reference.TILE_CAP_RIGHT])
+        # A message sits on the plate, biased left, with the fill either side of it.
+        message = reference.tilemap(self.entries, result=reference.RESULT_INVALID_SLOT, index=3)[17]
+        self.assertEqual(message[1], reference.TILE_FADE21)
+        self.assertEqual(message[2:17], [grey + tile for tile in reference.text_tiles('SLOT 03 INVALID')])
+        self.assertEqual(message[17:19], [reference.TILE_FADE21] * 2)
         # The menu entry itself is never listed.
         self.assertFalse(any(reference.text_tiles('GAME MENU') == row[4:13] for row in rows))
-        moved = reference.tilemap(self.entries, cursor=15)
-        self.assertEqual(moved[1][0], reference.TILE_BLANK)
-        self.assertEqual(moved[1][1:3], reference.text_tiles('00'))
-        self.assertEqual(moved[16][0], reference.TILE_INVERSE + reference.TILE_ARROW)
+        # The cursor never reaches the map: every slot draws the same cells.
+        self.assertEqual(reference.tilemap(self.entries, cursor=15), rows)
         with self.assertRaises(ValueError):
             reference.tilemap(self.entries, cursor=16)
         partial = reference.tilemap(self.entries, drawn_slots=1)
         self.assertEqual(partial[2][4:20], [reference.TILE_BLANK] * 16)
 
-    def test_nudge_phase_moves_only_the_arrow_cell(self):
-        plain = reference.tilemap(self.entries, cursor=2)
-        nudged = reference.tilemap(self.entries, cursor=2, phase=1)
-        self.assertEqual(plain[3][0], reference.TILE_INVERSE + reference.TILE_ARROW)
-        self.assertEqual(nudged[3][0], reference.TILE_NUDGE_INVERSE)
-        for row, (before, after) in enumerate(zip(plain, nudged)):
-            self.assertEqual(before[1:], after[1:], row)
-            if row != 3:
-                self.assertEqual(before, after, row)
-        with self.assertRaises(ValueError):
-            reference.tilemap(self.entries, phase=2)
+    def test_the_cursor_is_an_object_and_the_phase_is_its_tile(self):
+        # Neither the slot nor the phase changes a map cell.
+        for state in (dict(cursor=2), dict(cursor=2, phase=1), dict(phase=1)):
+            self.assertEqual(reference.tilemap(self.entries, **state),
+                             reference.tilemap(self.entries), state)
+        self.assertEqual(reference.objects(), [(0, 8, reference.TILE_POINTER)])
+        self.assertEqual(reference.objects(cursor=5, phase=1), [(0, 48, reference.TILE_POINTER + 1)])
+        self.assertEqual(reference.objects(cursor=15), [(0, 128, reference.TILE_POINTER)])
+        for bad in (dict(cursor=16), dict(phase=2)):
+            with self.assertRaises(ValueError):
+                reference.objects(**bad)
+            with self.assertRaises(ValueError):
+                reference.tilemap(self.entries, **bad)
         # The phase follows from the frame number alone: 16 frames a hold.
         self.assertEqual([reference.phase_of_frame(n) for n in (0, 15, 16, 31, 32, 47, 48)],
                          [0, 0, 1, 1, 0, 0, 1])
         with self.assertRaises(ValueError):
             reference.phase_of_frame(-1)
-        # The nudged arrow is the authored tile shifted one pixel, not a new shape.
         bank = reference.bank_tiles()
-        self.assertEqual(bank[reference.TILE_NUDGE_INVERSE], reference.invert(bank[reference.TILE_NUDGE]))
         self.assertEqual(len(bank), reference.BANK_TILES)
+        # The two pointer phases are the committed art, the same arrow one pixel apart.
+        art = reference.atlas_tiles(reference.POINTER_ART, reference.POINTER_TILES)
+        self.assertEqual(bank[reference.TILE_POINTER:], art)
+        self.assertEqual(art[1], [[0] + row[:7] for row in art[0]])
+        self.assertTrue(all(row[0] == 0 for row in art[1]))
+        # The grey bank is the font on a mid-grey page: shade 0 becomes 2, the ink stays.
         for tile in range(reference.FONT_TILES):
-            self.assertEqual(bank[reference.TILE_INVERSE + tile], reference.invert(bank[tile]), tile)
+            self.assertEqual(bank[reference.TILE_GREY + tile], reference.greyed(bank[tile]), tile)
+            self.assertLessEqual({shade for row in bank[tile] for shade in row}, {0, 3}, tile)
+        self.assertEqual(bank[reference.TILE_GREY + reference.TILE_BLANK], [[2] * 8] * 8)
 
-    def test_reference_frames_match_the_chosen_design_preview(self):
-        """The implemented layout is direction A as published, cell for cell."""
+    def test_plates_match_the_published_grey_preview(self):
+        """The header and bottom plates are the published mid-grey design, pixel for pixel."""
         sys.path.insert(0, str(ROOT))
-        from tools.sw.menu_art import direction_a, entries as sample, STATES
-        _bank, _names, cells, bgp = direction_a(ROOT, reference)
-        self.assertEqual(bgp, 0xE4)
-        for state, options in STATES:
-            self.assertEqual(reference.tilemap(sample(), **options), cells(**options), state)
+        from tools.sw.menu_v2 import grey
+        published = dict(grey(ROOT, reference)[2])
+        plate_rows = list(range(8)) + list(range(136, 144))
+        for label, state in (('GREY PLATES', {}),
+                             ('REFUSED', dict(result=reference.RESULT_INVALID_SLOT, index=3))):
+            pixels = published[label]['pixels']
+            frame = reference.frame(self.entries, **state)
+            for y in plate_rows:
+                self.assertEqual(list(frame[y * 160:(y + 1) * 160]), pixels[y], (label, y))
+
+    def test_the_pointer_draws_over_the_page_and_keeps_shade_0_clear(self):
+        frame = reference.frame(self.entries, cursor=4)
+        plain = reference.frame(self.entries, cursor=4, phase=1)
+        bank = reference.bank_tiles()
+        top = 8 * (reference.SLOT_ROW + 4)
+        # Column 0 of a slot row is the blank page, so a transparent pointer pixel
+        # leaves shade 0 there and an opaque one draws its own shade.
+        for y in range(8):
+            for x in range(8):
+                self.assertEqual(frame[(top + y) * 160 + x], bank[reference.TILE_POINTER][y][x], (x, y))
+        self.assertTrue(any(bank[reference.TILE_POINTER][y][x] == 0 for y in range(8) for x in range(8)))
+        # A phase change moves nothing outside the pointer's own eight rows.
+        differing = {position // 160 for position in range(23040) if frame[position] != plain[position]}
+        self.assertTrue(differing)
+        self.assertLessEqual(differing, set(range(top, top + 8)))
 
     def test_status_row(self):
         R = reference
@@ -193,7 +223,7 @@ class Layout(unittest.TestCase):
         self.assertEqual(len(set(frames)), len(frames))
         for pixels in frames:
             self.assertEqual(len(pixels), 23040)
-            self.assertTrue(set(pixels) <= {0, 3})
+            self.assertLessEqual(set(pixels), {0, 1, 2, 3})
         # The exit-demo game frame: shade 3 exactly on pixel rows 64..71.
         game = frames[fixture.GAME_FRAME]
         self.assertEqual(game, fixture.exit_frame())

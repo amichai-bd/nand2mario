@@ -1,11 +1,16 @@
 # Menu v2 ideas
 
 Six rendered ideas for a second pass over the
-[plated list](SPEC.md#frame-layout) the menu draws today. None is chosen and
-none is implemented: `src/sw/menu`, `src/dv/menu`, the fixture, the loader, the
-RTL and the catalogue are unchanged, and each idea's tile bank starts with the
-same 82 tiles the image loads now. The first pass and its chosen direction stay
-in [design directions](DESIGN.md).
+[plated list](SPEC.md#frame-layout) the menu drew before them. The owner chose
+all six; the [composite layout](#composite-layout) below is the single design
+they combine into, and each idea ships as its own slice. The first pass and its
+chosen direction stay in [design directions](DESIGN.md).
+
+The six sheets are the original mockups: each was drawn over the 82-tile plated
+list the image loaded when they were published, which is why their banks all
+start with those 82 tiles. The menu's own bank has moved on since; the
+[SPEC](SPEC.md#frame-layout) owns what the image draws today, and these sheets
+stay as the proposals the composite decision was made from.
 
 Reproduce every sheet below from the worktree root:
 
@@ -24,9 +29,11 @@ Tile and byte counts come from the generator's `summary.json` and are exact.
 Cycle figures are counted from the [cost model](DESIGN.md#cost-model), not
 measured, and are good to about fifteen percent; the measured
 [frame budget](SPEC.md#frame-budget) is the live figure. VBlank is 1140
-M-cycles. Today's measured frames are 230 idle, 281 for a nudge phase, 547 for
-a status redraw and 722 for a cursor move, which is the peak. Work done with
-the LCD off at boot does not spend VBlank and is called out separately.
+M-cycles. The plated list the sheets were drawn over measured 230 idle, 281 for
+a nudge phase, 547 for a status redraw and 722 for a cursor move, which was its
+peak; the [frame budget](SPEC.md#frame-budget) carries the shipped figures. Work
+done with the LCD off at boot does not spend VBlank and is called out
+separately.
 
 | Idea | Bank tiles | Added tiles | Added tile bytes | Estimated peak frame | Reference change |
 |---|---|---|---|---|---|
@@ -42,6 +49,75 @@ addition is 720 bytes of tile data against the 14492 bytes ROM0 has free, so
 none of the six is bounded by the 32 KiB image. Ideas 3, 4 and 6 combine: the
 footer and the star band each cost slot rows, and the smooth scroll is what
 brings the hidden slots back.
+
+## Composite layout
+
+The six ideas do not simply add up: three of them want the same two DMG
+resources, the background scroll and the single window. This is the decision
+that resolves them, and every slice is built against it.
+
+### Layers
+
+| Layer | Carries | Registers |
+|---|---|---|
+| Background | The header row and the slot rows, in the 32-row map | SCY for the splash slide and the scroll ramp; SCX unused |
+| Window | The bottom plate alone: the information footer and the press-A hint | LCDC bit 5, WX 7, WY 128 |
+| Objects | The cursor pointer, one entry | LCDC bit 1, OBP0 |
+
+The window is opaque from its top left corner to the bottom right of the
+screen, so it cannot be a band. Putting the list on it would freeze the list,
+and the fixed header the window could then carry would cost the smooth scroll.
+The list therefore rides the background, the window is pinned to the bottom two
+rows, and **the header scrolls with the list**. No mid-frame scroll write is
+needed anywhere, so interrupts stay disabled and the frame loop keeps polling
+`LY`.
+
+### Slot count
+
+The window starts at WY 128, so the background shows screen rows 0..15: the
+header and **fifteen slot rows**. Slot 15 is below the window at rest.
+
+[Idea 6](#6-smooth-scroll-and-a-press-a-pulse) is what brings it back. Its SCY
+ramp scrolls the header off the top when the cursor passes the last visible
+row, which puts sixteen slot rows in the fifteen the window leaves. The cursor
+reaches every slot 0..15 exactly as it does today; only the resting view is
+shorter. Until that slice lands the menu keeps the shipped eighteen-row
+background frame with all sixteen slots and no window.
+
+### What each idea does under this decision
+
+- [1. Boot splash](#1-boot-splash) keeps its four BGP fade steps and its SCY
+  slide on the same background map, above the list. The splash is fourteen map
+  rows, so the whole ramp is drawn with the LCD off and each frame of it costs
+  one SCY write.
+- [2. Sprite cursor](#2-sprite-cursor) **replaces the inverse bar**, it does not
+  sit on it. A cursor move stops rewriting two rows of the map and becomes one
+  OAM write, which is where the 468 M-cycles come from. The selection row is
+  drawn like every other row.
+- [3. Info footer](#3-info-footer) is the two window rows.
+- [4. Moving background](#4-moving-background) changes shape here. DMG has one
+  background layer and this decision spends it on the list, so a star band that
+  drifts on its own is not available: it would need the list on the window,
+  which the smooth scroll forbids. The stars instead fill the background cells
+  the list leaves empty, column 0 and columns 17..19, as a rule the reference
+  reproduces, and they ride the list's own SCY. The page gets its texture and
+  the scroll ramp gets its parallax; there is no independent SCX drift.
+- [5. Mid-grey plates](#5-mid-grey-plates-and-dithered-gradients) **replaces the
+  black plates**. The header and the bottom plate are mid grey with dithered
+  gradient fills and rounded grey caps, and their text is black on grey.
+- [6. Smooth scroll and pulse](#6-smooth-scroll-and-a-press-a-pulse) owns the
+  SCY ramp and the press-A badge on the window.
+
+### Bank
+
+Grey plates and a sprite cursor together retire the inverse bank: with no
+inverse bar and no black plate, nothing is drawn as `3 - shade` any more, and
+the [direction A](DESIGN.md) caps and nudged arrow leave the image with it. The
+shipped bank is 86 tiles, listed in the [SPEC](SPEC.md#frame-layout): the 39
+font tiles, the same 39 on a mid-grey page, the six authored grey cells and the
+two pointer phases. Both derived banks cost zero ROM bytes, because the font
+uses only shade 0 and shade 3, so the grey copy is the font's low plane with
+the high plane set.
 
 ## 1. Boot splash
 

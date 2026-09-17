@@ -746,7 +746,7 @@ UTC on 2026-09-17 (12:34:32 to 12:35:10 board clock). Menu frames are compared
 with [`reference.py`](../../src/dv/menu/reference.py) against the catalogue
 bytes of the `780-board-libstatus` record, as in the other menu frames on this
 page, and against both
-[nudge phases](sw/menu/SPEC.md#selection-bar-and-nudge); the comparison records
+[nudge phases](sw/menu/SPEC.md#cursor-object); the comparison records
 report the matching phase and the mismatch count for each. The dot counter runs
 at 4,194,304 dots per second, so the dot differences below are elapsed board
 time.

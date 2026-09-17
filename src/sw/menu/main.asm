@@ -1,7 +1,7 @@
 ; Original on-board game menu for the loader profile. Contract:
 ; wiki/src/sw/menu/SPEC.md; hardware registers from
 ; wiki/src/rtl/cartridge/MAS_loader_profile.md. The low 16 KiB holds this
-; code, the font and the plate art; the upper 16 KiB is the banked window
+; code, the font and the grey plate art; the upper 16 KiB is the banked window
 ; into SDRAM.
 ; Loader profile registers (CPU addresses fixed by the contract; the
 ; generated table owns the status and result values).
@@ -16,21 +16,23 @@ ENTRY_TITLE EQU 8
 TILE_DIGIT EQU 26
 TILE_DASH EQU 36
 TILE_BLANK EQU 37
-TILE_ARROW EQU 38
 FONT_TILES EQU 39
 FONT_BYTES EQU FONT_TILES * 16
-; The plated list bank: the font, its inverse (every shade 3 - shade, which is
-; the complement of both bit planes), the nudged arrow, the two plate caps and
-; the inverse nudged arrow. Adding TILE_INVERSE to a font tile inverts it;
-; adding TILE_UNINVERSE takes it back.
-TILE_INVERSE EQU FONT_TILES
-TILE_UNINVERSE EQU 256 - TILE_INVERSE
-TILE_NUDGE EQU 78
-TILE_PLATE_LEFT EQU 79
-TILE_PLATE_RIGHT EQU 80
-TILE_NUDGE_INVERSE EQU 81
-DESIGN_TILES EQU 3
-DESIGN_BYTES EQU DESIGN_TILES * 16
+; The bank: the font, the same 39 glyphs on a mid-grey page, the six authored
+; grey cells and the two pointer phases. Adding TILE_GREY to a font tile moves
+; it onto the grey page. The font uses only shade 0 and shade 3, so the grey
+; copy is the font's low plane with the high plane set.
+TILE_GREY EQU FONT_TILES
+GREY_ROWS EQU FONT_TILES * 8
+TILE_CAP_LEFT EQU 78
+TILE_CAP_RIGHT EQU 79
+TILE_FADE32 EQU 80
+TILE_FADE21 EQU 81
+GREY_ART_TILES EQU 6
+GREY_ART_BYTES EQU GREY_ART_TILES * 16
+; The two pointer phases are object tiles; no map cell ever names them.
+TILE_POINTER EQU 84
+POINTER_BYTES EQU 32
 ; Frame layout in 8x8 map cells.
 MAP EQU GB_VIEW_MAP0_START
 HEADER_COLUMN EQU 4
@@ -39,11 +41,17 @@ NUMBER_COLUMN EQU 1
 TITLE_COLUMN EQU 4
 STATUS_ROW EQU 17
 TITLE_BYTES EQU 16
-; The header and status plates: a cap in each outer column and 18 cells
-; between them. A selected slot inverts its cells 1..19; column 0 is the arrow.
+; The header and bottom plates: a grey cap in each outer column and 18 cells
+; between them, filled with a dithered gradient behind the grey text.
 PLATE_COLUMN EQU 1
 PLATE_CELLS EQU 18
-BAR_CELLS EQU 19
+; The pad byte of the status rows, the cell that stays plate fill.
+PLATE_PAD EQU 35
+; The cursor is object 0: X is fixed at the left edge and Y follows the slot.
+OAM_CURSOR EQU GB_OAM_START
+OAM_BYTES EQU 160
+CURSOR_X EQU 8
+CURSOR_Y EQU 16 + SLOT_ROW * 8
 ; The nudge phase is bit 4 of the frame counter, so each phase holds 16
 ; frames and the frame number alone decides it.
 PHASE_BIT EQU 16
@@ -82,8 +90,6 @@ FrameCount:
 DS 1
 ShownPhase:
 DS 1
-TitleOffset:
-DS 1
 StatusCells:
 DS STATUS_CELLS
 
@@ -105,12 +111,12 @@ LD [BankDone],A
 LD [ShownCursor],A
 LD [FrameCount],A
 LD [ShownPhase],A
-LD [TitleOffset],A
 LD A,KEY_NONE
 LD [ShownKey],A
 LD [ShownIndex],A
 LD A,$E4
 LDH [GB_REG_BGP],A
+LDH [GB_REG_OBP0],A
 ; Font tiles into VRAM while the LCD is off.
 LD DE,Font
 LD HL,GB_VIEW_TILES_START
@@ -123,42 +129,48 @@ DEC BC
 LD A,B
 OR A,C
 JR NZ,CopyFont
-; The inverse bank is the same 39 tiles with both bit planes complemented.
+; The grey bank: the same glyph mask on a mid-grey page. Shade 0 becomes 2 and
+; shade 3 stays, so every row keeps its low plane and sets its high plane.
 LD DE,Font
-LD HL,GB_VIEW_TILES_START + TILE_INVERSE * 16
-LD BC,FONT_BYTES
-CopyInverseFont:
+LD HL,GB_VIEW_TILES_START + TILE_GREY * 16
+LD BC,GREY_ROWS
+CopyGreyFont:
 LD A,[DE]
 INC DE
-CPL
+INC DE
+LD [HL+],A
+LD A,$FF
 LD [HL+],A
 DEC BC
 LD A,B
 OR A,C
-JR NZ,CopyInverseFont
-; The three authored tiles, then the inverse of the nudged arrow.
-LD DE,Design
-LD HL,GB_VIEW_TILES_START + TILE_NUDGE * 16
-LD BC,DESIGN_BYTES
-CopyDesign:
+JR NZ,CopyGreyFont
+; The six authored grey cells, then the two pointer phases.
+LD DE,GreyArt
+LD HL,GB_VIEW_TILES_START + TILE_CAP_LEFT * 16
+LD B,GREY_ART_BYTES
+CopyGreyArt:
 LD A,[DE]
 INC DE
 LD [HL+],A
-DEC BC
-LD A,B
-OR A,C
-JR NZ,CopyDesign
-LD DE,Design
-LD BC,16
-CopyInverseNudge:
+DEC B
+JR NZ,CopyGreyArt
+LD DE,Pointer
+LD B,POINTER_BYTES
+CopyPointer:
 LD A,[DE]
 INC DE
-CPL
 LD [HL+],A
-DEC BC
-LD A,B
-OR A,C
-JR NZ,CopyInverseNudge
+DEC B
+JR NZ,CopyPointer
+; Every object but the cursor stays off screen, so clear the table.
+LD HL,OAM_CURSOR
+LD B,OAM_BYTES
+XOR A,A
+ClearObjects:
+LD [HL+],A
+DEC B
+JR NZ,ClearObjects
 ; Blank background map.
 LD HL,MAP
 LD BC,1024
@@ -170,35 +182,34 @@ DEC BC
 LD A,B
 OR A,C
 JR NZ,ClearMap
-; Header plate: a cap in each outer column, inverse cells between, the title
-; in the inverse bank.
+; Header plate: a grey cap in each outer column, the 3-to-2 gradient between
+; them and the title on the grey page.
 LD HL,MAP
-LD A,TILE_PLATE_LEFT
+LD A,TILE_CAP_LEFT
 LD [HL+],A
-LD A,TILE_BLANK + TILE_INVERSE
+LD A,TILE_FADE32
 LD B,PLATE_CELLS
 HeaderPlate:
 LD [HL+],A
 DEC B
 JR NZ,HeaderPlate
-LD A,TILE_PLATE_RIGHT
+LD A,TILE_CAP_RIGHT
 LD [HL],A
 LD HL,Header
 LD DE,MAP + HEADER_COLUMN
 LD B,12
-LD C,TILE_INVERSE
+LD C,TILE_GREY
 CALL DrawText
-; Status plate caps; ShowStatus fills the 18 cells between them.
-LD A,TILE_PLATE_LEFT
+; Bottom plate caps; ShowStatus fills the 18 cells between them.
+LD A,TILE_CAP_LEFT
 LD [MAP + STATUS_ROW * 32],A
-LD A,TILE_PLATE_RIGHT
+LD A,TILE_CAP_RIGHT
 LD [MAP + STATUS_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
-; The six status rows as inverse tiles, once, while the LCD is off.
+; The six status rows as grey cells, once, while the LCD is off.
 LD HL,StatusText
 LD DE,StatusCells
 LD B,STATUS_CELLS
-LD C,TILE_INVERSE
-CALL DrawText
+CALL DrawPlateText
 ; The sixteen slot numbers.
 LD DE,MAP + SLOT_ROW * 32 + NUMBER_COLUMN
 LD C,0
@@ -237,11 +248,18 @@ LD [Pending],A
 CP A,LIBRARY_SLOTS
 JR NZ,DrawAll
 EnableLCD:
-CALL DrawBar
+; The cursor object: X at the left edge, Y on slot 0, phase 0.
+LD A,CURSOR_Y
+LD [OAM_CURSOR],A
+LD A,CURSOR_X
+LD [OAM_CURSOR + 1],A
+LD A,TILE_POINTER
+LD [OAM_CURSOR + 2],A
 CALL ShowStatus
-LD A,$91
+; Background and objects on.
+LD A,$93
 LDH [GB_REG_LCDC],A
-; One sampled update per frame, all map writes inside VBlank.
+; One sampled update per frame, all map and object writes inside VBlank.
 Frame:
 CALL WaitVBlank
 CALL ReadButtons
@@ -350,6 +368,8 @@ RET
 ; Delayed catalogue path: commit the bank once the SDRAM is ready, then draw
 ; one title row per frame once the window holds bank 34. The window is read
 ; only here and at boot; nothing after a selection depends on window_ready.
+; The cursor is an object, so no row is ever drawn in a second bank and the
+; order against ShowCursor no longer matters.
 Catalogue:
 LD A,[BankDone]
 OR A,A
@@ -365,21 +385,6 @@ RET Z
 LD A,[LOADER_STATUS]
 AND A,LIBRARY_STATUS_WINDOW_READY
 RET Z
-; A row drawn under the selection bar is drawn in the inverse bank, which
-; costs one M-cycle a cell instead of a second pass over the row. The row the
-; bar is on right now is ShownCursor, not Cursor: Navigate has already moved
-; Cursor this frame and ShowCursor only moves the bar after this call, so
-; comparing against Cursor would draw a row in the wrong bank and let
-; ShowCursor invert it a second time or unwind it past zero.
-LD A,[Pending]
-LD B,A
-LD A,[ShownCursor]
-CP A,B
-LD A,0
-JR NZ,PendingOffset
-LD A,TILE_INVERSE
-PendingOffset:
-LD [TitleOffset],A
 LD A,[Pending]
 CALL DrawSlot
 LD A,[Pending]
@@ -432,8 +437,7 @@ LD A,L
 ADD A,ENTRY_TITLE
 LD L,A
 LD B,TITLE_BYTES - 1
-LD A,[TitleOffset]
-LD C,A
+LD C,0
 CALL DrawText
 LD A,[HL]
 CP A,CGB_FLAG
@@ -441,18 +445,15 @@ JR Z,FlagBlank
 CP A,CGB_ONLY
 JR Z,FlagBlank
 CALL CharTile
-ADD A,C
 LD [DE],A
 RET
 FlagBlank:
 LD A,TILE_BLANK
-ADD A,C
 LD [DE],A
 RET
 BlankTitle:
 LD B,TITLE_BYTES
-LD A,[TitleOffset]
-ADD A,TILE_BLANK
+LD A,TILE_BLANK
 BlankLoop:
 LD [DE],A
 INC DE
@@ -460,7 +461,7 @@ DEC B
 JR NZ,BlankLoop
 RET
 
-; HL = ASCII bytes, DE = cells, B = count, C = bank offset (0 or TILE_INVERSE).
+; HL = ASCII bytes, DE = cells, B = count, C = bank offset (0 or TILE_GREY).
 ; C survives the loop, so a caller can reuse it for a trailing cell.
 DrawText:
 LD A,[HL+]
@@ -470,6 +471,25 @@ LD [DE],A
 INC DE
 DEC B
 JR NZ,DrawText
+RET
+
+; HL = ASCII bytes, DE = cells, B = count: the same as DrawText on the grey
+; page, except that the pad byte writes the plate's gradient fill instead of a
+; glyph, so the text sits on the plate and never on a grey block.
+DrawPlateText:
+LD A,[HL+]
+CP A,PLATE_PAD
+JR Z,PlateFill
+CALL CharTile
+ADD A,TILE_GREY
+JR PlateWrite
+PlateFill:
+LD A,TILE_FADE21
+PlateWrite:
+LD [DE],A
+INC DE
+DEC B
+JR NZ,DrawPlateText
 RET
 
 ; A = byte -> font tile: letters, digits, dash; zero and space blank; any
@@ -522,29 +542,8 @@ LD [DE],A
 INC DE
 RET
 
-; HL = first cell, B = count, C = TILE_INVERSE or TILE_UNINVERSE: move a run
-; of cells between the font bank and its inverse.
-InvertRun:
-LD A,[HL]
-ADD A,C
-LD [HL+],A
-DEC B
-JR NZ,InvertRun
-RET
-
-; The selection bar: cells 1..19 of the cursor's row inverted, column 0 the
-; arrow in its current nudge phase.
-DrawBar:
-LD A,[Cursor]
-CALL CursorCell
-INC HL
-LD B,BAR_CELLS
-LD C,TILE_INVERSE
-CALL InvertRun
-JR DrawArrow
-
-; Move the bar only when the cursor changed; otherwise only the nudge phase
-; can change, and then only column 0.
+; The cursor object. Its Y follows the slot and its tile is the nudge phase,
+; so a move is one byte and a phase change is one byte; the map never changes.
 ShowCursor:
 LD A,[ShownCursor]
 LD B,A
@@ -552,14 +551,11 @@ LD A,[Cursor]
 CP A,B
 JR Z,SamePlace
 LD [ShownCursor],A
-LD A,B
-CALL CursorCell
-LD A,TILE_BLANK
-LD [HL+],A
-LD B,BAR_CELLS
-LD C,TILE_UNINVERSE
-CALL InvertRun
-JR DrawBar
+ADD A,A
+ADD A,A
+ADD A,A
+ADD A,CURSOR_Y
+LD [OAM_CURSOR],A
 SamePlace:
 LD A,[FrameCount]
 AND A,PHASE_BIT
@@ -567,33 +563,17 @@ LD B,A
 LD A,[ShownPhase]
 CP A,B
 RET Z
-DrawArrow:
-LD A,[Cursor]
-CALL CursorCell
-LD A,[FrameCount]
-AND A,PHASE_BIT
+LD A,B
 LD [ShownPhase],A
-LD A,TILE_ARROW + TILE_INVERSE
-JR Z,ArrowWrite
-LD A,TILE_NUDGE_INVERSE
-ArrowWrite:
-LD [HL],A
+OR A,A
+LD A,TILE_POINTER
+JR Z,PhaseWrite
+INC A
+PhaseWrite:
+LD [OAM_CURSOR + 2],A
 RET
 
-; A = slot -> HL = its map row, column 0.
-CursorCell:
-LD L,A
-LD H,0
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-LD BC,MAP + SLOT_ROW * 32
-ADD HL,BC
-RET
-
-; Status row from the status bytes: the prebuilt inverse row for the current
+; Status row from the status bytes: the prebuilt grey row for the current
 ; key copied into the 18 plate cells, then the index digits where that row
 ; carries them. Redrawn only when the shown key or index changes.
 ShowStatus:
@@ -673,10 +653,10 @@ LD E,L
 LD A,C
 CP A,LIBRARY_CATALOGUE_ENTRIES
 JR NC,IndexUnknown
-LD C,TILE_DIGIT + TILE_INVERSE
+LD C,TILE_DIGIT + TILE_GREY
 JP DrawDigits
 IndexUnknown:
-LD A,TILE_DASH + TILE_INVERSE
+LD A,TILE_DASH + TILE_GREY
 LD [DE],A
 INC DE
 LD [DE],A
@@ -685,14 +665,15 @@ RET
 Header:
 DB "GAME LIBRARY"
 ; The six status rows, each already centred in the plate's 18 cells exactly as
-; the contract states; the zeros are placeholders the index digits overwrite.
+; the contract states. A pad byte keeps the plate's gradient fill; the zeros
+; are placeholders the index digits overwrite.
 StatusText:
-DB "                  "
-DB "    NOT READY     "
-DB " SLOT 00 INVALID  "
-DB " SLOT 00 BAD CRC  "
-DB "SLOT 00 NOT READY "
-DB "  SLOT 00 ERROR   "
+DB "##################"
+DB "####NOT READY#####"
+DB "#SLOT 00 INVALID##"
+DB "#SLOT 00 BAD CRC##"
+DB "SLOT 00 NOT READY#"
+DB "##SLOT 00 ERROR###"
 StatusDigits:
 DB NO_DIGITS
 DB NO_DIGITS
@@ -705,5 +686,7 @@ EXPORT Start
 SECTION "assets",ROM
 Font:
 ASSET "Font"
-Design:
-ASSET "Plate"
+GreyArt:
+ASSET "GreyArt"
+Pointer:
+ASSET "Pointer"

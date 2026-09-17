@@ -37,9 +37,9 @@ module tb_menu_system;
     // VBlank is ten lines of 456 dots: 4560 dots, 1140 M-cycles. Every frame
     // body of the menu's loop must finish inside it (wiki/src/sw/menu/SPEC.md).
     localparam int VBLANK_MCYCLES = 1140;
-    // The menu's tile bank: font, inverse font, nudged arrow, two plate caps
-    // and the inverse nudged arrow (wiki/src/sw/menu/SPEC.md).
-    localparam int BANK_TILES = 82;
+    // The menu's tile bank: font, the font on the grey page, the six authored
+    // grey cells and the two pointer phases (wiki/src/sw/menu/SPEC.md).
+    localparam int BANK_TILES = 86;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
     logic physical_commit;
@@ -189,7 +189,7 @@ module tb_menu_system;
     end
 
     // Every background map cell the menu writes names a tile in its bank. A
-    // row drawn with the wrong inverse offset lands outside it, either above
+    // row drawn with the wrong bank offset lands outside it, either above
     // the bank or wrapped past zero, so this bounds that whole class wherever
     // it runs, including the delayed catalogue path no fixture reaches yet.
     always @(posedge clk_sys) begin
