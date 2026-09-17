@@ -154,6 +154,63 @@ class LibraryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             library.profile_id('dmg-mbc1')
 
+    def test_the_tagline_table_rides_behind_the_entries_and_round_trips(self):
+        image = fixture_image('TAGGED', 3)
+        entry = library.image_entry(image, abi.PROFILE_DIRECT_ID, tagline=b'A RUN THROUGH MOSS')
+        plain = library.image_entry(image, abi.PROFILE_DIRECT_ID)
+        self.assertEqual((entry['tagline'], plain['tagline']), (b'A RUN THROUGH MOSS', b''))
+        # The entry itself does not move: a tagline changes no byte of its 32.
+        self.assertEqual(library.pack_entry(entry), library.pack_entry(plain))
+        table = library.build_catalogue({0: entry, 3: plain, 16: plain})
+        self.assertEqual(len(table), library.CATALOGUE_BYTES)
+        start = library.TAGLINE_OFFSET
+        self.assertEqual(start, abi.LIBRARY_CATALOGUE_ENTRIES * library.ENTRY_BYTES)
+        self.assertEqual(library.TAGLINE_ADDRESS, library.CATALOGUE_ADDRESS + start)
+        self.assertEqual(table[start:start + library.TAGLINE_BYTES],
+                         b'A RUN THROUGH MOSS' + bytes(library.TAGLINE_BYTES - library.TAGLINE_CHARS))
+        # Slots that declare none stay zero, and so does the region behind the table.
+        self.assertEqual(table[start + library.TAGLINE_BYTES:start + abi.LIBRARY_CATALOGUE_ENTRIES * library.TAGLINE_BYTES],
+                         bytes(library.TAGLINE_BYTES * (abi.LIBRARY_CATALOGUE_ENTRIES - 1)))
+        self.assertEqual(table[start + abi.LIBRARY_CATALOGUE_ENTRIES * library.TAGLINE_BYTES:],
+                         bytes(library.CATALOGUE_BYTES - start - abi.LIBRARY_CATALOGUE_ENTRIES * library.TAGLINE_BYTES))
+        rows = library.parse_catalogue(table)
+        self.assertEqual([row['tagline'] for row in rows], [b'A RUN THROUGH MOSS'] + [b''] * 16)
+        self.assertEqual(library.describe(0, rows[0])['tagline'], 'A RUN THROUGH MOSS')
+        self.assertEqual(library.describe(3, rows[3])['tagline'], '')
+        # A full-width tagline fits exactly; one character more does not.
+        widest = 'X' * library.TAGLINE_CHARS
+        self.assertEqual(library.check_tagline(widest, 'widest'), widest.encode())
+        full = library.build_catalogue({0: library.image_entry(image, abi.PROFILE_DIRECT_ID, tagline=widest.encode())})
+        self.assertEqual(library.parse_catalogue(full)[0]['tagline'], widest.encode())
+        with self.assertRaisesRegex(ValueError, 'at most 18 characters'):
+            library.pack_tagline(b'X' * (library.TAGLINE_CHARS + 1))
+        with self.assertRaisesRegex(ValueError, 'tagline record must be'):
+            library.unpack_tagline(bytes(library.TAGLINE_BYTES - 1))
+
+    def test_a_tagline_outside_the_menu_font_is_refused_by_name(self):
+        # The font draws A-Z, 0-9, space and dash only (menu SPEC, Font).
+        for bad in ('lower case', 'WITH A COMMA,', 'X' * (library.TAGLINE_CHARS + 1), '', 'CAFÉ', 'A+B', b'BYTES', None):
+            with self.subTest(tagline=bad):
+                with self.assertRaisesRegex(ValueError, 'upper-case letters, digits, spaces or dashes: slot 4'):
+                    library.check_tagline(bad, 'slot 4')
+        for good in ('A', 'ROLL THE DICE 0-9', 'X' * library.TAGLINE_CHARS):
+            with self.subTest(tagline=good):
+                self.assertEqual(library.check_tagline(good, 'slot 4'), good.encode('ascii'))
+
+    def test_a_catalogue_written_before_taglines_parses_as_entries_without_them(self):
+        image = fixture_image('LEGACY', 3)
+        entry = library.image_entry(image, abi.PROFILE_DIRECT_ID)
+        # Exactly what the packer wrote before the table existed: entries then zero.
+        entries = b''.join(library.pack_entry(entry if index in (0, 16) else library.EMPTY_ENTRY)
+                           for index in range(abi.LIBRARY_CATALOGUE_ENTRIES))
+        legacy = entries + bytes(library.CATALOGUE_BYTES - len(entries))
+        self.assertEqual(legacy, library.build_catalogue({0: entry, 16: entry}))
+        rows = library.parse_catalogue(legacy)
+        self.assertEqual([row['tagline'] for row in rows], [b''] * abi.LIBRARY_CATALOGUE_ENTRIES)
+        self.assertEqual((rows[0]['valid'], rows[0]['crc32'], rows[0]['title']), (1, zlib.crc32(image), b'LEGACY'.ljust(16, b'\0')))
+        self.assertEqual(rows[5], {**library.EMPTY_ENTRY, 'reserved_zero': True})
+        self.assertTrue(all(row['reserved_zero'] for row in rows))
+
     def test_a_64_kib_mbc1_entry_carries_its_length_in_the_high_byte_and_fills_two_slots(self):
         image = mbc1_image('BANKED GAME', 4)
         entry = library.image_entry(image, abi.PROFILE_MBC1_ID)

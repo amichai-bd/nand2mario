@@ -105,6 +105,28 @@ class Layout(unittest.TestCase):
         with self.assertRaises(ValueError):
             fixture.library_bytes(b'short')
 
+    def test_the_tagline_table_follows_the_entries_and_draws_no_pixel_yet(self):
+        library = fixture.library_bytes(MENU_IMAGE)
+        start = fixture.TAGLINE_ADDRESS
+        self.assertEqual(start, fixture.CATALOGUE_ADDRESS + fixture.IMAGES * fixture.ENTRY_BYTES)
+        # The fixture declares no tagline, so the table and the rest of the
+        # 1 KiB region are zero: these are the bytes the menu targets preloaded
+        # before the table existed.
+        self.assertEqual(library[start:fixture.CATALOGUE_ADDRESS + 1024],
+                         bytes(fixture.CATALOGUE_ADDRESS + 1024 - start))
+        self.assertEqual([row['tagline'] for row in self.entries], [b''] * fixture.IMAGES)
+        # A catalogue that does carry taglines packs them behind the entries and
+        # still renders the same frame: no cell of this reference reads one.
+        tagged = [dict(row, tagline=f'SLOT {index} TAGLINE'.encode()) for index, row in enumerate(self.entries)]
+        table = b''.join(fixture.pack_tagline(row) for row in tagged)
+        self.assertEqual(table[:fixture.TAGLINE_CHARS], b'SLOT 0 TAGLINE'.ljust(fixture.TAGLINE_CHARS, b'\0'))
+        self.assertEqual(len(table), fixture.IMAGES * fixture.TAGLINE_BYTES)
+        self.assertEqual([fixture.pack_entry(row) for row in tagged], [fixture.pack_entry(row) for row in self.entries])
+        self.assertEqual(reference.frame(tagged), reference.frame(self.entries))
+        self.assertEqual(reference.expected('menu', tagged), reference.expected('menu', self.entries))
+        with self.assertRaises(ValueError):
+            fixture.pack_tagline({'tagline': b'X' * (fixture.TAGLINE_CHARS + 1)})
+
     def test_tilemap_rows(self):
         rows = reference.tilemap(self.entries)
         grey = reference.TILE_GREY

@@ -9,6 +9,7 @@ empty) and writes the bytes the testbench reads with `$readmemh`, plus the
 reference frames of the scripted scenario and the `exit-demo` game frame. The catalogue entry layout is
 the `catalogue_entry_t` record of cfg/interfaces.json: valid, profile,
 length (bits 15:0), crc32, title, length_high (bits 23:16), 7 reserved bytes.
+The tagline table follows the entries in the same region, 24 bytes per slot.
 """
 import json
 from pathlib import Path
@@ -24,6 +25,12 @@ MBC1_BYTES = 65536
 CATALOGUE_ADDRESS, ENTRY_BYTES = 0x88000, 32
 LIBRARY_BYTES = 0x8C000
 ENTRY = struct.Struct('<BBHI16sB7x')
+# The tagline table follows the entries inside the same 1 KiB catalogue region:
+# 18 characters then 6 zero bytes per slot. The fixture declares no tagline, so
+# every record is zero and the library bytes are what they were before the
+# table existed; a scenario that wants one sets the row's `tagline`.
+TAGLINE_ADDRESS, TAGLINE_BYTES, TAGLINE_CHARS = 0x88220, 24, 18
+TAGLINE = struct.Struct('<18s6x')
 PROFILE_DIRECT, PROFILE_LOADER, PROFILE_MBC1 = 1, 2, 3
 GAME_EXIT_VALUE = 0x10
 # Seven 32 KiB stub games: two registered titles, a full
@@ -111,7 +118,7 @@ def entries(menu_image, exit_image=None):
     """Seventeen catalogue rows shaped like n2m.host.library.unpack_entry."""
     rows = []
     for index in range(IMAGES):
-        row = {'valid': 0, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(16)}
+        row = {'valid': 0, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(16), 'tagline': b''}
         if index == MENU:
             image = menu_image
             row.update(valid=1, profile=PROFILE_LOADER, length=SLOT_BYTES)
@@ -156,6 +163,14 @@ def pack_entry(row):
     return ENTRY.pack(row['valid'], row['profile'], row['length'] & 0xFFFF, row['crc32'], row['title'], row['length'] >> 16)
 
 
+def pack_tagline(row):
+    """The 24 tagline bytes of one row; a row with no tagline packs all zero."""
+    tagline = bytes(row.get('tagline', b''))
+    if len(tagline) > TAGLINE_CHARS:
+        raise ValueError(f'a fixture tagline is at most {TAGLINE_CHARS} characters')
+    return TAGLINE.pack(tagline)
+
+
 def library_bytes(menu_image, exit_image=None):
     if len(menu_image) != SLOT_BYTES:
         raise ValueError('menu image must be one 32 KiB slot')
@@ -163,6 +178,8 @@ def library_bytes(menu_image, exit_image=None):
         raise ValueError('exit-demo image must be one 32 KiB slot titled EXIT DEMO')
     rows = entries(menu_image, exit_image)
     table = b''.join(pack_entry(row) for row in rows)
+    table += bytes(TAGLINE_ADDRESS - CATALOGUE_ADDRESS - len(table))
+    table += b''.join(pack_tagline(row) for row in rows)
     library = b''.join(image_bytes(index, menu_image, exit_image) for index in range(IMAGES)) + table
     return library.ljust(LIBRARY_BYTES, b'\0')
 

@@ -1,11 +1,18 @@
 """Shared strict target shape/metadata boundary for assembly and packaging."""
 from pathlib import PurePosixPath
 import re
+from n2m.profiles import check_tagline
 from .expressions import AssemblyError
 from .linker import PROFILE_IDS
 
 BASE = {'directory', 'sources', 'assets'}
 PACKAGE = {'layout', 'entry', 'title', 'version', 'profile', 'interface_schema_version'}
+# Keys a target may carry alone, outside the all-or-nothing packaging group.
+# `tagline` is the menu line for the slot a packaged target occupies in the
+# flash library; the profile table owns its character rule, so `check_tagline`
+# is the one that runs here too and the two cannot drift. Omitting the key is
+# the only way to declare no tagline: an empty string is refused.
+OPTIONAL = {'tagline'}
 
 
 def validate_target(target, require_package=False, stage='assemble'):
@@ -16,7 +23,7 @@ def validate_target(target, require_package=False, stage='assemble'):
     def path(value):
         return (type(value) is str and bool(value) and not value.startswith('/') and ':' not in value
                 and '\\' not in value and '..' not in PurePosixPath(value).parts)
-    if type(target) is not dict or not BASE<=target.keys() or target.keys()-BASE-PACKAGE:
+    if type(target) is not dict or not BASE<=target.keys() or target.keys()-BASE-PACKAGE-OPTIONAL:
         reject('unknown or malformed software target')
     if not path(target['directory']) or type(target['sources']) is not list or not target['sources'] or not all(path(s) for s in target['sources']):
         reject('nonempty relative directory/source paths required','PRIVATE_PATH')
@@ -48,4 +55,9 @@ def validate_target(target, require_package=False, stage='assemble'):
             reject('unsupported target profile','PROFILE_MISMATCH')
         if type(target['interface_schema_version']) is not int or target['interface_schema_version']!=1:
             reject('unsupported interface schema identity')
+    if 'tagline' in target:
+        try:
+            check_tagline(target['tagline'],'software target')
+        except ValueError as error:
+            reject(str(error),'METADATA')
     return target

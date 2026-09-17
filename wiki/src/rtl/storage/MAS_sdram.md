@@ -286,7 +286,7 @@ records it as a source-synchronous I/O relationship, not as a CDC.
 |---|---|---|
 | `0x0000000 + i * 0x8000`, i = 0..15 | 32 KiB each | Game slot `i`: one complete 32 KiB `dmg-direct-v1` image, or half of a 64 KiB `dmg-mbc1-v1` image that fills slots `i` and `i + 1` (`i` at most 14) |
 | `0x0080000` | 32 KiB | Slot 16: the menu image, a 32 KiB image in the loader profile |
-| `0x0088000` | 1 KiB | Catalogue table: 17 entries x 32 bytes at `0x0088000 + 32 * i`, i = 0..16; bytes `0x0088220`-`0x00883FF` zero |
+| `0x0088000` | 1 KiB | Catalogue table: 17 entries x 32 bytes at `0x0088000 + 32 * i`, i = 0..16, then 17 taglines x 24 bytes at `0x0088220 + 24 * i`; bytes `0x00883B8`-`0x00883FF` zero |
 | `0x0088400` - `0x3FFFFFF` | rest | Reserved; the controller accepts requests here, no owner uses them |
 
 Slot `i` byte `b` is at device address `i * 32768 + b`. An image is 32 KiB
@@ -306,6 +306,17 @@ slot a 64 KiB image spills into has an empty entry:
 | 8-23 | 16 | `title`: bytes `0x0134`-`0x0143` of the image header, copied verbatim. One clarification: when all sixteen header bytes are zero, the writer stores the image's pinned display title (upper-case ASCII letters, digits, spaces and dashes, zero-padded to 16) instead; a header with any non-zero title byte is never overridden. Every writer takes the entry from one code path ([`image_entry`](../../../../tools/n2m/host/library.py)), so a flash image and a UART load agree byte for byte; today only the flash library writes external entries |
 | 24 | 1 | `length_high`: bits 23:16 of the image length, 0 for a 32 KiB image and 1 for 64 KiB. This byte was reserved zero before, so a 32 KiB entry is byte for byte the entry written then |
 | 25-31 | 7 | Reserved, zero |
+
+Tagline table: the 480 bytes behind the entries were specified zero, so the
+taglines the [menu info footer](../../sw/menu/DESIGN_V2.md#3-info-footer) needs
+live there rather than in a wider entry. Tagline `i` is at
+`0x0088220 + 24 * i`: 18 characters, zero-padded, then 6 zero bytes. The
+characters are what the [menu font](../../sw/menu/SPEC.md#font) draws, `A`-`Z`,
+`0`-`9`, space and dash; an all-zero record is no tagline, which is what a
+catalogue written before the table existed holds everywhere. No entry byte and
+no address outside this region moves, so the copy engine, the boot copier and
+the menu's entry addressing are unchanged, and the copier already carries the
+table because it copies the whole region.
 
 Length encoding: an entry's image length is the 24-bit value
 `length_high << 16 | length`. Bytes 2-3 alone described every image while

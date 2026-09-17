@@ -17,7 +17,15 @@ record the programmed `.pof`, the power-up to the menu and the read-back
 library state on the board; the programming section below is the contract
 those slices derive from. The board's current flash-resident image is the
 [session 9](../../board-bring-up.md#session-9-reflash-with-the-plated-list-menu)
-`v05-board` fit, packed `catalogue.bin` SHA-256 `696868ab…`.
+`v05-board` fit, packed `catalogue.bin` SHA-256 `696868ab…`. That digest
+records what is programmed into the board, not what the packer writes today:
+the catalogue carries each image's CRC-32 and title, so every change to the
+menu image since that session already moved it, and the board keeps the bytes
+of its own session until it is reflashed. The tagline table moves the digest
+only when an entry declares a tagline, because an undeclared one packs zero
+into bytes that were already zero; the registered games declare theirs, so the
+packed catalogue now differs from the session-9 bytes there too. The board
+shows no tagline until it is reflashed with a current image.
 
 ## Scope
 
@@ -68,7 +76,7 @@ flash_word(a) = 0x00800 + (a >> 2)      for SDRAM device byte address a, 0 <= a 
 | Flash word | Size | Content | Sector |
 |---|---|---|---|
 | `0x00800 + i * 0x2000`, i = 0..16 | 8192 words, 32 KiB | Slot `i`: one complete 32 KiB image, or half of a 64 KiB image that starts in slot `i` or `i - 1`; slot 16 is the menu | slots 0-1 UFM1, UFM0; 2-13 CFM2; 14-16 CFM1 |
-| `0x22800`-`0x228FF` | 256 words, 1 KiB | Catalogue, 17 entries x 32 bytes, same format as the [SDRAM catalogue](MAS_sdram.md#address-space-layout), including its 24-bit length encoding (`length` word plus `length_high` in byte 24, so 32 KiB entries are byte-identical to the one-size catalogue) | CFM1 |
+| `0x22800`-`0x228FF` | 256 words, 1 KiB | Catalogue, 17 entries x 32 bytes then 17 taglines x 24 bytes, same format as the [SDRAM catalogue](MAS_sdram.md#address-space-layout), including its 24-bit length encoding (`length` word plus `length_high` in byte 24, so 32 KiB entries are byte-identical to the one-size catalogue) and its tagline table in the bytes behind the entries (an all-zero record is no tagline, so a catalogue packed before the table existed reads the same) | CFM1 |
 | `0x22900`-`0x2E7FF` | 48,896 words, 191 KiB | Erased, reserved | CFM1 |
 
 Slot `i` byte `b` is at flash word `0x00800 + (i * 32768 + b) / 4`, byte

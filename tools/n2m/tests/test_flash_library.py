@@ -73,6 +73,49 @@ class AssemblyTests(unittest.TestCase):
             self.assertEqual(flash_library.flash_word(library.slot_address(index)), DATA_BASE + index * SLOT_WORDS)
         self.assertEqual(flash_library.USER_WORDS, 0x2E7FF - DATA_BASE + 1)
 
+    def test_taglines_reach_the_catalogue_words_without_moving_an_image_or_an_entry(self):
+        tagged = {index: (image, profile, {'tagline_bytes': f'SLOT {index} TAGLINE'.encode()})
+                  for index, (image, profile) in self.images.items()}
+        assembled = flash_library.assemble(tagged)
+        # No image word and no entry byte moves: only the tagline table differs.
+        self.assertEqual({word: value for word, value in assembled['words'].items()
+                          if word < flash_library.avalon_word(library.CATALOGUE_ADDRESS)},
+                         {word: value for word, value in self.words.items()
+                          if word < flash_library.avalon_word(library.CATALOGUE_ADDRESS)})
+        self.assertEqual(assembled['catalogue'][:library.TAGLINE_OFFSET], self.assembled['catalogue'][:library.TAGLINE_OFFSET])
+        self.assertEqual(self.assembled['catalogue'][library.TAGLINE_OFFSET:],
+                         bytes(library.CATALOGUE_BYTES - library.TAGLINE_OFFSET))
+        rows = library.parse_catalogue(assembled['catalogue'])
+        self.assertEqual([row['tagline'] for row in rows if row['valid']],
+                         [f'SLOT {index} TAGLINE'.encode() for index in sorted(self.images)])
+        self.assertEqual([row['tagline'] for row in rows if not row['valid']], [b''] * (library.IMAGE_COUNT - len(self.images)))
+        # The summary row reports the tagline as text beside the title, and the
+        # raw bytes never leak into it.
+        row = next(row for row in assembled['rows'] if row['index'] == 0)
+        self.assertEqual(row['tagline'], 'SLOT 0 TAGLINE')
+        self.assertNotIn('tagline_bytes', row)
+        # The table is inside the catalogue's own flash words; nothing beyond it is defined.
+        base = flash_library.avalon_word(library.TAGLINE_ADDRESS)
+        self.assertEqual(assembled['words'][base], int.from_bytes(b'SLOT', 'little'))
+        self.assertEqual(max(assembled['words']), max(self.words))
+
+    def test_two_builds_of_the_same_inputs_write_the_same_digests(self):
+        tagged = {index: (image, profile, {'tagline_bytes': b'STEADY BYTES'})
+                  for index, (image, profile) in self.images.items()}
+        digests = []
+        for _run in range(2):
+            with tempfile.TemporaryDirectory() as folder:
+                digests.append(flash_library.write(Path(folder), flash_library.assemble(tagged)))
+        self.assertEqual(digests[0], digests[1])
+        self.assertEqual(sorted(digests[0]), [flash_library.CATALOGUE_NAME, flash_library.DAT_NAME, flash_library.HEX_NAME])
+        # A tagline changes the catalogue and the flash image, and no image byte:
+        # the per-slot image digests are the ones the untagged build recorded.
+        with tempfile.TemporaryDirectory() as folder:
+            plain = flash_library.write(Path(folder), self.assembled)
+        self.assertNotEqual(plain[flash_library.CATALOGUE_NAME], digests[0][flash_library.CATALOGUE_NAME])
+        self.assertEqual({index: hashlib.sha256(image).hexdigest() for index, (image, _p) in self.images.items()},
+                         {index: hashlib.sha256(tagged[index][0]).hexdigest() for index in tagged})
+
     def test_slot_words_are_little_endian_at_the_contract_addresses(self):
         for index, (image, _profile) in self.images.items():
             base = index * SLOT_WORDS
@@ -228,7 +271,13 @@ class RegistryTests(unittest.TestCase):
         (self.root / external.PIN_FILE).write_text(json.dumps({'external_roms': {'images': self.pins}}))
 
     def registry(self, **fields):
-        data = {'schema_version': 1, 'slots': {'0': 'springtrail', '1': 'stackdrop'}, 'menu': 'menu', **fields}
+        """Write a registry and load it; a bare name is the entry that names only its image."""
+        def entry(value):
+            return {'image': value} if isinstance(value, str) else value
+        data = {'schema_version': 2, 'slots': {'0': 'springtrail', '1': 'stackdrop'}, 'menu': 'menu', **fields}
+        if isinstance(data['slots'], dict):
+            data['slots'] = {key: entry(value) for key, value in data['slots'].items()}
+        data['menu'] = entry(data['menu'])
         (self.root / flash_library.REGISTRY).write_text(json.dumps(data))
         return flash_library.load_registry(self.root)
 
@@ -275,7 +324,7 @@ class RegistryTests(unittest.TestCase):
                     self.registry(**fields)
 
     def test_registry_refusals(self):
-        cases = ((dict(schema_version=2), 'schema'), (dict(slots={}), 'schema'), (dict(extra=1), 'schema'),
+        cases = ((dict(schema_version=1), 'schema'), (dict(slots={}), 'schema'), (dict(extra=1), 'schema'),
                  (dict(slots={'16': 'springtrail'}), r'0\.\.15'), (dict(slots={'01': 'springtrail'}), r'0\.\.15'),
                  (dict(slots={'0': 'objects'}), 'no packaged software target'),
                  (dict(slots={'0': 'missing'}), 'no packaged software target'),
@@ -287,6 +336,66 @@ class RegistryTests(unittest.TestCase):
             with self.subTest(fields=fields):
                 with self.assertRaisesRegex(ValueError, message):
                     self.registry(**fields)
+
+    def test_a_registry_entry_may_declare_the_slot_tagline(self):
+        registry = self.registry(slots={'0': {'image': 'springtrail', 'tagline': 'A RUN THROUGH MOSS'},
+                                        '1': 'stackdrop', '3': 'external:game'})
+        self.assertEqual(registry['slots'], {0: 'springtrail', 1: 'stackdrop', 3: 'external:game'})
+        self.assertEqual(registry['taglines'], {0: b'A RUN THROUGH MOSS', 1: None, 3: None, library.MENU_INDEX: None})
+        # A software target may carry a package's instead; declaring both is refused.
+        targets = json.loads((self.root / flash_library.SW_REGISTRY).read_text())
+        targets['targets']['stackdrop']['tagline'] = 'STACK THEM HIGH'
+        (self.root / flash_library.SW_REGISTRY).write_text(json.dumps(targets))
+        self.assertEqual(self.registry(slots={'0': 'springtrail', '1': 'stackdrop'})['taglines'][1], b'STACK THEM HIGH')
+        with self.assertRaisesRegex(ValueError, 'slot 1 declares a tagline in the registry and in software target stackdrop'):
+            self.registry(slots={'0': 'springtrail', '1': {'image': 'stackdrop', 'tagline': 'TWICE OVER'}})
+
+    def test_registry_entry_refusals(self):
+        cases = ((dict(slots={'0': 'springtrail', '1': {'image': 'stackdrop', 'extra': 1}}),
+                  'must carry an image and an optional tagline: slot 1'),
+                 (dict(slots={'0': {'tagline': 'NO IMAGE HERE'}}), 'must carry an image and an optional tagline: slot 0'),
+                 (dict(slots={'0': {'image': 5}}), 'invalid flash library package name at slot 0'),
+                 (dict(menu={'image': 'menu', 'gone': True}), 'must carry an image and an optional tagline: menu'),
+                 (dict(slots={'0': {'image': 'springtrail', 'tagline': 'lower case'}}),
+                  'upper-case letters, digits, spaces or dashes: slot 0'),
+                 (dict(slots={'0': {'image': 'springtrail', 'tagline': 'X' * 19}}),
+                  'upper-case letters, digits, spaces or dashes: slot 0'),
+                 (dict(slots={'0': {'image': 'springtrail', 'tagline': ''}}),
+                  'upper-case letters, digits, spaces or dashes: slot 0'))
+        for fields, message in cases:
+            with self.subTest(fields=fields):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.registry(**fields)
+
+    def test_a_package_tagline_survives_the_real_target_validator(self):
+        """The registry's package path and the assembler's must agree on a tagline.
+
+        `load_registry` reads `src/sw/targets.json` directly, so on its own it
+        would accept a key the assembler refuses; every package is assembled
+        through `validate_target` before it reaches a slot. Both run here, on
+        the checked-in targets, so the two cannot disagree.
+        """
+        from sw.targets import validate_target
+        from sw.expressions import AssemblyError
+        registry = flash_library.load_registry(ROOT)
+        targets = json.loads((ROOT / flash_library.SW_REGISTRY).read_text())['targets']
+        packages = [name for value in list(registry['slots'].values()) + [registry['menu']]
+                    if flash_library.slot_source(value)[0] == 'package' for name in [flash_library.slot_source(value)[1]]]
+        self.assertEqual(sorted(packages), ['menu', 'springtrail', 'stackdrop', 'v05'])
+        for name in packages:
+            with self.subTest(package=name):
+                target = targets[name]
+                # As checked in: Springtrail and Stackdrop carry one, the menu
+                # and v05 do not. Both shapes must pass the real validator.
+                validate_target(dict(target), require_package=True, stage='link')
+                validate_target({k: v for k, v in target.items() if k != 'tagline'},
+                                require_package=True, stage='link')
+                validate_target(dict(target, tagline='A RUN THROUGH MOSS'), require_package=True, stage='link')
+                # The same string the catalogue refuses, refused here too.
+                with self.assertRaises(ValueError):
+                    library.check_tagline('lower case', name)
+                with self.assertRaises(AssemblyError):
+                    validate_target(dict(target, tagline='lower case'), require_package=True, stage='link')
 
     def test_checked_in_registry_lists_our_games_and_the_eight_homebrew_games_that_ran_here(self):
         registry = flash_library.load_registry(ROOT)
@@ -306,6 +415,22 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual({index: pins[name]['size'] for index, name in EXTERNALS.items()},
                          {index: abi.MBC1_ROM_BYTES if index in BANKED_EXTERNALS else library.SLOT_BYTES for index in EXTERNALS})
         self.assertNotIn(11, registry['slots'])
+        # Every game slot declares its menu tagline; the menu itself is never
+        # listed, so it declares none and its record stays zero.
+        self.assertEqual(sorted(registry['taglines']), sorted(registry['slots']) + [library.MENU_INDEX])
+        self.assertEqual(registry['taglines'], {
+            0: b'RUN THE TRAIL', 1: b'FILL ROWS TO CLEAR', 2: b'BUTTON TEST', 3: b'ROLL ON THE FLOOR',
+            4: b'MATCH AND BATTLE', 5: b'GUESS THE WORD', 6: b'A PIRATE ADVENTURE', 7: b'SHOOT THE INVADERS',
+            8: b'CHAIN THE SQUARES', 9: b'DODGE THE HAZARDS', 10: b'MBC1 TEST GAME', library.MENU_INDEX: None})
+        # Springtrail and Stackdrop carry theirs in their software target, the
+        # other nine in the registry entry; neither slot carries both.
+        targets = json.loads((ROOT / flash_library.SW_REGISTRY).read_text())['targets']
+        entries = json.loads((ROOT / flash_library.REGISTRY).read_text())['slots']
+        self.assertEqual({name for name, target in targets.items() if 'tagline' in target}, {'springtrail', 'stackdrop'})
+        self.assertEqual({int(key) for key, entry in entries.items() if 'tagline' in entry}, set(range(2, 11)))
+        for index, tagline in registry['taglines'].items():
+            if tagline is not None:
+                self.assertEqual(library.check_tagline(tagline.decode(), f'slot {index}'), tagline)
         self.assertEqual({name: pins[name].get('title') for name in ('alien-invasion', 'square-fall')},
                          {'alien-invasion': 'ALIEN INVASION', 'square-fall': 'SQUARE FALL'})
 
@@ -389,7 +514,8 @@ class ExternalImageTests(unittest.TestCase):
     def test_build_images_stages_external_slots_beside_the_packages(self):
         registry = {'slots': {0: 'springtrail', 3: 'external:named', 4: 'external:blank'}, 'menu': 'menu',
                     'externals': {3: {'pin': 'named', 'licence': 'MIT', 'source': self.pins['named']['url'], 'sha256': self.pins['named']['sha256']},
-                                  4: {'pin': 'blank', 'licence': 'MIT', 'source': self.pins['blank']['url'], 'sha256': self.pins['blank']['sha256']}}}
+                                  4: {'pin': 'blank', 'licence': 'MIT', 'source': self.pins['blank']['url'], 'sha256': self.pins['blank']['sha256']}},
+                    'taglines': {}}
         build = self.root / 'workdir/builds/unit'
 
         def fake_build(root, build, args, provenance):
@@ -407,7 +533,7 @@ class ExternalImageTests(unittest.TestCase):
         self.assertEqual(sorted(images), [0, 3, 4, library.MENU_INDEX])
         self.assertEqual(images[3][:2], (self.images['named'], abi.PROFILE_NAME))
         self.assertEqual(images[3][2], {'kind': 'external', **registry['externals'][3], 'image_sha256': self.pins['named']['sha256'],
-                                        'notices': [], 'fallback_title': None})
+                                        'notices': [], 'fallback_title': None, 'tagline_bytes': None})
         self.assertEqual(images[4][2]['fallback_title'], b'BLANK TITLE')
         self.assertEqual(images[0][2]['kind'], 'package')
         assembled = flash_library.assemble(images)
@@ -430,7 +556,8 @@ class ExternalImageTests(unittest.TestCase):
     def test_build_images_places_a_registered_64_kib_external_in_two_slots(self):
         registry = {'slots': {0: 'springtrail', 10: 'external:banked'}, 'menu': 'menu',
                     'externals': {10: {'pin': 'banked', 'licence': 'MIT', 'source': self.pins['banked']['url'],
-                                       'sha256': self.pins['banked']['sha256']}}}
+                                       'sha256': self.pins['banked']['sha256']}},
+                    'taglines': {}}
         build = self.root / 'workdir/builds/unit'
 
         def fake_build(root, build, args, provenance):

@@ -4,8 +4,9 @@ Layout owner: wiki/src/rtl/storage/MAS_sdram.md#address-space-layout. Slot i
 starts at i * SLOT_BYTES; a 32 KiB image fills one slot and a 64 KiB MBC1
 image fills slots i and i + 1 with one catalogue entry at i and an empty entry
 at i + 1. MENU_INDEX is the menu image; the catalogue is CATALOGUE_ENTRIES
-records of ENTRY_BYTES at CATALOGUE_ADDRESS, little-endian, and the remainder
-of its 1 KiB region is zero. An entry's length is 24 bits, the 16-bit
+records of ENTRY_BYTES at CATALOGUE_ADDRESS, little-endian, followed by
+CATALOGUE_ENTRIES tagline records of TAGLINE_BYTES at TAGLINE_ADDRESS, and the
+remainder of its 1 KiB region is zero. An entry's length is 24 bits, the 16-bit
 ``length`` word plus ``length_high``, and equals its profile's image length.
 The copy engine compares CRC-32/ISO-HDLC over the whole image with the
 catalogue crc32, so the host verifies the same quantity after writing.
@@ -13,7 +14,8 @@ catalogue crc32, so the host verifies the same quantity after writing.
 import zlib
 
 from .. import generated_interfaces as abi
-from ..profiles import PROFILE_IDS as PACKAGE_PROFILE_IDS, PROFILE_IMAGE_BYTES, LOADER_PROFILE_NAME
+from ..profiles import (PROFILE_IDS as PACKAGE_PROFILE_IDS, PROFILE_IMAGE_BYTES, LOADER_PROFILE_NAME,
+                        TAGLINE_TEXT, check_tagline)
 from ..interface_codec import SDRAM_LINE, pack_record, unpack_record
 
 # Every number below comes from cfg/interfaces.json through the generated
@@ -36,10 +38,23 @@ ENTRY_FIELDS = {field['name']: field['bits'] // 8 for field in abi.RECORDS['cata
 LENGTH_LOW_BITS = ENTRY_FIELDS['length'] * 8
 TITLE_START = 0x134
 TITLE_BYTES = ENTRY_FIELDS['title_low'] + ENTRY_FIELDS['title_high']
-# The layout reserves one 1 KiB region for the catalogue (entries then zero
-# bytes). The host writes and compares the whole region so a stale byte behind
-# the entries cannot survive a load.
+# The layout reserves one 1 KiB region for the catalogue (entries, the tagline
+# table, then zero bytes). The host writes and compares the whole region so a
+# stale byte behind the entries cannot survive a load.
 CATALOGUE_BYTES = 1024
+# The tagline table lives in the same region, right after the entries, so no
+# address outside the catalogue moves and the boot copier already carries it.
+# Tagline i is TAGLINE_CHARS characters then zero to TAGLINE_BYTES; an all-zero
+# record is no tagline, which is what a catalogue built before taglines holds.
+TAGLINE_ADDRESS = abi.LIBRARY_TAGLINE_ADDRESS
+TAGLINE_BYTES = abi.LIBRARY_TAGLINE_BYTES
+TAGLINE_CHARS = abi.LIBRARY_TAGLINE_CHARS
+TAGLINE_OFFSET = TAGLINE_ADDRESS - CATALOGUE_ADDRESS
+# What the menu font can draw: A-Z, 0-9, space and dash (menu SPEC, Font). Any
+# other byte would draw the dash, so an authored tagline carrying one is
+# refused rather than shipped into the catalogue. The rule and `check_tagline`
+# live in the profile table, because the assembler's target validator applies
+# the same one and two spellings of it could drift apart.
 
 # Package profile name to the generated profile ID the image runs in: the
 # packager's own table, so the catalogue never carries a name it did not
@@ -98,15 +113,31 @@ def profile_bytes(profile):
     return PROFILE_BYTES[profile]
 
 
-def image_entry(image, profile, fallback_title=None):
+def pack_tagline(tagline):
+    """One tagline record: its characters, then zero to TAGLINE_BYTES. No tagline is an all-zero record."""
+    tagline = bytes(tagline or b'')
+    if len(tagline) > TAGLINE_CHARS:
+        raise ValueError(f'a tagline is at most {TAGLINE_CHARS} characters')
+    return tagline.ljust(TAGLINE_BYTES, b'\0')
+
+
+def unpack_tagline(raw):
+    """The authored characters of one tagline record; an all-zero record reads as no tagline."""
+    if len(raw) != TAGLINE_BYTES:
+        raise ValueError(f'tagline record must be {TAGLINE_BYTES} bytes')
+    return raw[:TAGLINE_CHARS].rstrip(b'\0')
+
+
+def image_entry(image, profile, fallback_title=None, tagline=None):
     """The catalogue entry describing one complete image of ``profile``.
 
     The image is exactly its profile's length: one slot for DIRECT_ID and
     LOADER_ID, MBC1_ROM_BYTES (two slots) for MBC1_ID. The title is header bytes 0x134-0x143
     verbatim. Only when every one of them is zero does ``fallback_title`` (a
     pinned display title, at most 16 ASCII bytes) stand in; a non-blank header
-    is never overridden. Every catalogue writer goes through here, so a flash
-    image and a UART load agree.
+    is never overridden. ``tagline`` is the authored tagline bytes, or None for
+    no tagline. Every catalogue writer goes through here, so a flash image and
+    a UART load agree.
     """
     image = bytes(image)
     expected = profile_bytes(profile)
@@ -118,10 +149,11 @@ def image_entry(image, profile, fallback_title=None):
         if not 0 < len(fallback_title) <= TITLE_BYTES:
             raise ValueError(f'fallback title must be 1..{TITLE_BYTES} bytes')
         title = fallback_title.ljust(TITLE_BYTES, b'\0')
-    return {'valid': VALID, 'profile': profile, 'length': len(image), 'crc32': zlib.crc32(image), 'title': title}
+    return {'valid': VALID, 'profile': profile, 'length': len(image), 'crc32': zlib.crc32(image), 'title': title,
+            'tagline': bytes(tagline or b'')}
 
 
-EMPTY_ENTRY = {'valid': EMPTY, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(TITLE_BYTES)}
+EMPTY_ENTRY = {'valid': EMPTY, 'profile': 0, 'length': 0, 'crc32': 0, 'title': bytes(TITLE_BYTES), 'tagline': b''}
 
 
 def pack_entry(entry):
@@ -152,26 +184,45 @@ def unpack_entry(raw):
 
 
 def build_catalogue(entries):
-    """1 KiB catalogue bytes from {index: entry}; every other index is empty."""
+    """1 KiB catalogue bytes from {index: entry}; every other index is empty.
+
+    The entries come first and the tagline table at TAGLINE_OFFSET; the rest of
+    the region stays zero. Entries carrying no tagline therefore pack into the
+    same bytes a catalogue built before taglines existed did.
+    """
     table = b''.join(pack_entry(entries.get(index, EMPTY_ENTRY)) for index in range(IMAGE_COUNT))
-    return table + bytes(CATALOGUE_BYTES - len(table))
+    taglines = b''.join(pack_tagline(entries.get(index, EMPTY_ENTRY).get('tagline')) for index in range(IMAGE_COUNT))
+    if len(table) > TAGLINE_OFFSET or TAGLINE_OFFSET + len(taglines) > CATALOGUE_BYTES:
+        raise ValueError('the catalogue region does not hold the entries and their taglines')
+    region = bytearray(CATALOGUE_BYTES)
+    region[:len(table)] = table
+    region[TAGLINE_OFFSET:TAGLINE_OFFSET + len(taglines)] = taglines
+    return bytes(region)
 
 
 def parse_catalogue(raw):
+    """One row per index: the entry fields and the tagline read from the table behind them."""
     if len(raw) != CATALOGUE_BYTES:
         raise ValueError('catalogue must be 1 KiB')
-    return [unpack_entry(raw[index * ENTRY_BYTES:(index + 1) * ENTRY_BYTES]) for index in range(IMAGE_COUNT)]
+    rows = []
+    for index in range(IMAGE_COUNT):
+        row = unpack_entry(raw[index * ENTRY_BYTES:(index + 1) * ENTRY_BYTES])
+        start = TAGLINE_OFFSET + index * TAGLINE_BYTES
+        row['tagline'] = unpack_tagline(raw[start:start + TAGLINE_BYTES])
+        rows.append(row)
+    return rows
 
 
 def title_text(title):
-    """Printable ASCII only: control and non-ASCII bytes become '?' so a title cannot steer a terminal."""
+    """Printable ASCII only: control and non-ASCII bytes become '?' so catalogue text cannot steer a terminal."""
     return ''.join(chr(byte) if 0x20 <= byte < 0x7f else '?' for byte in title.rstrip(b'\0'))
 
 
 def describe(index, entry):
-    """One printable/JSON row of the catalogue as stored."""
+    """One printable/JSON row of the catalogue as stored; an entry with no tagline reports an empty one."""
     return {'index': index, 'name': slot_name(index), 'valid': entry['valid'], 'profile': entry['profile'],
-            'length': entry['length'], 'crc32': f"{entry['crc32']:08x}", 'title': title_text(entry['title'])}
+            'length': entry['length'], 'crc32': f"{entry['crc32']:08x}", 'title': title_text(entry['title']),
+            'tagline': title_text(entry.get('tagline', b''))}
 
 
 def write_region(client, address, data, notify, name):

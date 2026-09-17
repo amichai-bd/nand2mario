@@ -86,7 +86,9 @@ any other entry is drawn as its slot number with a blank title. The cursor
 visits every slot, so selecting an empty one is how the player sees
 `INVALID_SLOT`. Length and profile are the engine's checks: a `valid` entry
 with a wrong length is listed and its selection is refused with the same
-result. The menu does not look at the `crc32` or `length` fields. A 64 KiB
+result. The menu does not look at the `crc32` or `length` fields, and it does
+not read the [tagline table](../../rtl/storage/MAS_sdram.md#address-space-layout)
+that shares the catalogue region: no cell of this frame draws a tagline. A 64 KiB
 MBC1 image has one entry at the first of its two slots and an empty entry at
 the second, so the menu lists it once and shows the second slot's number with
 a blank title.
@@ -458,8 +460,9 @@ settled, then the cursor object, with shade 0 transparent.
 the field is reproduced rather than stored.
 `frame(entries, cursor=0, phase=0, result=0, index=255, sdram_ready=True)`
 returns the 23040 row-major shades for a catalogue given as
-[`unpack_entry`](../../../../tools/n2m/host/library.py) rows (`valid` and 16
-`title` bytes per slot). `check_pixels(packed, entries, **state)` compares a
+[`parse_catalogue`](../../../../tools/n2m/host/library.py) rows (`valid`, 16
+`title` bytes and a `tagline` no cell reads, per slot).
+`check_pixels(packed, entries, **state)` compares a
 `host snapshot` frame (5760 packed bytes) pixel for pixel and raises
 `MENU_PIXEL x= y= expected= actual=` at the first difference;
 `expected('menu', entries)`, `expected('cursor-N', entries)`,

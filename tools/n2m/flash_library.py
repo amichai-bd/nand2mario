@@ -80,17 +80,34 @@ def slot_source(name):
     return "package", name
 
 
-def load_registry(root):
-    """The validated slot registry: {index: slot value} and the menu package name.
+def registry_entry(value, where):
+    """One registry entry: its image value and its tagline, or None for no tagline.
 
-    A slot value is a `src/sw/targets.json` package name or `external:<name>`,
+    An entry is an object carrying `image` and optionally `tagline`. The image
+    is a `src/sw/targets.json` package name or `external:<name>`; the tagline is
+    the text the menu shows for that slot, checked here against the font's
+    alphabet. A package may instead declare its tagline in its software target;
+    declaring it in both places is refused, so one slot has one source.
+    """
+    if not isinstance(value, dict) or not set(value) <= {"image", "tagline"} or "image" not in value:
+        raise ValueError(f"flash library entry must carry an image and an optional tagline: {where}")
+    if not isinstance(value["image"], str):
+        raise ValueError(f"invalid flash library package name at {where}")
+    tagline = library.check_tagline(value["tagline"], where) if "tagline" in value else None
+    return value["image"], tagline
+
+
+def load_registry(root):
+    """The validated slot registry: {index: image value}, the menu package name and each slot's tagline.
+
+    An image value is a `src/sw/targets.json` package name or `external:<name>`,
     a pin of `tools/n2m/dependencies.json` `external_roms.images` whose image
     is fetched at build time and never committed. The menu is always a package.
     """
     root = Path(root)
     data = json.loads((root / REGISTRY).read_text(encoding="utf-8"))
     if (not isinstance(data, dict) or set(data) != {"schema_version", "slots", "menu"}
-            or type(data["schema_version"]) is not int or data["schema_version"] != 1
+            or type(data["schema_version"]) is not int or data["schema_version"] != 2
             or not isinstance(data["slots"], dict) or not data["slots"]):
         raise ValueError("unsupported flash library registry schema")
     packages = json.loads((root / SW_REGISTRY).read_text(encoding="utf-8"))
@@ -98,14 +115,18 @@ def load_registry(root):
         raise ValueError("unsupported software target registry")
     pins = json.loads((root / external.PIN_FILE).read_text(encoding="utf-8")).get("external_roms", {}).get("images", {})
     slots = {}
-    for key, name in data["slots"].items():
+    # One authored tagline per slot, or None. The registry carries it here; a
+    # package may carry its own in its software target instead. Both are checked
+    # against the menu font's alphabet, so a bad one fails before any build.
+    taglines = {}
+    for key, entry in data["slots"].items():
         if not re.fullmatch(r"(0|[1-9][0-9]?)", key) or not 0 <= int(key) < library.GAME_SLOTS:
             raise ValueError(f"flash library slot must be 0..{library.GAME_SLOTS - 1}: {key!r}")
-        slots[int(key)] = name
+        slots[int(key)], taglines[int(key)] = registry_entry(entry, library.slot_name(int(key)))
+    slots[library.MENU_INDEX], taglines[library.MENU_INDEX] = registry_entry(data["menu"], library.slot_name(library.MENU_INDEX))
+    menu = slots.pop(library.MENU_INDEX)
     externals = {}
-    for index, value in sorted(slots.items()) + [(library.MENU_INDEX, data["menu"])]:
-        if not isinstance(value, str):
-            raise ValueError(f"invalid flash library package name at {library.slot_name(index)}")
+    for index, value in sorted(slots.items()) + [(library.MENU_INDEX, menu)]:
         kind, name = slot_source(value)
         if kind == "external":
             if index == library.MENU_INDEX:
@@ -130,12 +151,17 @@ def load_registry(root):
         package = packages["targets"].get(name)
         if not isinstance(package, dict) or package.get("profile") not in library.PROFILE_IDS:
             raise ValueError(f"flash library {library.slot_name(index)} names no packaged software target: {name}")
-    if packages["targets"][data["menu"]]["profile"] != library.LOADER_PROFILE_NAME:
+        if "tagline" in package:
+            if taglines[index] is not None:
+                raise ValueError(f"{library.slot_name(index)} declares a tagline in the registry and in software target {name}")
+            taglines[index] = library.check_tagline(package["tagline"], f"software target {name}")
+    if packages["targets"][menu]["profile"] != library.LOADER_PROFILE_NAME:
         raise ValueError(f"the menu image must run in {library.LOADER_PROFILE_NAME}")
-    names = list(slots.values()) + [data["menu"]]
+    names = list(slots.values()) + [menu]
     if len(set(names)) != len(names):
         raise ValueError("a package may occupy only one flash library slot")
-    return {"slots": slots, "menu": data["menu"], "externals": externals, "sha256": file_hash(root / REGISTRY)}
+    return {"slots": slots, "menu": menu, "externals": externals, "taglines": taglines,
+            "sha256": file_hash(root / REGISTRY)}
 
 
 def check_external_header(image, name, fallback_title=None):
@@ -192,7 +218,8 @@ def build_images(root, build, registry, provenance, rebuild=False, offline=False
         if kind == "external":
             image, profile, record = external_image(root, name, offline)
             row = {"kind": "external", **registry["externals"][index], "image_sha256": record["sha256"],
-                   "notices": record["notices"], "fallback_title": record["title"]}
+                   "notices": record["notices"], "fallback_title": record["title"],
+                   "tagline_bytes": registry["taglines"].get(index)}
             images[index] = (image, profile, row)
             continue
         report = build_target(root, build, SimpleNamespace(target=name, rebuild=rebuild), provenance)
@@ -204,6 +231,7 @@ def build_images(root, build, registry, provenance, rebuild=False, offline=False
         if file_hash(rom) != report["artifacts"].get(report["rom"]) or len(image) != expected:
             raise ValueError(f"software build of {name} left no complete {expected}-byte image")
         images[index] = (image, report["profile"], {"kind": "package", "package": name, "attempt": report["attempt"],
+                                                    "tagline_bytes": registry["taglines"].get(index),
                                                     "result": (Path(root) / report["rom"]).parent.joinpath("result.json").relative_to(Path(root)).as_posix(),
                                                     "image_sha256": report["artifacts"][report["rom"]],
                                                     "fingerprint": report["fingerprint"]})
@@ -217,7 +245,9 @@ def assemble(images):
     empty. A 64 KiB image at ``index`` fills the next slot too, so that slot
     must be absent. ``extra`` rows are copied into the summary; its
     ``fallback_title`` is the pinned display title used only for an all-zero
-    header title.
+    header title, and its ``tagline_bytes`` the authored tagline, or None for a
+    slot that declares none. Both feed the entry rather than the summary row,
+    which reports the tagline as text like the title.
     """
     words = {}
     entries = {}
@@ -229,7 +259,8 @@ def assemble(images):
         if type(index) is not int or not 0 <= index < library.IMAGE_COUNT:
             raise ValueError(f"library index must be 0..{library.MENU_INDEX}")
         extra = images[index][2] if len(images[index]) > 2 else {}
-        entry = library.image_entry(image, library.profile_id(profile), extra.get("fallback_title"))
+        entry = library.image_entry(image, library.profile_id(profile), extra.get("fallback_title"),
+                                    extra.get("tagline_bytes"))
         for slot in library.slot_range(index, len(image)):
             if slot in filled:
                 raise ValueError(f"{library.slot_name(slot)} is filled by both {library.slot_name(filled[slot])} and {library.slot_name(index)}")
@@ -240,7 +271,7 @@ def assemble(images):
             words[base + offset // WORD_BYTES] = int.from_bytes(image[offset:offset + WORD_BYTES], "little")
         row = library.describe(index, entry)
         row.update(flash_word=f"0x{flash_word(library.slot_address(index)):05X}", profile_name=profile)
-        row.update({key: value for key, value in extra.items() if key != "fallback_title"})
+        row.update({key: value for key, value in extra.items() if key not in ("fallback_title", "tagline_bytes")})
         rows.append(row)
     if library.MENU_INDEX not in entries:
         raise ValueError("the flash library requires the menu image at index 16")

@@ -1869,11 +1869,20 @@ real registry offline and skips, naming the missing pins, when the
 `sw library` run.
 
 The registry [`src/fpga/de10_lite/library.json`](../../../src/fpga/de10_lite/library.json)
-has exactly `schema_version: 1`, a nonempty `slots` object mapping decimal
-slot indices `0`-`15` to slot values, and `menu`, the package at index 16. A
-slot value is either a `src/sw/targets.json` package name or
+has exactly `schema_version: 2`, a nonempty `slots` object mapping decimal
+slot indices `0`-`15` to entries, and `menu`, the entry at index 16. An entry
+is an object carrying `image` and an optional `tagline`; any other key is
+refused. An `image` is either a `src/sw/targets.json` package name or
 `external:<name>`, a pin of the [dependency manifest](../../../tools/n2m/dependencies.json)
-`external_roms.images`. Every package must carry a packaged runtime profile,
+`external_roms.images`. A `tagline` is 1-18 upper-case letters, digits, spaces
+or dashes, the text of that slot's
+[tagline record](../../src/rtl/storage/MAS_sdram.md#address-space-layout); a
+package may declare its own in its
+[software target](../sw/SPEC.md) instead, and declaring it in both places for
+one slot is refused, so a slot's tagline has one source. Omitting the key is
+how a slot declares no tagline, and its record packs zero; an empty string is
+refused rather than treated as none. Every package must carry a packaged
+runtime profile,
 the menu must be a package that runs in `dmg-loader-v1` (the contract's
 `profile == LOADER_ID` validity rule), a value may occupy one index only across
 both kinds, and each image must be exactly its profile's size: one 32 KiB slot
@@ -1972,14 +1981,18 @@ package through the same `sw build` stages under that tag (cached as usual;
 with the host loader's own
 catalogue code ([`host/library.py`](../../../tools/n2m/host/library.py)
 `image_entry` and `build_catalogue`, so the flash catalogue and a UART load
-carry identical entry bytes), and writes under
+carry identical entry bytes), collects each slot's
+[tagline](../../src/rtl/storage/MAS_sdram.md#address-space-layout) from where it
+is authored (the registry entry, or the software target of a package that
+declares its own) and refuses one the menu font cannot draw before anything is
+built, and writes under
 `workdir/builds/<tag>/sw/library/runs/<attempt>/`:
 
 | File | Content |
 |---|---|
 | `library.hex` | Intel HEX of the whole 736 KiB user range: 16-byte type 00 records, a type 04 extended linear address record at each 64 KiB boundary, one type 01 end record, every record checksummed. Words no image defines are written as `FFFFFFFF`: the assembler fills words a hex leaves undefined between its first and last record with zeros, so the explicit image is what makes the programmed flash read what the double reads. |
 | `library.dat` | The Verilator double's `$readmemh` image: one `@<avalon word> <word>` line (5 and 8 upper-case hex digits) per defined word; undefined words read erased. |
-| `catalogue.bin` | The 1 KiB catalogue bytes at flash word `0x22800` (17 entries, then zero words). |
+| `catalogue.bin` | The 1 KiB catalogue bytes at flash word `0x22800` (17 entries, the 17 tagline records behind them, then zero words). |
 | `result.json` | Status, the registry hash, one row per image (index, title, profile ID, CRC-32, flash word, `kind`; a package row adds its attempt, result path, fingerprint and image hash, an external row its pin, licence, pinned URL, notices and image hash) and the three file hashes; mirrored at `sw/library/result.json`. |
 
 No Quartus is needed, so WSL fixtures load the real library through
