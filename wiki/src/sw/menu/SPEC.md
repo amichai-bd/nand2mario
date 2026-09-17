@@ -178,7 +178,8 @@ measured from the new epoch's first poll rather than across the swap.
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|
 | Idle | 230 | 20% |
-| Cursor move or nudge phase change, one object byte | 254 | 22% |
+| Nudge phase change, one object byte | 246 | 22% |
+| Cursor move, one object byte | 254 | 22% |
 | Refused select with a 20-character status redraw | 547 | 48% |
 
 The status redraw is the peak, 593 M-cycles inside the budget. The cursor
@@ -295,5 +296,7 @@ compares every captured display-eligible frame; the
 
 Every target runs within the ordinary wall budget; `menu-select-mbc1`,
 `menu-exit` and `menu-phase` carry the `mbc1`/`system` and `system` labels so
-the `menu` label aggregate stays inside it. Every target also measures each
+the `menu` label aggregate stays inside it. `menu-phase` also carries
+`menu-animation`, a label of its own, so the one target can be run alone
+without the `system` aggregate. Every target also measures each
 menu frame body against the [frame budget](#frame-budget).

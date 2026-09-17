@@ -36,6 +36,7 @@ labels:
   mbc1: "The 64 KiB MBC1 profile: bank registers, store translation, load session and exit."
   memory: "Memory stores and routing."
   menu: "The on-board game menu program, its frame reference and fixtures."
+  menu-animation: "The menu's self-animating nudge phase, kept out of the menu label so that aggregate stays inside the ordinary budget."
   milestone: "Carries the owner-authorized 1500-second Mooneye allowance."
   mooneye: "Pinned upstream Mooneye fixtures."
   needs-cocotb: "Imports cocotb; runs only on the pinned src/dv/python interpreter."
@@ -280,7 +281,7 @@ units:
   menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 0.00}
   menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 82.82}
   menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 25.35}
-  menu-phase: {kind: sim, level: 1, labels: [system], duration_seconds: 108.40}
+  menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 112.92}
   menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 81.83}
   menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 41.68}
   menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 98.67}
