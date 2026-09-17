@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "_comment": "Editable bezel source. Every colour is one 4-bit VGA DAC code per channel, 0..15, exactly what the pin drives. Bands are screen pixels of outward Chebyshev distance from the scaled image rectangle.",
+  "shell": {
+    "corner_radius": 24,
+    "bands": {"well": 6, "well_edge": 8},
+    "surround": [0, 0, 0],
+    "body": [12, 12, 11],
+    "body_high": [14, 14, 13],
+    "body_low": [8, 8, 8],
+    "well": [2, 2, 2],
+    "well_edge": [5, 5, 5],
+    "stripe": [[11, 2, 3], [3, 3, 10], [7, 2, 8]],
+    "led": [13, 2, 2],
+    "led_ring": [4, 1, 1],
+    "grille": [6, 6, 6]
+  },
+  "plate": {
+    "bands": {"gap": 5, "hairline": 8, "inner": 11, "rail": 20},
+    "field": [0, 0, 0],
+    "hairline": [5, 5, 5],
+    "rail": [15, 15, 15],
+    "notch": [5, 5, 5],
+    "notch_pitch": 24,
+    "notch_width": 3
+  },
+  "vignette": {
+    "steps": [[2, 9], [6, 5], [12, 3], [24, 2], [640, 1]],
+    "surround": 8
+  }
+}

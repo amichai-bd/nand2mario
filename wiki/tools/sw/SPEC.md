@@ -596,3 +596,29 @@ The [focused test](../../../tools/n2m/tests/test_menu_art.py) checks the
 authored banks, the quoted tile and byte costs, that every screen is a 160 by
 144 frame of four shades, that an animation phase changes the frame, and that
 the published SVGs reproduce exactly.
+
+## VGA bezel previews
+
+`python -m tools.sw.vga_bezel --tag vga-bezel` renders the
+[bezel design directions](../../src/rtl/vga/BEZEL.md) under
+`workdir/builds/<tag>/vga-bezel/<direction>/`. Each direction is one whole
+640 by 480 active VGA frame as `frame.svg` and `frame.png` at one pixel per
+pixel: the scaled 160x144 menu image at the scanout's own x=80..559, y=24..455,
+and the proposed bezel outside it. The image comes from the
+[menu frame reference](../../../src/dv/menu/reference.py) and the committed menu
+art; the border colours and band widths come from
+[`directions.json`](../../../tools/sw/vga_bezel/directions.json) as 4-bit VGA
+codes per channel, and the renderer owns the shapes. Nothing is assembled, run
+or synthesised: these are design proposals, not RTL.
+
+The run also writes `menu-frame.json` for the composed image, a `summary.json`
+of each direction's border colours, distinct 8x8 border cells, mirror-folded
+cells and tile-ROM bits, and a `result.json` with PASS, the commit and
+input/output hashes. Tags follow the sprite review limits; existing tags and
+symlink output paths are rejected.
+
+The [focused test](../../../tools/n2m/tests/test_vga_bezel.py) checks that every
+image pixel of every direction equals the menu reference at the scanout's
+geometry, that every colour is a 4-bit DAC code, that the quoted cost table
+matches the rendered frames, that the plated corners are the committed menu
+tiles, and that the published SVGs reproduce exactly.

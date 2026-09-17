@@ -143,7 +143,10 @@ with inactive sync. The first valid output corresponds to raster coordinate zero
 
 All three channels have the same value. Borders, blanking and invalid display
 banks are black. This is presentation conversion after DMG palette selection;
-it does not change stored shades or the snapshot ABI.
+it does not change stored shades or the snapshot ABI. The
+[bezel design directions](BEZEL.md) publish mockups of what decoration in that
+black border would look like and what it would cost; none of it is implemented
+here.
 
 ## Verification boundary
 
