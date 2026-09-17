@@ -88,7 +88,7 @@ units:
   audio-wave-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: 0.53}
   baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: 0.41}
   baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 0.41}
-  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 1.61}
+  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 1.70}
   builder-smoke-fail: {kind: sim, level: 2, labels: [builder-fault], duration_seconds: null}
   clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 6.58}
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
@@ -282,16 +282,16 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
-  menu-delayed: {kind: sim, level: 1, labels: [menu-delayed, system], duration_seconds: 171.97}
-  menu-delayed-worst: {kind: sim, level: 1, labels: [menu-delayed-worst, system], duration_seconds: 182.91}
-  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 99.71}
-  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 86.52}
-  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 62.76}
-  menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 156.47}
-  menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 110.59}
-  menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 51.68}
-  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 81.72}
-  menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 127.22}
+  menu-delayed: {kind: sim, level: 1, labels: [menu-delayed, system], duration_seconds: 128.83}
+  menu-delayed-worst: {kind: sim, level: 1, labels: [menu-delayed-worst, system], duration_seconds: 181.63}
+  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 106.71}
+  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 94.58}
+  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 52.47}
+  menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 141.70}
+  menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 98.03}
+  menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 55.92}
+  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 103.85}
+  menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 129.19}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
   mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 113.39}
   mooneye-reg-f: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: 82.17}
@@ -521,7 +521,7 @@ units:
   snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: 61.12}
   src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.12, inputs: [src/sw/generated/interfaces.inc]}
   src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.04, inputs: []}
-  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 2.02, inputs: [src/sw/menu/assets/design/direction-a-tiles.json, src/sw/menu/assets/design/v2-cursor-tiles.json, src/sw/menu/assets/design/v2-footer-tiles.json, src/sw/menu/assets/design/v2-grey-tiles.json, src/sw/menu/assets/design/v2-splash-tiles.json, src/sw/menu/assets/design/v2-stars-tiles.json, src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
+  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 1.41, inputs: [src/sw/menu/assets/design/direction-a-tiles.json, src/sw/menu/assets/design/v2-cursor-tiles.json, src/sw/menu/assets/design/v2-footer-tiles.json, src/sw/menu/assets/design/v2-grey-tiles.json, src/sw/menu/assets/design/v2-splash-tiles.json, src/sw/menu/assets/design/v2-stars-tiles.json, src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
   src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 1.22, inputs: [src/dv/v05/program.json]}
   src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.08, inputs: []}
   src/dv/springtrail/test_acquisition_host.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: null, inputs: [cfg/interfaces.json, src/dv/integration, src/dv/springtrail/thrower_route.py, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/sw/opcodes.json]}
@@ -592,7 +592,7 @@ units:
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.04, inputs: []}
   src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.22, inputs: [src/dv/stackdrop/fixtures/title-frame.txt, src/dv/stackdrop/fixtures/title.json, src/sw/stackdrop/assets/tiles.json, src/sw/stackdrop/tables.asm]}
   src/dv/stackdrop/test_tail.py: {kind: unit, level: 2, labels: [needs-cocotb, stackdrop], duration_seconds: 0.17, inputs: []}
-  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 3.10}
+  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 3.19}
   tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: 0.56}
   timebase25: {kind: sim, level: 2, labels: [clocking], duration_seconds: 2.87}
   timebase25-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.49}

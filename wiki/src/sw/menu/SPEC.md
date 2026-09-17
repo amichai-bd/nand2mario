@@ -425,42 +425,50 @@ measured from the new epoch's first poll rather than across the swap.
 
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|
-| Idle | 238 | 21% |
-| Cursor move or a sampled press, one object byte, with the footer settled | 245-262 | 21-23% |
-| Cursor move and the [footer](#the-information-footer)'s upper row | to be measured | - |
-| The footer's lower row | to be measured | - |
-| Nudge phase change: one object byte and the eight star cells | 432 | 38% |
+| Idle, or a sampled press that changes nothing | 278-292 | 24-26% |
+| Cursor move and the [footer](#the-information-footer)'s upper row | 633-861 | 56-76% |
+| The footer's lower row | 523-934 | 46-82% |
+| Nudge phase change: one object byte and the eight star cells | 457 | 40% |
 | Boot splash fade frame, one BGP write | 166-196 | 15-17% |
 | Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
 | Boot splash slide frame after the map is whole | 199-260 | 17-23% |
 | Skipped splash frame, two wrapped rows | 599-663 | 53-58% |
-| Refused select with a 20-character status redraw | 555 | 49% |
+| Refused select with a 20-character status redraw | 586 | 51% |
 | Delayed catalogue: the not-ready boot frame, idle | 233 | 20% |
-| Delayed catalogue: the bank commit and the plate's status redraw | 499 | 44% |
+| Delayed catalogue: the bank commit and the plate's status redraw | 511 | 45% |
 | Delayed catalogue: one title row | 476-1124 | 42-99% |
-| Delayed catalogue: the first half of a row and the nudge phase change | 616-940 | 54-82% |
+| Delayed catalogue: the first half of a row and the nudge phase change | 622-946 | 55-83% |
 | Delayed catalogue: the second half of that row | 443-780 | 39-68% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
 select from `menu-refused`, the splash rows from `menu-splash` and
-`menu-frame-fault` and the delayed rows from `menu-delayed`, each measured on
+`menu-frame-fault` and the delayed rows from `menu-delayed` and
+`menu-delayed-worst`, each measured on
 the image this page specifies. The two footer rows are the classes this image
-adds, measured on the same targets. The first
+adds, measured on the same targets: the upper row is cheapest on an empty slot
+and dearest on a profile word with a three-digit size, and the lower row is
+cheapest with no tagline and dearest with eighteen characters of one. The first
 list frame is no longer a class of its own: the bottom plate and both footer
 rows of the boot cursor's slot are built into the window map with the LCD off,
-so that frame writes nothing and measures the idle
-238 rather than the 483 a status redraw used to add.
+so that frame writes nothing and measures the idle.
+Every settled frame now pays the footer's own early-out, which is why the idle
+frame measures 278-292 rather than the 238 it did before the footer, and the
+star twinkle and the status redraw each cost the seven to twelve M-cycles that
+keep a footer row out of their frame.
 
-A delayed title row is the peak, 1124, 16 M-cycles inside the budget, and the
-idle frame is the floor at 233. The peak is the sixteen letter cells of
+A delayed title row is still the peak, 1124, 16 M-cycles inside the budget and
+unchanged by the footer, and the not-ready idle frame is still the floor at
+233. The peak is the sixteen letter cells of
 `SIXTEEN CHAR ROW`, the fixture's widest title, drawn one row to the frame. It
 is the one frame with no room left, so anything added to the title path has to
 be measured here first; the [footer](#the-information-footer) is drawn only
 once the list is whole, from the branch the catalogue path already takes, so
 it adds nothing to that frame. The
-peak of every settled path is lower: a skipped splash frame costs 663, 477
-M-cycles inside the budget, and it is `menu-frame-fault`'s own second frame,
-whose skip settles the list, turns the window on and carries the LCDC write
+peak of every settled path is lower: the [footer](#the-information-footer)'s
+lower row costs at most 934, 206 M-cycles inside the budget, and the skipped
+splash frame that used to hold that place costs 663. The skip frame is
+`menu-frame-fault`'s own second frame, whose skip settles the list, turns the
+window on and carries the LCDC write
 too. The cap on the skip is what holds that
 margin: a skip that finished the map in one VBlank cost 1342 and overran, and
 1010 with the rows prebuilt as cells. Two
