@@ -38,10 +38,12 @@ The [preview contract](../../../tools/sw/SPEC.md#vga-bezel-previews) owns the
 command and its outputs.
 [`directions.json`](../../../../tools/sw/vga_bezel/directions.json) owns the
 colours and band widths and is the file to edit; the renderer owns the shapes.
-The image inside every frame is the real plated-list menu, built by the
+The image inside every frame is the real menu the console draws, built by the
 [menu reference](../../../../src/dv/menu/reference.py) from the committed font
-and plate art, placed at the scanout's own coordinates. The catalogue is the
-preview sample library of our own images and empty slots, not a real read.
+and plate art, placed at the scanout's own coordinates: mid-grey plates, black
+text on the grey page and the cursor as an object in the left column, as the
+[menu contract](../../sw/menu/SPEC.md#frame-layout) specifies. The catalogue is
+the preview sample library of our own images and empty slots, not a real read.
 
 ## 1. Handheld shell
 
@@ -71,11 +73,14 @@ right. It is the only direction that uses colour.
 
 ![Plated frame bezel](previews/plate.svg)
 
-The menu's own plate, continued outside the image: a black field, a gray
-hairline, then a white rail notched every 24 pixels, and the plated-list plate
-caps at the four corners. The corner tiles are the committed menu art
+A plate continued outside the image: a black field, a gray hairline, then a
+white rail notched every 24 pixels, and a plate cap at each of the four
+corners. The corner tiles are the committed menu art
 [`direction-a-tiles.json`](../../../../src/sw/menu/assets/design/direction-a-tiles.json)
-scaled three times, so the bezel and the header plate are the same drawing.
+scaled three times. That art is the first design pass's black caps; the menu
+itself moved to the grey caps of
+[`v2-grey-tiles.json`](../../../../src/sw/menu/assets/design/v2-grey-tiles.json),
+so the bezel and the header plate are the same shape in different shades.
 
 - **RTL approach: coordinate pattern generator, with two tiles in logic.** The
   outward distance from the image rectangle selects field, hairline or rail by
