@@ -1,12 +1,13 @@
 # Menu design directions
 
 Three proposals for the console-style game picker of
-[issue #767](https://github.com/amichai-bd/nand2mario/issues/767). None is
-implemented: the [menu contract](SPEC.md) still owns the frame the
-[menu image](../../../../src/sw/menu/main.asm) draws and
-[`reference.py`](../../../../src/dv/menu/reference.py) still checks. The owner
-chose **direction A, the plated list**, on 2026-09-17; B and C stay here as the
-considered alternatives. Implementing A is separate work.
+[issue #767](https://github.com/amichai-bd/nand2mario/issues/767). The owner
+chose **direction A, the plated list**, on 2026-09-17 and it is implemented:
+the [menu contract](SPEC.md) owns the frame the
+[menu image](../../../../src/sw/menu/main.asm) draws,
+[`reference.py`](../../../../src/dv/menu/reference.py) checks and the
+[frame budget](SPEC.md#frame-budget) measures. B and C stay here as the
+considered alternatives.
 
 Each direction reuses the 39 approved font tiles and adds original 8x8 art of
 its own. The screens below are the same three states for every direction: the
@@ -27,11 +28,16 @@ command; the shade JSON under `src/sw/menu/assets/design/` owns the new pixels.
 
 Every cycle figure below is counted, not measured: each instruction of the
 [menu image](../../../../src/sw/menu/main.asm) is added up from its SM83
-timing, branch by branch. Measuring the real frames would mean instrumenting
-`src/dv/menu/tb_menu_system.sv`, which this work keeps unchanged, so an
-implementer should confirm the chosen direction's frame against the hardware
-before trusting the last ten percent. VBlank is ten lines of 456 dots, 1140
-M-cycles. Costs are M-cycles.
+timing, branch by branch. VBlank is ten lines of 456 dots, 1140 M-cycles.
+Costs are M-cycles.
+
+Direction A's implementation measured the real frames instead, and the counted
+model was optimistic where it mattered: the twenty-cell status redraw costs
+1067, not the 950 counted here, which left 73 M-cycles of headroom rather than
+190. Reading the status row as prebuilt tiles instead of walking the text path
+each frame is what made A fit with room to spare. The
+[measured table](SPEC.md#frame-budget) is the live figure; treat everything
+below as a design-time estimate good to about fifteen percent.
 
 | Work | Cost | Where |
 |---|---|---|

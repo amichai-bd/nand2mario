@@ -15,9 +15,12 @@ the menu's behavior, memory use, frame layout and verification.
 
 Boot, from the direct entry state with the LCD off:
 
-1. Load the 39 font tiles into VRAM `$8000`, blank the background map at
-   `$9800`, set BGP `$E4` and zero scroll, draw the header and the sixteen
-   slot numbers, and put the cursor on slot 0.
+1. Load the 82-tile bank into VRAM `$8000`: the 39 font tiles, their
+   inverses, the nudged arrow, the two plate caps and the inverse nudged
+   arrow. Blank the background map at `$9800`, set BGP `$E4` and zero
+   scroll, draw the header plate, the status plate's two caps and the
+   sixteen slot numbers, build the six status rows in WRAM, and put the
+   selection bar on slot 0.
 2. If `$A000` bit 5 (`sdram_ready`) is set, commit bank 34 (the catalogue,
    `LIBRARY_CATALOGUE_ADDRESS / LIBRARY_WINDOW_BYTES`) to the bank register,
    wait for bit 6 (`window_ready`) and draw the sixteen title rows from the
@@ -38,9 +41,13 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
    the index in `$A003`. Before the catalogue is listed, A does nothing.
 4. Delayed catalogue path: when bank 34 has not been committed and
    `sdram_ready` is now set, commit it; when it has been committed and
-   `window_ready` is set, draw one remaining title row per frame.
-5. Redraw the cursor cell and the status row only when they changed, so the
-   ordinary frame writes at most two map cells plus one row.
+   `window_ready` is set, draw one remaining title row per frame. A row that
+   lands under the selection bar is drawn from the inverse bank, judged
+   against the row the bar is on now rather than the slot the cursor has
+   already moved to in this same frame.
+5. Move the selection bar only when the cursor changed, redraw the status
+   row only when its key or index changed, and rewrite the arrow cell alone
+   when the nudge phase changed. An idle frame writes no map cell.
 
 The catalogue is read once, at boot or through the delayed path; the drawn
 map is the menu's copy of the titles. Nothing after a selection depends on
@@ -72,15 +79,15 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$04F3` | `code` section: entry `Start`, frame loop, drawing routines and text tables (756 bytes) |
-| `$0800`-`$0A6F` | `assets` section: the 39 font tiles, 624 bytes, from `ASSET "Font"` |
+| `$0200`-`$05D9` | `code` section: entry `Start`, frame loop, drawing routines and text tables (986 bytes) |
+| `$0800`-`$0A9F` | `assets` section: the 39 font tiles from `ASSET "Font"` and the three authored tiles from `ASSET "Plate"`, 672 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
 | `$6000`-`$7FFF` write | Select register: the cursor's slot on an A edge |
 | `$A000`, `$A002`, `$A003` | Status byte, last result, last selected index |
-| `$8000`-`$826F` | Font tiles 0..38 |
+| `$8000`-`$851F` | The 82-tile bank: font 0..38, inverse font 39..77, nudged arrow 78, plate caps 79 and 80, inverse nudged arrow 81 |
 | `$9800`-`$9BFF` | Background map; only the visible 20x18 cells are written |
-| `$C000`-`$C007` | `vars`: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex` |
+| `$C000`-`$C076` | `vars`, 119 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, `TitleOffset`, and `StatusCells`, the six 18-cell status rows |
 | `$DFFE` | Stack pointer |
 
 Interrupts stay disabled; frame sync polls `LY`. The joypad rows are
@@ -89,15 +96,27 @@ deselected (`PROFILE_JOYP_SELECT`) after each read.
 ## Frame layout
 
 The visible frame is 20 by 18 background cells, identity palette, no scroll,
-no window or objects. Shade 0 is the page, shade 3 the ink.
+no window or objects. Shade 0 is the page, shade 3 the ink. The header and
+status rows are plates: an ink-filled row with a rounded cap in each outer
+column, drawn from the inverse bank, where every shade is `3 - shade`. The
+selected slot is a full-width inverse bar.
 
 | Row | Columns | Content |
 |---|---|---|
-| 0 | 4..15 | `GAME LIBRARY` |
-| 1..16 | 0 | Cursor arrow on the selected slot's row, blank elsewhere |
+| 0 | 0 and 19 | Left and right plate cap |
+| 0 | 1..18 | Header plate; `GAME LIBRARY` inverse at columns 4..15 |
+| 1..16 | 0 | The cursor arrow, inverse, on the selected slot's row; blank elsewhere |
 | 1..16 | 1..2 | Slot number `00`..`15` |
 | 1..16 | 4..19 | The 16 title bytes of a valid entry; blank for any other entry |
-| 17 | 0..19 | Status row |
+| 1..16 | 1..19 | On the selected slot's row every cell is drawn from the inverse bank |
+| 17 | 0 and 19 | Left and right plate cap |
+| 17 | 1..18 | Status row, inverse, centred |
+
+The status text is unchanged; it is centred in the plate's 18 cells with the
+leftover space biased left, so `SLOT 03 INVALID` starts at column 2 and
+`SLOT 03 NOT READY` fills columns 1..17. The blank row is a plain plate.
+The image builds the six possible rows as tiles once, while the LCD is off,
+so a redraw copies 18 bytes instead of walking the text path.
 
 Status row, from the status bytes each frame:
 
@@ -111,7 +130,49 @@ Status row, from the status bytes each frame:
 | any other `$A002` value | `SLOT nn ERROR` |
 
 `nn` is `$A003` as two decimal digits, or `--` when `$A003` is not 0..16.
-The row is padded with blanks to 20 cells.
+The text is centred in the plate's 18 cells as above; an empty one leaves a
+plain plate.
+
+### Selection bar and nudge
+
+The selected slot's cells 1..19 are the same tiles plus 39, the inverse bank,
+and column 0 carries the arrow. A frame counter byte advances once per frame
+loop iteration, after that iteration's writes, and bit 4 of it is the nudge
+phase: on phase 1 column 0 holds the nudged arrow, the same arrow one pixel
+to the right, so the cursor ticks every 16 frames. The loop runs exactly once
+per displayed frame and an iteration's writes appear in the frame its counter
+names, so the phase follows from the frame number alone with no console
+state: displayed frame `m`, counted from the menu's first display-eligible
+frame, carries phase bit 4 of `m`, which
+[`reference.phase_of_frame`](../../../../src/dv/menu/reference.py) computes.
+
+### Frame budget
+
+VBlank is ten lines of 456 dots, 1140 M-cycles, and every frame body finishes
+inside it. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
+measures each body from the `RET` that leaves the `LY == 144` poll to the next
+call into it, prints it as `MENU_COST` and fails with `MENU_VBLANK_OVERRUN`
+above the budget, so the figures below are measured, not counted. An image
+swap resets the core and its dot counter, so the first frame after a return is
+measured from the new epoch's first poll rather than across the swap.
+
+| Frame | M-cycles | Share of VBlank |
+|---|---|---|
+| Idle | 230 | 20% |
+| Nudge phase change, one cell | 281 | 25% |
+| Refused select with a 20-character status redraw | 547 | 48% |
+| Cursor move, two rows of 19 cells | 722 | 63% |
+
+The cursor move is the peak, 418 M-cycles inside the budget.
+
+The delayed catalogue path draws one title row per frame and the matrix below
+never reaches it, because the fixture's SDRAM is ready before the menu boots.
+A row that lands under the selection bar is drawn from the inverse bank
+directly, one M-cycle a cell rather than a second pass over the row; the
+counted worst case, sixteen letter cells, is about 1090 of the 1140. The
+overrun check bounds it wherever it does run, and
+[issue #777](https://github.com/amichai-bd/nand2mario/issues/777) tracks
+measuring it.
 
 Title bytes map to font tiles: `A`-`Z` to tiles 0..25, `0`-`9` to 26..35,
 `-` to 36, zero and space to the blank tile 37; any other byte draws the
@@ -136,13 +197,16 @@ worktree root with
 `python -m tools.sw.preview src/sw/menu/assets/font-tiles.json --tag <tag> --frame-width 8 --frame-height 8 --scale 8`;
 the checkerboard is the review tool's transparency convention, not menu pixels.
 
-### Proposed directions
+### Plated list art
 
-The console-style picker of
-[issue #767](https://github.com/amichai-bd/nand2mario/issues/767) is not
-implemented. Its three rendered proposals and their costs are in
-[design directions](DESIGN.md); this page still owns every frame the image
-draws.
+![Direction A new art](previews/a-plated-list-new-art.svg)
+
+The three authored tiles are the
+[nudged arrow and the two plate caps](../../../../src/sw/menu/assets/design/direction-a-tiles.json);
+the inverse bank is derived from the font at boot rather than stored. The
+owner chose this direction, the plated list, from the three rendered proposals
+in [design directions](DESIGN.md); that page keeps the alternatives and their
+cost models, and this page owns every frame the image draws.
 
 ## Verification
 
@@ -161,14 +225,17 @@ its result records `profile: dmg-loader-v1` and `profile_id: 2`.
 
 [`reference.py`](../../../../src/dv/menu/reference.py) composes the expected
 frame from this page's layout rules and the font's shade JSON, never from
-the ROM or the DUT. `frame(entries, cursor=0, result=0, index=255, sdram_ready=True)`
+the ROM or the DUT, and builds the 82-tile bank from the font and the
+authored plate art with the inverse of each derived as `3 - shade`.
+`frame(entries, cursor=0, phase=0, result=0, index=255, sdram_ready=True)`
 returns the 23040 row-major shades for a catalogue given as
 [`unpack_entry`](../../../../tools/n2m/host/library.py) rows (`valid` and 16
 `title` bytes per slot). `check_pixels(packed, entries, **state)` compares a
 `host snapshot` frame (5760 packed bytes) pixel for pixel and raises
 `MENU_PIXEL x= y= expected= actual=` at the first difference;
-`expected('menu', entries)` and `expected('cursor-N', entries)` name the
-fresh menu and a moved cursor. The board session reads the stored catalogue
+`expected('menu', entries)`, `expected('cursor-N', entries)` and
+`expected('phase-N', entries)` name the fresh menu, a moved cursor and a
+nudge phase. The board session reads the stored catalogue
 with `host library status` and passes its rows.
 
 [`fixture.py`](../../../../src/dv/menu/fixture.py) is the registered `menu`
@@ -194,9 +261,11 @@ compares every captured display-eligible frame; the
 | `menu-select-mbc1` | Five Downs reach the 64 KiB entry listed once at slot 5 (pixel-exact frame, slot 6 blank); A commits 5 and the game boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; its bank 2 code returns to the menu through the game exit register (epoch + 2, index still 5, the menu running in `LOADER_ID`) |
 | `menu-exit` | Down then A starts the built `exit-demo` image in slot 1 with a pixel-exact bar frame; Start makes it write `$10` to `$6000` and the menu returns by itself: `LOADER_ID`, epoch + 2, result `OK` index 1, running without a host `RUN`, the boot frame pixel-exact again |
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
+| `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and frame 16 the nudged one, both pixel-exact, which pins the phase boundary. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
-Every target runs within the ordinary wall budget; `menu-select-mbc1` and
-`menu-exit` carry the `mbc1`/`system` and `system` labels so the `menu`
-label aggregate stays inside it.
+Every target runs within the ordinary wall budget; `menu-select-mbc1`,
+`menu-exit` and `menu-phase` carry the `mbc1`/`system` and `system` labels so
+the `menu` label aggregate stays inside it. Every target also measures each
+menu frame body against the [frame budget](#frame-budget).

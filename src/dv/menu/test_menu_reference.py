@@ -107,10 +107,15 @@ class Layout(unittest.TestCase):
 
     def test_tilemap_rows(self):
         rows = reference.tilemap(self.entries)
-        self.assertEqual(rows[0][4:16], reference.text_tiles('GAME LIBRARY'))
-        self.assertEqual(rows[1][0], reference.TILE_ARROW)
-        self.assertEqual(rows[1][1:3], reference.text_tiles('00'))
-        self.assertEqual(rows[1][4:20], reference.text_tiles('SPRINGTRAIL     '))
+        inverse = reference.TILE_INVERSE
+        # The header is an inverse plate between the two caps.
+        self.assertEqual((rows[0][0], rows[0][19]), (reference.TILE_PLATE_LEFT, reference.TILE_PLATE_RIGHT))
+        self.assertEqual(rows[0][4:16], [inverse + tile for tile in reference.text_tiles('GAME LIBRARY')])
+        self.assertEqual(rows[0][1:4], [inverse + reference.TILE_BLANK] * 3)
+        # The selected slot is a full-width inverse bar carrying the arrow.
+        self.assertEqual(rows[1][0], inverse + reference.TILE_ARROW)
+        self.assertEqual(rows[1][1:3], [inverse + tile for tile in reference.text_tiles('00')])
+        self.assertEqual(rows[1][4:20], [inverse + tile for tile in reference.text_tiles('SPRINGTRAIL     ')])
         self.assertEqual(rows[4][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[5][4:20], reference.text_tiles('SHORT IMAGE     '))
         # The 64 KiB entry is listed once: slot 5 carries its title, slot 6 (its upper half) is blank.
@@ -124,16 +129,52 @@ class Layout(unittest.TestCase):
         self.assertEqual(rows[12][4:20], [reference.TILE_BLANK] * 16)
         self.assertEqual(rows[16][1:3], reference.text_tiles('15'))
         self.assertEqual(rows[16][4:20], reference.text_tiles('LAST SLOT       '))
-        self.assertEqual(rows[17], [reference.TILE_BLANK] * 20)
+        # A blank status row is still a plate: two caps and 18 inverse blanks.
+        self.assertEqual(rows[17], [reference.TILE_PLATE_LEFT]
+                         + [reference.TILE_INVERSE + reference.TILE_BLANK] * 18
+                         + [reference.TILE_PLATE_RIGHT])
         # The menu entry itself is never listed.
         self.assertFalse(any(reference.text_tiles('GAME MENU') == row[4:13] for row in rows))
         moved = reference.tilemap(self.entries, cursor=15)
         self.assertEqual(moved[1][0], reference.TILE_BLANK)
-        self.assertEqual(moved[16][0], reference.TILE_ARROW)
+        self.assertEqual(moved[1][1:3], reference.text_tiles('00'))
+        self.assertEqual(moved[16][0], reference.TILE_INVERSE + reference.TILE_ARROW)
         with self.assertRaises(ValueError):
             reference.tilemap(self.entries, cursor=16)
         partial = reference.tilemap(self.entries, drawn_slots=1)
         self.assertEqual(partial[2][4:20], [reference.TILE_BLANK] * 16)
+
+    def test_nudge_phase_moves_only_the_arrow_cell(self):
+        plain = reference.tilemap(self.entries, cursor=2)
+        nudged = reference.tilemap(self.entries, cursor=2, phase=1)
+        self.assertEqual(plain[3][0], reference.TILE_INVERSE + reference.TILE_ARROW)
+        self.assertEqual(nudged[3][0], reference.TILE_NUDGE_INVERSE)
+        for row, (before, after) in enumerate(zip(plain, nudged)):
+            self.assertEqual(before[1:], after[1:], row)
+            if row != 3:
+                self.assertEqual(before, after, row)
+        with self.assertRaises(ValueError):
+            reference.tilemap(self.entries, phase=2)
+        # The phase follows from the frame number alone: 16 frames a hold.
+        self.assertEqual([reference.phase_of_frame(n) for n in (0, 15, 16, 31, 32, 47, 48)],
+                         [0, 0, 1, 1, 0, 0, 1])
+        with self.assertRaises(ValueError):
+            reference.phase_of_frame(-1)
+        # The nudged arrow is the authored tile shifted one pixel, not a new shape.
+        bank = reference.bank_tiles()
+        self.assertEqual(bank[reference.TILE_NUDGE_INVERSE], reference.invert(bank[reference.TILE_NUDGE]))
+        self.assertEqual(len(bank), reference.BANK_TILES)
+        for tile in range(reference.FONT_TILES):
+            self.assertEqual(bank[reference.TILE_INVERSE + tile], reference.invert(bank[tile]), tile)
+
+    def test_reference_frames_match_the_chosen_design_preview(self):
+        """The implemented layout is direction A as published, cell for cell."""
+        sys.path.insert(0, str(ROOT))
+        from tools.sw.menu_art import direction_a, entries as sample, STATES
+        _bank, _names, cells, bgp = direction_a(ROOT, reference)
+        self.assertEqual(bgp, 0xE4)
+        for state, options in STATES:
+            self.assertEqual(reference.tilemap(sample(), **options), cells(**options), state)
 
     def test_status_row(self):
         R = reference
@@ -148,7 +189,7 @@ class Layout(unittest.TestCase):
 
     def test_frames_and_snapshot_check(self):
         frames = fixture.scenario_frames(MENU_IMAGE)
-        self.assertEqual(len(frames), len(fixture.SCENARIO) + 1)
+        self.assertEqual(len(frames), len(fixture.SCENARIO) + 2)
         self.assertEqual(len(set(frames)), len(frames))
         for pixels in frames:
             self.assertEqual(len(pixels), 23040)
@@ -163,6 +204,8 @@ class Layout(unittest.TestCase):
         self.assertEqual(reference.check_pixels(packed, self.entries), 23040)
         self.assertEqual(reference.unpack(packed), reference.expected('menu', self.entries))
         self.assertEqual(reference.expected('cursor-2', self.entries), frames[2])
+        self.assertEqual(reference.expected('phase-1', self.entries), frames[fixture.PHASE_FRAME])
+        self.assertEqual(reference.expected('phase-0', self.entries), frames[0])
         broken = bytearray(packed)
         broken[(9 * 160 + 40) // 4] ^= 3
         with self.assertRaisesRegex(AssertionError, 'MENU_PIXEL x=40 y=9'):
