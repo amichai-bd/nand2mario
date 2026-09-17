@@ -16,8 +16,8 @@ The [flash-resident boot sessions](../../board-bring-up.md#flash-resident-boot-a
 record the programmed `.pof`, the power-up to the menu and the read-back
 library state on the board; the programming section below is the contract
 those slices derive from. The board's current flash-resident image is the
-[session 8](../../board-bring-up.md#session-8-reflash-with-the-updated-v05-image)
-`v05-board` fit, packed `catalogue.bin` SHA-256 `dca33a9b…`.
+[session 9](../../board-bring-up.md#session-9-reflash-with-the-plated-list-menu)
+`v05-board` fit, packed `catalogue.bin` SHA-256 `696868ab…`.
 
 ## Scope
 
@@ -382,6 +382,12 @@ new image: the device reconfigured from CFM0 again without a power cycle, the
 catalogue read from SDRAM equalled the packed one, the menu frame was
 pixel-exact, and the rebuilt game started from the menu and answered the joypad
 ([session 8](../../board-bring-up.md#session-8-reflash-with-the-updated-v05-image)).
+A fifth write carried the plated-list menu image into CFM0 and repeated the
+same proofs on the image the board now holds: the device reconfigured from CFM0
+without a power cycle, the catalogue read from SDRAM equalled the packed one,
+the menu frames were pixel-exact in both nudge phases, and a game started from
+the menu and returned to it
+([session 9](../../board-bring-up.md#session-9-reflash-with-the-plated-list-menu)).
 The copier's and reader's timing evidence remains simulation against the
 double plus the fit.
 
