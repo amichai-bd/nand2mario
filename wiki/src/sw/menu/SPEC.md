@@ -136,6 +136,14 @@ worktree root with
 `python -m tools.sw.preview src/sw/menu/assets/font-tiles.json --tag <tag> --frame-width 8 --frame-height 8 --scale 8`;
 the checkerboard is the review tool's transparency convention, not menu pixels.
 
+### Proposed directions
+
+The console-style picker of
+[issue #767](https://github.com/amichai-bd/nand2mario/issues/767) is not
+implemented. Its three rendered proposals and their costs are in
+[design directions](DESIGN.md); this page still owns every frame the image
+draws.
+
 ## Verification
 
 The Verilator matrix below is the preliminary evidence. The board criterion

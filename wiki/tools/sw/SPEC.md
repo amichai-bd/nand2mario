@@ -572,3 +572,26 @@ rejected. There is no cache, source rewrite or automatic wiki update. The
 [focused test](../../../tools/n2m/tests/test_program_art.py) checks the bank
 against the ROM bytes, the composed frames against the independent Stackdrop
 frame oracle and the v0.5 literal image, and exact committed SVG reproduction.
+## Menu design previews
+
+`python -m tools.sw.menu_art --tag menu-design` renders the
+[menu design directions](../../src/sw/menu/DESIGN.md) under
+`workdir/builds/<tag>/menu-art/<direction>/`. It composes 20 by 18 background
+cells through the BGP register with the same screen composer as the program
+previews, from the menu's
+[font atlas](../../../src/sw/menu/assets/font-tiles.json) and the direction's
+shade JSON under `src/sw/menu/assets/design/`. Nothing is assembled, linked or
+run: these are design proposals, not a built image.
+
+Each direction gets a three-state screen sheet, a labelled sheet of its new
+art, the composed tile bank as strict shade JSON and 2bpp, each screen as shade
+JSON, and a `summary.json` of tile counts and added bytes. A final `result.json`
+records PASS, the commit and input/output hashes. The helper owns the review
+layouts, the sample library, the tile labels and the animation phases; the
+committed shade JSON owns the pixels. Tags follow the sprite review limits;
+existing tags and symlink output paths are rejected.
+
+The [focused test](../../../tools/n2m/tests/test_menu_art.py) checks the
+authored banks, the quoted tile and byte costs, that every screen is a 160 by
+144 frame of four shades, that an animation phase changes the frame, and that
+the published SVGs reproduce exactly.
