@@ -505,23 +505,28 @@ compares every captured display-eligible frame; the
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
-Every target runs within the ordinary wall budget and under the 120-second
-per-simulation target, and every label aggregate stays inside the ordinary
-300-second budget with room for the work still to come. `menu-frame` and
-`menu-frame-fault` carry `menu`; `menu-select` and `menu-refused` carry
-`menu-library`, the selection paths; `menu-phase` and `menu-splash` carry
-`menu-animation`; `menu-select-mbc1` carries `mbc1` and `menu-exit` only
-`system`, so each can be run without the `system` aggregate. Simulated frames set those walls, so each fixture
-displays as few as its checks allow: the skipped splash costs two frames, a
-press rides the frame that shows the previous press's result, and only a
-repeated mask takes a release frame. What is left is a floor. `menu-splash`
-displays the whole 18-frame schedule, which is why the fade holds two frames
-a step rather than three. `menu-phase` displays 18 frames because the nudge
-is bit 4 of the frame counter, so frame 16 cannot arrive sooner, and
-`menu-exit` boots three images (menu, game, menu) because the returned menu
-only starts settled after a real select left the slot in `$A003`. Those two
-are the longest single targets, and what remains in them is the testbench's
-fixed cost per boot rather than stimulus;
+Every target runs within the ordinary wall budget, and every label aggregate
+stays inside the ordinary 300-second budget with room for the work still to
+come. Every target except `menu-splash` also measures under the 120-second
+per-simulation target; `menu-splash` measured 120.96 seconds and `menu-phase`
+118.74, so the margin there is about a second. The
+[catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
+each target's last run. `menu-frame` and `menu-frame-fault` carry `menu`;
+`menu-select` and `menu-refused` carry `menu-library`, the selection paths;
+`menu-phase` and `menu-splash` carry `menu-animation`; `menu-select-mbc1`
+carries `mbc1`. `menu-exit` carries only `system`, the aggregate above one
+RTL owner, so it is run as a single target.
+
+Simulated frames set those walls, so each fixture displays as few as its
+checks allow: the skipped splash costs two frames, a press rides the frame
+that shows the previous press's result, and only a repeated mask takes a
+release frame. What is left is a floor. `menu-splash` displays the whole
+18-frame schedule, which is why the fade holds two frames a step rather than
+three. `menu-phase` displays 18 frames because the nudge is bit 4 of the
+frame counter, so frame 16 cannot arrive sooner, and `menu-exit` boots three
+images (menu, game, menu) because the returned menu only starts settled after
+a real select left the slot in `$A003`. What remains in those three is the
+testbench's fixed cost per boot rather than stimulus;
 [#811](https://github.com/amichai-bd/nand2mario/issues/811) tracks cutting
 it. Every target also measures each
 menu frame body against the [frame budget](#frame-budget); the fixtures other
