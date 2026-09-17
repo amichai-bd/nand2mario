@@ -68,7 +68,7 @@ def plated_bank(root, reference):
     return bank
 
 
-def plated_plate(reference, cells):
+def plated_plate(cells):
     """A header or status plate: the 18 inverse cells of `cells` between the two caps."""
     return [PLATED_CAP_LEFT] + [PLATED_INVERSE + tile for tile in cells] + [PLATED_CAP_RIGHT]
 
@@ -80,7 +80,7 @@ def plated_tilemap(reference, entries, cursor=0, phase=0, result=0, index=None):
     header = [reference.TILE_BLANK] * PLATED_CELLS
     header[PLATED_HEADER_COLUMN - 1:PLATED_HEADER_COLUMN - 1 + len(PLATED_HEADER)] = \
         reference.text_tiles(PLATED_HEADER)
-    rows[0] = plated_plate(reference, header)
+    rows[0] = plated_plate(header)
     for slot in range(PLATED_SLOTS):
         row = rows[1 + slot]
         row[1:3] = reference.text_tiles(f'{slot:02d}')
@@ -90,7 +90,7 @@ def plated_tilemap(reference, entries, cursor=0, phase=0, result=0, index=None):
     bar[0] = PLATED_NUDGE_INVERSE if phase else PLATED_INVERSE + reference.TILE_ARROW
     rows[1 + cursor] = bar
     text = reference.status_text(result, index).strip().center(PLATED_CELLS)
-    rows[17] = plated_plate(reference, reference.text_tiles(text))
+    rows[17] = plated_plate(reference.text_tiles(text))
     return rows
 
 
@@ -133,7 +133,7 @@ def authored(root, name):
 
 def plate(reference, text):
     """A header or status plate: the 18 inverse cells of `text` between the two caps."""
-    return plated_plate(reference, reference.text_tiles(text.center(COLUMNS - 2)))
+    return plated_plate(reference.text_tiles(text.center(COLUMNS - 2)))
 
 
 def splash(root, reference):
@@ -179,9 +179,9 @@ def cursor(root, reference):
 
 def footer_rows(reference, badge, text, tagline):
     """The two-row information plate: a cartridge badge with the profile line, then the tagline."""
-    top = plated_plate(reference, reference.text_tiles(f'  {text}'.ljust(COLUMNS - 2)))
+    top = plated_plate(reference.text_tiles(f'  {text}'.ljust(COLUMNS - 2)))
     top[2] = badge + 2
-    return [top, plated_plate(reference, reference.text_tiles(tagline.center(COLUMNS - 2)))]
+    return [top, plated_plate(reference.text_tiles(tagline.center(COLUMNS - 2)))]
 
 
 def footer(root, reference):
