@@ -4,13 +4,16 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
+import sys
 import uuid
 
 from .fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from .records import file_hash
 from .questa import diagnostic as questa_diagnostic, write_macro
-from .simulator import QUESTA_COMPILE_TOOLS, ToolError, questa_tools
+from .simulator import QUESTA_COMPILE_TOOLS, ToolError, questa_tools, verilator_executable
+from .verilator_install import discovery_note
 
 SMOKE = "src/dv/builder/builder_smoke.sv"
 SMOKE_SIGNATURE = "PASS builder-smoke seed=1 checks=22"
@@ -68,7 +71,11 @@ def unlicensed_environment():
 
 
 def verilator(root, folder, directory):
-    tool = executable(directory, "verilator")
+    found, source = verilator_executable(directory, root)
+    if not found:
+        raise RuntimeError("missing verilator; select its tool directory explicitly "
+                           f"({discovery_note(root)})")
+    tool = str(Path(found).resolve())
     env = unlicensed_environment()
     version = execute([tool, "--version"], folder, "version.log", env=env)
     match = re.match(r"Verilator (\d+\.\d+)", version.strip())
@@ -91,6 +98,7 @@ def verilator(root, folder, directory):
     if SMOKE_FAULT not in fault or SMOKE_SIGNATURE in fault:
         raise RuntimeError("injected fault was not reported; see fault.log")
     return {"version": version.strip(), "release": match[1], "tools": {"verilator": tool},
+            "discovery": source,
             "license": "none consulted; " + ", ".join(LICENSE_VARIABLES) + " removed from the check environment",
             "fault": {"expected": SMOKE_FAULT, "detected": True}}
 
@@ -202,14 +210,13 @@ def select_uart(ports, args):
     if len(matches) != 1:
         raise RuntimeError("UART selection must match exactly one enumerated port")
     if matches[0].get("Status") != "OK" or matches[0].get("ConfigManagerErrorCode") != 0:
-        raise RuntimeError("selected UART is not healthy in Windows PnP; see ports.log")
+        raise RuntimeError("selected UART is not healthy in the OS device inventory; see ports.log")
     return {"selected": matches[0], "ports": ports,
             "scope": "OS identity only; port not opened, no DTR/RTS or bytes sent"}
 
 
-def uart(folder, args):
-    if os.name != "nt":
-        return {"status": "WARNING", "detail": "UART enumeration supported on Windows only"}
+def windows_ports(folder):
+    """The Windows CIM PnP Ports inventory; a read-only query that opens nothing."""
     script = ("$ErrorActionPreference = 'Stop'; "
               "@(Get-CimInstance Win32_PnPEntity -Filter \"PNPClass='Ports'\" | "
               "Select-Object Name,PNPDeviceID,Status,ConfigManagerErrorCode) | ConvertTo-Json -Compress")
@@ -223,7 +230,110 @@ def uart(folder, args):
         port = re.search(r"\(COM([1-9][0-9]*)\)$", device.get("Name") or "", re.I)
         if port and device.get("PNPDeviceID"):
             ports.append({**device, "DeviceID": "COM" + port[1]})
-    return select_uart(ports, args)
+    return ports
+
+
+# udev's stable serial naming and the sysfs USB attributes behind it. Both are
+# read; nothing is opened, and no device node is written.
+SERIAL_BY_ID = Path("/dev/serial/by-id")
+TTY_CLASS = Path("/sys/class/tty")
+USB_ATTRIBUTES = ("idVendor", "idProduct", "serial", "manufacturer", "product")
+# How far up the sysfs device chain the owning USB device may sit: the tty, its
+# interface, the device. The bound is a stop, not an expectation.
+USB_DEPTH = 6
+
+
+def node_state(path):
+    """Classify one device node as the port inventory's health, without opening it.
+
+    Healthy means the udev name still resolves to a character device this user
+    can read and write. Each refusal names what it found.
+    """
+    try:
+        mode = os.stat(path).st_mode
+    except OSError as error:
+        return "Error", 1, f"device node unavailable: {error.strerror or error}"
+    if not stat.S_ISCHR(mode):
+        return "Error", 2, "not a character device"
+    if not os.access(path, os.R_OK | os.W_OK):
+        return "Error", 3, "no read and write permission on the device node"
+    return "OK", 0, ""
+
+
+def usb_attributes(node_name, tty_class=None):
+    """Read the owning USB device's pinned sysfs attributes for one tty name.
+
+    Walks up from the tty's bound device to the first ancestor carrying
+    `idVendor`, which is the USB device itself rather than its interface.
+    """
+    base = Path(tty_class or TTY_CLASS) / node_name / "device"
+    try:
+        current = Path(os.path.realpath(base))
+    except OSError:
+        return None
+    for _ in range(USB_DEPTH):
+        if (current / "idVendor").is_file():
+            values = {}
+            for name in USB_ATTRIBUTES:
+                try:
+                    values[name] = (current / name).read_text(encoding="utf-8", errors="replace").strip()
+                except OSError:
+                    values[name] = ""
+            values["path"] = str(current)
+            return values
+        if current.parent == current:
+            break
+        current = current.parent
+    return None
+
+
+def linux_identity(vid, pid, link_name):
+    """The stable OS identity: the USB ids udev matched, then its own stable name.
+
+    Same shape as the Windows PnP identity so one selection rule serves both
+    hosts; the tail is udev's `/dev/serial/by-id` name, which survives replug
+    and renumbering.
+    """
+    tail = link_name[4:] if link_name.startswith("usb-") else link_name
+    return f"USB\\VID_{vid.upper()}&PID_{pid.upper()}\\{tail}"
+
+
+def linux_ports(folder):
+    """Enumerate Linux serial ports from udev's by-id links and sysfs; open nothing.
+
+    Only ports udev gave a stable `/dev/serial/by-id` name and a USB
+    vendor/product identity are reported: without both there is nothing to
+    select by. The records carry the keys the selection rule reads on either
+    host, plus the Linux facts they were derived from.
+    """
+    ports = []
+    links = sorted(SERIAL_BY_ID.iterdir()) if SERIAL_BY_ID.is_dir() else []
+    for link in links:
+        node = Path(os.path.realpath(link))
+        attributes = usb_attributes(node.name)
+        if not attributes or not attributes.get("idVendor") or not attributes.get("idProduct"):
+            continue
+        status, code, detail = node_state(node)
+        name = " ".join(part for part in (attributes.get("manufacturer"), attributes.get("product")) if part)
+        ports.append({"Name": f"{name} ({node})" if name else str(node),
+                      "PNPDeviceID": linux_identity(attributes["idVendor"], attributes["idProduct"], link.name),
+                      "Status": status, "ConfigManagerErrorCode": code, "Detail": detail,
+                      "DeviceID": str(node), "ByIdPath": str(link), "SysfsPath": attributes["path"],
+                      "Serial": attributes.get("serial", ""),
+                      "Manufacturer": attributes.get("manufacturer", ""),
+                      "Product": attributes.get("product", "")})
+    (folder / "ports.log").write_text(json.dumps({"by_id": str(SERIAL_BY_ID), "ports": ports},
+                                                 indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return ports
+
+
+def uart(folder, args):
+    """Enumerate serial ports on this host and apply the one selection rule."""
+    if os.name == "nt":
+        return select_uart(windows_ports(folder), args)
+    if sys.platform.startswith("linux"):
+        return select_uart(linux_ports(folder), args)
+    return {"status": "WARNING", "detail": "UART enumeration supported on Windows and Linux only"}
 
 
 def doctor(root, build, args, provenance):

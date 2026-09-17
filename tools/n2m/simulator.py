@@ -8,6 +8,7 @@ import subprocess
 
 from .verilator import diagnostic as verilator_diagnostic
 from .questa import diagnostic as questa_diagnostic
+from .verilator_install import discovery_note, installed as installed_verilator
 
 
 QUESTA_SIMULATION_TOOLS = ("vlib", "vmap", "vlog", "vsim")
@@ -64,8 +65,27 @@ def questa_tools(directory, names, run=run_tool):
     return tools, info
 
 
+def verilator_executable(directory, root=None, which=None):
+    """Resolve verilator and say where it came from.
+
+    Order: the explicit directory, then PATH, then the repository's own pinned
+    installation under workdir/tools. An operator's PATH tool keeps precedence;
+    the pin only removes the need for a PATH edit on a host without one.
+    """
+    which = which or shutil.which
+    if directory is not None:
+        if not directory or not Path(directory).is_dir():
+            raise ToolError("--verilator-bin must name an existing tool directory")
+        return which(str(Path(directory) / "verilator")), "explicit"
+    found = which("verilator")
+    if found:
+        return found, "path"
+    pinned = installed_verilator(root)
+    return (which(str(pinned / "verilator")) if pinned else None), "pinned"
+
+
 class Simulator:
-    def __init__(self, backend, *, verilator_bin=None, questa_bin=None):
+    def __init__(self, backend, *, verilator_bin=None, questa_bin=None, root=None):
         if backend not in ("verilator", "questa"):
             raise ToolError(f"unsupported simulator: {backend}; expected verilator or questa")
         if backend == "verilator" and questa_bin is not None:
@@ -74,20 +94,18 @@ class Simulator:
             raise ToolError("--verilator-bin applies only to --sim verilator")
         self.backend = backend
         if backend == "verilator":
-            self.discover_verilator(verilator_bin)
+            self.discover_verilator(verilator_bin, root)
         else:
             self.discover_questa(questa_bin)
 
-    def discover_verilator(self, directory):
+    def discover_verilator(self, directory, root=None):
         """Find verilator and the C++ compiler it drives; record both identities."""
-        if directory is not None and (not directory or not Path(directory).is_dir()):
-            raise ToolError("--verilator-bin must name an existing tool directory")
         self.tools = {}
         self.info = {"backend": "verilator", "tools": {}, "discovery": []}
-        candidate = str(Path(directory) / "verilator") if directory is not None else "verilator"
-        found = shutil.which(candidate)
+        found, source = verilator_executable(directory, root)
         if not found:
-            raise ToolError("missing verilator; select the Verilator tool directory explicitly")
+            raise ToolError("missing verilator; select the Verilator tool directory explicitly "
+                            f"({discovery_note(root)})")
         path = str(Path(found).resolve())
         result = self.run([path, "--version"])
         self.info["discovery"].append({"argv": [path, "--version"], "exit_code": result.returncode,
@@ -97,7 +115,8 @@ class Simulator:
             raise ToolError(f"could not identify Verilator: {result.stdout.strip()}", result.stdout)
         self.tools["verilator"] = path
         self.info["tools"]["verilator"] = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
-                                           "version": result.stdout.strip(), "release": match[1]}
+                                           "version": result.stdout.strip(), "release": match[1],
+                                           "source": source}
         # Verilator's generated makefile calls this compiler; its identity is
         # part of the binary the run executes, so it enters the fingerprint.
         compiler = shutil.which(os.environ.get("CXX", "g++"))

@@ -46,6 +46,9 @@ SKIP_DIRECTORIES = frozenset({".git", "workdir", "worktrees", "__pycache__", "no
 # `needs-cocotb` import cocotb and cannot run on the builder interpreter.
 COCOTB_PYTHON = ("workdir/builds/python-dv-env/.venv/Scripts/python.exe",
                  "workdir/builds/python-dv-env/.venv/bin/python")
+# The pinned Python-Markdown environment `tools/wiki/check.py` builds; units
+# labelled `needs-wiki-env` import it and cannot run on the builder interpreter.
+WIKI_CHECK = "tools/wiki/check.py"
 
 HEADER = ("# Catalogue of every runnable test unit: one entry per registry target and\n"
           "# per standalone test_*.py file. Levels are ordered, so selecting a level runs\n"
@@ -464,6 +467,23 @@ def cocotb_python(root):
     return None
 
 
+def wiki_python(root):
+    """The pinned wiki interpreter, or None when that environment is not built.
+
+    The location rule belongs to `tools/wiki/check.py`; it is read from there
+    rather than repeated, so a changed pin moves both together.
+    """
+    import importlib.util
+    path = Path(root) / WIKI_CHECK
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("wiki_check", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    interpreter = module.installed(root)
+    return str(interpreter) if interpreter else None
+
+
 def unit_error(output):
     """Name the failing test rather than whatever the unit printed last.
 
@@ -489,6 +509,12 @@ def run_unit(root, path, entry):
         if python is None:
             return {"status": "SKIPPED", "reason": "cocotb-environment",
                     "error": "the pinned src/dv/python environment is not installed"}
+    elif "needs-wiki-env" in entry["labels"]:
+        python = wiki_python(root)
+        if python is None:
+            return {"status": "SKIPPED", "reason": "wiki-environment",
+                    "error": "the pinned tools/wiki environment is not installed; "
+                             "run python tools/wiki/check.py"}
     command = unit_command(root, path, entry, python)
     started = time.monotonic()
     try:

@@ -22,6 +22,7 @@ from n2m.interface_codec import decode_packet, encode_packet, pack_record, unpac
 from n2m.records import atomic_json, file_hash
 from sw.package import package
 from sw.rom_build import build_target
+import serial_fixture
 
 ROOT = Path(__file__).resolve().parents[3]
 DEVICE = {'DeviceID': 'COM92', 'PNPDeviceID': 'USB\\VID_1234&PID_5678\\ORIGINAL_FAKE',
@@ -640,6 +641,41 @@ class HostTests(unittest.TestCase):
                 with session(self.folder, self.args, self.folder / 'state', discover=discovery, opener=opener):
                     self.fail('invalid device reached open')
             opener.assert_not_called()
+
+    def test_linux_discovery_opens_the_selected_port_and_refuses_the_rest(self):
+        """The Linux enumeration reaches the endpoint through the ordinary session."""
+        by_id, tty_class = serial_fixture.inventory(self.folder / 'linux')
+        endpoint = Endpoint()
+        opener = unittest.mock.Mock(return_value=endpoint)
+        state = self.folder / 'state'
+
+        def open_session(**selectors):
+            args = SimpleNamespace(**{'uart_port': None, 'uart_vid': None, 'uart_pid': None,
+                                      'uart_identity': None, 'endpoint_restarted': False, **selectors})
+            return session(self.folder, args, state, opener=opener)
+
+        with patch('n2m.doctor.SERIAL_BY_ID', by_id), patch('n2m.doctor.TTY_CLASS', tty_class):
+            with open_session(uart_identity=serial_fixture.HEALTHY_IDENTITY) as (connection, sequence, _, selected):
+                self.assertIs(connection, endpoint)
+                self.assertEqual(Client(connection, sequence=sequence).request('PING')['value'], abi.WIRE_ABI)
+            opener.assert_called_once_with('/dev/null')
+            self.assertEqual(selected['PNPDeviceID'], serial_fixture.HEALTHY_IDENTITY)
+            device = json.loads((self.folder / 'device.json').read_text())
+            self.assertEqual(device['selected']['DeviceID'], '/dev/null')
+            self.assertEqual(device['selected']['SysfsPath'], selected['SysfsPath'])
+            # Ambiguous, unhealthy and absent selections all stop before the open.
+            for selectors, reason in ((dict(uart_vid='0403', uart_pid='6001'), 'exactly one'),
+                                      (dict(uart_identity=serial_fixture.UNHEALTHY_IDENTITY), 'not healthy'),
+                                      (dict(uart_port='/dev/ttyUSB404'), 'exactly one')):
+                with self.assertRaisesRegex(RuntimeError, reason) as raised:
+                    with open_session(**selectors):
+                        self.fail('an unselected device reached open')
+                self.assertNotIn('Windows', str(raised.exception))
+            with self.assertRaisesRegex(ValueError, 'explicit healthy UART selection required'):
+                with session(self.folder, self.args, state,
+                             discover=lambda folder, args: {'status': 'WARNING'}, opener=opener):
+                    self.fail('an unselected device reached open')
+        self.assertEqual(opener.call_count, 1)
 
     def test_persistent_uncertainty_and_shared_device_lock(self):
         def discovery(folder, args):

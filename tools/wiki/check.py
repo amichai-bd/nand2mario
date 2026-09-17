@@ -16,6 +16,30 @@ ROOT = Path(__file__).resolve().parents[2]
 LOCK = ROOT / "tools" / "wiki" / "requirements.txt"
 
 
+def environment(root=ROOT, *, browser=False):
+    """Return (directory, interpreter, lock) for the pinned environment of these locks.
+
+    The directory is keyed by the running Python and by both lock files, so a
+    changed pin builds a new environment instead of reusing an older one. It is
+    the one place that rule lives; other tools read it rather than repeat it.
+    """
+    lock = LOCK.with_name("requirements-browser.txt") if browser else LOCK
+    lock_hash = hashlib.sha256(LOCK.read_bytes() + lock.read_bytes()).hexdigest()[:16]
+    runtime = f"python-{sys.version_info.major}.{sys.version_info.minor}"
+    directory = Path(root) / "workdir" / "tools" / "wiki" / runtime / lock_hash
+    interpreter = directory / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    return directory, interpreter, lock
+
+
+def installed(root=ROOT):
+    """The pinned interpreter with Python-Markdown, or None when none is built."""
+    for browser in (False, True):
+        directory, interpreter, _ = environment(root, browser=browser)
+        if (directory / ".ready").is_file() and interpreter.is_file():
+            return interpreter
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--browser', action='store_true', help='Run headless interaction tests after building')
@@ -30,16 +54,12 @@ def main() -> int:
         (output / 'result.json').write_text('{"status": "starting"}', encoding='utf-8')
         for name in ('failure.png', 'trace.zip', 'quality-result.json', 'quality-trace.zip'):
             (output / name).unlink(missing_ok=True)
-    lock = LOCK.with_name('requirements-browser.txt') if args.browser else LOCK
     (ROOT / "workdir/wiki/docs").mkdir(parents=True, exist_ok=True)
-    lock_hash = hashlib.sha256(LOCK.read_bytes() + lock.read_bytes()).hexdigest()[:16]
-    runtime = f"python-{sys.version_info.major}.{sys.version_info.minor}"
-    environment = ROOT / "workdir" / "tools" / "wiki" / runtime / lock_hash
-    python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
-    ready = environment / ".ready"
+    directory, python, lock = environment(ROOT, browser=args.browser)
+    ready = directory / ".ready"
 
     if not ready.exists():
-        venv.EnvBuilder(with_pip=True).create(environment)
+        venv.EnvBuilder(with_pip=True).create(directory)
         subprocess.run(
             [
                 str(python),
@@ -54,7 +74,7 @@ def main() -> int:
             cwd=ROOT,
             check=True,
         )
-        ready.write_text(lock_hash + "\n", encoding="utf-8")
+        ready.write_text(directory.name + "\n", encoding="utf-8")
 
     subprocess.run(
         [str(python), "-m", "unittest", "discover", "-s", "tools/wiki", "-p", "test_*.py"],

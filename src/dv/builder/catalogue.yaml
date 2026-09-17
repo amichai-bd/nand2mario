@@ -44,6 +44,7 @@ labels:
   milestone: "Carries the owner-authorized 1500-second Mooneye allowance."
   mooneye: "Pinned upstream Mooneye fixtures."
   needs-cocotb: "Imports cocotb; runs only on the pinned src/dv/python interpreter."
+  needs-wiki-env: "Imports the pinned Python-Markdown; runs only on the tools/wiki environment."
   ppu: "Pixel pipeline, OAM scan and mode timing."
   pre-merge: "Migrated regressions.json subset: the short ordinary pre-merge set."
   preload: "Intel-model program preload and its comparison."
@@ -695,7 +696,7 @@ units:
   tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.23, inputs: [README.md, src/sw/springtrail/assets, tools/n2m/dependencies.json, tools/wiki/assets, tools/wiki/board_frames, wiki]}
   tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.08, inputs: []}
   tools/wiki/test_repository_stats.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.13, inputs: []}
-  tools/wiki/test_site.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.16, inputs: [tools/wiki/assets, tools/wiki/site.py, wiki/tools/n2m/host/assets/live-viewer-phone.jpg]}
+  tools/wiki/test_site.py: {kind: unit, level: 0, labels: [needs-wiki-env, wiki], duration_seconds: 0.16, inputs: [tools/wiki/assets, tools/wiki/site.py, wiki/tools/n2m/host/assets/live-viewer-phone.jpg]}
   uart-endpoint: {kind: sim, level: 2, labels: [uart], duration_seconds: 52.80}
   uart-endpoint-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 3.57}
   uart-endpoint-readback: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 18.79}

@@ -1,5 +1,6 @@
 """Catalogue contract tests: coverage, selection, validation and write-back."""
 import contextlib
+import importlib.util
 import io
 import json
 from pathlib import Path
@@ -574,6 +575,33 @@ class UnitExecution(unittest.TestCase):
         self.write("import unittest\n")
         outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-cocotb"]})
         self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "cocotb-environment"))
+
+    def test_a_wiki_unit_runs_on_the_pinned_environment_or_is_skipped_by_name(self):
+        self.write("import unittest\n")
+        # No tools/wiki/check.py in this root: nothing to locate the environment with.
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+        self.assertIn("tools/wiki/check.py", outcome["error"])
+        shutil.copytree(ROOT / "tools/wiki", self.root / "tools/wiki",
+                        ignore=shutil.ignore_patterns("__pycache__", "assets", "board_frames"))
+        # The rule comes from check.py, so the located directory is the one it builds.
+        self.assertIsNone(module.wiki_python(self.root))
+        directory, interpreter, _ = self.wiki_check().environment(self.root)
+        interpreter.parent.mkdir(parents=True)
+        interpreter.write_text("", encoding="utf-8")
+        self.assertIsNone(module.wiki_python(self.root))  # built but never marked ready
+        (directory / ".ready").write_text(directory.name + "\n", encoding="utf-8")
+        self.assertEqual(module.wiki_python(self.root), str(interpreter))
+        command = module.unit_command(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]},
+                                      module.wiki_python(self.root))
+        self.assertEqual(command[0], str(interpreter))
+
+    def wiki_check(self):
+        spec = importlib.util.spec_from_file_location("wiki_check_fixture",
+                                                      self.root / "tools/wiki/check.py")
+        check = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(check)
+        return check
 
 
 class UnitErrorTests(unittest.TestCase):
