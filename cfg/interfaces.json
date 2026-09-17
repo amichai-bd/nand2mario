@@ -1517,6 +1517,24 @@
         "description": "Catalogue valid byte of a selectable entry"
       },
       {
+        "name": "TAGLINE_ADDRESS",
+        "bits": 32,
+        "value": 557600,
+        "description": "SDRAM byte address of the tagline table, right after the entries in the same 1 KiB catalogue region and the same window bank"
+      },
+      {
+        "name": "TAGLINE_BYTES",
+        "bits": 8,
+        "value": 24,
+        "description": "One tagline record: TAGLINE_CHARS characters then 6 zero bytes; tagline i is at TAGLINE_ADDRESS + TAGLINE_BYTES * i"
+      },
+      {
+        "name": "TAGLINE_CHARS",
+        "bits": 8,
+        "value": 18,
+        "description": "Tagline characters of one record, the width of the menu status plate; an all-zero record is no tagline"
+      },
+      {
         "name": "FILL_BOUND_EDGES",
         "bits": 32,
         "value": 40000,

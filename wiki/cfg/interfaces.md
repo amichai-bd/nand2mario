@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `50fdb6b6fc063df804253e6f191499e741fc068fa5c6ddaad99e380be299eed6`.
+Source SHA-256: `e3fa3db5eeef93c2ec4a802847b6a773dda314c2efef89e84a1eae6df5c477df`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -346,6 +346,9 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `LIBRARY_CATALOGUE_ADDRESS` | 32 | `0x88000` | SDRAM byte address of the catalogue table; window bank 34 |
 | `LIBRARY_ENTRY_BYTES` | 8 | `0x20` | One catalogue entry; the catalogue_entry record lays it out |
 | `LIBRARY_CATALOGUE_VALID` | 8 | `0x1` | Catalogue valid byte of a selectable entry |
+| `LIBRARY_TAGLINE_ADDRESS` | 32 | `0x88220` | SDRAM byte address of the tagline table, right after the entries in the same 1 KiB catalogue region and the same window bank |
+| `LIBRARY_TAGLINE_BYTES` | 8 | `0x18` | One tagline record: TAGLINE_CHARS characters then 6 zero bytes; tagline i is at TAGLINE_ADDRESS + TAGLINE_BYTES * i |
+| `LIBRARY_TAGLINE_CHARS` | 8 | `0x12` | Tagline characters of one record, the width of the menu status plate; an all-zero record is no tagline |
 | `LIBRARY_FILL_BOUND_EDGES` | 32 | `0x9C40` | Window fill bound from the bank commit edge to window_busy falling |
 | `LIBRARY_SWAP_BOUND_EDGES` | 32 | `0x13880` | Image swap bound for a 32 KiB image from the accepting select commit edge to copy_busy falling |
 | `LIBRARY_SWAP_BOUND_MBC1_EDGES` | 32 | `0x1D4C0` | Image swap bound for a 64 KiB MBC1 image from the accepting select commit edge to copy_busy falling |
