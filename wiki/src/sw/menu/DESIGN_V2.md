@@ -213,9 +213,10 @@ the list shows fifteen slots and slot 15 needs idea 6 or a shorter list.
   [`unpack_entry`](../../../../tools/n2m/host/library.py) already returns, so
   the fixture and the host reader need no change for those two fields.
 - Built: the two rows of the [SPEC](SPEC.md#the-information-footer), on the
-  window's bottom plate. The badge is one grey cell written with the LCD off,
-  the upper row is the profile word and the size in whole kibibytes, and the
-  lower row is the tagline unless a message is on it. A cursor move draws the
+  window's bottom plate. The badge is one grey cell the upper row writes, so a
+  window with no footer carries no badge; that row is the profile word and the
+  size in whole kibibytes, and the lower row is the tagline unless a message is
+  on it. A cursor move draws the
   upper row and the frame after it the lower one, so no VBlank writes two
   plate rows, and both rows of the boot cursor's slot are built with the LCD
   off. A 256-byte plate table built at boot replaces the text path's range

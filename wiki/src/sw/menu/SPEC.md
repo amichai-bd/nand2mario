@@ -125,7 +125,7 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$0B20` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, [footer](#the-information-footer), drawing routines and text tables (2337 bytes) |
+| `$0200`-`$0B21` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, [footer](#the-information-footer), drawing routines and text tables (2338 bytes) |
 | `$1000`-`$13CF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"`, the eight badge cells from `ASSET "Splash"`, the four star cells from `ASSET "Stars"` and the two footer cells from `ASSET "Footer"`, 976 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
@@ -346,6 +346,18 @@ status row alone. The image hangs the footer off the branch the catalogue path
 already takes when the last row is drawn, so a frame that draws a title row
 spends nothing at all on the footer and the
 [budget](#frame-budget) of that frame is what it was.
+
+On the [delayed catalogue path](#behavior) that costs the footer one further
+frame, deterministically. The flag that keeps two plate rows out of one VBlank
+is set by the status redraw and the star twinkle and cleared only where the
+footer is drawn, so while the footer is gated off it stays set: the bank commit
+that clears `NOT READY` sets it, and nothing clears it until the gate opens.
+The frame after the last title row therefore clears the flag and draws nothing,
+the frame after that draws the upper row, and the one after that the lower row.
+So the footer appears two frames after the list completes there, against the
+one frame a cursor move costs on a settled list. Nothing of that path is near
+its budget, and the delay is the same on every run, because the bank commit
+always sets the flag before the gate opens.
 
 ### Star field
 
