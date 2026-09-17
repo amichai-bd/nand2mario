@@ -1972,14 +1972,18 @@ package through the same `sw build` stages under that tag (cached as usual;
 with the host loader's own
 catalogue code ([`host/library.py`](../../../tools/n2m/host/library.py)
 `image_entry` and `build_catalogue`, so the flash catalogue and a UART load
-carry identical entry bytes), and writes under
+carry identical entry bytes), collects each slot's
+[tagline](../../src/rtl/storage/MAS_sdram.md#address-space-layout) from where it
+is authored (a package's `tagline` in `src/sw/targets.json`, an external image's
+in its `tools/n2m/dependencies.json` pin) and refuses one the menu font cannot
+draw before anything is built, and writes under
 `workdir/builds/<tag>/sw/library/runs/<attempt>/`:
 
 | File | Content |
 |---|---|
 | `library.hex` | Intel HEX of the whole 736 KiB user range: 16-byte type 00 records, a type 04 extended linear address record at each 64 KiB boundary, one type 01 end record, every record checksummed. Words no image defines are written as `FFFFFFFF`: the assembler fills words a hex leaves undefined between its first and last record with zeros, so the explicit image is what makes the programmed flash read what the double reads. |
 | `library.dat` | The Verilator double's `$readmemh` image: one `@<avalon word> <word>` line (5 and 8 upper-case hex digits) per defined word; undefined words read erased. |
-| `catalogue.bin` | The 1 KiB catalogue bytes at flash word `0x22800` (17 entries, then zero words). |
+| `catalogue.bin` | The 1 KiB catalogue bytes at flash word `0x22800` (17 entries, the 17 tagline records behind them, then zero words). |
 | `result.json` | Status, the registry hash, one row per image (index, title, profile ID, CRC-32, flash word, `kind`; a package row adds its attempt, result path, fingerprint and image hash, an external row its pin, licence, pinned URL, notices and image hash) and the three file hashes; mirrored at `sw/library/result.json`. |
 
 No Quartus is needed, so WSL fixtures load the real library through

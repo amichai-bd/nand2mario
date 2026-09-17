@@ -211,12 +211,14 @@ the list shows fifteen slots and slot 15 needs idea 6 or a shorter list.
   `profile` and `length`, which
   [`unpack_entry`](../../../../tools/n2m/host/library.py) already returns, so
   the fixture and the host reader need no change for those two fields.
-- **The tagline has no catalogue field.** A
+- **The tagline is a catalogue field.** A
   [`catalogue_entry`](../../../../cfg/interfaces.json) is 32 bytes with 7
-  reserved, and an 18-character tagline does not fit them. Carrying one means a
-  new field or a new catalogue region, which changes the interface record, the
-  host packer, the fixture and the menu together. That is its own issue, not
-  part of publishing these previews.
+  reserved and an 18-character tagline does not fit them, so the tagline table
+  rides in the catalogue region's spare bytes instead:
+  [`LIBRARY_TAGLINE_ADDRESS`](../../rtl/storage/MAS_sdram.md#address-space-layout),
+  18 characters per slot at a 24-byte stride. The entry did not change, so
+  nothing in RTL did either. No game declares a tagline yet; until one does,
+  every record is zero and this row draws blank.
 
 ## 4. Moving background
 
