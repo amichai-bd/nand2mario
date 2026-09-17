@@ -84,9 +84,15 @@ class BezelSourceTests(unittest.TestCase):
     def test_initialization_files_carry_the_simulated_contents(self):
         self.assertEqual(mif_values(self.files[sources.MAP_OUTPUT]), self.cells)
         self.assertEqual(mif_values(self.files[sources.TILE_OUTPUT]), self.pixels)
+        # The fit copies both files into its attempt directory, so the ROM
+        # names them without a path; the builder owns that copy.
+        from n2m import fpga
         scan = (ROOT / 'src/rtl/vga/n2m_vga_scan.sv').read_text(encoding='utf-8')
         for path in (sources.MAP_OUTPUT, sources.TILE_OUTPUT):
-            self.assertIn(f'.init_file("{path.as_posix()}")', scan)
+            self.assertIn(f'.init_file("{path.name}")', scan)
+            self.assertIn(path.as_posix(), fpga.BEZEL_INIT_FILES)
+        self.assertEqual(fpga.bezel_init_files({'top': 'v05_proof'}), list(fpga.BEZEL_INIT_FILES))
+        self.assertEqual(fpga.bezel_init_files({'top': 'vga_proof'}), [])
 
     def test_generated_rom_draws_the_independent_border_model(self):
         palette, cells, pixels = self.palette, self.cells, self.pixels

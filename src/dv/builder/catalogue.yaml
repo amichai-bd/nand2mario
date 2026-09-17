@@ -481,10 +481,10 @@ units:
   python-v05-startup: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 149.11}
   python-v05-timer: {kind: sim, level: 2, labels: [composed-smoke, integration, python-tb, system, v05], duration_seconds: 6.01}
   python-v05-timer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 5.72}
-  python-vga-bezel: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 13.20}
-  python-vga-bezel-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 5.78}
-  python-vga-crc: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 9.56}
-  python-vga-crc-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 3.98}
+  python-vga-bezel: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 8.12}
+  python-vga-bezel-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 4.43}
+  python-vga-crc: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 9.66}
+  python-vga-crc-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 4.15}
   python-vram-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.64}
   python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.78}
   register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: 1.46}
@@ -514,7 +514,7 @@ units:
   snapshot-lifecycle: {kind: sim, level: 2, labels: [snapshot], duration_seconds: 1.28}
   snapshot-overwrite: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: 0.82}
   snapshot-ownership: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: 0.83}
-  snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: 61.12}
+  snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: 68.22}
   src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.12, inputs: [src/sw/generated/interfaces.inc]}
   src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.04, inputs: []}
   src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 0.86, inputs: [src/sw/menu/assets/design/direction-a-tiles.json, src/sw/menu/assets/design/v2-cursor-tiles.json, src/sw/menu/assets/design/v2-grey-tiles.json, src/sw/menu/assets/design/v2-splash-tiles.json, src/sw/menu/assets/design/v2-stars-tiles.json, src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
@@ -683,8 +683,8 @@ units:
   tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.20, inputs: [src/dv/v05/check.py, src/dv/v05/program.json, src/dv/v05/reference.py]}
   tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.14, inputs: [src/dv/cpu/generate_vectors.py]}
   tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.58, inputs: [src/dv/builder, src/dv/display, src/dv/integration, src/dv/mooneye, src/dv/preload, src/dv/python, src/rtl/common, src/rtl/display, src/rtl/interfaces, src/rtl/joypad, src/rtl/ppu/GPL-3.0.txt, src/sw/generated/interfaces.inc, tools/build.py, tools/n2m, tools/sw]}
-  tools/n2m/tests/test_vga_bezel.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 2.19, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/vga_bezel, wiki/src/rtl/vga/previews]}
-  tools/n2m/tests/test_vga_bezel_sources.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 1.35, inputs: [src/rtl/vga/n2m_vga_bezel_map.mif, src/rtl/vga/n2m_vga_bezel_palette.svh, src/rtl/vga/n2m_vga_bezel_rom.svh, src/rtl/vga/n2m_vga_bezel_tiles.mif, src/rtl/vga/n2m_vga_scan.sv, tools/sw/vga_bezel]}
+  tools/n2m/tests/test_vga_bezel.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 1.96, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/vga_bezel, wiki/src/rtl/vga/previews]}
+  tools/n2m/tests/test_vga_bezel_sources.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 1.65, inputs: [src/rtl/vga/n2m_vga_bezel_map.mif, src/rtl/vga/n2m_vga_bezel_palette.svh, src/rtl/vga/n2m_vga_bezel_rom.svh, src/rtl/vga/n2m_vga_bezel_tiles.mif, src/rtl/vga/n2m_vga_scan.sv, tools/sw/vga_bezel]}
   tools/n2m/tests/test_windows_camera.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: null, inputs: []}
   tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.14, inputs: [src/dv/display/tb_dmg_tile_pixel.sv, src/rtl/display/dmg_tile_pixel.sv]}
   tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: 0.13, inputs: []}
@@ -730,13 +730,13 @@ units:
   verilator-peer: {kind: sim, level: 1, labels: [builder, integration, python-tb], duration_seconds: 1.04}
   verilator-peer-fatal: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: 0.88}
   verilator-peer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb], duration_seconds: 0.89}
-  vga: {kind: sim, level: 2, labels: [vga], duration_seconds: 49.62}
-  vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 7.25}
-  vga-bank-reuse: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 6.82}
-  vga-lcd: {kind: sim, level: 2, labels: [vga], duration_seconds: 41.63}
-  vga-lcd-corrupt: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 6.92}
-  vga-lcd-reset: {kind: sim, level: 1, labels: [vga], duration_seconds: 2.87}
-  vga-read-latency: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 6.88}
+  vga: {kind: sim, level: 2, labels: [vga], duration_seconds: 52.19}
+  vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 8.89}
+  vga-bank-reuse: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 8.02}
+  vga-lcd: {kind: sim, level: 2, labels: [vga], duration_seconds: 44.43}
+  vga-lcd-corrupt: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 7.87}
+  vga-lcd-reset: {kind: sim, level: 1, labels: [vga], duration_seconds: 3.27}
+  vga-read-latency: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 7.79}
 not_runnable:
   tools/n2m/test_budget.py: "The builder wall-budget supervisor module, not a test; its cases are tools/n2m/tests/test_test_budget.py."
 retired:

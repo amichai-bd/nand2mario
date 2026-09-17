@@ -14858,7 +14858,7 @@
       "+rgb_corrupt"
     ],
     "expected_exit": "nonzero",
-    "signature": "VGA_CRC_RGB raster=1 x=80 y=24 expected=3fff actual=0003",
+    "signature": "VGA_CRC_RGB raster=1 x=80 y=24 expected=3fff actual=03ff",
     "timeout_seconds": 300,
     "testbench": "python",
     "python": {
