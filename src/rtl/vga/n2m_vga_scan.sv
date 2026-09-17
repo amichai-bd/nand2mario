@@ -1,7 +1,11 @@
 `timescale 1ns/1ps
 `include "src/rtl/common/macros.svh"
 // Geometry authority: wiki/src/clocks-resets-cdc.md. Two-stage output latency.
-module n2m_vga_scan (
+// SHELL_BEZEL selects the handheld shell border of wiki/src/rtl/vga/BEZEL.md;
+// the default draws the black border every existing consumer expects.
+module n2m_vga_scan #(
+    parameter bit SHELL_BEZEL = 1'b0
+) (
     input logic clk_pix, reset_pix, display_valid,
     input var logic blank_image,
     input logic [1:0] read_shade,
@@ -18,10 +22,11 @@ module n2m_vga_scan (
     logic active_q, image_q, valid_q, hs_q, vs_q;
     logic active_out, image_out, valid_out, hs_out, vs_out;
     logic [3:0] gray;
-    logic [1:0] gray_out;
-    logic white_output;
-    assign white_output = blank_image && x_q >= 10'd80 && x_q < 10'd560
+    logic [11:0] rgb_out, rgb_next;
+    logic image_area_q, white_output;
+    assign image_area_q = x_q >= 10'd80 && x_q < 10'd560
         && y_q >= 10'd24 && y_q < 10'd456;
+    assign white_output = blank_image && image_area_q;
     logic [9:0] source_x, source_y;
     logic active;
     assign active = x < 10'd640 && y < 10'd480;
@@ -61,18 +66,62 @@ module n2m_vga_scan (
     `DFF_RST(valid_out, valid_q, clk_pix, reset_pix)
     `DFF_ARST_VAL(hs_out, hs_q, clk_pix, reset_pix, 1'b1)
     `DFF_ARST_VAL(vs_out, vs_q, clk_pix, reset_pix, 1'b1)
-    // Each two-bit pair repeats in F/A/5/0. Register the white choice on the
-    // existing output edge; async reset masks pins even with no pixel clock.
-    `DFF_ARST_VAL(gray_out, white_output ? 2'b11 : (image_q ? gray[1:0] : 2'b00),
-                  clk_pix, reset_pix, 2'b00)
+    // The border stage: pixel-domain colour outside the scaled image only, and
+    // black everywhere else, on the coordinates the shade is registered with.
+    logic [11:0] bezel_rgb;
+    generate if (SHELL_BEZEL) begin : g_shell
+`include "src/rtl/vga/n2m_vga_bezel_rom.svh"
+        logic [6:0] cell_x, cell_y;
+        logic border_cell;
+        logic [10:0] cell_index;
+        logic [5:0] tile;
+        logic [3:0] tile_pixel;
+        // The next pixel's cell, so the map read lands one edge before the tile
+        // read and the border reuses the image path's two stages exactly.
+        assign cell_x = x_next[9:3];
+        assign cell_y = y_next[9:3];
+        assign border_cell = cell_x < 7'd80 && cell_y < 7'd60 &&
+            !(cell_x >= 7'd10 && cell_x < 7'd70 && cell_y >= 7'd3 && cell_y < 7'd57);
+        always_comb begin
+            cell_index = 11'd0;
+            if (border_cell) begin
+                if (cell_y < 7'd3)
+                    cell_index = 11'd80 * 11'(cell_y) + 11'(cell_x);
+                else if (cell_y < 7'd57)
+                    cell_index = 11'd240 + 11'd20 * (11'(cell_y) - 11'd3) +
+                        (cell_x < 7'd10 ? 11'(cell_x) : 11'd10 + 11'(cell_x) - 11'd70);
+                else
+                    cell_index = 11'd1320 + 11'd80 * (11'(cell_y) - 11'd57) + 11'(cell_x);
+            end
+        end
+        // Memory read registers, like the frame RAM: no reset and no
+        // initialization, so they prime from the raster while reset is held.
+        `DFF(tile, BEZEL_MAP[cell_index], clk_pix)
+        `DFF(tile_pixel, BEZEL_TILE_ROM[{tile, y[2:0], x[2:0]}], clk_pix)
+        assign bezel_rgb = BEZEL_PALETTE[tile_pixel];
+    end else begin : g_none
+        assign bezel_rgb = 12'h000;
+    end endgenerate
+    // Each two-bit shade pair repeats in F/A/5/0. Register the white, image and
+    // border choice on the existing output edge; async reset masks the pins
+    // even with no pixel clock.
+    always_comb begin
+        rgb_next = 12'h000;
+        if (active_q) begin
+            if (white_output) rgb_next = 12'hfff;
+            else if (image_q) rgb_next = {gray, gray, gray};
+            else if (!image_area_q) rgb_next = bezel_rgb;
+        end
+    end
+    `DFF_ARST_VAL(rgb_out, rgb_next, clk_pix, reset_pix, 12'h000)
     assign video_x = x_out;
     assign video_y = y_out;
     assign video_valid = valid_out && !reset_pix;
     assign video_active = active_out && video_valid;
     assign video_image = image_out && video_valid;
-    assign red = {gray_out, gray_out};
-    assign green = red;
-    assign blue = red;
+    assign red = rgb_out[11:8];
+    assign green = rgb_out[7:4];
+    assign blue = rgb_out[3:0];
     assign hsync_n = hs_out;
     assign vsync_n = vs_out;
 endmodule

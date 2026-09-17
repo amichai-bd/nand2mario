@@ -7,7 +7,8 @@ module n2m_v05_system #(
     parameter integer UART_BAUD = 115200,
     parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001,
     parameter int unsigned KEY1_DEBOUNCE_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_DEBOUNCE_EDGES),
-    parameter int unsigned KEY1_HOLD_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_HOLD_EDGES)
+    parameter int unsigned KEY1_HOLD_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_HOLD_EDGES),
+    parameter bit SHELL_BEZEL = 1'b0
 ) (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -360,7 +361,7 @@ module n2m_v05_system #(
         .io_rdata(joyp_rdata), .buttons_observe(),
         .selected_active(joyp_selected_active), .request_event(joyp_event)
     );
-    n2m_frame_bridge u_bridge (
+    n2m_frame_bridge #(.SHELL_BEZEL(SHELL_BEZEL)) u_bridge (
         .clk_sys, .reset_sys, .core_reset, .clk_pix, .reset_pix,
         .source_valid, .source_start, .source_abort, .blank_assert,
         .source_display_eligible, .source_shade, .source_epoch, .source_dot,

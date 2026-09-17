@@ -1,7 +1,10 @@
 `timescale 1ns/1ps
 `include "src/rtl/common/macros.svh"
 // Source, observer and ownership contract: wiki/src/rtl/vga/MAS_vga.md.
-module n2m_frame_bridge (
+// SHELL_BEZEL selects the scanout's border art; the default is the black border.
+module n2m_frame_bridge #(
+    parameter bit SHELL_BEZEL = 1'b0
+) (
     input logic clk_sys, reset_sys, core_reset,
     input logic clk_pix, reset_pix,
     input logic source_valid, source_start,
@@ -152,7 +155,7 @@ module n2m_frame_bridge (
             .read_address, .read_shade(bank_shade[bank])
         );
     end endgenerate
-    n2m_vga_scan u_scan (
+    n2m_vga_scan #(.SHELL_BEZEL(SHELL_BEZEL)) u_scan (
         .clk_pix, .reset_pix, .display_valid, .read_shade, .blank_image(blank_next_pix),
         .read_enable, .read_address, .swap_boundary,
         .video_x, .video_y, .video_valid, .video_active, .video_image,
