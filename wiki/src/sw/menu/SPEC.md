@@ -495,7 +495,7 @@ compares every captured display-eligible frame; the
 
 | Target | Proves |
 |---|---|
-| `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a repeated Up at slot 0 change nothing (each step is one sampled press; a hold across frames is not simulated) |
+| `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a repeated Up at slot 0 change nothing (one sampled press a frame; a press rides the frame that shows the previous press's result, and a repeated mask takes a release frame, which is compared too) |
 | `menu-select` | Down then A commits 1 to the select register; the game boots in `DIRECT_ID` with epoch + 1 and `LIBRARY_STATUS` result `OK` index 1 |
 | `menu-select-mbc1` | Five Downs reach the 64 KiB entry listed once at slot 5 (pixel-exact frame, slot 6 blank); A commits 5 and the game boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; its bank 2 code returns to the menu through the game exit register (epoch + 2, index still 5, the menu running in `LOADER_ID`) |
 | `menu-exit` | Down then A starts the built `exit-demo` image in slot 1 with a pixel-exact bar frame; Start makes it write `$10` to `$6000` and the menu returns by itself: `LOADER_ID`, epoch + 2, result `OK` index 1, running without a host `RUN`, the boot frame pixel-exact again. The returned menu starts settled, with no splash, because `$A003` kept the slot |
@@ -505,13 +505,24 @@ compares every captured display-eligible frame; the
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
-Every target runs within the ordinary wall budget; `menu-select-mbc1`,
-`menu-exit`, `menu-phase` and `menu-splash` carry the `mbc1`/`system` and
-`system` labels so the `menu` label aggregate stays inside it. `menu-phase`
-and `menu-splash` also carry `menu-animation`, a label of their own, so
-either can be run alone without the `system` aggregate. `menu-splash` is the
-longest single target here: it simulates 18 frames, which is why the fade
-holds two frames a step rather than three. Every target also measures each
+Every target runs within the ordinary wall budget and under the 120-second
+per-simulation target; `menu-select-mbc1`, `menu-exit`, `menu-phase` and
+`menu-splash` carry the `mbc1`/`system` and `system` labels so the `menu`
+label aggregate stays inside it. `menu-phase` and `menu-splash` also carry
+`menu-animation`, a label of their own, so either can be run alone without
+the `system` aggregate. Simulated frames set those walls, so each fixture
+displays as few as its checks allow: the skipped splash costs two frames, a
+press rides the frame that shows the previous press's result, and only a
+repeated mask takes a release frame. What is left is a floor. `menu-splash`
+displays the whole 18-frame schedule, which is why the fade holds two frames
+a step rather than three. `menu-phase` displays 18 frames because the nudge
+is bit 4 of the frame counter, so frame 16 cannot arrive sooner, and
+`menu-exit` boots three images (menu, game, menu) because the returned menu
+only starts settled after a real select left the slot in `$A003`. Those two
+are the longest single targets, and what remains in them is the testbench's
+fixed cost per boot rather than stimulus;
+[#811](https://github.com/amichai-bd/nand2mario/issues/811) tracks cutting
+it. Every target also measures each
 menu frame body against the [frame budget](#frame-budget); the fixtures other
 than `menu-splash` hold A through the boot, which skips the splash and proves
 the press is consumed, because an A the list saw would select slot 0.

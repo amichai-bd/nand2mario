@@ -35,10 +35,13 @@ not depend on the build.
 [`tb_menu_system`](tb_menu_system.sv) preloads the device model from the hex
 file, swaps the menu in with `WRITE_HOST(LIBRARY_CONTROL)`, selects the board
 joypad, runs, and records every display-eligible frame from the system's
-pixel source. A step presses one button at the start of a visible frame, so
-the menu samples it in that frame's VBlank, releases it at the start of the
-next frame and compares that frame pixel for pixel with the named reference
-frame. The select observer records the CPU commit into `$6000`-`$7FFF`.
+pixel source. A press is made at the start of a visible frame, so the menu
+samples it in that frame's VBlank and its result shows in the next frame. A
+frame shows what the previous VBlank left, so the frame that shows one press's
+result is also where the next press is made, and one frame carries both. Only
+a repeated mask needs a release frame of its own, and that frame is compared
+too: every frame named below is compared pixel for pixel with its reference.
+The select observer records the CPU commit into `$6000`-`$7FFF`.
 
 | Requirement | Independent check |
 |---|---|
@@ -70,8 +73,8 @@ Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label menu --tag <tag>`;
 `menu-select-mbc1` carries the `mbc1` and `system` labels and `menu-exit` and
 `menu-phase` the `system` label instead, so the `menu` aggregate stays inside
-the ordinary 300-second budget; `menu-phase` has to idle through 17 displayed
-frames to reach the phase boundary, which no shorter check can prove.
+the ordinary 300-second budget; `menu-phase` has to display 18 frames to reach
+the phase boundary, which no shorter check can prove.
 Verilator evidence is preliminary; the board evidence is the
 [game library sessions](../../../wiki/src/board-bring-up.md#game-library-sessions),
 with the exit register in
