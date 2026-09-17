@@ -14,7 +14,7 @@
   "external_roms": {
     "purpose": "Freely licensed third-party Game Boy images loaded over UART; verified against this pin before any byte is transmitted",
     "local_changes": "none",
-    "storage": "Fetched at run time into ignored workdir/private/external-roms/<name>/; no image bytes are committed",
+    "storage": "Fetched at run time into the host's shared cache <cache>/<name>/ (N2M_EXTERNAL_ROM_CACHE, else the per-user default outside every checkout), which earlier ignored workdir/private/external-roms/<name>/ caches seed; no image bytes are committed",
     "redistribution": "No image or notice is copied into this repository; each entry keeps its upstream terms",
     "fields": "Each images entry records url (https), sha256, size (exactly the image size of the pin's profile), optional profile (a package profile name; absent means dmg-direct-v1, dmg-mbc1-v1 marks a 64 KiB MBC1 image that only `host load --external` carries: the flash library keeps 32 KiB slots), license, and optional notices as name -> {url, sha256, size}; title (upper-case letters, digits, space and dash, at most 16) is the catalogue title used only when the image header title bytes 0x134-0x143 are all zero; descriptive keys (name, author, source, release, commit, cartridge, redistribution) identify the reviewed release and say when the artifact is a third-party redistribution rather than the author's own release",
     "images": {

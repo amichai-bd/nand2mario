@@ -190,8 +190,9 @@ def explain(game, error):
     text = str(error)
     name = game['name']
     if 'hash mismatch' in text or 'size mismatch' in text:
-        return (f'{name} does not match its pinned digest, so nothing was loaded. The cached copy '
-                'under workdir/private/external-roms is wrong or damaged; delete it and retry.')
+        return (f'{name} does not match its pinned digest, so nothing was loaded. The cached copy in the '
+                'shared external ROM cache (N2M_EXTERNAL_ROM_CACHE, else the per-user default) is wrong '
+                'or damaged; delete it and retry.')
     if 'readback mismatch' in text:
         return (f'{name} was sent but the board read different bytes back, so it was not started. '
                 'Check the UART wiring and the selected port, then retry.')

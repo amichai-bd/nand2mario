@@ -1,5 +1,6 @@
 """Flash library image assembly against the contract's flash words; registry validation; builder records."""
 import json
+import os
 from pathlib import Path
 import sys
 import hashlib
@@ -16,6 +17,15 @@ from n2m.records import file_hash
 from sw.package import package
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+def cached_image(name):
+    """The pinned image this host holds: the shared cache, else a per-checkout cache."""
+    for folder in (external.cache_root(ROOT), ROOT / external.CACHE):
+        path = folder / name / 'image.gb'
+        if path.is_file():
+            return path
+    return None
 SLOT_WORDS = library.SLOT_BYTES // 4
 CATALOGUE_WORD = 0x22800
 DATA_BASE = 0x00800
@@ -324,6 +334,10 @@ class ExternalImageTests(unittest.TestCase):
         self.pins['wrong-hash'] = dict(self.pins['named'], sha256='1' * 64)
         (self.root / external.PIN_FILE).parent.mkdir(parents=True)
         (self.root / external.PIN_FILE).write_text(json.dumps({'external_roms': {'images': self.pins}}))
+        # The cache is host-wide, so this fixture points it at its own folder.
+        variable = patch.dict(os.environ, {external.CACHE_VARIABLE: str(self.root / external.CACHE)})
+        variable.start()
+        self.addCleanup(variable.stop)
         for name, image in list(self.images.items()) + [('wrong-hash', self.images['named']), ('bad-title', self.images['blank'])]:
             folder = self.root / external.CACHE / name
             folder.mkdir(parents=True)
@@ -470,7 +484,7 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(fpga_flash.reader_path('flash_proof'), 'u_reader')
 
     def test_sw_library_stage_assembles_the_registered_packages_and_cached_externals(self):
-        missing = [name for name in EXTERNALS.values() if not (ROOT / external.CACHE / name / 'image.gb').is_file()]
+        missing = [name for name in EXTERNALS.values() if cached_image(name) is None]
         if missing:
             self.skipTest(f'external images not cached (run `sw library` online once): {", ".join(missing)}')
         parent = ROOT / 'workdir/builds'
@@ -504,8 +518,8 @@ class BuilderTests(unittest.TestCase):
             parsed = flash_library.parse_intel_hex((ROOT / summary['files']['library.hex']['path']).read_text())
             self.assertEqual(parsed, dict(enumerate(flash_library.words_to_bytes(words))))
             for row in summary['images']:
-                path = ((ROOT / row['result']).parent if row['kind'] == 'package'
-                        else ROOT / external.CACHE / row['pin']) / 'image.gb'
+                path = ((ROOT / row['result']).parent / 'image.gb' if row['kind'] == 'package'
+                        else cached_image(row['pin']))
                 image = path.read_bytes()
                 self.assertEqual(file_hash(path), row['image_sha256'])
                 base = row['index'] * library.SLOT_BYTES
