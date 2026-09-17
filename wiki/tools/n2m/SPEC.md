@@ -335,6 +335,15 @@ and never alone. A registered target absent from the catalogue, a catalogued
 target absent from the registry, and a catalogued path naming no file each fail
 the same way. This is the control that stops the catalogue drifting out of date.
 
+Both also check every preload target's
+[fixture inputs](#preload-fixtures-under-verilator), for either testbench
+kind, so a target that would refuse to run fails here instead of at simulation
+time. An input the builder reads but the target does not declare fails as
+`registry <target>: preload_inputs omit fixture inputs: <paths>` for a
+SystemVerilog target and
+`registry <target>: python inputs omit fixture inputs: <paths>` for a Python
+one.
+
 ### Host unit closure
 
 [`host_closure.py`](../../../tools/n2m/host_closure.py) derives a host unit's

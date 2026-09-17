@@ -340,10 +340,31 @@ def coverage(root, model):
         problems.append(f"catalogue target {name} is not a registered simulation target")
     for name in sorted(set(model["retired"]) & set(targets)):
         problems.append(f"retired target {name} is still registered in targets.json")
+    # A preload target's fixture inputs are checked here, not only when someone
+    # runs that simulation, so an undeclared input fails a required check.
+    # A SystemVerilog target declares them in `preload_inputs` and a Python one
+    # in `python.inputs`; both must cover what the builder reads.
+    from . import python_tb
+    fixtures = {}
     for name in sorted(targets):
-        problem = simulator_problem(name, targets[name])
+        target = targets[name]
+        problem = simulator_problem(name, target)
         if problem:
             problems.append(f"registry {problem}")
+            continue
+        if target.get("preload") is None:
+            continue
+        try:
+            if target.get("testbench") == "python":
+                declared = set((target.get("python") or {}).get("inputs") or [])
+                missing = sorted(python_tb.fixture_inputs(root, target["preload"]) - declared)
+                if missing:
+                    raise ValueError(f"{name}: python inputs omit fixture inputs: {', '.join(missing)}")
+            else:
+                python_tb.validate_fixture(root, target, name, fixtures)
+        except (ValueError, OSError) as error:
+            message = str(error)
+            problems.append(f"registry {message if message.startswith(name + ':') else f'{name}: {message}'}")
     owned = target_inputs(targets)
     for path in discovered_tests(root):
         if path in files or path in model["not_runnable"] or path in owned:

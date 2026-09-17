@@ -152,6 +152,36 @@ class Validation(unittest.TestCase):
         loaded, _ = module.load(self.root)
         self.assertEqual(module.coverage(self.root, loaded), [])
 
+    def test_a_preload_targets_fixture_inputs_are_a_coverage_check(self):
+        """Either testbench kind fails coverage by name when it would refuse to run."""
+        self.write(model())
+        loaded, _ = module.load(self.root)
+        self.assertEqual(module.coverage(self.root, loaded), [])
+
+        registry = self.root / "src/dv/builder/targets.json"
+        registry.write_text(json.dumps({"cpu-alu": {"sources": [], "simulators": ["verilator"],
+                                                    "preload": "menu", "preload_inputs": ["src/dv/builder/targets.json"]}}),
+                            encoding="utf-8")
+
+        def refuse(root, target, name=None, cache=None):
+            raise ValueError(f"{name}: preload_inputs omit fixture inputs: src/sw/menu/assets/design/x.json")
+
+        with patch("n2m.python_tb.validate_fixture", refuse):
+            self.assertEqual(module.coverage(self.root, loaded),
+                             ["registry cpu-alu: preload_inputs omit fixture inputs: "
+                              "src/sw/menu/assets/design/x.json"])
+        # A Python testbench carries the same fixture inputs in python.inputs.
+        registry.write_text(json.dumps({"cpu-alu": {"sources": [], "simulators": ["verilator"],
+                                                    "testbench": "python", "preload": "menu",
+                                                    "python": {"module": "probe", "test": "run",
+                                                               "inputs": ["src/sw/menu/main.asm"]}}}),
+                            encoding="utf-8")
+        with patch("n2m.python_tb.fixture_inputs",
+                   lambda root, preload: {"src/sw/menu/main.asm", "src/sw/menu/assets/design/x.json"}):
+            self.assertEqual(module.coverage(self.root, loaded),
+                             ["registry cpu-alu: python inputs omit fixture inputs: "
+                              "src/sw/menu/assets/design/x.json"])
+
     def test_undeclared_label_fails_validation(self):
         self.write(model(units={"cpu-alu": dict(ENTRY, labels=["cpu", "ppu"])}))
         with self.assertRaisesRegex(ValueError, "undeclared label: ppu"):
