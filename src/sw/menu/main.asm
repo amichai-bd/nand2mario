@@ -848,8 +848,23 @@ ADD A,HIGH(MAP)
 LD H,A
 LD D,H
 LD E,L
+; A star in a row the list wraps into the map's own top waits for the slide
+; to carry that row in: the splash draws those rows blank, and the cells the
+; slide copies carry the star themselves. The cell still joins the table, so
+; the twinkle rewrites the whole field once the list has settled.
+LD A,C
+CP A,WRAPPED_SLOTS
+JR NC,PaintStarNow
+LD A,[SplashOn]
+OR A,A
+JR NZ,PaintStarWait
+PaintStarNow:
 POP AF
 LD [HL],A
+JR PaintStarBase
+PaintStarWait:
+POP AF
+PaintStarBase:
 SUB A,TILE_STAR
 LD C,A
 LD A,[StarCount]

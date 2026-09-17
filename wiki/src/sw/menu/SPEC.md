@@ -355,21 +355,19 @@ measured from the new epoch's first poll rather than across the swap.
 |---|---|---|
 | Idle | 238 | 21% |
 | Cursor move or a sampled press, one object byte | 245-262 | 21-23% |
-| Nudge phase change: one object byte and the eight star cells | 380 (estimated) | 33% |
+| Nudge phase change: one object byte and the eight star cells | 432 | 38% |
 | Boot splash fade frame, one BGP write | 166-196 | 15-17% |
 | Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
-| Boot splash slide frame after the map is whole | 199-255 | 17-22% |
+| Boot splash slide frame after the map is whole | 199-260 | 17-23% |
 | Skipped splash frame, two wrapped rows | 599-663 | 53-58% |
 | Refused select with a 20-character status redraw | 555 | 49% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
 select from `menu-refused` and the splash rows from `menu-splash` and
-`menu-frame-fault`, each measured on the image this page specifies. The row
-marked estimated is the twinkle frame; it carries the counted figure until a
-measured run replaces it. The first list frame is no longer a class of its
-own: the bottom plate is built into the window map with the LCD off, so that
-frame writes nothing and measures the idle 238 rather than the 483 a status
-redraw used to add.
+`menu-frame-fault`, each measured on the image this page specifies. The first
+list frame is no longer a class of its own: the bottom plate is built into the
+window map with the LCD off, so that frame writes nothing and measures the idle
+238 rather than the 483 a status redraw used to add.
 
 A skipped splash frame is the peak, 663, 477 M-cycles inside the budget, and
 the idle frame is the floor at 238. The peak is `menu-frame-fault`'s own

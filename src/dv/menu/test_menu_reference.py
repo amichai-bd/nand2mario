@@ -262,6 +262,12 @@ class Layout(unittest.TestCase):
         self.assertEqual(len(drawn), reference.MAP_ROWS)
         self.assertEqual(undrawn[:reference.ROWS], splash)
         self.assertEqual(drawn[:reference.WRAPPED_ROWS], listing[reference.ROWS - reference.WRAPPED_ROWS:])
+        # A wrapped row's cells, its stars included, reach the map only on the
+        # slide frame that draws that row: until then the splash owns the row.
+        for row in range(reference.WRAPPED_ROWS):
+            waiting = reference.background_map(self.entries, wrapped=row)
+            self.assertEqual(waiting[row], splash[row])
+            self.assertTrue(all(tile < reference.TILE_STAR for tile in waiting[row]), row)
         self.assertEqual(drawn[reference.LIST_MAP_ROW:], listing[:reference.MAP_ROWS - reference.LIST_MAP_ROW])
         # The settled view is the list alone, so every menu frame is unchanged.
         self.assertEqual(reference.tilemap(self.entries), listing)
