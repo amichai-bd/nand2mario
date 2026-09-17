@@ -152,6 +152,25 @@ class Validation(unittest.TestCase):
         loaded, _ = module.load(self.root)
         self.assertEqual(module.coverage(self.root, loaded), [])
 
+    def test_a_targets_own_validator_runs_as_a_coverage_check(self):
+        """A target that would refuse to run fails coverage by name, not only at simulation time."""
+        self.write(model())
+        loaded, _ = module.load(self.root)
+        self.assertEqual(module.coverage(self.root, loaded), [])
+
+        registry = self.root / "src/dv/builder/targets.json"
+        registry.write_text(json.dumps({"cpu-alu": {"sources": [], "simulators": ["verilator"],
+                                                    "preload": "menu", "preload_inputs": ["src/dv/builder/targets.json"]}}),
+                            encoding="utf-8")
+
+        def refuse(root, target, name=None, cache=None):
+            raise ValueError(f"{name}: preload_inputs omit fixture inputs: src/sw/menu/assets/design/x.json")
+
+        with patch("n2m.python_tb.validate_fixture", refuse):
+            self.assertEqual(module.coverage(self.root, loaded),
+                             ["registry cpu-alu: preload_inputs omit fixture inputs: "
+                              "src/sw/menu/assets/design/x.json"])
+
     def test_undeclared_label_fails_validation(self):
         self.write(model(units={"cpu-alu": dict(ENTRY, labels=["cpu", "ppu"])}))
         with self.assertRaisesRegex(ValueError, "undeclared label: ppu"):

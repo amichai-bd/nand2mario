@@ -340,10 +340,22 @@ def coverage(root, model):
         problems.append(f"catalogue target {name} is not a registered simulation target")
     for name in sorted(set(model["retired"]) & set(targets)):
         problems.append(f"retired target {name} is still registered in targets.json")
+    # A preload target's fixture inputs are checked here, not only when someone
+    # runs that simulation, so an undeclared input fails a required check.
+    from . import python_tb
+    fixtures = {}
     for name in sorted(targets):
         problem = simulator_problem(name, targets[name])
         if problem:
             problems.append(f"registry {problem}")
+            continue
+        if targets[name].get("preload") is None or targets[name].get("testbench") == "python":
+            continue
+        try:
+            python_tb.validate_fixture(root, targets[name], name, fixtures)
+        except (ValueError, OSError) as error:
+            message = str(error)
+            problems.append(f"registry {message if message.startswith(name + ':') else f'{name}: {message}'}")
     owned = target_inputs(targets)
     for path in discovered_tests(root):
         if path in files or path in model["not_runnable"] or path in owned:
