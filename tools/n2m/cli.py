@@ -639,6 +639,11 @@ def main(argv=None, root=None):
             for line in affected_lines(report):
                 print(line)
         if args.command == "tests" and args.action == "run" and isinstance(report.get("units"), dict):
+            # Preparation happens before the aggregate clock, so its cost is
+            # named here rather than left to the JSON record alone.
+            for name, step in (report.get("preparation") or {}).items():
+                wall = f" in {step['elapsed_seconds']:.1f}s" if "elapsed_seconds" in step else ""
+                print(f"Prepared {name}: {step['status']}{wall} {step.get('error', '')}".rstrip())
             for name, outcome in report["units"].items():
                 if outcome["status"] != "PASS":
                     print(f"{name}: {outcome['status']} {outcome.get('reason', outcome.get('error', ''))}".rstrip())

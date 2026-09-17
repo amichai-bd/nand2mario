@@ -288,15 +288,16 @@
     "commit": "ea338be98e1e838d3518809ce8899f85a009963c",
     "license": "LGPL-3.0-only OR Artistic-2.0; see upstream LICENSE, LICENSES/ and the SPDX header in every source file",
     "purpose": "Supported Linux RTL simulator, built from source by `tools verilator`; the Ubuntu 24.04 distribution package (5.020) is below cocotb's 5.036 minimum",
+    "pinned": "5.052 is upstream's current release as of this pin (#601, 2026-09-15) and the oldest one this repository has validated; cocotb 2.1.0 requires 5.036 or newer, so neither the Ubuntu 24.04 package (5.020) nor any earlier tag qualifies. Raise it only with a fresh commit hash and a passing `doctor --json` on the new build.",
     "local_changes": "none",
     "storage": "Ignored repository prefix workdir/tools/verilator/v5.052 with its own installation.json provenance, or any operator prefix on PATH; nothing is vendored or redistributed",
     "install": {
       "apt": "sudo apt-get install -y git help2man perl python3 make autoconf g++ flex bison ccache libfl2 libfl-dev libgoogle-perftools-dev numactl perl-doc zlib1g zlib1g-dev liblz4-dev",
       "apt_note": "liblz4-dev: Verilator 5.052 compiles its FST writer against the system lz4.h and links -llz4 for every --trace-fst build; zlib1g-dev serves the same writer",
       "command": "python3 tools/build.py tools verilator --tag pinned-verilator --json",
-    "clone": "git clone --depth 1 --branch v5.052 https://github.com/verilator/verilator.git && git -C verilator rev-parse HEAD must equal this pin's commit",
+      "clone": "git clone --depth 1 --branch v5.052 https://github.com/verilator/verilator.git && git -C verilator rev-parse HEAD must equal this pin's commit",
       "build": "cd verilator && unset VERILATOR_ROOT && autoconf && ./configure --prefix=<prefix> && make -j$(nproc) && make install",
-    "build_note": "`tools verilator` runs exactly these steps as argv into workdir/tools/verilator/v5.052; run them by hand only for an operator prefix outside the repository",
+      "build_note": "`tools verilator` runs exactly these steps as argv into workdir/tools/verilator/v5.052; run them by hand only for an operator prefix outside the repository",
       "verify": "<prefix>/bin/verilator --version prints 'Verilator 5.052 2026-09-05 rev v5.052'; then python3 tools/build.py doctor --json, which finds the pinned prefix with no PATH edit, or doctor --verilator-bin <prefix>/bin --json for an operator prefix"
     },
     "runtime": "g++ 13 or newer, GNU make, perl, help2man and the lz4/zlib development headers from the same apt line; Verilator consults no license file or environment variable"

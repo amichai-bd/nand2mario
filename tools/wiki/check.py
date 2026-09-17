@@ -40,6 +40,34 @@ def installed(root=ROOT):
     return None
 
 
+def build(root=ROOT, *, browser=False, capture=False):
+    """Create the pinned environment when it is absent; return its interpreter.
+
+    The ready marker is written last, so an interrupted install is rebuilt
+    rather than discovered. This is the one place the environment is created;
+    other tools call it rather than repeat the venv and pip steps. `capture`
+    keeps pip off the caller's stdout, which a `--json` caller needs; the
+    transcript then travels in the raised error instead of being lost.
+    """
+    directory, interpreter, lock = environment(root, browser=browser)
+    ready = directory / ".ready"
+    if ready.is_file() and interpreter.is_file():
+        return interpreter
+    venv.EnvBuilder(with_pip=True).create(directory)
+    install = [str(interpreter), "-m", "pip", "install", "--disable-pip-version-check",
+               "--require-hashes", "--requirement", str(lock)]
+    if not capture:
+        subprocess.run(install, cwd=Path(root), check=True)
+    else:
+        result = subprocess.run(install, cwd=Path(root), text=True, encoding="utf-8",
+                                errors="replace", stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        if result.returncode:
+            raise RuntimeError(f"pip exited {result.returncode}: {result.stdout.strip()}")
+    ready.write_text(directory.name + "\n", encoding="utf-8")
+    return interpreter
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--browser', action='store_true', help='Run headless interaction tests after building')
@@ -55,26 +83,7 @@ def main() -> int:
         for name in ('failure.png', 'trace.zip', 'quality-result.json', 'quality-trace.zip'):
             (output / name).unlink(missing_ok=True)
     (ROOT / "workdir/wiki/docs").mkdir(parents=True, exist_ok=True)
-    directory, python, lock = environment(ROOT, browser=args.browser)
-    ready = directory / ".ready"
-
-    if not ready.exists():
-        venv.EnvBuilder(with_pip=True).create(directory)
-        subprocess.run(
-            [
-                str(python),
-                "-m",
-                "pip",
-                "install",
-                "--disable-pip-version-check",
-                "--require-hashes",
-                "--requirement",
-                str(lock),
-            ],
-            cwd=ROOT,
-            check=True,
-        )
-        ready.write_text(directory.name + "\n", encoding="utf-8")
+    python = build(ROOT, browser=args.browser)
 
     subprocess.run(
         [str(python), "-m", "unittest", "discover", "-s", "tools/wiki", "-p", "test_*.py"],

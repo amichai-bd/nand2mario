@@ -439,11 +439,18 @@ requested backend is skipped with reason `unsupported-backend` and never
 launched, so a label that mixes Verilator-capable and Questa-only rows runs its
 supported rows on either host. There is no fallback to the other simulator. A
 unit labelled `needs-cocotb` is skipped with reason `cocotb-environment` when
-the pinned `src/dv/python` interpreter is absent, and one labelled
-`needs-wiki-env` with reason `wiki-environment` when the pinned
-[wiki environment](../wiki/SPEC.md) is not built; each otherwise runs on that
-interpreter. The wiki environment's location rule lives in
-[`check.py`](../../../tools/wiki/check.py) and is read from there, never
+the pinned `src/dv/python` interpreter is absent. A unit labelled
+`needs-wiki-env` runs on the pinned [wiki environment](../wiki/SPEC.md), which
+the selection builds for itself: before the aggregate clock starts, and only
+when such a unit is selected, the run creates that environment if it is absent,
+so the unit runs rather than skips on a host that has never built it. The result
+is recorded as `preparation.wiki-environment` with `PRESENT`, `BUILT` and its
+wall, or `UNAVAILABLE` and the reason the build could not complete, and the text
+summary names it. Only `UNAVAILABLE` leaves the unit skipped with reason
+`wiki-environment`. Installing an interpreter is preparation, not test work, so
+its wall is reported beside the aggregate rather than inside the budget. The
+environment's location and build rules both live in
+[`check.py`](../../../tools/wiki/check.py) and are read from there, never
 repeated. A skip is not a defect, and
 is never silently swallowed: the summary lists every skipped unit in
 `skipped`, the unit's record carries its `reason`, and the text summary names
@@ -1637,10 +1644,10 @@ python3 -m venv workdir/builds/python-dv-env/.venv
 workdir/builds/python-dv-env/.venv/bin/python -m pip install -r src/dv/python/requirements.txt
 ```
 
-The [wiki build](../wiki/SPEC.md) owns its own pinned environment, which
-`python3 tools/wiki/check.py` creates; the catalogue's `needs-wiki-env` unit runs
-there. Paths with spaces are supported. There is no license configuration
-command.
+The [wiki build](../wiki/SPEC.md) owns its own pinned environment. Neither
+command above creates it: `python3 tools/wiki/check.py` does, and so does a
+`tests run` selection that includes the `needs-wiki-env` unit. Paths with spaces
+are supported. There is no license configuration command.
 
 ### Pinned Verilator installation
 

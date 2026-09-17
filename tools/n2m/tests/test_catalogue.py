@@ -604,6 +604,108 @@ class UnitExecution(unittest.TestCase):
         return check
 
 
+# A check.py double: it answers the two questions the catalogue asks and records
+# every build, so the contract is exercised without a venv or the network.
+STUB_CHECK = '''\
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def interpreter(root):
+    return Path(root) / "workdir/tools/wiki/python-stub/bin/python"
+
+
+def installed(root=ROOT):
+    found = interpreter(root)
+    return found if found.is_file() else None
+
+
+def build(root=ROOT, *, browser=False, capture=False):
+    log = Path(root) / "build-calls.log"
+    log.write_text((log.read_text(encoding="utf-8") if log.is_file() else "") + "call\\n",
+                   encoding="utf-8")
+    if (Path(root) / "offline").is_file():
+        raise RuntimeError("no network")
+    found = interpreter(root)
+    found.parent.mkdir(parents=True, exist_ok=True)
+    found.write_text("", encoding="utf-8")
+    return found
+'''
+
+
+class WikiEnvironmentPreparation(unittest.TestCase):
+    """The pinned wiki interpreter is built before the clock, never skipped past."""
+
+    def setUp(self):
+        base = ROOT / "workdir/builds/catalogue-unit-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        temp = tempfile.TemporaryDirectory(dir=base)
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+
+    def install_stub(self):
+        path = self.root / "tools/wiki/check.py"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(STUB_CHECK, encoding="utf-8")
+
+    def builds(self):
+        log = self.root / "build-calls.log"
+        return log.read_text(encoding="utf-8").count("call") if log.is_file() else 0
+
+    def test_preparation_without_check_py_reports_it_and_builds_nothing(self):
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "UNAVAILABLE")
+        self.assertIn("tools/wiki/check.py", record["error"])
+        self.assertIsNone(module.wiki_python(self.root))
+
+    def test_a_missing_environment_is_built_once_so_the_unit_runs_for_real(self):
+        self.install_stub()
+        self.assertIsNone(module.wiki_python(self.root))
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "BUILT")
+        self.assertGreaterEqual(record["elapsed_seconds"], 0)
+        self.assertEqual(module.wiki_python(self.root), record["interpreter"])
+        self.assertEqual(self.builds(), 1)
+        # A second run finds it present and builds nothing again.
+        again = module.prepare_wiki_environment(self.root)
+        self.assertEqual((again["status"], again["interpreter"]), ("PRESENT", record["interpreter"]))
+        self.assertEqual(self.builds(), 1)
+        command = module.unit_command(self.root, "suite/test_one.py",
+                                      {"labels": ["needs-wiki-env"]}, module.wiki_python(self.root))
+        self.assertEqual(command[0], record["interpreter"])
+
+    def test_a_build_that_cannot_complete_is_reported_and_the_unit_is_skipped(self):
+        self.install_stub()
+        (self.root / "offline").write_text("", encoding="utf-8")
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "UNAVAILABLE")
+        self.assertIn("could not be built", record["error"])
+        self.assertIn("no network", record["error"])
+        self.assertEqual(self.builds(), 1)
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+
+    def test_a_selection_prepares_the_environment_only_when_a_unit_needs_it(self):
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
+                                 "questa_bin": None, "intel_sim_lib": None, "sim": "verilator",
+                                 "level": 0, "label": [], "broader": False})()
+        loaded, path = module.load(ROOT)
+        copy = self.root / "catalogue.yaml"
+        shutil.copy(path, copy)
+        needy = "tools/wiki/test_site.py"
+        self.assertIn("needs-wiki-env", loaded["units"][needy]["labels"])
+        prepared = {"status": "BUILT", "elapsed_seconds": 1.0, "interpreter": "/stub/python"}
+        for units, expected in ((["tools/n2m/tests/test_fpga_hold.py"], {}),
+                                ([needy], {"wiki-environment": prepared})):
+            selection = {**loaded, "units": {name: loaded["units"][name] for name in units}}
+            with patch("n2m.catalogue.prepare_wiki_environment", return_value=prepared) as prepare, \
+                    patch("n2m.catalogue.run_unit", return_value={"status": "PASS"}):
+                record = module.run_selection(ROOT, selection, copy, "tag", args, 300, {})
+            self.assertEqual(record["preparation"], expected)
+            self.assertEqual(prepare.call_count, 0 if expected == {} else 1)
+
+
 class UnitErrorTests(unittest.TestCase):
     """The reported line names the failure, whatever the unit printed last."""
 

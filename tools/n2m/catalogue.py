@@ -467,11 +467,12 @@ def cocotb_python(root):
     return None
 
 
-def wiki_python(root):
-    """The pinned wiki interpreter, or None when that environment is not built.
+def wiki_check(root):
+    """Load `tools/wiki/check.py`, or None when it is absent.
 
-    The location rule belongs to `tools/wiki/check.py`; it is read from there
-    rather than repeated, so a changed pin moves both together.
+    That module owns where the pinned wiki environment lives and how it is
+    built. Both rules are read from there rather than repeated, so a changed
+    pin moves the check and the catalogue together.
     """
     import importlib.util
     path = Path(root) / WIKI_CHECK
@@ -480,8 +481,41 @@ def wiki_python(root):
     spec = importlib.util.spec_from_file_location("wiki_check", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    interpreter = module.installed(root)
+    return module
+
+
+def wiki_python(root):
+    """The pinned wiki interpreter, or None when that environment is not built."""
+    module = wiki_check(root)
+    interpreter = module.installed(root) if module is not None else None
     return str(interpreter) if interpreter else None
+
+
+def prepare_wiki_environment(root):
+    """Build the pinned wiki environment once, before the aggregate clock starts.
+
+    `test_site.py` imports the pinned Python-Markdown through `site.py`, so on a
+    host that has never built the environment the unit has nothing to run on.
+    Building it here makes the unit run for real rather than report a skip that
+    would let the selection pass without it. A build that cannot complete,
+    offline for example, is recorded with its error and the unit is then skipped
+    by name; the skip is the honest fallback, never the ordinary path.
+    """
+    module = wiki_check(root)
+    if module is None:
+        return {"status": "UNAVAILABLE", "error": f"{WIKI_CHECK} is not present"}
+    interpreter = module.installed(root)
+    if interpreter:
+        return {"status": "PRESENT", "interpreter": str(interpreter)}
+    started = time.monotonic()
+    try:
+        # Captured: a `--json` run must leave exactly one object on stdout.
+        interpreter = module.build(root, capture=True)
+    except Exception as error:
+        return {"status": "UNAVAILABLE", "elapsed_seconds": round(time.monotonic() - started, 3),
+                "error": f"the pinned tools/wiki environment could not be built: {error}"}
+    return {"status": "BUILT", "elapsed_seconds": round(time.monotonic() - started, 3),
+            "interpreter": str(interpreter)}
 
 
 def unit_error(output):
@@ -513,8 +547,9 @@ def run_unit(root, path, entry):
         python = wiki_python(root)
         if python is None:
             return {"status": "SKIPPED", "reason": "wiki-environment",
-                    "error": "the pinned tools/wiki environment is not installed; "
-                             "run python tools/wiki/check.py"}
+                    "error": "the pinned tools/wiki environment is neither installed nor "
+                             "buildable here; see the run's preparation record, or build it "
+                             "with python tools/wiki/check.py"}
     command = unit_command(root, path, entry, python)
     started = time.monotonic()
     try:
@@ -630,10 +665,18 @@ def run_selection(root, model, path, tag, args, budget, provenance):
         message = unsupported_backend(Path(root), target, args.sim)
         if message:
             unsupported[target] = message
+    # A unit that needs the pinned wiki interpreter gets it built here, once,
+    # before the clock starts: installing a tool is preparation, not test work,
+    # and the unit must actually run rather than skip on a fresh checkout. The
+    # wall is recorded so the cost is visible and never hides inside the budget.
+    preparation = {}
+    if any("needs-wiki-env" in model["units"][name]["labels"] for name in chosen):
+        preparation["wiki-environment"] = prepare_wiki_environment(root)
     record = {"selector": selector, "level": args.level, "labels": list(args.label),
               "selected": len(chosen), "budget_seconds": budget, "broader": bool(args.broader),
               "catalogue": {"path": CATALOGUE, "sha256": file_hash(path)},
               "seed": args.seed, "simulator": args.sim, "units": {}, "failed": [], "skipped": [],
+              "preparation": preparation,
               "provenance": provenance or {}, "started": datetime.now(timezone.utc).isoformat()}
     started = time.monotonic()
     durations = {}
