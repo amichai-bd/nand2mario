@@ -146,6 +146,15 @@ holds the splash above the list.
   [SPEC](SPEC.md) so the image and the reference read the same constants; the
   frame counter that already drives the nudge names the step, so the reference
   still computes every frame from the frame number alone.
+- Built: the 18-row splash, with the four wrapped rows drawn as they scroll
+  in. The estimate above put such a row on the text path at about 870 of
+  1140; the image instead builds the four rows as finished cells at boot,
+  with the LCD off, so a slide frame copies twenty bytes and measures 361-376.
+  A press skips the splash, and a skip draws at most two of those rows a
+  frame, which holds its peak at 658. The
+  [SPEC schedule](SPEC.md#boot-splash) and
+  [frame budget](SPEC.md#frame-budget) own the built behavior and the
+  measurements.
 
 ## 2. Sprite cursor
 
