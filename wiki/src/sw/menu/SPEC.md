@@ -15,17 +15,18 @@ the menu's behavior, memory use, frame layout and verification.
 
 Boot, from the direct entry state with the LCD off:
 
-1. Load the 82-tile bank into VRAM `$8000`: the 39 font tiles, their
-   inverses, the nudged arrow, the two plate caps and the inverse nudged
-   arrow. Blank the background map at `$9800`, set BGP `$E4` and zero
-   scroll, draw the header plate, the status plate's two caps and the
-   sixteen slot numbers, build the six status rows in WRAM, and put the
-   selection bar on slot 0.
+1. Load the 86-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
+   a mid-grey page, the six authored grey cells and the two pointer phases.
+   Clear the object table, blank the background map at `$9800`, set BGP and
+   OBP0 to `$E4` and zero scroll, draw the header plate, the bottom plate's
+   two caps and the sixteen slot numbers, build the six status rows in WRAM,
+   and put the cursor object on slot 0.
 2. If `$A000` bit 5 (`sdram_ready`) is set, commit bank 34 (the catalogue,
    `LIBRARY_CATALOGUE_ADDRESS / LIBRARY_WINDOW_BYTES`) to the bank register,
    wait for bit 6 (`window_ready`) and draw the sixteen title rows from the
    window. Otherwise skip the catalogue; the frame loop retries below.
-3. Draw the status row and turn the LCD on (`LCDC = $91`, background only).
+3. Draw the status row and turn the LCD on (`LCDC = $93`, background and
+   objects).
 
 Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
 
@@ -41,13 +42,12 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
    the index in `$A003`. Before the catalogue is listed, A does nothing.
 4. Delayed catalogue path: when bank 34 has not been committed and
    `sdram_ready` is now set, commit it; when it has been committed and
-   `window_ready` is set, draw one remaining title row per frame. A row that
-   lands under the selection bar is drawn from the inverse bank, judged
-   against the row the bar is on now rather than the slot the cursor has
-   already moved to in this same frame.
-5. Move the selection bar only when the cursor changed, redraw the status
-   row only when its key or index changed, and rewrite the arrow cell alone
-   when the nudge phase changed. An idle frame writes no map cell.
+   `window_ready` is set, draw one remaining title row per frame. Every row
+   is drawn the same way, because the cursor is an object and never re-banks
+   a row.
+5. Move the cursor object only when the cursor changed, redraw the status
+   row only when its key or index changed, and rewrite the object's tile
+   alone when the nudge phase changed. An idle frame writes nothing.
 
 The catalogue is read once, at boot or through the delayed path; the drawn
 map is the menu's copy of the titles. Nothing after a selection depends on
@@ -79,15 +79,16 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$05D9` | `code` section: entry `Start`, frame loop, drawing routines and text tables (986 bytes) |
-| `$0800`-`$0A9F` | `assets` section: the 39 font tiles from `ASSET "Font"` and the three authored tiles from `ASSET "Plate"`, 672 bytes |
+| `$0200`-`$05B0` | `code` section: entry `Start`, frame loop, drawing routines and text tables (945 bytes) |
+| `$0800`-`$0AEF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"` and the two pointer phases from `ASSET "Pointer"`, 752 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
 | `$6000`-`$7FFF` write | Select register: the cursor's slot on an A edge |
 | `$A000`, `$A002`, `$A003` | Status byte, last result, last selected index |
-| `$8000`-`$851F` | The 82-tile bank: font 0..38, inverse font 39..77, nudged arrow 78, plate caps 79 and 80, inverse nudged arrow 81 |
+| `$8000`-`$855F` | The 86-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85 |
 | `$9800`-`$9BFF` | Background map; only the visible 20x18 cells are written |
-| `$C000`-`$C076` | `vars`, 119 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, `TitleOffset`, and `StatusCells`, the six 18-cell status rows |
+| `$FE00`-`$FE9F` | Object table; cleared at boot, then object 0 alone is the cursor |
+| `$C000`-`$C075` | `vars`, 118 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, and `StatusCells`, the six 18-cell status rows |
 | `$DFFE` | Stack pointer |
 
 Interrupts stay disabled; frame sync polls `LY`. The joypad rows are
@@ -95,28 +96,38 @@ deselected (`PROFILE_JOYP_SELECT`) after each read.
 
 ## Frame layout
 
-The visible frame is 20 by 18 background cells, identity palette, no scroll,
-no window or objects. Shade 0 is the page, shade 3 the ink. The header and
-status rows are plates: an ink-filled row with a rounded cap in each outer
-column, drawn from the inverse bank, where every shade is `3 - shade`. The
-selected slot is a full-width inverse bar.
+The visible frame is 20 by 18 background cells and one object, identity
+palette for both, no scroll and no window. Shade 0 is the page, shade 3 the
+ink and shade 2 the plates. The header and bottom rows are mid-grey plates: a
+dithered gradient fill with a rounded grey cap in each outer column, carrying
+text on the grey page, where the font's shade 0 becomes 2 and its ink stays 3.
+The selection is the [cursor object](#cursor-object), not a map cell, so the
+list itself is the same cells whatever the cursor does.
 
 | Row | Columns | Content |
 |---|---|---|
-| 0 | 0 and 19 | Left and right plate cap |
-| 0 | 1..18 | Header plate; `GAME LIBRARY` inverse at columns 4..15 |
-| 1..16 | 0 | The cursor arrow, inverse, on the selected slot's row; blank elsewhere |
+| 0 | 0 and 19 | Left and right grey plate cap |
+| 0 | 1..18 | Header plate, the 3-to-2 gradient cell; `GAME LIBRARY` on the grey page at columns 4..15 |
+| 1..16 | 0 and 3 | Blank; column 0 is the page the cursor object draws on |
 | 1..16 | 1..2 | Slot number `00`..`15` |
 | 1..16 | 4..19 | The 16 title bytes of a valid entry; blank for any other entry |
-| 1..16 | 1..19 | On the selected slot's row every cell is drawn from the inverse bank |
-| 17 | 0 and 19 | Left and right plate cap |
-| 17 | 1..18 | Status row, inverse, centred |
+| 17 | 0 and 19 | Left and right grey plate cap |
+| 17 | 1..18 | Bottom plate, the 2-to-1 gradient cell; the status text on the grey page, centred |
 
 The status text is unchanged; it is centred in the plate's 18 cells with the
 leftover space biased left, so `SLOT 03 INVALID` starts at column 2 and
-`SLOT 03 NOT READY` fills columns 1..17. The blank row is a plain plate.
-The image builds the six possible rows as tiles once, while the LCD is off,
-so a redraw copies 18 bytes instead of walking the text path.
+`SLOT 03 NOT READY` fills columns 1..17. Every cell the text does not reach
+keeps the plate's gradient fill, and an empty message leaves the whole plate
+filled. The image builds the six possible rows as tiles once, while the LCD is
+off, so a redraw copies 18 bytes instead of walking the text path.
+
+The six authored grey cells are the
+[two caps, three gradient fades and a plate shadow](../../../../src/sw/menu/assets/design/v2-grey-tiles.json);
+the frame uses the caps, the 3-to-2 fade on the header and the 2-to-1 fade on
+the bottom plate. The 1-to-0 fade and the shadow are loaded with them and are
+drawn by no cell today. The 39 grey glyphs are derived at boot rather than
+stored: the font uses only shade 0 and shade 3, so the grey copy is the font's
+low plane with the high plane set.
 
 Status row, from the status bytes each frame:
 
@@ -130,16 +141,24 @@ Status row, from the status bytes each frame:
 | any other `$A002` value | `SLOT nn ERROR` |
 
 `nn` is `$A003` as two decimal digits, or `--` when `$A003` is not 0..16.
-The text is centred in the plate's 18 cells as above; an empty one leaves a
-plain plate.
+The text is centred in the plate's 18 cells as above; an empty one leaves the
+plate's fill.
 
-### Selection bar and nudge
+### Cursor object
 
-The selected slot's cells 1..19 are the same tiles plus 39, the inverse bank,
-and column 0 carries the arrow. A frame counter byte advances once per frame
+The cursor is object 0 and the only object the menu uses. Its X is `8`, the
+screen's left edge, and its Y is `24 + 8 * slot`, so it sits in column 0 of
+the selected slot's row. Its flags are zero: no flip, palette OBP0, and no
+background priority, so it draws in front wherever its shade is not 0. Shade 0
+is transparent, which is why the pointer's page shows through. One object
+never meets the ten-objects-a-line limit, and the rest of the object table is
+cleared at boot so nothing else is on screen. A cursor move writes the Y byte
+alone and touches no map cell.
+
+A frame counter byte advances once per frame
 loop iteration, after that iteration's writes, and bit 4 of it is the nudge
-phase: on phase 1 column 0 holds the nudged arrow, the same arrow one pixel
-to the right, so the cursor ticks every 16 frames. The loop runs exactly once
+phase: on phase 1 the object's tile is the second pointer, the same arrow one
+pixel to the right, so the cursor ticks every 16 frames. The loop runs exactly once
 per displayed frame and an iteration's writes appear in the frame its counter
 names, so the phase follows from the frame number alone with no console
 state: displayed frame `m`, counted from the menu's first display-eligible
@@ -159,17 +178,17 @@ measured from the new epoch's first poll rather than across the swap.
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|
 | Idle | 230 | 20% |
-| Nudge phase change, one cell | 281 | 25% |
+| Cursor move or nudge phase change, one object byte | 254 | 22% |
 | Refused select with a 20-character status redraw | 547 | 48% |
-| Cursor move, two rows of 19 cells | 722 | 63% |
 
-The cursor move is the peak, 418 M-cycles inside the budget.
+The status redraw is the peak, 593 M-cycles inside the budget. The cursor
+object is what pulled the peak down: a move used to rewrite two rows of 19
+map cells for 722 M-cycles, and it now writes one byte.
 
 The delayed catalogue path draws one title row per frame and the matrix below
 never reaches it, because the fixture's SDRAM is ready before the menu boots.
-A row that lands under the selection bar is drawn from the inverse bank
-directly, one M-cycle a cell rather than a second pass over the row; the
-counted worst case, sixteen letter cells, is about 1090 of the 1140. The
+Every row is drawn the same way now that no row is re-banked under a bar; the
+counted worst case, sixteen letter cells, is about 1080 of the 1140. The
 overrun check bounds it wherever it does run, and
 [issue #777](https://github.com/amichai-bd/nand2mario/issues/777) tracks
 measuring it.
@@ -180,7 +199,7 @@ dash so a foreign title stays visible. The sixteenth title byte is header
 `$0143`, the CGB flag when the title is 15 bytes long: `$80` and `$C0`
 there draw the blank tile, and any other value follows the same rule as the
 other cells. Those two values in cells 1..15 still draw the dash. Tile 38 is
-the cursor arrow.
+the font's arrow, which the object cursor replaced; no cell names it.
 
 ### Font
 
@@ -197,36 +216,45 @@ worktree root with
 `python -m tools.sw.preview src/sw/menu/assets/font-tiles.json --tag <tag> --frame-width 8 --frame-height 8 --scale 8`;
 the checkerboard is the review tool's transparency convention, not menu pixels.
 
-### Plated list art
+### Plate and pointer art
 
-![Direction A new art](previews/a-plated-list-new-art.svg)
+![Mid-grey plate cells](previews/v2/5-grey-plates-new-art.svg)
 
-The three authored tiles are the
-[nudged arrow and the two plate caps](../../../../src/sw/menu/assets/design/direction-a-tiles.json);
-the inverse bank is derived from the font at boot rather than stored. The
-owner chose this direction, the plated list, from the three rendered proposals
-in [design directions](DESIGN.md); that page keeps the alternatives and their
-cost models, and this page owns every frame the image draws.
+![Cursor pointer phases](previews/v2/2-sprite-cursor-new-art.svg)
+
+The eight authored tiles are the
+[six grey plate cells](../../../../src/sw/menu/assets/design/v2-grey-tiles.json)
+and the
+[two pointer phases](../../../../src/sw/menu/assets/design/v2-cursor-tiles.json);
+the 39 grey glyphs are derived from the font at boot rather than stored. The
+owner chose the plated list in [design directions](DESIGN.md) and then the six
+[menu v2 ideas](DESIGN_V2.md), whose composite layout owns how the remaining
+ideas fit; this page owns every frame the image draws.
 
 ## Verification
 
-The Verilator matrix below is the preliminary evidence. The board criterion
-is proven by the [game library sessions](../../board-bring-up.md#game-library-sessions):
-after a host library load the menu frame, the cursor frames after a
-host-injected joypad Down (`host input`), and the menu frame after the return
-from a started game were read back with `SNAPSHOT`/`READ_FRAME` and matched
-`reference.py` pixel for pixel, and a host-injected A started the selected
-slot; the board has no physical joypad. The owner's physical KEY1 hold returned
-from a running game to a pixel-exact menu frame; the host return exercised the
-same swap.
+The Verilator matrix below is the preliminary evidence. The
+[game library sessions](../../board-bring-up.md#game-library-sessions) proved
+the board path on the plated list: after a host library load the menu frame,
+the cursor frames after a host-injected joypad Down (`host input`), and the
+menu frame after the return from a started game were read back with
+`SNAPSHOT`/`READ_FRAME` and matched `reference.py` pixel for pixel, and a
+host-injected A started the selected slot; the board has no physical joypad.
+The owner's physical KEY1 hold returned from a running game to a pixel-exact
+menu frame; the host return exercised the same swap. Those frames are the
+plated list, not the grey plates and cursor object this page now specifies;
+[issue #794](https://github.com/amichai-bd/nand2mario/issues/794) tracks
+reading the composite menu back from the board.
 
 `python tools/build.py sw build menu --tag <tag> --json` builds the image;
 its result records `profile: dmg-loader-v1` and `profile_id: 2`.
 
 [`reference.py`](../../../../src/dv/menu/reference.py) composes the expected
 frame from this page's layout rules and the font's shade JSON, never from
-the ROM or the DUT, and builds the 82-tile bank from the font and the
-authored plate art with the inverse of each derived as `3 - shade`.
+the ROM or the DUT, and builds the 86-tile bank from the font, the grey copy
+of each glyph, the authored grey cells and the two pointer phases. `frame`
+draws the background and then the cursor object over it, with shade 0
+transparent.
 `frame(entries, cursor=0, phase=0, result=0, index=255, sdram_ready=True)`
 returns the 23040 row-major shades for a catalogue given as
 [`unpack_entry`](../../../../tools/n2m/host/library.py) rows (`valid` and 16

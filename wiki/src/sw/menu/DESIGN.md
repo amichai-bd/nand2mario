@@ -2,14 +2,15 @@
 
 Three proposals for the console-style game picker of
 [issue #767](https://github.com/amichai-bd/nand2mario/issues/767). The owner
-chose **direction A, the plated list**, on 2026-09-17 and it is implemented:
-the [menu contract](SPEC.md) owns the frame the
+chose **direction A, the plated list**, on 2026-09-17, and its list, plates
+and status row are still the frame's shape. B and C stay here as the considered
+alternatives. The owner then chose all six of the
+[menu v2 ideas](DESIGN_V2.md), whose composite layout is the design the image
+follows now; the [menu contract](SPEC.md) owns the frame the
 [menu image](../../../../src/sw/menu/main.asm) draws,
 [`reference.py`](../../../../src/dv/menu/reference.py) checks and the
-[frame budget](SPEC.md#frame-budget) measures. B and C stay here as the
-considered alternatives. A second pass over the chosen
-direction is rendered in [menu v2 ideas](DESIGN_V2.md); nothing there is chosen
-or implemented.
+[frame budget](SPEC.md#frame-budget) measures. The three screens below are the
+first pass as it was proposed, not the frame that ships.
 
 Each direction reuses the 39 approved font tiles and adds original 8x8 art of
 its own. The screens below are the same three states for every direction: the
