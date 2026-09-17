@@ -76,7 +76,7 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 the boot frames with `python3 tools/build.py tests run --label menu --tag
-<tag>` and the catalogue paths, the selects and the delayed draw, with `--label menu-library`; `menu-phase` and
+<tag>` and the selection paths with `--label menu-library` and the delayed draw with `--label menu-delayed`, which needs a label of its own because the three do not fit one 300-second aggregate; `menu-phase` and
 `menu-splash` carry `menu-animation`, `menu-select-mbc1` the `mbc1` and
 `system` labels, `menu-exit` the `system` label, and `menu-delayed-worst` a
 label of its own beside `system`, because its alignment is structurally seven

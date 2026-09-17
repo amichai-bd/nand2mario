@@ -38,8 +38,9 @@ labels:
   memory: "Memory stores and routing."
   menu: "The on-board game menu program, its frame reference and fixtures."
   menu-animation: "The menu's self-animating nudge phase, kept out of the menu label so that aggregate stays inside the ordinary budget."
+  menu-delayed: "The menu's delayed catalogue draw, one title row a frame; its own label because the menu-library aggregate cannot hold its wall too."
   menu-delayed-worst: "The delayed catalogue draw at its worst alignment: a declared target wall allowance, kept out of every ordinary aggregate."
-  menu-library: "The menu's catalogue paths: the accepted select, the refused one and the delayed catalogue draw, kept out of the menu label so that aggregate keeps headroom."
+  menu-library: "The menu's catalogue selection paths: the accepted select and the refused one, kept out of the menu label so that aggregate keeps headroom."
   milestone: "Carries the owner-authorized 1500-second Mooneye allowance."
   mooneye: "Pinned upstream Mooneye fixtures."
   needs-cocotb: "Imports cocotb; runs only on the pinned src/dv/python interpreter."
@@ -281,14 +282,14 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
-  menu-delayed: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 123.60}
+  menu-delayed: {kind: sim, level: 1, labels: [menu-delayed, system], duration_seconds: 171.97}
   menu-delayed-worst: {kind: sim, level: 1, labels: [menu-delayed-worst, system], duration_seconds: 182.91}
   menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 89.40}
   menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 86.52}
   menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 62.76}
   menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 118.74}
-  menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 84.30}
-  menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 46.09}
+  menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 110.59}
+  menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 51.68}
   menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 85.05}
   menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 120.96}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}

@@ -568,11 +568,13 @@ than a target of the ordinary budget.
 The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
 each target's last run. `menu-frame` and `menu-frame-fault` carry `menu`;
-`menu-select`, `menu-refused` and `menu-delayed` carry `menu-library`, the
-catalogue paths; `menu-delayed-worst` carries a label of its own beside
-`system`, so its declared allowance enters no ordinary aggregate - `system` is
-the aggregate above one RTL owner, a milestone-scale label rather than a
-300-second one;
+`menu-select` and `menu-refused` carry `menu-library`, the selection paths;
+`menu-delayed` carries a label of its own, because `menu-library` cannot hold
+its wall as well - the three together exhausted the 300-second aggregate
+budget and left `menu-select` unrun; `menu-delayed-worst` carries one of its
+own too, so its declared allowance enters no ordinary aggregate. Both carry
+`system` beside it, which is the aggregate above one RTL owner, a
+milestone-scale label rather than a 300-second one;
 `menu-phase` and `menu-splash` carry `menu-animation`; `menu-select-mbc1`
 carries `mbc1`. `menu-exit` carries only `system`, the aggregate above one
 RTL owner, so it is run as a single target.
