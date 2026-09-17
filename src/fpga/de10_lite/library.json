@@ -1,17 +1,17 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "slots": {
-    "0": "springtrail",
-    "1": "stackdrop",
-    "2": "v05",
-    "3": "external:libbet",
-    "4": "external:airaki",
-    "5": "external:gb-wordyl",
-    "6": "external:max-pirate",
-    "7": "external:alien-invasion",
-    "8": "external:square-fall",
-    "9": "external:unstoppable-knight",
-    "10": "external:postbot"
+    "0": {"image": "springtrail"},
+    "1": {"image": "stackdrop"},
+    "2": {"image": "v05"},
+    "3": {"image": "external:libbet"},
+    "4": {"image": "external:airaki"},
+    "5": {"image": "external:gb-wordyl"},
+    "6": {"image": "external:max-pirate"},
+    "7": {"image": "external:alien-invasion"},
+    "8": {"image": "external:square-fall"},
+    "9": {"image": "external:unstoppable-knight"},
+    "10": {"image": "external:postbot"}
   },
-  "menu": "menu"
+  "menu": {"image": "menu"}
 }

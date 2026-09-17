@@ -163,9 +163,9 @@ external image (`host library load` takes packages only), so the fallback is
 exercised by `sw library` and the flash image; a later `--external` option of
 `host library load` must pass the pin title through the same argument. `read_external` returns it as `title` (None when absent) and
 refuses any other form, and `offline=True` reads only the cache, failing by
-name with the seeding command instead of fetching. A pin may also carry
-`tagline`, 1-18 of the same characters, returned as `tagline` and written into
-the slot's tagline record by `sw library`; no pin declares one yet.
+name with the seeding command instead of fetching. A pin carries no tagline: the
+[flash library registry](../SPEC.md#flash-library-image) declares an external
+image's, beside the entry that names it.
 The [Libbet play record](../../../../src/dv/libbet/README.md) drives the pinned
 image through these commands on the board and retains its frames.
 

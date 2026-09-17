@@ -271,7 +271,13 @@ class RegistryTests(unittest.TestCase):
         (self.root / external.PIN_FILE).write_text(json.dumps({'external_roms': {'images': self.pins}}))
 
     def registry(self, **fields):
-        data = {'schema_version': 1, 'slots': {'0': 'springtrail', '1': 'stackdrop'}, 'menu': 'menu', **fields}
+        """Write a registry and load it; a bare name is the entry that names only its image."""
+        def entry(value):
+            return {'image': value} if isinstance(value, str) else value
+        data = {'schema_version': 2, 'slots': {'0': 'springtrail', '1': 'stackdrop'}, 'menu': 'menu', **fields}
+        if isinstance(data['slots'], dict):
+            data['slots'] = {key: entry(value) for key, value in data['slots'].items()}
+        data['menu'] = entry(data['menu'])
         (self.root / flash_library.REGISTRY).write_text(json.dumps(data))
         return flash_library.load_registry(self.root)
 
@@ -318,7 +324,7 @@ class RegistryTests(unittest.TestCase):
                     self.registry(**fields)
 
     def test_registry_refusals(self):
-        cases = ((dict(schema_version=2), 'schema'), (dict(slots={}), 'schema'), (dict(extra=1), 'schema'),
+        cases = ((dict(schema_version=1), 'schema'), (dict(slots={}), 'schema'), (dict(extra=1), 'schema'),
                  (dict(slots={'16': 'springtrail'}), r'0\.\.15'), (dict(slots={'01': 'springtrail'}), r'0\.\.15'),
                  (dict(slots={'0': 'objects'}), 'no packaged software target'),
                  (dict(slots={'0': 'missing'}), 'no packaged software target'),
@@ -326,6 +332,36 @@ class RegistryTests(unittest.TestCase):
                  (dict(menu='springtrail'), 'menu image must run in dmg-loader-v1'),
                  (dict(slots={'0': 'springtrail', '3': 'springtrail'}), 'only one flash library slot'),
                  (dict(slots={'0': 'menu'}), 'only one flash library slot'))
+        for fields, message in cases:
+            with self.subTest(fields=fields):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.registry(**fields)
+
+    def test_a_registry_entry_may_declare_the_slot_tagline(self):
+        registry = self.registry(slots={'0': {'image': 'springtrail', 'tagline': 'A RUN THROUGH MOSS'},
+                                        '1': 'stackdrop', '3': 'external:game'})
+        self.assertEqual(registry['slots'], {0: 'springtrail', 1: 'stackdrop', 3: 'external:game'})
+        self.assertEqual(registry['taglines'], {0: b'A RUN THROUGH MOSS', 1: None, 3: None, library.MENU_INDEX: None})
+        # A software target may carry a package's instead; declaring both is refused.
+        targets = json.loads((self.root / flash_library.SW_REGISTRY).read_text())
+        targets['targets']['stackdrop']['tagline'] = 'STACK THEM HIGH'
+        (self.root / flash_library.SW_REGISTRY).write_text(json.dumps(targets))
+        self.assertEqual(self.registry(slots={'0': 'springtrail', '1': 'stackdrop'})['taglines'][1], b'STACK THEM HIGH')
+        with self.assertRaisesRegex(ValueError, 'slot 1 declares a tagline in the registry and in software target stackdrop'):
+            self.registry(slots={'0': 'springtrail', '1': {'image': 'stackdrop', 'tagline': 'TWICE OVER'}})
+
+    def test_registry_entry_refusals(self):
+        cases = ((dict(slots={'0': 'springtrail', '1': {'image': 'stackdrop', 'extra': 1}}),
+                  'must carry an image and an optional tagline: slot 1'),
+                 (dict(slots={'0': {'tagline': 'NO IMAGE HERE'}}), 'must carry an image and an optional tagline: slot 0'),
+                 (dict(slots={'0': {'image': 5}}), 'invalid flash library package name at slot 0'),
+                 (dict(menu={'image': 'menu', 'gone': True}), 'must carry an image and an optional tagline: menu'),
+                 (dict(slots={'0': {'image': 'springtrail', 'tagline': 'lower case'}}),
+                  'upper-case letters, digits, spaces or dashes: slot 0'),
+                 (dict(slots={'0': {'image': 'springtrail', 'tagline': 'X' * 19}}),
+                  'upper-case letters, digits, spaces or dashes: slot 0'),
+                 (dict(slots={'0': {'image': 'springtrail', 'tagline': ''}}),
+                  'upper-case letters, digits, spaces or dashes: slot 0'))
         for fields, message in cases:
             with self.subTest(fields=fields):
                 with self.assertRaisesRegex(ValueError, message):
@@ -349,6 +385,10 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual({index: pins[name]['size'] for index, name in EXTERNALS.items()},
                          {index: abi.MBC1_ROM_BYTES if index in BANKED_EXTERNALS else library.SLOT_BYTES for index in EXTERNALS})
         self.assertNotIn(11, registry['slots'])
+        # No entry declares a tagline yet: the strings are a separate owner input,
+        # so every tagline record packs zero and catalogue.bin keeps its digest.
+        self.assertEqual(set(registry['taglines'].values()), {None})
+        self.assertEqual(sorted(registry['taglines']), sorted(registry['slots']) + [library.MENU_INDEX])
         self.assertEqual({name: pins[name].get('title') for name in ('alien-invasion', 'square-fall')},
                          {'alien-invasion': 'ALIEN INVASION', 'square-fall': 'SQUARE FALL'})
 

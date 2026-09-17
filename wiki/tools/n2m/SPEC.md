@@ -1869,11 +1869,18 @@ real registry offline and skips, naming the missing pins, when the
 `sw library` run.
 
 The registry [`src/fpga/de10_lite/library.json`](../../../src/fpga/de10_lite/library.json)
-has exactly `schema_version: 1`, a nonempty `slots` object mapping decimal
-slot indices `0`-`15` to slot values, and `menu`, the package at index 16. A
-slot value is either a `src/sw/targets.json` package name or
+has exactly `schema_version: 2`, a nonempty `slots` object mapping decimal
+slot indices `0`-`15` to entries, and `menu`, the entry at index 16. An entry
+is an object carrying `image` and an optional `tagline`; any other key is
+refused. An `image` is either a `src/sw/targets.json` package name or
 `external:<name>`, a pin of the [dependency manifest](../../../tools/n2m/dependencies.json)
-`external_roms.images`. Every package must carry a packaged runtime profile,
+`external_roms.images`. A `tagline` is 1-18 upper-case letters, digits, spaces
+or dashes, the text of that slot's
+[tagline record](../../src/rtl/storage/MAS_sdram.md#address-space-layout); a
+package may declare its own in its
+[software target](../sw/SPEC.md) instead, and declaring it in both places for
+one slot is refused, so a slot's tagline has one source. No entry declares one
+yet. Every package must carry a packaged runtime profile,
 the menu must be a package that runs in `dmg-loader-v1` (the contract's
 `profile == LOADER_ID` validity rule), a value may occupy one index only across
 both kinds, and each image must be exactly its profile's size: one 32 KiB slot
@@ -1974,9 +1981,9 @@ catalogue code ([`host/library.py`](../../../tools/n2m/host/library.py)
 `image_entry` and `build_catalogue`, so the flash catalogue and a UART load
 carry identical entry bytes), collects each slot's
 [tagline](../../src/rtl/storage/MAS_sdram.md#address-space-layout) from where it
-is authored (a package's `tagline` in `src/sw/targets.json`, an external image's
-in its `tools/n2m/dependencies.json` pin) and refuses one the menu font cannot
-draw before anything is built, and writes under
+is authored (the registry entry, or the software target of a package that
+declares its own) and refuses one the menu font cannot draw before anything is
+built, and writes under
 `workdir/builds/<tag>/sw/library/runs/<attempt>/`:
 
 | File | Content |

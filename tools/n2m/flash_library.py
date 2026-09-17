@@ -80,17 +80,34 @@ def slot_source(name):
     return "package", name
 
 
-def load_registry(root):
-    """The validated slot registry: {index: slot value} and the menu package name.
+def registry_entry(value, where):
+    """One registry entry: its image value and its tagline, or None for no tagline.
 
-    A slot value is a `src/sw/targets.json` package name or `external:<name>`,
+    An entry is an object carrying `image` and optionally `tagline`. The image
+    is a `src/sw/targets.json` package name or `external:<name>`; the tagline is
+    the text the menu shows for that slot, checked here against the font's
+    alphabet. A package may instead declare its tagline in its software target;
+    declaring it in both places is refused, so one slot has one source.
+    """
+    if not isinstance(value, dict) or not set(value) <= {"image", "tagline"} or "image" not in value:
+        raise ValueError(f"flash library entry must carry an image and an optional tagline: {where}")
+    if not isinstance(value["image"], str):
+        raise ValueError(f"invalid flash library package name at {where}")
+    tagline = library.check_tagline(value["tagline"], where) if "tagline" in value else None
+    return value["image"], tagline
+
+
+def load_registry(root):
+    """The validated slot registry: {index: image value}, the menu package name and each slot's tagline.
+
+    An image value is a `src/sw/targets.json` package name or `external:<name>`,
     a pin of `tools/n2m/dependencies.json` `external_roms.images` whose image
     is fetched at build time and never committed. The menu is always a package.
     """
     root = Path(root)
     data = json.loads((root / REGISTRY).read_text(encoding="utf-8"))
     if (not isinstance(data, dict) or set(data) != {"schema_version", "slots", "menu"}
-            or type(data["schema_version"]) is not int or data["schema_version"] != 1
+            or type(data["schema_version"]) is not int or data["schema_version"] != 2
             or not isinstance(data["slots"], dict) or not data["slots"]):
         raise ValueError("unsupported flash library registry schema")
     packages = json.loads((root / SW_REGISTRY).read_text(encoding="utf-8"))
@@ -98,18 +115,18 @@ def load_registry(root):
         raise ValueError("unsupported software target registry")
     pins = json.loads((root / external.PIN_FILE).read_text(encoding="utf-8")).get("external_roms", {}).get("images", {})
     slots = {}
-    for key, name in data["slots"].items():
+    # One authored tagline per slot, or None. The registry carries it here; a
+    # package may carry its own in its software target instead. Both are checked
+    # against the menu font's alphabet, so a bad one fails before any build.
+    taglines = {}
+    for key, entry in data["slots"].items():
         if not re.fullmatch(r"(0|[1-9][0-9]?)", key) or not 0 <= int(key) < library.GAME_SLOTS:
             raise ValueError(f"flash library slot must be 0..{library.GAME_SLOTS - 1}: {key!r}")
-        slots[int(key)] = name
+        slots[int(key)], taglines[int(key)] = registry_entry(entry, library.slot_name(int(key)))
+    slots[library.MENU_INDEX], taglines[library.MENU_INDEX] = registry_entry(data["menu"], library.slot_name(library.MENU_INDEX))
+    menu = slots.pop(library.MENU_INDEX)
     externals = {}
-    # One authored tagline per slot, or None: the pin carries an external's and
-    # the software target carries a package's, both checked against the menu
-    # font's alphabet here so a bad one fails before anything is built.
-    taglines = {}
-    for index, value in sorted(slots.items()) + [(library.MENU_INDEX, data["menu"])]:
-        if not isinstance(value, str):
-            raise ValueError(f"invalid flash library package name at {library.slot_name(index)}")
+    for index, value in sorted(slots.items()) + [(library.MENU_INDEX, menu)]:
         kind, name = slot_source(value)
         if kind == "external":
             if index == library.MENU_INDEX:
@@ -128,7 +145,6 @@ def load_registry(root):
                 if taken != index and taken in slots:
                     raise ValueError(f"external image {name} at {library.slot_name(index)} also fills {library.slot_name(taken)}, which is registered")
             externals[index] = {"pin": name, "licence": pin["license"], "source": pin["url"], "sha256": pin["sha256"]}
-            taglines[index] = external.tagline(pin, name)
             continue
         if not NAME.fullmatch(name):
             raise ValueError(f"invalid flash library package name at {library.slot_name(index)}")
@@ -136,13 +152,15 @@ def load_registry(root):
         if not isinstance(package, dict) or package.get("profile") not in library.PROFILE_IDS:
             raise ValueError(f"flash library {library.slot_name(index)} names no packaged software target: {name}")
         if "tagline" in package:
+            if taglines[index] is not None:
+                raise ValueError(f"{library.slot_name(index)} declares a tagline in the registry and in software target {name}")
             taglines[index] = library.check_tagline(package["tagline"], f"software target {name}")
-    if packages["targets"][data["menu"]]["profile"] != library.LOADER_PROFILE_NAME:
+    if packages["targets"][menu]["profile"] != library.LOADER_PROFILE_NAME:
         raise ValueError(f"the menu image must run in {library.LOADER_PROFILE_NAME}")
-    names = list(slots.values()) + [data["menu"]]
+    names = list(slots.values()) + [menu]
     if len(set(names)) != len(names):
         raise ValueError("a package may occupy only one flash library slot")
-    return {"slots": slots, "menu": data["menu"], "externals": externals, "taglines": taglines,
+    return {"slots": slots, "menu": menu, "externals": externals, "taglines": taglines,
             "sha256": file_hash(root / REGISTRY)}
 
 
