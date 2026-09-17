@@ -146,8 +146,11 @@ holds the splash above the list.
   [SPEC](SPEC.md) so the image and the reference read the same constants; the
   frame counter that already drives the nudge names the step, so the reference
   still computes every frame from the frame number alone.
-- Built: the 18-row splash, with the four wrapped rows drawn as they scroll
-  in. The estimate above put such a row on the text path at about 870 of
+- Built: the 18-row splash, on the first menu boot after a reset only. A
+  return from a game re-boots the image, and the menu tells that apart by the
+  last selected index the loader keeps, so leaving a game shows the settled
+  list at once instead of replaying the splash. The four wrapped rows are
+  drawn as they scroll in. The estimate above put such a row on the text path at about 870 of
   1140; the image instead builds the four rows as finished cells at boot,
   with the LCD off, so a slide frame copies twenty bytes and measures 361-376.
   A press skips the splash, and a skip draws at most two of those rows a

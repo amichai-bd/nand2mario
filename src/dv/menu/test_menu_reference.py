@@ -256,6 +256,13 @@ class Layout(unittest.TestCase):
             self.assertEqual(drawn, reference.WRAPPED_ROWS, number)
         with self.assertRaises(ValueError):
             reference.splash_state(-1)
+        # The splash is the cold boot's alone: the catalogue must list at boot
+        # and no selection can have happened since reset.
+        self.assertTrue(reference.splash_at_boot())
+        self.assertFalse(reference.splash_at_boot(sdram_ready=False))
+        for index in (0, 1, 3, reference.SLOTS, 16):
+            self.assertFalse(reference.splash_at_boot(index), index)
+        self.assertTrue(reference.splash_at_boot(reference.NO_INDEX))
         # The first frame is the page alone and the last is the menu itself.
         self.assertEqual(set(reference.expected('splash-0', self.entries)), {0})
         self.assertEqual(reference.expected(f'splash-{reference.SETTLED_FRAME}', self.entries),

@@ -245,6 +245,17 @@ def splash_state(number):
     return FADE[-1], SLIDE_STEP * step, min(step, WRAPPED_ROWS)
 
 
+def splash_at_boot(index=NO_INDEX, sdram_ready=True):
+    """Whether the boot splash runs, from the two bytes the image reads at boot.
+
+    It needs the catalogue listed at boot, and it needs to be the first boot
+    since reset. The loader's last selected index is NO_INDEX only until the
+    first selection, so a menu that has been here before - a return from a
+    game, or a reboot after any select, refused or not - starts settled.
+    """
+    return sdram_ready and index == NO_INDEX
+
+
 def skip_schedule(number):
     """The frames the splash shows from a press sampled in frame `number`.
 

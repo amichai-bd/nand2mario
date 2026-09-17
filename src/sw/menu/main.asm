@@ -145,6 +145,8 @@ SplashSkip:
 DS 1
 BootSlots:
 DS 1
+BootDraw:
+DS 1
 SplashRowCells:
 DS SPLASH_ROW_CELLS
 StatusCells:
@@ -179,11 +181,21 @@ LD A,$E4
 LDH [GB_REG_OBP0],A
 ; The boot splash owns BGP and SCY: it starts on the blank page at SCY 0 and
 ; ends on the identity palette at the settled 144, where the visible rows are
-; the list alone. It runs only when the catalogue lists at boot; a menu that
-; must wait for the SDRAM starts settled and draws every row here as before.
+; the list alone. Two conditions arm it, and both are read once here.
+; The catalogue must list at boot: a menu that must wait for the SDRAM starts
+; settled and draws every row here as before. BootDraw keeps that answer,
+; because it alone decides whether the titles are drawn at boot.
 LD A,[LOADER_STATUS]
 AND A,LIBRARY_STATUS_SDRAM_READY
+LD [BootDraw],A
 JR Z,BootSettled
+; And this must be the first boot since reset. The loader keeps the last
+; selected index, which is $FF only until the first selection, so a menu that
+; has been here before - a return from a game, or a reboot after any select,
+; refused or not - starts settled and the list is there at once.
+LD A,[LOADER_INDEX]
+INC A
+JR NZ,BootSettled
 LD A,1
 LD [SplashOn],A
 LD A,[FadeSteps]
@@ -346,9 +358,9 @@ CP A,C
 JR NZ,Numbers
 ; With the SDRAM ready, fill the window and draw every title before the
 ; LCD turns on; otherwise the frame loop retries and draws one row per frame.
-; The one status read above decides both this and the splash, so the rows
-; drawn here and the rows the slide draws always account for all sixteen.
-LD A,[SplashOn]
+; The rows drawn here and the rows the slide draws always account for all
+; sixteen, because BootSlots came from the same read as BootDraw.
+LD A,[BootDraw]
 OR A,A
 JR Z,EnableLCD
 CALL CommitBank
@@ -368,6 +380,10 @@ CP A,B
 JR NZ,DrawAll
 ; The four rows the slide draws, built as cells while the LCD is off: the
 ; last three slot rows, then the bottom plate around the blank status row.
+; A settled boot has drawn them into the map already and needs none of this.
+LD A,[SplashOn]
+OR A,A
+JR Z,BootListed
 LD HL,SplashRowCells
 LD C,BOOT_SLOTS
 BuildSlotRow:
@@ -416,6 +432,7 @@ JR NZ,BuildPlate
 LD A,TILE_CAP_RIGHT
 LD [DE],A
 ; Every title row is read now, so a select is live as soon as the list is.
+BootListed:
 LD A,LIBRARY_SLOTS
 LD [Pending],A
 EnableLCD:
