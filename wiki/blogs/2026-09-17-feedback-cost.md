@@ -42,7 +42,7 @@ Today the ordinary first gate is `check`, plus `tests validate` and
 
 | Gate | Before | After |
 |---|---|---|
-| `check` | FAIL on its 180 s timeout at load 3.2 to 5.8; the same tests run directly took 208 s for 910 tests (155 s user), head `31ba64e` | PASS, 60 to 62 s wall for 912 tests at load 4.1 to 5.6; 59 s with `regress pre-merge` running concurrently ([PR #757](https://github.com/amichai-bd/nand2mario/pull/757)) |
+| `check` | At mid-epic head `31ba64e`, not the pre-redesign state: FAIL on its 180 s timeout at load 3.2 to 5.8; the same tests run directly took 208 s for 910 tests (155 s user) | PASS, 60 to 62 s wall for 912 tests at load 4.1 to 5.6; 59 s with `regress pre-merge` running concurrently ([PR #757](https://github.com/amichai-bd/nand2mario/pull/757)) |
 | `tests validate` | 0.4 s before host closures were declared | 5.4 to 6.8 s for 662 to 664 units, parsing every reachable module once ([PR #734](https://github.com/amichai-bd/nand2mario/pull/734), [#741](https://github.com/amichai-bd/nand2mario/pull/741), [#743](https://github.com/amichai-bd/nand2mario/pull/743)) |
 | `regress pre-merge` | unchanged | 4.6 to 6.4 s aggregate (builder smoke and tile pixel), against a 300 s budget ([PR #736](https://github.com/amichai-bd/nand2mario/pull/736), #741, #743, #757) |
 
@@ -112,17 +112,21 @@ The honest answer is that end-to-end delivery time did not fall.
 
 The frozen [repository statistics](../project-statistics.md) snapshot records PR
 opening to merge at p75 31m 25s and p90 1h 51m. Grouping merged pull requests by
-number, from the GitHub timestamps as collected on 17 September 2026
-(`gh pr list --state merged --json number,createdAt,mergedAt`):
+number, from the GitHub timestamps of all 405 merged pull requests as collected
+on 17 September 2026 with
+`gh pr list --state merged --limit 1000 --json number,createdAt,mergedAt`
+(the limit has to exceed the count, or the oldest rows are silently dropped),
+taking opening to merge in minutes and reading each percentile at nearest rank,
+the value at index `ceil(p x n)` of the sorted cohort:
 
 | Cohort | Merged PRs | Median | p75 | p90 |
 |---|---|---|---|---|
-| Before this work (#1 to #523) | 266 | 13 min | 36 min | 151 min |
+| Before this work (#2 to #523) | 271 | 12 min | 35 min | 135 min |
 | During milestones 1 to 3 (#524 to #733) | 114 | 21 min | 38 min | 95 min |
-| After the closure, mutation and overlap slices (#734 onward) | 20 | 21 min | 74 min | 126 min |
+| After the closure, mutation and overlap slices (#734 onward) | 20 | 21 min | 56 min | 106 min |
 
 Medians stayed in the 10 to 20 minute band the issue aimed for, but they did not
-improve, and the later cohorts are slower at the tail. Three caveats apply and
+improve. Three caveats apply and
 none of them can be resolved from retained receipts. Opening-to-merge excludes
 everything before the pull request exists, which is where most of an author's
 work and its rework happen. The cohorts are not comparable work: the later ones
@@ -130,6 +134,10 @@ carry the tool and RTL changes of this epic and the game library, not a sample o
 ordinary small edits. And the repository keeps no per-stage record of queue,
 review and rework time, so the criterion's requested split cannot be published
 from existing receipts at all.
+
+Criterion 5 of the redesign therefore closes as a partial result with its aim
+missed: first feedback is inside the two-minute aim, the full-cycle aim is not
+met and its requested per-stage split is not publishable at all.
 
 What the receipts do support is narrower and still useful: host tool time on the
 first gate fell from roughly 550 s to roughly 70 s, the report's cost stopped
