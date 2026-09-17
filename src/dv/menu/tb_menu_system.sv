@@ -52,9 +52,9 @@ module tb_menu_system;
     // body of the menu's loop must finish inside it (wiki/src/sw/menu/SPEC.md).
     localparam int VBLANK_MCYCLES = 1140;
     // The menu's tile bank: font, the font on the grey page, the six authored
-    // grey cells, the two pointer phases and the boot splash badge
-    // (wiki/src/sw/menu/SPEC.md).
-    localparam int BANK_TILES = 94;
+    // grey cells, the two pointer phases, the boot splash badge and the four
+    // star cells (wiki/src/sw/menu/SPEC.md).
+    localparam int BANK_TILES = 98;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
     logic physical_commit;
@@ -203,13 +203,14 @@ module tb_menu_system;
         end
     end
 
-    // Every background map cell the menu writes names a tile in its bank. A
-    // row drawn with the wrong bank offset lands outside it, either above
-    // the bank or wrapped past zero, so this bounds that whole class wherever
-    // it runs, including the delayed catalogue path no fixture reaches yet.
+    // Every map cell the menu writes names a tile in its bank, on the
+    // background map and on the window map alike. A row drawn with the wrong
+    // bank offset lands outside it, either above the bank or wrapped past
+    // zero, so this bounds that whole class wherever it runs, including the
+    // delayed catalogue path no fixture reaches yet.
     always @(posedge clk_sys) begin
         if (!reset_sys && dut.bus_commit && dut.write_enable && dut.profile == PROFILE_LOADER_ID
-            && dut.address >= 16'h9800 && dut.address <= 16'h9BFF && dut.write_data >= 8'(BANK_TILES))
+            && dut.address >= 16'h9800 && dut.address <= 16'h9FFF && dut.write_data >= 8'(BANK_TILES))
             $fatal(1, "MENU_TILE_RANGE address=%04h tile=%0d bank=%0d",
                 dut.address, dut.write_data, BANK_TILES);
     end

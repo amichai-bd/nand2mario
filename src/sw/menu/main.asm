@@ -37,6 +37,7 @@ POINTER_BYTES EQU 32
 TILE_BADGE EQU 86
 BADGE_COLUMNS EQU 4
 BADGE_BYTES EQU 128
+STAR_BYTES EQU 64
 ; Frame layout in 8x8 map cells.
 MAP EQU GB_VIEW_MAP0_START
 MAP_ROWS EQU 32
@@ -83,15 +84,47 @@ SLOT_ROW EQU 1
 NUMBER_COLUMN EQU 1
 TITLE_COLUMN EQU 4
 STATUS_ROW EQU 17
-; The list's bottom plate, wrapped into the map's fourth row.
-STATUS_MAP_ROW EQU LIST_MAP_ROW + STATUS_ROW - MAP_ROWS
 TITLE_BYTES EQU 16
+; The star field. The list always leaves two columns blank - column 0, the
+; page the cursor object draws on, and column 3, between the slot number and
+; the title - and a cell of them carries a star where the rule fires on its
+; map coordinates. The field is part of the list's own map: it wraps with the
+; 32 rows and rides the list's SCY, because DMG has one background layer and
+; the composite layout spends it on the list. No title cell is ever a star,
+; so the field does not depend on the catalogue and the slot-row draw path
+; never evaluates the rule.
+TILE_STAR EQU 94
+STAR_TILES EQU 4
+STAR_MASK EQU 3
+STAR_COLUMN_A EQU 0
+STAR_COLUMN_B EQU 3
+; The rows the rule may touch are the sixteen slot rows: map rows 19..31 and
+; the WRAPPED_SLOTS rows the list wraps into 0..2. The header, the splash's
+; own rows and the page row the plate left carry none.
+STAR_ROW_FIRST EQU LIST_MAP_ROW + SLOT_ROW
+WRAPPED_SLOTS EQU LIBRARY_SLOTS + STAR_ROW_FIRST - MAP_ROWS
+; Room for the stars the rule finds, well above the eight it draws today.
+STAR_SLOTS EQU 16
+STAR_ENTRY EQU 3
 ; The header and bottom plates: a grey cap in each outer column and 18 cells
 ; between them, filled with a dithered gradient behind the grey text.
 PLATE_COLUMN EQU 1
 PLATE_CELLS EQU 18
 ; The pad byte of the status rows, the cell that stays plate fill.
 PLATE_PAD EQU 35
+; The window carries the bottom plate alone. It is opaque from its top left
+; corner to the bottom right of the screen, so it cannot be a band: at WY 128
+; it takes the last two screen rows and the background shows the header and
+; fifteen slot rows. Its own map is the second one, which LCDC bit 6 selects.
+WMAP EQU GB_VIEW_MAP1_START
+FOOTER_ROW EQU 0
+WINDOW_STATUS_ROW EQU 1
+WINDOW_X EQU 7
+WINDOW_Y EQU 128
+; Background and objects while the splash runs; the window joins them on the
+; settled frame, with the cursor.
+LCDC_LIST EQU $93
+LCDC_SETTLED EQU $F3
 ; The cursor is object 0: X is fixed at the left edge and Y follows the slot.
 OAM_CURSOR EQU GB_OAM_START
 OAM_BYTES EQU 160
@@ -147,6 +180,12 @@ BootSlots:
 DS 1
 BootDraw:
 DS 1
+StarCount:
+DS 1
+StarPtr:
+DS 2
+StarTable:
+DS STAR_SLOTS * STAR_ENTRY
 SplashRowCells:
 DS SPLASH_ROW_CELLS
 StatusCells:
@@ -266,6 +305,14 @@ INC DE
 LD [HL+],A
 DEC B
 JR NZ,CopyBadge
+LD DE,Stars
+LD B,STAR_BYTES
+CopyStars:
+LD A,[DE]
+INC DE
+LD [HL+],A
+DEC B
+JR NZ,CopyStars
 ; Every object but the cursor stays off screen, so clear the table.
 LD HL,OAM_CURSOR
 LD B,OAM_BYTES
@@ -285,6 +332,10 @@ DEC BC
 LD A,B
 OR A,C
 JR NZ,ClearMap
+; The star field, before any row is drawn over it: the slot rows' two blank
+; columns, wherever the rule fires. Nothing the list draws touches those
+; columns again, so a star stays until the twinkle rewrites it.
+CALL PaintStars
 ; The boot splash: the badge and its two lines above the list, drawn while the
 ; LCD is off. The list rides SCY below them.
 LD HL,MAP + SPLASH_BADGE_ROW * 32 + SPLASH_BADGE_COLUMN
@@ -390,7 +441,12 @@ BuildSlotRow:
 PUSH HL
 LD D,H
 LD E,L
-LD A,TILE_BLANK
+PUSH BC
+LD A,C
+SUB A,BOOT_SLOTS
+LD B,STAR_COLUMN_A
+CALL StarRowCell
+POP BC
 LD [DE],A
 INC DE
 LD A,C
@@ -398,7 +454,12 @@ PUSH BC
 LD C,TILE_DIGIT
 CALL DrawDigits
 POP BC
-LD A,TILE_BLANK
+PUSH BC
+LD A,C
+SUB A,BOOT_SLOTS
+LD B,STAR_COLUMN_B
+CALL StarRowCell
+POP BC
 LD [DE],A
 INC DE
 LD A,C
@@ -416,41 +477,40 @@ INC C
 LD A,C
 CP A,LIBRARY_SLOTS
 JR NZ,BuildSlotRow
-LD D,H
-LD E,L
-LD A,TILE_CAP_LEFT
-LD [DE],A
-INC DE
-LD HL,StatusCells
-LD B,PLATE_CELLS
-BuildPlate:
-LD A,[HL+]
-LD [DE],A
-INC DE
+; The bottom plate rides the window now, so the last row the slide copies is
+; the page the plate left behind it.
+LD B,SCREEN_COLUMNS
+LD A,TILE_BLANK
+BuildBlank:
+LD [HL+],A
 DEC B
-JR NZ,BuildPlate
-LD A,TILE_CAP_RIGHT
-LD [DE],A
+JR NZ,BuildBlank
 ; Every title row is read now, so a select is live as soon as the list is.
 BootListed:
 LD A,LIBRARY_SLOTS
 LD [Pending],A
 EnableLCD:
+; The window and its plate, built with the LCD off. WX and WY can be set here
+; because nothing draws the window until LCDC bit 5 goes on.
+CALL WindowPlate
+LD A,WINDOW_X
+LDH [GB_REG_WX],A
+LD A,WINDOW_Y
+LDH [GB_REG_WY],A
 ; The cursor object: X at the left edge, phase 0. Its Y stays 0, off screen,
-; while the splash runs; the settled frame brings it on. The bottom plate is
-; the last row the slide draws, so it waits with it.
+; while the splash runs; the settled frame brings it on, and the window comes
+; on with it, so the splash shows neither the cursor nor the plate.
 LD A,CURSOR_X
 LD [OAM_CURSOR + 1],A
 LD A,TILE_POINTER
 LD [OAM_CURSOR + 2],A
 LD A,[SplashOn]
 OR A,A
+LD A,LCDC_LIST
 JR NZ,LCDOn
 CALL RevealCursor
-CALL StatusPlate
+LD A,LCDC_SETTLED
 LCDOn:
-; Background and objects on.
-LD A,$93
 LDH [GB_REG_LCDC],A
 ; One sampled update per frame, all map and object writes inside VBlank.
 ; While the splash runs it owns the frame: no navigation, no catalogue row and
@@ -593,6 +653,10 @@ XOR A,A
 LD [SplashOn],A
 LD [FrameCount],A
 LD [ShownPhase],A
+; The window joins the background and the objects here, so the bottom plate
+; and the cursor appear together on the settled frame.
+LD A,LCDC_SETTLED
+LDH [GB_REG_LCDC],A
 
 ; The cursor object's Y byte: column 0 of the selected slot's row.
 RevealCursor:
@@ -695,12 +759,194 @@ INC DE
 LD [HL+],A
 RET
 
+; The cell a map row and column carry: a star where the rule fires, the page
+; everywhere else. A = map row, B = column; A returns the tile. The rule is
+; ((3 * column + 5 * row) XOR (row >> 2)) AND STAR_MASK, and a star's own tile
+; is the one its row, column and nudge phase name, so the field twinkles
+; without moving.
+StarRowCell:
+PUSH DE
+LD H,A
+LD L,B
+ADD A,A
+ADD A,A
+ADD A,H
+LD D,A
+LD A,L
+ADD A,A
+ADD A,L
+ADD A,D
+LD D,A
+LD A,H
+SRL A
+SRL A
+XOR A,D
+AND A,STAR_MASK
+JR Z,StarCellHit
+LD A,TILE_BLANK
+POP DE
+RET
+StarCellHit:
+LD A,H
+ADD A,L
+AND A,STAR_MASK
+ADD A,TILE_STAR
+POP DE
+RET
+
+; The star field, painted into the map while the LCD is off, and the short
+; list a twinkle rewrites from. Only the sixteen slot rows can carry a star:
+; map rows STAR_ROW_FIRST..MAP_ROWS-1 and the WRAPPED_SLOTS rows the list
+; wraps into the map's own top.
+PaintStars:
+XOR A,A
+LD [StarCount],A
+LD HL,StarTable
+LD A,L
+LD [StarPtr],A
+LD A,H
+LD [StarPtr + 1],A
+LD C,0
+PaintStarRow:
+LD A,C
+CP A,WRAPPED_SLOTS
+JR C,PaintStarRowOk
+CP A,STAR_ROW_FIRST
+JR C,PaintStarNext
+PaintStarRowOk:
+LD B,STAR_COLUMN_A
+CALL PaintStarCell
+LD B,STAR_COLUMN_B
+CALL PaintStarCell
+PaintStarNext:
+INC C
+LD A,C
+CP A,MAP_ROWS
+JR NZ,PaintStarRow
+RET
+
+; C = map row, B = column: paint that cell and remember it, if it is a star.
+PaintStarCell:
+PUSH BC
+LD A,C
+CALL StarRowCell
+CP A,TILE_BLANK
+JR Z,PaintStarDone
+PUSH AF
+LD L,C
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD A,L
+ADD A,B
+LD L,A
+LD A,H
+ADD A,HIGH(MAP)
+LD H,A
+LD D,H
+LD E,L
+; A star in a row the list wraps into the map's own top waits for the slide
+; to carry that row in: the splash draws those rows blank, and the cells the
+; slide copies carry the star themselves. The cell still joins the table, so
+; the twinkle rewrites the whole field once the list has settled.
+LD A,C
+CP A,WRAPPED_SLOTS
+JR NC,PaintStarNow
+LD A,[SplashOn]
+OR A,A
+JR NZ,PaintStarWait
+PaintStarNow:
+POP AF
+LD [HL],A
+JR PaintStarBase
+PaintStarWait:
+POP AF
+PaintStarBase:
+SUB A,TILE_STAR
+LD C,A
+LD A,[StarCount]
+CP A,STAR_SLOTS
+JR NC,PaintStarDone
+INC A
+LD [StarCount],A
+LD A,[StarPtr]
+LD L,A
+LD A,[StarPtr + 1]
+LD H,A
+LD A,E
+LD [HL+],A
+LD A,D
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,L
+LD [StarPtr],A
+LD A,H
+LD [StarPtr + 1],A
+PaintStarDone:
+POP BC
+RET
+
+; The twinkle: every star cell takes the tile its base and the nudge phase
+; name, so the field changes with the same frame-counter bit that nudges the
+; cursor and follows from the frame number alone. A = the phase, 0 or 1.
+PaintTwinkle:
+LD C,A
+LD A,[StarCount]
+OR A,A
+RET Z
+LD B,A
+LD HL,StarTable
+TwinkleCell:
+LD A,[HL+]
+LD E,A
+LD A,[HL+]
+LD D,A
+LD A,[HL+]
+ADD A,C
+AND A,STAR_MASK
+ADD A,TILE_STAR
+LD [DE],A
+DEC B
+JR NZ,TwinkleCell
+RET
+
+; The window's own map, blanked with the LCD off, and the bottom plate it
+; carries: the footer row's fill above the status row. The window itself
+; stays off until the settled frame, so the splash never shows the plate.
+WindowPlate:
+LD HL,WMAP
+LD BC,1024
+LD D,TILE_BLANK
+ClearWindowMap:
+LD A,D
+LD [HL+],A
+DEC BC
+LD A,B
+OR A,C
+JR NZ,ClearWindowMap
+LD HL,WMAP + FOOTER_ROW * 32
+LD A,TILE_CAP_LEFT
+LD [HL+],A
+LD A,TILE_FADE21
+LD B,PLATE_CELLS
+FooterFill:
+LD [HL+],A
+DEC B
+JR NZ,FooterFill
+LD A,TILE_CAP_RIGHT
+LD [HL],A
+JP StatusPlate
+
 ; The bottom plate: its two caps and the status row between them.
 StatusPlate:
 LD A,TILE_CAP_LEFT
-LD [MAP + STATUS_MAP_ROW * 32],A
+LD [WMAP + WINDOW_STATUS_ROW * 32],A
 LD A,TILE_CAP_RIGHT
-LD [MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
+LD [WMAP + WINDOW_STATUS_ROW * 32 + PLATE_COLUMN + PLATE_CELLS],A
 JP ShowStatus
 
 WaitVBlank:
@@ -1003,7 +1249,15 @@ JR Z,PhaseWrite
 INC A
 PhaseWrite:
 LD [OAM_CURSOR + 2],A
-RET
+; The same bit twinkles the star field, so the page and the cursor change
+; together and both follow from the frame number alone.
+LD A,[ShownPhase]
+OR A,A
+LD A,0
+JR Z,TwinklePhase
+LD A,1
+TwinklePhase:
+JP PaintTwinkle
 
 ; Status row from the status bytes: the prebuilt grey row for the current
 ; key copied into the 18 plate cells, then the index digits where that row
@@ -1057,7 +1311,7 @@ ADD HL,HL
 ADD HL,DE
 LD DE,StatusCells
 ADD HL,DE
-LD DE,MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN
+LD DE,WMAP + WINDOW_STATUS_ROW * 32 + PLATE_COLUMN
 LD B,PLATE_CELLS
 CopyStatus:
 LD A,[HL+]
@@ -1078,7 +1332,7 @@ CP A,NO_DIGITS
 RET Z
 LD E,A
 LD D,0
-LD HL,MAP + STATUS_MAP_ROW * 32 + PLATE_COLUMN
+LD HL,WMAP + WINDOW_STATUS_ROW * 32 + PLATE_COLUMN
 ADD HL,DE
 LD D,H
 LD E,L
@@ -1130,3 +1384,5 @@ Pointer:
 ASSET "Pointer"
 Splash:
 ASSET "Splash"
+Stars:
+ASSET "Stars"

@@ -263,6 +263,10 @@
         "Splash": {
           "source": "assets/design/v2-splash-tiles.json",
           "author": "Original boot splash badge of the menu v2 design by the nand2mario project; no external source"
+        },
+        "Stars": {
+          "source": "assets/design/v2-stars-tiles.json",
+          "author": "Original star field cells of the menu v2 design by the nand2mario project; no external source"
         }
       },
       "layout": "layout.json",
