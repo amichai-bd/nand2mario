@@ -284,7 +284,7 @@ units:
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
   menu-delayed: {kind: sim, level: 1, labels: [menu-delayed, system], duration_seconds: 171.97}
   menu-delayed-worst: {kind: sim, level: 1, labels: [menu-delayed-worst, system], duration_seconds: 182.91}
-  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 89.40}
+  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 99.71}
   menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 86.52}
   menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 62.76}
   menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 156.47}
