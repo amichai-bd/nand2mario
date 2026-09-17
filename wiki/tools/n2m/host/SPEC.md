@@ -273,8 +273,8 @@ key-down/key-up rules from a local `tkinter` window, for an operator watching th
 board's VGA output. It reads no frames and needs no classic console. The rules
 above are `host keyboard`'s: the pad releases the held union on focus loss and
 stays open instead of exiting, and it resumes a paused core once at startup with
-neutral input, which `host keyboard` never does. It sends no other RUN/HALT, load
-or reset, and its own page owns the rest of its behavior.
+neutral input, which `host keyboard` never does. Its desktop aliases and explicit
+Main menu library return are owned by the [pad contract](GAMEPAD.md#main-menu).
 
 Discovery reuses the doctor without running its licensed probes. The optional
 [pinned serial backend](../../../../tools/n2m/host/THIRD_PARTY.md) opens only the

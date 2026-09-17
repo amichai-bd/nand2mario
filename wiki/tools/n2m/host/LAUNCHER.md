@@ -117,7 +117,7 @@ build goes, the loaded bytes come from an immutable attempt that
 `host load --package` validates in full, including the artifact hashes, the
 profile, the interface inputs and the header.
 
-Then the pad appears. **Back** releases every held button in one write and then
+Then the pad appears. **Game library (desktop)** releases every held button in one write and then
 returns to the menu; the game keeps running on the board. The release has to
 happen there, on the way out: leaving the pad takes away both paths that would
 otherwise clear a held button, because the key-up is dropped once the pad is
@@ -129,6 +129,10 @@ the board.
 Choosing another game loads it in place of the one running. The preconditions
 are checked **before** anything is sent, so a refused precondition never first
 destroys the game already playing.
+
+The shared pad also offers **Main menu**, which returns to the FPGA's own
+catalogue and leaves the pad visible. Its WASD/J/K controls and bounded return
+checks are defined by the [pad contract](GAMEPAD.md#main-menu).
 
 The window does not respond while a build or a load is in flight: both run on
 the Tk thread, which keeps one thread on the UART client. A progress bar and

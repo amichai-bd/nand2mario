@@ -3,8 +3,9 @@
 Play the image already on the board from a local window, watching the board's
 own VGA output. `python tools/fpga_viewer.py --gui` opens a desktop pad with a
 D-pad and A, B, Select and Start; each control names the key that presses it.
-The pad sends buttons and nothing else: it reads no frames, serves no HTTP and
-never loads, resets or programs the board. The
+The pad reads no frames and serves no HTTP. Its separate Main menu action
+returns to the FPGA catalogue through the existing library command; it never
+uploads an image or programs the board. The
 [host contract](SPEC.md) owns UART, session and input semantics.
 
 The [launcher](LAUNCHER.md) is the way in for playing: it lists every loadable
@@ -46,14 +47,15 @@ and `--queue-mask` all belong to the frame viewer and have no meaning here.
 
 | Control | Key | Mask bit |
 | --- | --- | --- |
-| Up, Down, Left, Right | Arrow keys | `BUTTON_UP`, `BUTTON_DOWN`, `BUTTON_LEFT`, `BUTTON_RIGHT` |
-| A | `Z` | `BUTTON_A` |
-| B | `X` | `BUTTON_B` |
+| Up, Down, Left, Right | `W`, `S`, `A`, `D`; arrow-key aliases | `BUTTON_UP`, `BUTTON_DOWN`, `BUTTON_LEFT`, `BUTTON_RIGHT` |
+| A | `J`; `Z` alias | `BUTTON_A` |
+| B | `K`; `X` alias | `BUTTON_B` |
 | Select | Right Shift | `BUTTON_SELECT` |
 | Start | Enter | `BUTTON_START` |
 
-The mapping is `host keyboard`'s own table, imported rather than restated, so
-the two commands cannot drift apart. Tk reports the same Windows virtual-key
+The desktop imports `host keyboard`'s legacy table and adds WASD/J/K aliases.
+The directional cross sits on the left, round A/B controls on the right, and
+Select/Start below. Tk reports the same Windows virtual-key
 codes it is keyed by; only the shift keys need a keysym, because both arrive as
 `VK_SHIFT` and only the right one is Select.
 
@@ -64,7 +66,9 @@ only `Shift_R` presses it. Left Shift therefore still never presses Select, and 
 release with nothing held changes no union and writes nothing. Clearing a button
 on an ambiguous release is safe; creating one is not.
 
-A key down adds its button and a key up removes it. Chords and opposite
+A key down adds its source and a key up removes that source. Each alias and
+mouse control has an independent hold: releasing J does not release a held Z
+or clicked A. The board receives the union of their buttons. Chords and opposite
 directions are preserved. Auto-repeat changes nothing, because a repeated down
 leaves the union unchanged and writes nothing. Escape or closing the window
 exits.
@@ -95,6 +99,22 @@ them apart. A control lights up while it is held, whichever pressed it.
 Each changed union is one ordinary `INPUT` write with its acknowledged dot
 retained, exactly as `host keyboard` does. There are no fixed-duration taps and
 no queue: hold means hold.
+
+## Main menu
+
+**Main menu** releases all held input, then calls the existing bounded
+`return_to_menu(wait=True)` inside the window's exclusive UART session. It sends
+the return once and verifies result OK, loader profile, valid image, RUNNING
+state, UART authority, and neutral host/effective input before reporting ready.
+The same pad stays available to choose another game. Returning leaves the
+current game's unsaved state behind.
+
+A rejection, exhausted status-read budget or failed verification stops the
+session with an error through its ordinary cleanup. Uncertain completion sends
+no further traffic, including cleanup. No return is automatically replayed.
+In the launcher, **Game library (desktop)** is a separate navigation button:
+it releases input and opens the desktop image catalogue without changing the
+running FPGA game.
 
 ## Free-run only
 
@@ -155,7 +175,8 @@ released mask.
 covers the mapping, which state bits suppress a press and which must not, the
 asymmetric right-Shift press and release pair, the single write per changed
 union, repeats, chords, mouse and keyboard equivalence, focus-loss release and the stale key-up after it, the
-lease, the board poll and its failure, the request order through preflight and
+lease, independent alias/mouse holds, the bounded Main menu return and its
+neutral loader checks, the board poll and its failure, the request order through preflight and
 release, the uncertain and failed-release paths, and the refusal messages for a
 held board and for viewer-only options. It runs against a fake endpoint with no board and no window. A
 window cannot be asserted in CI; the layout, highlighting, mouse and key
