@@ -15,6 +15,9 @@ from n2m.cli import main
 
 ROOT = Path(__file__).resolve().parents[3]
 
+# A cheap declared host unit, for the closure-trace command test.
+TRACED_UNIT = "tools/n2m/tests/test_fpga_hold.py"
+
 ENTRY = {"kind": "sim", "level": 1, "labels": ["cpu"], "duration_seconds": None}
 
 
@@ -382,6 +385,19 @@ class Runner(unittest.TestCase):
         report = json.loads(text)
         self.assertEqual((code, report["status"], report["problems"]), (0, "PASS", []))
         self.assertGreater(report["units"], 500)
+
+    def test_closure_trace_of_one_declared_unit_summarizes_and_exits_zero(self):
+        # The human summary path is the one that used to index the validate-only
+        # keys, so this runs the command without --json and reads its record back.
+        tag = "closure-trace-cli-unit-test"
+        code, text = self.run_cli("tests", "closure-trace", "--unit", TRACED_UNIT, "--tag", tag)
+        self.assertEqual(code, 0, text)
+        self.assertIn("1 of 1 units traced, 0 problems", text)
+        record = json.loads((ROOT / "workdir/builds" / tag / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual((record["status"], record["problems"], record["traced"]), ("PASS", [], 1))
+        self.assertEqual(record["units"][TRACED_UNIT]["status"], "PASS")
+        self.assertNotIn("not_runnable", record)
+        shutil.rmtree(ROOT / "workdir/builds" / tag, ignore_errors=True)
 
     def test_list_selects_and_composes_without_running_anything(self):
         code, text = self.run_cli("tests", "list", "--level", "0", "--json")
