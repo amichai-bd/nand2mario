@@ -95,6 +95,7 @@
         "symbol": "Start"
       },
       "title": "SPRINGTRAIL",
+      "tagline": "RUN THE TRAIL",
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
@@ -132,6 +133,7 @@
         "symbol": "Start"
       },
       "title": "STACKDROP",
+      "tagline": "FILL ROWS TO CLEAR",
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1

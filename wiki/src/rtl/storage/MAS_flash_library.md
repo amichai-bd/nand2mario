@@ -23,7 +23,9 @@ the catalogue carries each image's CRC-32 and title, so every change to the
 menu image since that session already moved it, and the board keeps the bytes
 of its own session until it is reflashed. The tagline table moves the digest
 only when an entry declares a tagline, because an undeclared one packs zero
-into bytes that were already zero.
+into bytes that were already zero; the registered games declare theirs, so the
+packed catalogue now differs from the session-9 bytes there too. The board
+shows no tagline until it is reflashed with a current image.
 
 ## Scope
 

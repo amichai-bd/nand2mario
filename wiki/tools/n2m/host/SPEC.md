@@ -102,9 +102,11 @@ anything the menu font cannot draw, and a slot that declares none packs an
 all-zero record, so a catalogue holding no tagline is byte for byte the one
 written before the table existed. Declaring none means leaving the key out
 wherever taglines are authored: `check_tagline` refuses the empty string, so
-there is one encoding for "no tagline" rather than two. `check_tagline` is also
-what [`validate_target`](../../../../tools/sw/targets.py) runs on a package's
-own `tagline`, so the catalogue's character rule has a single definition. The whole 1 KiB region is written and
+there is one encoding for "no tagline" rather than two. `check_tagline` and its
+character rule live in the [profile table](../../../../tools/n2m/profiles.py),
+the module this tool and the assembler both already consume, and
+[`validate_target`](../../../../tools/sw/targets.py) runs that same function on
+a package's own `tagline`, so the rule has a single definition. The whole 1 KiB region is written and
 compared, so the table needs no command of its own. The slot, catalogue and
 profile numbers are the generated `LIBRARY_*`
 and `PROFILE_*` constants, so the host tool and the RTL share one source.

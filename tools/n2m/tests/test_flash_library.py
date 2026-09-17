@@ -385,8 +385,11 @@ class RegistryTests(unittest.TestCase):
         for name in packages:
             with self.subTest(package=name):
                 target = targets[name]
-                self.assertNotIn('tagline', target)
+                # As checked in: Springtrail and Stackdrop carry one, the menu
+                # and v05 do not. Both shapes must pass the real validator.
                 validate_target(dict(target), require_package=True, stage='link')
+                validate_target({k: v for k, v in target.items() if k != 'tagline'},
+                                require_package=True, stage='link')
                 validate_target(dict(target, tagline='A RUN THROUGH MOSS'), require_package=True, stage='link')
                 # The same string the catalogue refuses, refused here too.
                 with self.assertRaises(ValueError):
@@ -412,10 +415,22 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual({index: pins[name]['size'] for index, name in EXTERNALS.items()},
                          {index: abi.MBC1_ROM_BYTES if index in BANKED_EXTERNALS else library.SLOT_BYTES for index in EXTERNALS})
         self.assertNotIn(11, registry['slots'])
-        # No entry declares a tagline yet: the strings are a separate owner input,
-        # so every tagline record packs zero and catalogue.bin keeps its digest.
-        self.assertEqual(set(registry['taglines'].values()), {None})
+        # Every game slot declares its menu tagline; the menu itself is never
+        # listed, so it declares none and its record stays zero.
         self.assertEqual(sorted(registry['taglines']), sorted(registry['slots']) + [library.MENU_INDEX])
+        self.assertEqual(registry['taglines'], {
+            0: b'RUN THE TRAIL', 1: b'FILL ROWS TO CLEAR', 2: b'BUTTON TEST', 3: b'ROLL ON THE FLOOR',
+            4: b'MATCH AND BATTLE', 5: b'GUESS THE WORD', 6: b'A PIRATE ADVENTURE', 7: b'SHOOT THE INVADERS',
+            8: b'CHAIN THE SQUARES', 9: b'DODGE THE HAZARDS', 10: b'MBC1 TEST GAME', library.MENU_INDEX: None})
+        # Springtrail and Stackdrop carry theirs in their software target, the
+        # other nine in the registry entry; neither slot carries both.
+        targets = json.loads((ROOT / flash_library.SW_REGISTRY).read_text())['targets']
+        entries = json.loads((ROOT / flash_library.REGISTRY).read_text())['slots']
+        self.assertEqual({name for name, target in targets.items() if 'tagline' in target}, {'springtrail', 'stackdrop'})
+        self.assertEqual({int(key) for key, entry in entries.items() if 'tagline' in entry}, set(range(2, 11)))
+        for index, tagline in registry['taglines'].items():
+            if tagline is not None:
+                self.assertEqual(library.check_tagline(tagline.decode(), f'slot {index}'), tagline)
         self.assertEqual({name: pins[name].get('title') for name in ('alien-invasion', 'square-fall')},
                          {'alien-invasion': 'ALIEN INVASION', 'square-fall': 'SQUARE FALL'})
 
