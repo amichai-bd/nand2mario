@@ -281,13 +281,13 @@ measured from the new epoch's first poll rather than across the swap.
 | Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
 | Boot splash slide frame after the map is whole | 199-255 | 17-22% |
 | Skipped splash frame, two wrapped rows | 599-658 | 53-58% |
+| Refused select with a 20-character status redraw | 555 | 49% |
 | Nudge phase change, one object byte | to be re-measured | |
-| Refused select with a 20-character status redraw | to be re-measured | |
 
-The list rows come from `menu-frame` and the splash rows from `menu-splash`
-and `menu-frame-fault`. The last two rows read 246 and 547 before the boot
-splash, which added a test of its own flag to every frame body; `menu-phase`
-and `menu-refused` measure them again.
+The list rows come from `menu-frame`, the refused select from `menu-refused`
+and the splash rows from `menu-splash` and `menu-frame-fault`. The nudge row
+read 246 before the boot splash, which added a test of its own flag to every
+frame body; `menu-phase` measures it again.
 
 A skipped splash frame is the peak, 658, 482 M-cycles inside the budget, and
 the idle frame is the floor at 238. The cap on the skip is what holds that
