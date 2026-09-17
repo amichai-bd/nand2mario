@@ -4,7 +4,7 @@ Use a private credential JSON and explicit reviewed build/device selectors.
 Only the local operator can stop the worker; HTTP exposes image/status reads.
 Camera-only mode is view-only and opens no UART session. Camera UART controls
 are an explicit opt-in and keep the reviewed-build and neutral-release checks.
-`--gui` instead opens a local on-screen Game Boy pad: it sends buttons only,
+`--gui` instead opens a local on-screen Game Boy pad with a Main menu action;
 reads no frames and serves no HTTP, because the player watches the board's VGA
 output directly.
 """
@@ -228,7 +228,7 @@ def main(argv=None):
         parser.add_argument('--'+name)
     parser.add_argument('--input-origin',help='exact HTTPS browser origin allowed to submit fixed taps')
     parser.add_argument('--port',type=int,help='viewer HTTP port; default8765')
-    parser.add_argument('--gui',action='store_true',help='open a local tkinter Game Boy pad; sends buttons only, reads no frames')
+    parser.add_argument('--gui',action='store_true',help='open a local tkinter Game Boy pad with Main menu; reads no frames')
     parser.add_argument('--seconds',type=int,help='session lease; default30 for the viewer and900 for --gui')
     parser.add_argument('--interval',type=float,help='viewer capture interval; default2')
     parser.add_argument('--step-frames',type=int,help='whole 70224-dot frames advanced per capture in stepped mode; default1')

@@ -192,6 +192,36 @@ class ShiftKeyTests(unittest.TestCase):
 
 
 class ControllerTests(unittest.TestCase):
+    def test_aliases_and_mouse_keep_independent_holds(self):
+        client = Fake()
+        driver = Driver(Controller(client))
+        for letter, code, legacy, bit in (('w', 0x57, UP, abi.BUTTON_UP),
+                                         ('a', 0x41, LEFT, abi.BUTTON_LEFT),
+                                         ('s', 0x53, DOWN, abi.BUTTON_DOWN),
+                                         ('d', 0x44, RIGHT, abi.BUTTON_RIGHT),
+                                         ('j', 0x4a, A, abi.BUTTON_A),
+                                         ('k', 0x4b, B, abi.BUTTON_B)):
+            driver.key(letter, code, 0, True)
+            driver.key('??', legacy, 0, True)
+            driver.button(legacy, True)
+            driver.key(letter.upper(), code, 0, False)
+            driver.button(legacy, False)
+            self.assertEqual(client.effective, bit)
+            driver.key('??', legacy, 0, False)
+            self.assertEqual(client.masks[-2:], [bit, 0])
+
+    def test_alias_chord_focus_loss_clears_every_source(self):
+        client = Fake()
+        driver = Driver(Controller(client))
+        for letter in 'wdjk':
+            driver.key(letter, ord(letter.upper()), 0, True)
+        self.assertEqual(client.effective, abi.BUTTON_UP | abi.BUTTON_RIGHT | abi.BUTTON_A | abi.BUTTON_B)
+        driver.focus_lost()
+        for letter in 'wdjk':
+            driver.key(letter, ord(letter.upper()), 0, False)
+        self.assertEqual(client.masks[-1], 0)
+        self.assertEqual(len(client.masks), 5)
+
     def test_one_write_per_changed_union_and_repeats_ignored(self):
         client = Fake()
         pad = Controller(client)
@@ -242,6 +272,83 @@ class ControllerTests(unittest.TestCase):
         pad.release(START)
         self.assertEqual([row['mask'] for row in rows], [abi.BUTTON_START, 0])
         self.assertTrue(all(row['dot'] for row in rows))
+
+
+class MenuFake(Fake):
+    def __init__(self, *, result=abi.LIBRARY_RESULT_OK, busy=False):
+        super().__init__()
+        self.profile = abi.PROFILE_DIRECT_ID
+        self.result, self.busy = result, busy
+
+    def read_host(self, address):
+        extra = {abi.HOST_REG_PROFILE: self.profile, abi.HOST_REG_INPUT: self.effective,
+                 abi.HOST_REG_LIBRARY_STATUS: (self.result << 8) |
+                 (abi.LIBRARY_STATUS_COPY_BUSY if self.busy else 0)}
+        if address in extra:
+            self.events.append(('read', address))
+            return extra[address]
+        return super().read_host(address)
+
+    def write_host(self, address, value):
+        self.events.append(('write', address, value))
+        if self.result == abi.LIBRARY_RESULT_OK:
+            self.profile = abi.PROFILE_LOADER_ID
+        return {'dot': self.dot}
+
+
+class MainMenuTests(unittest.TestCase):
+    def test_release_return_verify_then_keep_playing(self):
+        client = MenuFake()
+        rows = []
+        driver = Driver(Controller(client, rows.append))
+        driver.key('j', 0x4a, 0, True)
+        report = driver.main_menu()
+        self.assertTrue(report['settled'])
+        write = ('write', abi.HOST_REG_LIBRARY_CONTROL, abi.LIBRARY_CONTROL_RETURN)
+        self.assertLess(client.events.index(('INPUT', 0)), client.events.index(write))
+        self.assertEqual(client.events.count(write), 1)
+        self.assertEqual(rows[-1]['event'], 'pad-main-menu')
+        self.assertEqual(client.events[-3:], [('read', abi.HOST_REG_INPUT_SOURCE),
+                                             ('read', abi.HOST_REG_INPUT),
+                                             ('read', abi.HOST_REG_INPUT_EFFECTIVE)])
+        driver.key('j', 0x4a, 0, False)  # Stale release sends nothing.
+        driver.key('s', 0x53, 0, True)
+        driver.key('s', 0x53, 0, False)
+        self.assertEqual(client.masks, [abi.BUTTON_A, 0, abi.BUTTON_DOWN, 0])
+        self.assertIsNone(driver.failure)
+
+    def test_failed_result_and_bounded_busy_stop_input(self):
+        for client in (MenuFake(result=abi.LIBRARY_RESULT_INVALID_SLOT), MenuFake(busy=True)):
+            driver = Driver(Controller(client))
+            self.assertIsNone(driver.main_menu())
+            self.assertIn('Main menu failed', driver.failure_text())
+            previous = list(client.events)
+            driver.key('j', 0x4a, 0, True)
+            self.assertEqual(client.events, previous)
+
+    def test_uncertainty_sends_nothing_even_with_held_input(self):
+        client = MenuFake()
+        driver = Driver(Controller(client))
+        driver.button(A, True)
+        client.uncertain = True
+        previous = list(client.events)
+        self.assertIsNone(driver.main_menu())
+        driver.controller.close()
+        self.assertEqual(client.events, previous)
+
+    def test_wrong_loader_state_or_input_cannot_report_ready(self):
+        for address, value in ((abi.HOST_REG_IMAGE_VALID, 0), (abi.HOST_REG_PROFILE, abi.PROFILE_DIRECT_ID),
+                               (abi.HOST_REG_STATE, abi.STATE_PAUSED),
+                               (abi.HOST_REG_INPUT_SOURCE, abi.INPUT_SOURCE_PHYSICAL),
+                               (abi.HOST_REG_INPUT, abi.BUTTON_A), (abi.HOST_REG_INPUT_EFFECTIVE, abi.BUTTON_A)):
+            client = MenuFake()
+            original = client.read_host
+            def read(register):
+                return value if register == address else original(register)
+            client.read_host = read
+            driver = Driver(Controller(client))
+            self.assertIsNone(driver.main_menu(), (address, value))
+            self.assertIsNotNone(driver.failure)
 
 
 class SessionTests(unittest.TestCase):

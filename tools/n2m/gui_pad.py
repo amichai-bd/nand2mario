@@ -12,13 +12,19 @@ import time
 
 from . import generated_interfaces as abi
 from .host.keyboard import KEYS
+from .host.library import return_to_menu
 
-# `KEYS` is the one mapping; it is keyed by Windows virtual-key code. Tk reports
+PAD_KEYS = dict(KEYS)
+PAD_KEYS.update({0x57: abi.BUTTON_UP, 0x41: abi.BUTTON_LEFT, 0x53: abi.BUTTON_DOWN,
+                 0x44: abi.BUTTON_RIGHT, 0x4a: abi.BUTTON_A, 0x4b: abi.BUTTON_B})
+
+# Legacy `KEYS` and the desktop aliases use Windows virtual-key codes. Tk reports
 # that same code in `event.keycode` on Windows, except for the shift keys, which
 # both arrive as VK_SHIFT and are told apart only by keysym.
 KEYSYMS = {'Right': 0x27, 'Left': 0x25, 'Up': 0x26, 'Down': 0x28,
            'z': 0x5a, 'Z': 0x5a, 'x': 0x58, 'X': 0x58,
            'Shift_R': 0xa1, 'Return': 0x0d, 'KP_Enter': 0x0d}
+KEYSYMS.update({letter: ord(letter.upper()) for letter in 'wasdjkWASDJK'})
 # Control (0x4) and Alt (0x20000) in a Tk key event state, and nothing else.
 # Mod1 (0x8) is not Alt here: Windows latches NumLock into Mod1, so filtering it
 # would drop every key-down while NumLock is on.
@@ -27,9 +33,9 @@ ESCAPE = 0x1b
 # Both shift keys arrive on this one keycode; only the right one is Select.
 VK_SHIFT, SELECT = 0x10, 0xa1
 # Display order and the key each control names on its face.
-FACES = (('Right', 0x27, '→'), ('Left', 0x25, '←'),
-         ('Up', 0x26, '↑'), ('Down', 0x28, '↓'),
-         ('A', 0x5a, 'Z'), ('B', 0x58, 'X'),
+FACES = (('Right', 0x27, 'D / →'), ('Left', 0x25, 'A / ←'),
+         ('Up', 0x26, 'W / ↑'), ('Down', 0x28, 'S / ↓'),
+         ('A', 0x5a, 'J / Z'), ('B', 0x58, 'K / X'),
          ('Select', 0xa1, 'R-Shift'), ('Start', 0x0d, 'Enter'))
 FACE_BY_CODE = {code: (name, key) for name, code, key in FACES}
 
@@ -37,9 +43,9 @@ FACE_BY_CODE = {code: (name, key) for name, code, key in FACES}
 def virtual_key(keysym, keycode=None):
     """The mapped virtual-key code for one Tk key event, or None."""
     code = KEYSYMS.get(keysym)
-    if code is None and keycode in KEYS:
+    if code is None and keycode in PAD_KEYS:
         code = keycode
-    return code if code in KEYS else None
+    return code if code in PAD_KEYS else None
 
 
 def edge(keysym, keycode, state, down):
@@ -114,20 +120,23 @@ def preflight(client, expected_build):
 class Controller:
     """The held button union and the only path that writes it.
 
-    A clicked control and a pressed key call `press`/`release` with the same
-    virtual-key code, so the board cannot tell them apart.
+    Sources are tracked separately so releasing one alias or a mouse button
+    cannot clear another source that still holds the same Game Boy button.
     """
 
     def __init__(self, client, record=None):
         self.client = client
         self.record = record or (lambda row: None)
-        self.held = []
+        self.held = {}
         self.changes = 0
         self.dot = None
 
     @property
     def mask(self):
-        return sum(KEYS[code] for code in self.held)
+        mask = 0
+        for code in self.held.values():
+            mask |= PAD_KEYS[code]
+        return mask
 
     def held_names(self):
         return names(self.mask)
@@ -138,21 +147,43 @@ class Controller:
     def release(self, code):
         return self.apply(code, False)
 
-    def apply(self, code, down):
+    def apply(self, code, down, source=None):
         """Write the changed union once; an unchanged union sends nothing."""
-        if code not in KEYS:
+        if code not in PAD_KEYS:
             return False
-        if down and code not in self.held:
-            self.held.append(code)
-        elif not down and code in self.held:
-            self.held.remove(code)
+        source = ('button', code) if source is None else source
+        previous = self.mask
+        if down and source not in self.held:
+            self.held[source] = code
+        elif not down and source in self.held:
+            del self.held[source]
         else:
+            return False
+        if previous == self.mask:
             return False
         applied = self.client.control('INPUT', self.mask)
         self.dot = applied['dot']
         self.changes += 1
         self.record(dict(event='pad-mask', mask=self.mask, dot=self.dot))
         return True
+
+    def main_menu(self):
+        """Release, return once, and verify the running neutral loader."""
+        if self.client.uncertain:
+            raise RuntimeError('uncertain; no further traffic')
+        self.release_all()
+        report = return_to_menu(self.client, wait=True)
+        endpoint = report['endpoint']
+        if (report['library_status']['result'] != 'OK' or
+                endpoint['PROFILE'] != abi.PROFILE_LOADER_ID or
+                endpoint['IMAGE_VALID'] != 1 or endpoint['STATE'] != abi.STATE_RUNNING):
+            raise ValueError('Main menu did not return to a valid running loader')
+        for address, expected in ((abi.HOST_REG_INPUT_SOURCE, abi.INPUT_SOURCE_UART),
+                                  (abi.HOST_REG_INPUT, 0), (abi.HOST_REG_INPUT_EFFECTIVE, 0)):
+            if self.client.read_host(address) != expected:
+                raise ValueError('Main menu did not restore neutral UART input')
+        self.record(dict(event='pad-main-menu', result=report))
+        return report
 
     def release_all(self):
         """Drop every held button in one write; nothing held sends nothing.
@@ -278,11 +309,15 @@ class Driver:
         found = edge(keysym, keycode, state, down)
         if found is None:
             return None
-        return 'applied' if self.button(*found) else None
+        code, down = found
+        return 'applied' if self.button(code, down, source=('key', code)) else None
 
-    def button(self, code, down):
+    def button(self, code, down, source=None):
         """One control edge, from a click or a key; they are the same path."""
-        return bool(self.guard(lambda: self.controller.apply(code, down), 'UART write'))
+        return bool(self.guard(lambda: self.controller.apply(code, down, source), 'UART write'))
+
+    def main_menu(self):
+        return self.guard(self.controller.main_menu, 'Main menu')
 
     def focus_lost(self):
         """Release everything when the window stops receiving key events.
@@ -327,6 +362,8 @@ class Driver:
 
 
 IDLE, HELD, FACE, KEY, PANEL, TEXT = '#2b3038', '#77baff', '#f2f5f8', '#aeb6c0', '#17191c', '#e8ecf1'
+SHELL, INK, MUTED = '#d8d8df', '#202638', '#4e526a'
+ACTION = '#8c2857'
 
 
 class PadPanel:
@@ -341,47 +378,66 @@ class PadPanel:
         self.driver, self.controller, self.on_exit = driver, driver.controller, on_exit
         self.widgets = {}
         self.polling = False
-        self.frame = frame = tk.Frame(parent, bg=PANEL)
-        tk.Label(frame, text='Watch the board’s VGA screen — this window only sends buttons',
-                 bg=PANEL, fg=KEY, font=('Segoe UI', 10)).grid(row=0, column=0, columnspan=2, pady=(10, 4))
-        pad = tk.Frame(frame, bg=PANEL)
+        self.frame = frame = tk.Frame(parent, bg=SHELL)
+        tk.Label(frame, text='nand2mario  /  GAME PAD',
+                 bg=SHELL, fg=INK, font=('Segoe UI', 16, 'bold')).grid(row=0, column=0, columnspan=2, pady=(20, 12))
+        pad = tk.Frame(frame, bg=SHELL)
         pad.grid(row=1, column=0, padx=16, pady=6)
         self.control(tk, pad, 0x26, row=0, column=1)
         self.control(tk, pad, 0x25, row=1, column=0)
         self.control(tk, pad, 0x27, row=1, column=2)
         self.control(tk, pad, 0x28, row=2, column=1)
-        tk.Label(pad, text='', bg=PANEL, width=7, height=2).grid(row=1, column=1)
-        face = tk.Frame(frame, bg=PANEL)
+        tk.Label(pad, text='●', bg=IDLE, fg=KEY, width=7, height=2,
+                 font=('Segoe UI', 11, 'bold')).grid(row=1, column=1, sticky='nsew')
+        face = tk.Frame(frame, bg=SHELL)
         face.grid(row=1, column=1, padx=16, pady=6)
         self.control(tk, face, 0x58, row=1, column=0)
         self.control(tk, face, 0x5a, row=0, column=1)
-        centre = tk.Frame(frame, bg=PANEL)
+        centre = tk.Frame(frame, bg=SHELL)
         centre.grid(row=2, column=0, columnspan=2, pady=(0, 6))
         self.control(tk, centre, 0xa1, row=0, column=0)
         self.control(tk, centre, 0x0d, row=0, column=1)
-        self.held = tk.Label(frame, text=driver.held_text(), bg=PANEL, fg=TEXT, font=('Consolas', 11))
-        self.held.grid(row=3, column=0, columnspan=2)
-        self.core = tk.Label(frame, text='Core: checking', bg=PANEL, fg=TEXT, font=('Consolas', 11))
-        self.core.grid(row=4, column=0, columnspan=2)
-        self.note = tk.Label(frame, text=HINT, bg=PANEL, fg=KEY, font=('Segoe UI', 9), wraplength=420)
-        self.note.grid(row=5, column=0, columnspan=2, padx=12, pady=(4, 10))
+        self.menu = tk.Button(frame, text='Main menu', command=self.main_menu,
+                              bg=IDLE, fg=FACE, activebackground=HELD,
+                              font=('Segoe UI', 11, 'bold'), padx=18, pady=7)
+        self.menu.grid(row=3, column=0, columnspan=2, pady=12)
+        self.held = tk.Label(frame, text=driver.held_text(), bg=SHELL, fg=INK, font=('Consolas', 10))
+        self.held.grid(row=4, column=0, columnspan=2, padx=14)
+        self.core = tk.Label(frame, text='Core: checking', bg=SHELL, fg=INK, font=('Consolas', 10))
+        self.core.grid(row=5, column=0, columnspan=2)
+        self.note = tk.Label(frame, text=HINT, bg=SHELL, fg=MUTED, font=('Segoe UI', 9), wraplength=480)
+        self.note.grid(row=6, column=0, columnspan=2, padx=12, pady=(8, 18))
         if back is not None:
-            tk.Button(frame, text='◀  Back to the menu', command=back, bg=IDLE, fg=FACE,
+            tk.Button(frame, text='◀  Game library (desktop)', command=back, bg=IDLE, fg=FACE,
                       activebackground=HELD, relief='raised', borderwidth=2,
-                      font=('Segoe UI', 10, 'bold')).grid(row=6, column=0, columnspan=2, pady=(0, 10))
+                      font=('Segoe UI', 10, 'bold')).grid(row=7, column=0, columnspan=2, pady=(0, 10))
         self.paint()
 
     def control(self, tk, parent, code, **grid):
         name, key = FACE_BY_CODE[code]
-        widget = tk.Label(parent, text=f'{name}\n[ {key} ]', bg=IDLE, fg=FACE, width=7, height=2,
-                          font=('Segoe UI', 11, 'bold'), relief='raised', borderwidth=2)
+        round_button = code in (0x5a, 0x58)
+        small = code in (0xa1, 0x0d)
+        width, height = (88, 88) if round_button else ((104, 55) if small else (72, 64))
+        widget = tk.Canvas(parent, bg=SHELL, width=width, height=height, highlightthickness=0)
+        if round_button:
+            widget.create_oval(4, 4, 84, 84, fill=ACTION, outline='#64203f', width=3, tags='face')
+        elif small:
+            widget.create_oval(4, 8, 38, 45, fill=IDLE, outline=IDLE, tags='face')
+            widget.create_oval(66, 8, 100, 45, fill=IDLE, outline=IDLE, tags='face')
+            widget.create_rectangle(21, 8, 83, 45, fill=IDLE, outline=IDLE, tags='face')
+        else:
+            widget.create_rectangle(0, 0, width, height, fill=IDLE, outline=IDLE, tags='face')
+        widget.create_text(width / 2, height / 2 - 9, text=name, fill=FACE,
+                           font=('Segoe UI', 12, 'bold'), tags='caption')
+        widget.create_text(width / 2, height / 2 + 11, text=key, fill=FACE,
+                           font=('Segoe UI', 9), tags='caption')
         widget.bind('<ButtonPress-1>', lambda _event, c=code: self.button(c, True))
         widget.bind('<ButtonRelease-1>', lambda _event, c=code: self.button(c, False))
-        widget.grid(padx=3, pady=3, **grid)
+        widget.grid(padx=4 if round_button or small else 0, pady=3 if round_button or small else 0, **grid)
         self.widgets[code] = widget
         return widget
 
-    def message(self, text, colour=KEY):
+    def message(self, text, colour=MUTED):
         self.note.configure(text=text, fg=colour)
 
     def stop(self, reason, colour=KEY, delay=1200):
@@ -391,14 +447,26 @@ class PadPanel:
 
     def paint(self):
         for code, widget in self.widgets.items():
-            widget.configure(bg=HELD if code in self.controller.held else IDLE,
-                             fg=PANEL if code in self.controller.held else FACE)
+            held = bool(self.controller.mask & KEYS[code])
+            idle = ACTION if code in (0x5a, 0x58) else IDLE
+            widget.itemconfigure('face', fill=HELD if held else idle)
+            widget.itemconfigure('caption', fill=INK if held else FACE)
         self.held.configure(text=self.driver.held_text())
         if self.driver.failure is not None:
             self.stop(self.driver.failure_text(), '#ff9393')
 
     def button(self, code, down):
         self.driver.button(code, down)
+        self.paint()
+
+    def main_menu(self):
+        self.message('Returning to the FPGA main menu…')
+        self.menu.configure(state='disabled')
+        self.frame.update_idletasks()
+        report = self.driver.main_menu()
+        if report is not None:
+            self.message('FPGA main menu ready. Choose a game with the D-pad and A.')
+            self.menu.configure(state='normal')
         self.paint()
 
     def start(self):

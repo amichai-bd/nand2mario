@@ -378,12 +378,12 @@ class BackTests(unittest.TestCase):
         client = Fake()
         driver = self.driver(client)
         driver.button(0x25, True)
-        self.assertEqual(driver.controller.held, [0x25])
+        self.assertEqual(driver.controller.mask, abi.BUTTON_LEFT)
         seen = []
         self.assertEqual(gl.leave_pad(driver, lambda: seen.append('menu') or 'menu',
                                       lambda text: seen.append(text)), 'menu')
         self.assertEqual(seen, ['menu'])
-        self.assertEqual(driver.controller.held, [])
+        self.assertEqual(driver.controller.mask, 0)
         self.assertEqual(client.effective, 0)
         self.assertEqual([event for event in client.events if event[0] == 'INPUT'],
                          [('INPUT', abi.BUTTON_LEFT), ('INPUT', 0)])
