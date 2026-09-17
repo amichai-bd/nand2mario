@@ -330,6 +330,59 @@ class WriteBack(unittest.TestCase):
         self.assertIn(module.HEADER.splitlines()[0], self.path.read_text(encoding="utf-8"))
         self.assertEqual(module.record_durations(self.path, {}), 0)
 
+    def test_a_measured_wall_is_never_recorded_as_zero(self):
+        # 0.00 is reserved for an entry nothing measured, so validate can flag it.
+        self.assertEqual(module.measured_duration(0.0001), 0.01)
+        self.assertEqual(module.measured_duration(1.2345), 1.23)
+
+    def test_sim_test_writes_its_own_wall_back(self):
+        root = Path(self.temp.name)
+        (root / "src/dv/builder").mkdir(parents=True)
+        (root / module.CATALOGUE).write_text(module.format_document(self.model),
+                                             encoding="utf-8", newline="\n")
+        passed = {"status": "PASS", "cache": "BUILT", "timing": {"locked_seconds": 74.567}}
+        self.assertEqual(module.record_simulation(root, "a", passed), 74.57)
+        written = module.read_yaml((root / module.CATALOGUE).read_text(encoding="utf-8"))
+        self.assertEqual(written["units"]["a"]["duration_seconds"], 74.57)
+        self.assertEqual(written["units"]["b"]["duration_seconds"], 9.0)
+        # A cache hit times the cache check, a failure has no trustworthy wall,
+        # and a target outside the catalogue has nowhere to write.
+        for record, name in (({**passed, "cache": "CACHED"}, "a"),
+                             ({**passed, "status": "FAIL"}, "a"),
+                             ({"status": "PASS", "cache": "BUILT"}, "a"),
+                             (passed, "absent")):
+            with self.subTest(record=record, name=name):
+                self.assertIsNone(module.record_simulation(root, name, record))
+        written = module.read_yaml((root / module.CATALOGUE).read_text(encoding="utf-8"))
+        self.assertEqual(written["units"]["a"]["duration_seconds"], 74.57)
+
+
+class UnmeasuredDuration(unittest.TestCase):
+    def test_a_zero_duration_is_flagged_and_null_is_not(self):
+        for duration, expected in ((0.0, ["unit cpu-alu records duration_seconds 0.00; run it so the "
+                                          "catalogue carries its measured wall, or restore null"]),
+                                   (None, []), (0.01, [])):
+            with self.subTest(duration=duration):
+                self.assertEqual(module.unmeasured(
+                    model(units={"cpu-alu": dict(ENTRY, duration_seconds=duration)})), expected)
+
+    def test_the_measuring_run_is_not_blocked_by_the_entry_it_fixes(self):
+        # coverage() gates `tests run`; a zero duration must not stop the run
+        # that writes the real wall back.
+        base = ROOT / "workdir/builds/catalogue-unit-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        temp = tempfile.TemporaryDirectory(dir=base)
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        (root / "src/dv/builder").mkdir(parents=True)
+        (root / "src/dv/builder/targets.json").write_text(
+            json.dumps({"cpu-alu": {"simulators": ["verilator"]}}), encoding="utf-8")
+        (root / module.CATALOGUE).write_text(module.format_document(
+            model(units={"cpu-alu": dict(ENTRY, duration_seconds=0.0)})),
+            encoding="utf-8", newline="\n")
+        loaded, _ = module.load(root)
+        self.assertEqual(module.coverage(root, loaded), [])
+
 
 class SimulatorCapabilities(unittest.TestCase):
     def test_a_target_without_a_valid_simulator_fails_validation(self):
