@@ -6,7 +6,8 @@ sixteen-slot SDRAM library around them (seven 32 KiB stub games, the built
 `exit-demo` image in slot 1, one 64 KiB MBC1 stub game in two slots, one
 empty slot, one entry that is valid but has a foreign length, the rest
 empty) and writes the bytes the testbench reads with `$readmemh`, plus the
-reference frames of the scripted scenario and the `exit-demo` game frame. The catalogue entry layout is
+reference frames of the scripted scenario, the `exit-demo` game frame, the
+boot splash schedule and the delayed catalogue path. The catalogue entry layout is
 the `catalogue_entry_t` record of cfg/interfaces.json: valid, profile,
 length (bits 15:0), crc32, title, length_high (bits 23:16), 7 reserved bytes.
 The tagline table follows the entries in the same region, 24 bytes per slot.
@@ -67,6 +68,21 @@ PHASE_FRAME = GAME_FRAME + 1
 # blank page to the settled list, which is the boot frame again.
 SPLASH_FRAME = PHASE_FRAME + 1
 SPLASH_FRAMES = reference.SETTLED_FRAME + 1
+# The delayed catalogue frames go in `menu-delayed.hex` and
+# `menu-delayed-worst.hex`, each read by one fixture. The menu boots with
+# `sdram_ready` clear, so it starts settled with slot numbers alone and
+# `NOT READY` on the plate; the testbench releases the ready bit after
+# displayed frame `hold`, the next frame shows the committed bank and the
+# cleared plate, and each frame after it draws one more title row. The frame
+# that draws slot `s` is `hold + s + 2`, and the nudge phase changes at frame
+# PHASE_HOLD, so the hold alone decides which row shares its VBlank with the
+# twinkle: DELAYED_HOLD is the shortest run and DELAYED_WORST_HOLD puts the
+# twinkle on WORST_SLOT, the row whose sixteen title cells are all letters.
+# `tb_menu_system` holds the same two constants; they must change together.
+WORST_SLOT = 7
+DELAYED_HOLD = 0
+DELAYED_WORST_HOLD = reference.PHASE_HOLD - WORST_SLOT - 2
+DELAYED_ROWS_FRAMES = 2 + reference.SLOTS
 
 
 def game_image(index, title):
@@ -197,6 +213,20 @@ def splash_frames(menu_image):
     return [reference.expected(f'splash-{number}', rows) for number in range(SPLASH_FRAMES)]
 
 
+def delayed_frames(menu_image, hold=DELAYED_HOLD):
+    """Every displayed frame of the delayed catalogue path, in order.
+
+    Displayed frame `number` shows loop iteration `number`'s writes, so it
+    carries the nudge phase of that frame number and, once the ready bit is
+    released after frame `hold`, one more title row than the frame before it.
+    """
+    rows = entries(menu_image)
+    return [reference.frame(rows, sdram_ready=number > hold,
+                            drawn_slots=max(number - hold - 1, 0),
+                            phase=reference.phase_of_frame(number))
+            for number in range(hold + DELAYED_ROWS_FRAMES)]
+
+
 def frame_marks(run):
     """The `Frame` address and the address after its `CALL WaitVBlank`.
 
@@ -238,6 +268,9 @@ def build(root, destination):
         hex_lines(bytes([marks[0] & 255, marks[0] >> 8, marks[1] & 255, marks[1] >> 8])), encoding='ascii')
     (destination / 'menu-frames.hex').write_text(''.join(hex_lines(frame) for frame in scenario_frames(image)), encoding='ascii')
     (destination / 'menu-splash.hex').write_text(''.join(hex_lines(frame) for frame in splash_frames(image)), encoding='ascii')
+    (destination / 'menu-delayed.hex').write_text(''.join(hex_lines(frame) for frame in delayed_frames(image)), encoding='ascii')
+    (destination / 'menu-delayed-worst.hex').write_text(
+        ''.join(hex_lines(frame) for frame in delayed_frames(image, DELAYED_WORST_HOLD)), encoding='ascii')
     (destination / 'program.gb').write_bytes(image)
     return image
 

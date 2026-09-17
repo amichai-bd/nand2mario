@@ -38,7 +38,8 @@ labels:
   memory: "Memory stores and routing."
   menu: "The on-board game menu program, its frame reference and fixtures."
   menu-animation: "The menu's self-animating nudge phase, kept out of the menu label so that aggregate stays inside the ordinary budget."
-  menu-library: "The menu's catalogue selection paths: the accepted select and the refused one, kept out of the menu label so that aggregate keeps headroom."
+  menu-delayed-worst: "The delayed catalogue draw at its worst alignment: a declared target wall allowance, kept out of every ordinary aggregate."
+  menu-library: "The menu's catalogue paths: the accepted select, the refused one and the delayed catalogue draw, kept out of the menu label so that aggregate keeps headroom."
   milestone: "Carries the owner-authorized 1500-second Mooneye allowance."
   mooneye: "Pinned upstream Mooneye fixtures."
   needs-cocotb: "Imports cocotb; runs only on the pinned src/dv/python interpreter."
@@ -280,6 +281,8 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
+  menu-delayed: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: null}
+  menu-delayed-worst: {kind: sim, level: 1, labels: [menu-delayed-worst, system], duration_seconds: null}
   menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 89.40}
   menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 80.17}
   menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 38.20}

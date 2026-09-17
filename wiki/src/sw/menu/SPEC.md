@@ -383,13 +383,34 @@ walking the text path, and no frame draws more than two of them. The cursor
 object pulled the list's own peak down the same way: a move used to rewrite
 two rows of 19 map cells for 722 M-cycles, and it now writes one byte.
 
-The delayed catalogue path draws one title row per frame and the matrix below
-never reaches it, because the fixture's SDRAM is ready before the menu boots.
-Every row is drawn the same way now that no row is re-banked under a bar; the
-counted worst case, sixteen letter cells, is about 1080 of the 1140. The
-overrun check bounds it wherever it does run, and
-[issue #777](https://github.com/amichai-bd/nand2mario/issues/777) tracks
-measuring it.
+The delayed catalogue path draws one title row per frame, and `menu-delayed`
+measures every one of them: the menu boots with `sdram_ready` clear, so the
+list settles with the slot numbers alone and each frame after the bank commit
+draws one more row. Every row is drawn the same way now that no row is
+re-banked under a bar. MEASURED-LATER: the measured row frames and the worst of
+them go in the table above; the counted worst case, sixteen letter cells, is
+about 1080 of the 1140.
+
+Those sixteen row frames are sixteen consecutive frames, so exactly one of them
+is a multiple of 16: on the delayed path one title row is always drawn in the
+same VBlank as the [nudge phase](#cursor-object) change, which rewrites the
+pointer's tile and the eight star cells. The hold alone decides which row that
+is, which is why `menu-delayed-worst` runs the alignment that puts it on the
+sixteen-letter title. MEASURED-LATER: the measured collision frame.
+
+No flow boots the menu with the bit clear today. The boot copier holds
+`sdram_ready` low only in `WAIT_SDRAM`, `CHECK` and `COPY` and raises the menu
+select in `BOOT`, after them
+([boot copier](../../../../src/rtl/storage/n2m_boot_copier.sv)); every other menu boot is
+a swap the [loader engine](../../../../src/rtl/cartridge/n2m_loader_engine.sv)
+performs, and it reads SDRAM only while `sdram_ready` is set, so the swap
+cannot finish before the bit is; and the bit never falls after reset, because
+the controller's `initialized` is set once
+([SDRAM controller](../../../../src/rtl/storage/n2m_sdram_ctrl.sv)) and the
+copier only moves forward. The path is therefore the image's defence against a
+loader that boots the menu before the library answers, and the fixture drives
+it at the system boundary by holding the system's `sdram_initialized` line low
+across the boot.
 
 Title bytes map to font tiles: `A`-`Z` to tiles 0..25, `0`-`9` to 26..35,
 `-` to 36, zero and space to the blank tile 37; any other byte draws the
@@ -485,9 +506,11 @@ writes the game exit register), stub games in slots 0, 2, 7, 8, 9, 10 and
 header `$0143`), a 64 KiB MBC1 stub game in slots 5-6 whose bank 2 returns
 through the game exit register, an empty slot 3, a valid entry with a
 foreign length in slot 4 and the menu at 16, and writes `menu-library.hex`,
-`menu-frames.hex` (the scripted menu frames, then the exit-demo game frame)
-and `menu-splash.hex` (every displayed frame of the splash schedule, which
-only the splash fixture reads) for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
+`menu-frames.hex` (the scripted menu frames, then the exit-demo game frame),
+`menu-splash.hex` (every displayed frame of the splash schedule, which
+only the splash fixture reads) and `menu-delayed.hex` and
+`menu-delayed-worst.hex` (every displayed frame of the delayed catalogue path
+at each alignment, one file per fixture) for the testbench. [`tb_menu_system`](../../../../src/dv/menu/tb_menu_system.sv)
 runs the real `n2m_v05_system` with the SDRAM controller and device model,
 swaps the menu in through the host return, selects the board joypad and
 compares every captured display-eligible frame; the
@@ -502,17 +525,23 @@ compares every captured display-eligible frame; the
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and the star field's first phase, frame 16 the nudged arrow and its second, both pixel-exact, which pins the phase boundary for the pointer and the [stars](#star-field) together. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
 | `menu-splash` | The untouched [boot splash](#boot-splash) runs its schedule: all 17 displayed frames match the reference frame by frame, fade then slide, and the last of them is pixel-identical to the menu's own frame 0. The nine slide frames are nine scroll offsets of the 32-row map, so they are also where the [star field](#star-field) is checked riding the list |
+| `menu-delayed` | The delayed catalogue path: the menu boots with `sdram_ready` clear and shows the settled list with slot numbers alone, no titles and `NOT READY` on the plate; the frame after the ready bit rises carries the committed bank and the cleared plate, and each frame after it one more title row, all eighteen pixel-exact, ending on the whole list with bank 34 and both window bits set. Every row's VBlank is measured against the [frame budget](#frame-budget) |
+| `menu-delayed-worst` | The same path held seven frames longer, so the row drawn in the frame that changes the nudge phase is the sixteen-letter title rather than an empty slot: the worst delayed frame the path can produce. A declared target wall allowance, in a label of its own, because that alignment is structurally seven frames longer than the ordinary per-simulation target permits |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
 Every target runs within the ordinary wall budget, and every label aggregate
 stays inside the ordinary 300-second budget with room for the work still to
-come. Every target except `menu-splash` also measures under the 120-second
-per-simulation target; `menu-splash` measured 120.96 seconds and `menu-phase`
-118.74, so the margin there is about a second. The
+come. Every target except `menu-splash` and `menu-delayed-worst` also measures
+under the 120-second per-simulation target; `menu-splash` measured 120.96
+seconds and `menu-phase` 118.74, so the margin there is about a second.
+MEASURED-LATER: `menu-delayed` and the declared allowance `menu-delayed-worst`.
+The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
 each target's last run. `menu-frame` and `menu-frame-fault` carry `menu`;
-`menu-select` and `menu-refused` carry `menu-library`, the selection paths;
+`menu-select`, `menu-refused` and `menu-delayed` carry `menu-library`, the
+catalogue paths; `menu-delayed-worst` carries a label of its own, so its
+declared allowance enters no ordinary aggregate;
 `menu-phase` and `menu-splash` carry `menu-animation`; `menu-select-mbc1`
 carries `mbc1`. `menu-exit` carries only `system`, the aggregate above one
 RTL owner, so it is run as a single target.
@@ -523,7 +552,9 @@ that shows the previous press's result, and only a repeated mask takes a
 release frame. What is left is a floor. `menu-splash` displays the whole
 18-frame schedule, which is why the fade holds two frames a step rather than
 three. `menu-phase` displays 18 frames because the nudge is bit 4 of the
-frame counter, so frame 16 cannot arrive sooner, and `menu-exit` boots three
+frame counter, so frame 16 cannot arrive sooner, `menu-delayed` displays 18
+because the path draws one row a frame and sixteen rows cannot arrive sooner,
+and `menu-exit` boots three
 images (menu, game, menu) because the returned menu only starts settled after
 a real select left the slot in `$A003`. What remains in those three is the
 testbench's fixed cost per boot rather than stimulus;

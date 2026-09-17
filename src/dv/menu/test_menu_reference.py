@@ -417,6 +417,46 @@ class Layout(unittest.TestCase):
         with self.assertRaises(ValueError):
             reference.expected('title', self.entries)
 
+    def test_delayed_catalogue_frames(self):
+        """The delayed path: a not-ready plate with no titles, then one more title row per frame."""
+        for hold in (fixture.DELAYED_HOLD, fixture.DELAYED_WORST_HOLD):
+            frames = fixture.delayed_frames(MENU_IMAGE, hold)
+            self.assertEqual(len(frames), hold + fixture.DELAYED_ROWS_FRAMES)
+            # One more row a frame changes the map exactly when the slot it
+            # drew has a title; an empty slot draws the blank cells that were
+            # already there, so those two frames show the same list.
+            for slot in range(reference.SLOTS):
+                drew = (reference.tilemap(self.entries, drawn_slots=slot + 1)
+                        != reference.tilemap(self.entries, drawn_slots=slot))
+                self.assertEqual(drew, self.entries[slot]['valid'] == 1
+                                 and any(self.entries[slot]['title']), slot)
+            # While the SDRAM is not ready the plate says so and no title is drawn.
+            for number in range(hold + 1):
+                self.assertEqual(frames[number], reference.frame(
+                    self.entries, sdram_ready=False, drawn_slots=0,
+                    phase=reference.phase_of_frame(number)))
+            # The frame that commits the bank clears the plate and still lists nothing.
+            self.assertEqual(frames[hold + 1], reference.frame(
+                self.entries, drawn_slots=0, phase=reference.phase_of_frame(hold + 1)))
+            # One row a frame after it, ending on the whole list.
+            for drawn in range(1, reference.SLOTS + 1):
+                self.assertEqual(frames[hold + 1 + drawn], reference.frame(
+                    self.entries, drawn_slots=drawn,
+                    phase=reference.phase_of_frame(hold + 1 + drawn)))
+            self.assertEqual(frames[-1], reference.frame(
+                self.entries, phase=reference.phase_of_frame(len(frames) - 1)))
+        # Sixteen consecutive row frames always contain one multiple of
+        # PHASE_HOLD, so one row is always drawn in the frame that twinkles the
+        # star field and nudges the pointer. The hold decides which row it is:
+        # the worst alignment puts it on the sixteen-letter title of slot 7.
+        self.assertEqual(fixture.DELAYED_WORST_HOLD + fixture.WORST_SLOT + 2, reference.PHASE_HOLD)
+        self.assertEqual(fixture.GAMES[fixture.WORST_SLOT], b'SIXTEEN CHAR ROW')
+        # The shortest run puts it on slot 14 instead, which has no title.
+        self.assertEqual(fixture.DELAYED_HOLD + 14 + 2, reference.PHASE_HOLD)
+        self.assertEqual(self.entries[14]['valid'], 0)
+        self.assertEqual(reference.phase_of_frame(reference.PHASE_HOLD - 1), 0)
+        self.assertEqual(reference.phase_of_frame(reference.PHASE_HOLD), 1)
+
     def test_hex_lines(self):
         self.assertEqual(fixture.hex_lines(b'\x00\xff\x10'), '00\nff\n10\n')
 
