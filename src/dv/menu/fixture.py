@@ -72,17 +72,19 @@ SPLASH_FRAMES = reference.SETTLED_FRAME + 1
 # `menu-delayed-worst.hex`, each read by one fixture. The menu boots with
 # `sdram_ready` clear, so it starts settled with slot numbers alone and
 # `NOT READY` on the plate; the testbench releases the ready bit after
-# displayed frame `hold`, the next frame shows the committed bank and the
-# cleared plate, and each frame after it draws one more title row. The frame
-# that draws slot `s` is `hold + s + 2`, and the nudge phase changes at frame
-# PHASE_HOLD, so the hold alone decides which row shares its VBlank with the
-# twinkle: DELAYED_HOLD is the shortest run and DELAYED_WORST_HOLD puts the
-# twinkle on WORST_SLOT, the row whose sixteen title cells are all letters.
-# `tb_menu_system` holds the same two constants; they must change together.
+# displayed frame `hold` and the frame after it commits the bank. Each frame
+# after that draws one row, except the frame that also changes the nudge
+# phase, which draws half a row and leaves the rest to the next one: so the 16
+# rows take 17 frames and the path is `hold` + 19 frames long. The half falls
+# on the row the hold chooses, at frame PHASE_HOLD: DELAYED_HOLD is the
+# shortest run, where that row is an empty slot, and DELAYED_WORST_HOLD puts
+# it on WORST_SLOT, whose sixteen title cells are all letters, which is the
+# most expensive row the path can draw. `menu-delayed-marks.hex` carries these
+# numbers to `tb_menu_system`, which fails if its own constants differ.
 WORST_SLOT = 7
 DELAYED_HOLD = 0
 DELAYED_WORST_HOLD = reference.PHASE_HOLD - WORST_SLOT - 2
-DELAYED_ROWS_FRAMES = 2 + reference.SLOTS
+DELAYED_ROWS_FRAMES = 3 + reference.SLOTS
 
 
 def game_image(index, title):
@@ -213,18 +215,45 @@ def splash_frames(menu_image):
     return [reference.expected(f'splash-{number}', rows) for number in range(SPLASH_FRAMES)]
 
 
+def delayed_marks():
+    """The shape of both delayed alignments: hold and frame count, in fixture order.
+
+    The testbench reads these four bytes and fails when its own constants
+    differ, so the hold cannot drift between the frames written here and the
+    frames compared there.
+    """
+    return bytes([DELAYED_HOLD, DELAYED_HOLD + DELAYED_ROWS_FRAMES,
+                  DELAYED_WORST_HOLD, DELAYED_WORST_HOLD + DELAYED_ROWS_FRAMES])
+
+
 def delayed_frames(menu_image, hold=DELAYED_HOLD):
     """Every displayed frame of the delayed catalogue path, in order.
 
     Displayed frame `number` shows loop iteration `number`'s writes, so it
     carries the nudge phase of that frame number and, once the ready bit is
-    released after frame `hold`, one more title row than the frame before it.
+    released after frame `hold`, the rows the iterations before it drew. The
+    frame after the release commits the bank and draws nothing; each frame
+    after that draws one row, except the frame that also changes the nudge
+    phase, which draws the first half of its row and leaves the rest to the
+    next one. So one frame shows a half-drawn row and the path takes 17 frames
+    to draw its 16 rows.
     """
     rows = entries(menu_image)
-    return [reference.frame(rows, sdram_ready=number > hold,
-                            drawn_slots=max(number - hold - 1, 0),
-                            phase=reference.phase_of_frame(number))
-            for number in range(hold + DELAYED_ROWS_FRAMES)]
+    frames, drawn, partial, shown_phase = [], 0, 0, 0
+    for number in range(hold + DELAYED_ROWS_FRAMES):
+        ready = number > hold
+        phase = reference.phase_of_frame(number)
+        if ready and number > hold + 1 and drawn < reference.SLOTS:
+            if partial:
+                drawn, partial = drawn + 1, 0
+            elif phase != shown_phase:
+                partial = reference.TITLE_HALF
+            else:
+                drawn += 1
+        shown_phase = phase
+        frames.append(reference.frame(rows, sdram_ready=ready, drawn_slots=drawn,
+                                      partial_cells=partial, phase=phase))
+    return frames
 
 
 def frame_marks(run):
@@ -271,6 +300,7 @@ def build(root, destination):
     (destination / 'menu-delayed.hex').write_text(''.join(hex_lines(frame) for frame in delayed_frames(image)), encoding='ascii')
     (destination / 'menu-delayed-worst.hex').write_text(
         ''.join(hex_lines(frame) for frame in delayed_frames(image, DELAYED_WORST_HOLD)), encoding='ascii')
+    (destination / 'menu-delayed-marks.hex').write_text(hex_lines(delayed_marks()), encoding='ascii')
     (destination / 'program.gb').write_bytes(image)
     return image
 

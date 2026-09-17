@@ -33679,7 +33679,7 @@
       "+fixture=delayed"
     ],
     "expected_exit": "zero",
-    "signature": "PASS menu-delayed checks=21 frames=18 selects=0 commands=6",
+    "signature": "PASS menu-delayed checks=22 frames=19 selects=0 commands=6",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300,
     "preload": "menu",
@@ -33817,7 +33817,7 @@
       "+fixture=delayed-worst"
     ],
     "expected_exit": "zero",
-    "signature": "PASS menu-delayed-worst checks=28 frames=25 selects=0 commands=6",
+    "signature": "PASS menu-delayed-worst checks=29 frames=26 selects=0 commands=6",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300,
     "preload": "menu",

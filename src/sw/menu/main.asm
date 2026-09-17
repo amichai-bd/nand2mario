@@ -85,6 +85,9 @@ NUMBER_COLUMN EQU 1
 TITLE_COLUMN EQU 4
 STATUS_ROW EQU 17
 TITLE_BYTES EQU 16
+; The delayed catalogue path draws half a title row in the frame that also
+; changes the nudge phase, and the rest in the next one.
+TITLE_HALF EQU TITLE_BYTES / 2
 ; The star field. The list always leaves two columns blank - column 0, the
 ; page the cursor object draws on, and column 3, between the slot number and
 ; the title - and a cell of them carries a star where the rule fires on its
@@ -158,6 +161,8 @@ Pending:
 DS 1
 BankDone:
 DS 1
+Half:
+DS 1
 ShownCursor:
 DS 1
 ShownKey:
@@ -206,6 +211,7 @@ LD [Previous],A
 LD [Pressed],A
 LD [Pending],A
 LD [BankDone],A
+LD [Half],A
 LD [ShownCursor],A
 LD [FrameCount],A
 LD [ShownPhase],A
@@ -1059,8 +1065,36 @@ RET Z
 LD A,[LOADER_STATUS]
 AND A,LIBRARY_STATUS_WINDOW_READY
 RET Z
+; The frame that changes the nudge phase rewrites the pointer's tile and the
+; eight star cells, 194 M-cycles on top of the row, and the widest row is over
+; a thousand of VBlank's 1140. So that frame draws the first half of the row
+; and the next frame draws the rest, the cap the splash skip puts on wrapped
+; rows. The phase is untouched: it still follows the frame counter alone.
+; The phase changes on every frame whose counter is a multiple of PHASE_BIT
+; but the first, and that first one cannot draw a row: the bank is committed
+; no earlier than the frame the counter numbers 0, and a row no earlier than
+; the frame after it. So the low bits alone decide, which keeps this test to
+; nine M-cycles of the row's own frame.
+LD A,[Half]
+OR A,A
+JR NZ,FinishRow
+LD A,[FrameCount]
+AND A,PHASE_BIT - 1
+JR NZ,WholeRow
+LD A,1
+LD [Half],A
+LD A,[Pending]
+JP DrawFirstHalf
+FinishRow:
+XOR A,A
+LD [Half],A
+LD A,[Pending]
+CALL DrawSecondHalf
+JR RowDrawn
+WholeRow:
 LD A,[Pending]
 CALL DrawSlot
+RowDrawn:
 LD A,[Pending]
 INC A
 LD [Pending],A
@@ -1077,6 +1111,9 @@ RET
 ; draws its 16 title bytes, any other entry a blank title. The 16th byte is
 ; header $0143: the CGB flag values draw blank, any other byte follows
 ; CharTile.
+; A = slot: its title row in the map. Inline, not a call to RowCells and
+; EntryCells below: this is the menu's most expensive frame and each call
+; costs it 10 M-cycles of a VBlank it has 15 to spare in.
 DrawSlot:
 PUSH AF
 ADD A,LIST_MAP_ROW + SLOT_ROW
@@ -1117,6 +1154,7 @@ LD L,A
 LD B,TITLE_BYTES - 1
 LD C,0
 CALL DrawText
+TitleFlagCell:
 LD A,[HL]
 CP A,CGB_FLAG
 JR Z,FlagBlank
@@ -1131,6 +1169,7 @@ LD [DE],A
 RET
 BlankTitle:
 LD B,TITLE_BYTES
+BlankCells:
 LD A,TILE_BLANK
 BlankLoop:
 LD [DE],A
@@ -1138,6 +1177,80 @@ INC DE
 DEC B
 JR NZ,BlankLoop
 RET
+
+; A = slot -> DE = the slot's sixteen title cells in the map, A kept.
+RowCells:
+PUSH AF
+ADD A,LIST_MAP_ROW + SLOT_ROW
+LD L,A
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD BC,MAP + TITLE_COLUMN
+ADD HL,BC
+LD A,H
+AND A,MAP_ROWS * 32 / 256 - 1
+OR A,HIGH(MAP)
+LD H,A
+LD D,H
+LD E,L
+POP AF
+RET
+
+; A = slot -> HL = its catalogue entry in the window.
+EntryCells:
+LD L,A
+LD H,0
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+ADD HL,HL
+LD A,H
+ADD A,HIGH(GB_ROM1_START)
+LD H,A
+RET
+
+; A = slot: the first TITLE_HALF cells of its title row. The frame that
+; changes the nudge phase draws this much and no more.
+DrawFirstHalf:
+CALL RowCells
+CALL EntryCells
+LD A,[HL]
+CP A,LIBRARY_CATALOGUE_VALID
+LD B,TITLE_HALF
+JR NZ,BlankCells
+LD A,L
+ADD A,ENTRY_TITLE
+LD L,A
+LD C,0
+JP DrawText
+
+; A = slot: the cells the frame before it left, TITLE_HALF..15, the last of
+; them under the CGB flag rule. A map row is 32 cells aligned and the title
+; starts at column TITLE_COLUMN, so the half cannot cross a page.
+DrawSecondHalf:
+CALL RowCells
+PUSH AF
+LD A,E
+ADD A,TITLE_HALF
+LD E,A
+POP AF
+CALL EntryCells
+LD A,[HL]
+CP A,LIBRARY_CATALOGUE_VALID
+LD B,TITLE_BYTES - TITLE_HALF
+JR NZ,BlankCells
+LD A,L
+ADD A,ENTRY_TITLE + TITLE_HALF
+LD L,A
+LD B,TITLE_BYTES - TITLE_HALF - 1
+LD C,0
+CALL DrawText
+JP TitleFlagCell
 
 ; HL = ASCII bytes, DE = cells, B = count, C = bank offset (0 or TILE_GREY).
 ; C survives the loop, so a caller can reuse it for a trailing cell.
