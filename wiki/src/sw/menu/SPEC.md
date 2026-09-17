@@ -258,18 +258,25 @@ measured from the new epoch's first poll rather than across the swap.
 
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|
-| Idle | 230 | 20% |
-| Nudge phase change, one object byte | 246 | 22% |
-| Cursor move, one object byte | 254 | 22% |
-| Refused select with a 20-character status redraw | 547 | 48% |
+| Idle | 238 | 21% |
+| Cursor move or a sampled press, one object byte | 245-262 | 21-23% |
+| The first list frame, which draws the 18-cell status row | 483 | 42% |
 | Boot splash fade frame, one BGP write | 166-196 | 15-17% |
 | Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
 | Boot splash slide frame after the map is whole | 199-255 | 17-22% |
 | Skipped splash frame, two wrapped rows | 599-658 | 53-58% |
+| Nudge phase change, one object byte | to be re-measured | |
+| Refused select with a 20-character status redraw | to be re-measured | |
 
-A skipped splash frame is the peak, 658, 482 M-cycles inside the budget. The
-cap on it is what holds that margin: a skip that finished the map in one
-VBlank cost 1342 and overran, and 1010 with the rows prebuilt as cells. Two
+The list rows come from `menu-frame` and the splash rows from `menu-splash`
+and `menu-frame-fault`. The last two rows read 246 and 547 before the boot
+splash, which added a test of its own flag to every frame body; `menu-phase`
+and `menu-refused` measure them again.
+
+A skipped splash frame is the peak, 658, 482 M-cycles inside the budget, and
+the idle frame is the floor at 238. The cap on the skip is what holds that
+margin: a skip that finished the map in one VBlank cost 1342 and overran, and
+1010 with the rows prebuilt as cells. Two
 things keep the ordinary splash cheap: the four wrapped rows are built as
 cells with the LCD off, so a slide frame copies twenty bytes instead of
 walking the text path, and no frame draws more than two of them. The cursor
