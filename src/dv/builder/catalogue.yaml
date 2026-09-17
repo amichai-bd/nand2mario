@@ -250,7 +250,7 @@ units:
   joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.43}
   library-peer: {kind: sim, level: 1, labels: [python-tb, storage], duration_seconds: 59.06}
   loader-exit: {kind: sim, level: 1, labels: [cartridge], duration_seconds: 5.31}
-  loader-exit-mbc1: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 16.91}
+  loader-exit-mbc1: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 9.94}
   loader-host: {kind: sim, level: 1, labels: [cartridge, system], duration_seconds: 111.47}
   loader-key1: {kind: sim, level: 1, labels: [cartridge], duration_seconds: 93.87}
   loader-key1-queue: {kind: sim, level: 1, labels: [cartridge], duration_seconds: 4.23}
@@ -260,10 +260,10 @@ units:
   loader-swap-fault: {kind: sim, level: 1, labels: [cartridge], duration_seconds: 3.09}
   loader-swap-host: {kind: sim, level: 1, labels: [cartridge], duration_seconds: 2.88}
   loader-window: {kind: sim, level: 1, labels: [cartridge], duration_seconds: 3.35}
-  mbc1-bank: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 11.06}
+  mbc1-bank: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 5.31}
   mbc1-fault: {kind: sim, level: 2, labels: [fault, mbc1], duration_seconds: 1.64}
-  mbc1-map: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 2.65}
-  mbc1-reset: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 2.85}
+  mbc1-map: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 1.95}
+  mbc1-reset: {kind: sim, level: 1, labels: [mbc1], duration_seconds: 1.85}
   memory-bank-enables: {kind: sim, level: 1, labels: [memory], duration_seconds: 0.92}
   memory-bank-enables-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.84}
   memory-cpu-duplicate: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.60}
@@ -284,7 +284,7 @@ units:
   menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 103.77}
   menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 84.61}
   menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 46.55}
-  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 98.67}
+  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 87.11}
   menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 101.43}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
   mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 113.39}
@@ -699,7 +699,7 @@ units:
   uart-input-mmio: {kind: sim, level: 2, labels: [uart], duration_seconds: 4.40}
   uart-load: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.13}
   uart-load-crc: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.15}
-  uart-load-mbc1: {kind: sim, level: 1, labels: [mbc1, uart], duration_seconds: 6.56}
+  uart-load-mbc1: {kind: sim, level: 1, labels: [mbc1, uart], duration_seconds: 5.16}
   uart-load-presence: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.85}
   uart-packet-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 3.68}
   uart-packet-range: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.44}
