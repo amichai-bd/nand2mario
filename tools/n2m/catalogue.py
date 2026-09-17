@@ -32,6 +32,9 @@ LEVELS = (0, 1, 2)
 ORDINARY_BUDGET = 300
 # A child needs its 12 reserved cleanup seconds plus at least one to run.
 MINIMUM_CHILD_SECONDS = 13
+# The smallest wall a real run may record. Anything that measured faster still
+# ran, so it is recorded as 0.01 and 0.00 stays the mark of an unmeasured entry.
+MINIMUM_DURATION = 0.01
 LABEL = re.compile(r"[a-z0-9][a-z0-9-]*")
 TARGET = re.compile(r"[a-z0-9][a-z0-9_-]*")
 UNIT_FILE = re.compile(r"[A-Za-z0-9_./-]+\.py")
@@ -48,7 +51,8 @@ HEADER = ("# Catalogue of every runnable test unit: one entry per registry targe
           "# per standalone test_*.py file. Levels are ordered, so selecting a level runs\n"
           "# every level below it. Labels are a set, validated against the vocabulary\n"
           "# below. duration_seconds is the wall of the last actual run, written back by\n"
-          "# `tools/build.py tests run`; it is never edited by hand. A host unit's optional\n"
+          "# `tools/build.py tests run` and by a passing `sim test`; it is never edited by\n"
+          "# hand and 0.00 marks an entry nothing measured. A host unit's optional\n"
           "# inputs list the data files or directories it reads; its module imports are\n"
           "# derived, and external_imports names the packages outside the tree they reach.\n"
           "#\n"
@@ -296,6 +300,19 @@ def load(root):
     return model, path
 
 
+def unmeasured(model):
+    """Name every unit recording an impossible 0.00 wall.
+
+    A measured wall is at least MINIMUM_DURATION and a unit nothing ran is
+    null, so 0.00 can only be a hand-written duration that makes every
+    selection holding it under-count its budget. This is reported by `validate`
+    and `check` rather than by `coverage`, so the run that measures the unit is
+    never blocked by the entry it is about to fix."""
+    return [f"unit {name} records duration_seconds 0.00; run it so the catalogue carries "
+            "its measured wall, or restore null"
+            for name in sorted(model["units"]) if model["units"][name]["duration_seconds"] == 0]
+
+
 def discovered_tests(root):
     """Every test_*.py present in the tree, generated output excluded."""
     root = Path(root)
@@ -526,6 +543,14 @@ def run_simulation(root, tag, target, args, remaining):
     return outcome
 
 
+def measured_duration(seconds):
+    """The canonical recorded wall: two decimals, never a bare 0.00.
+
+    A real run always took some time, so 0.00 is reserved: it can only come
+    from an entry nothing ever measured, and `validate` fails on it."""
+    return max(round(float(seconds), 2), MINIMUM_DURATION)
+
+
 def record_durations(path, durations):
     """Rewrite only the changed unit lines, so comments and order survive."""
     if not durations:
@@ -546,6 +571,24 @@ def record_durations(path, durations):
             written += 1
     atomic_text(Path(path), "".join(lines))
     return written
+
+
+def record_simulation(root, target, record):
+    """Write one `sim test` wall back, exactly as `tests run` writes a selection.
+
+    A single target measured only this way otherwise keeps its unmeasured
+    duration forever. Only a run that actually executed counts: a cache hit
+    reports the cache check and a failure has no trustworthy wall."""
+    if record.get("status") != "PASS" or record.get("cache") == "CACHED":
+        return None
+    elapsed = (record.get("timing") or {}).get("locked_seconds")
+    if not isinstance(elapsed, (int, float)):
+        return None
+    model, path = load(root)
+    if target not in model["units"]:
+        return None
+    duration = measured_duration(elapsed)
+    return duration if record_durations(path, {target: duration}) else None
 
 
 def run_selection(root, model, path, tag, args, budget, provenance):
@@ -588,7 +631,7 @@ def run_selection(root, model, path, tag, args, budget, provenance):
         # ran, and a CACHED simulation reports the cache check, not the work.
         if ("elapsed_seconds" in outcome and outcome["status"] != "SKIPPED"
                 and outcome.get("cache") != "CACHED"):
-            durations[name] = round(outcome["elapsed_seconds"], 2)
+            durations[name] = measured_duration(outcome["elapsed_seconds"])
     record["elapsed_seconds"] = time.monotonic() - started
     record["finished"] = datetime.now(timezone.utc).isoformat()
     record["durations_written"] = record_durations(path, durations)
@@ -638,7 +681,7 @@ def command(root, args, header, publish):
         report = header(args.tag or "-")
         model, path = load(root)
         if args.action == "validate":
-            problems = coverage(root, model)
+            problems = coverage(root, model) + unmeasured(model)
             report.update(units=len(model["units"]), labels=sorted(model["labels"]),
                           not_runnable=sorted(model["not_runnable"]), retired=sorted(model["retired"]),
                           problems=problems,

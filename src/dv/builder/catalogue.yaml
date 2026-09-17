@@ -2,7 +2,8 @@
 # per standalone test_*.py file. Levels are ordered, so selecting a level runs
 # every level below it. Labels are a set, validated against the vocabulary
 # below. duration_seconds is the wall of the last actual run, written back by
-# `tools/build.py tests run`; it is never edited by hand. A host unit's optional
+# `tools/build.py tests run` and by a passing `sim test`; it is never edited by
+# hand and 0.00 marks an entry nothing measured. A host unit's optional
 # inputs list the data files or directories it reads; its module imports are
 # derived, and external_imports names the packages outside the tree they reach.
 #
@@ -84,7 +85,7 @@ units:
   audio-wave-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: 0.53}
   baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: 0.41}
   baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 0.41}
-  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 0.43}
+  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 0.51}
   builder-smoke-fail: {kind: sim, level: 2, labels: [builder-fault], duration_seconds: null}
   clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 6.58}
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
@@ -202,9 +203,9 @@ units:
   dma-tags-raw: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.49}
   dma-terminal: {kind: sim, level: 2, labels: [dma], duration_seconds: 4.10}
   dma-terminal-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.53}
-  flash-blank: {kind: sim, level: 1, labels: [flash, system], duration_seconds: null}
-  flash-copy: {kind: sim, level: 1, labels: [flash, system], duration_seconds: null}
-  flash-precedence: {kind: sim, level: 1, labels: [flash, system], duration_seconds: null}
+  flash-blank: {kind: sim, level: 1, labels: [flash, system], duration_seconds: 67.08}
+  flash-copy: {kind: sim, level: 1, labels: [flash, system], duration_seconds: 19.94}
+  flash-precedence: {kind: sim, level: 1, labels: [flash, system], duration_seconds: 92.45}
   flash-reader: {kind: sim, level: 1, labels: [storage], duration_seconds: 2.29}
   flash-reader-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.47}
   flash-reader-fault-range: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.47}
@@ -278,7 +279,7 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
-  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 0.00}
+  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 125.48}
   menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 81.76}
   menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 36.33}
   menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 111.07}
@@ -586,7 +587,7 @@ units:
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.04, inputs: []}
   src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.22, inputs: [src/dv/stackdrop/fixtures/title-frame.txt, src/dv/stackdrop/fixtures/title.json, src/sw/stackdrop/assets/tiles.json, src/sw/stackdrop/tables.asm]}
   src/dv/stackdrop/test_tail.py: {kind: unit, level: 2, labels: [needs-cocotb, stackdrop], duration_seconds: 0.17, inputs: []}
-  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 1.30}
+  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 1.67}
   tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: 0.56}
   timebase25: {kind: sim, level: 2, labels: [clocking], duration_seconds: 2.87}
   timebase25-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.49}
@@ -613,19 +614,19 @@ units:
   tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.23, inputs: [src/dv/builder/builder_smoke.sv, tools/sw/opcodes.json]}
   tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.54, inputs: [tools/n2m/dependencies.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.01, inputs: [cfg, src/dv, src/rtl, src/sw, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 2.14, inputs: [cfg/interfaces.json, src/fpga/de10_lite/library.json, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 1.26, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.08, inputs: [tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.12, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.05, inputs: []}
-  tools/n2m/tests/test_fpga_flash.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.00, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_hold.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.01, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.05, inputs: []}
-  tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.08, inputs: []}
-  tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.29, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.05, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 2.95, inputs: [cfg/interfaces.json, src/fpga/de10_lite/library.json, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 1.41, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.06, inputs: []}
+  tools/n2m/tests/test_fpga_flash.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.70, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_hold.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.06, inputs: []}
+  tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.16, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: []}
+  tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.70, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.08, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.19, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_vga.py: {kind: unit, level: 1, labels: [builder, fpga], duration_seconds: 6.69, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_gui_pad.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.12, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.06, inputs: []}
@@ -642,7 +643,7 @@ units:
   tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.15, inputs: [src/fpga/de10_lite/library.json, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/wiki/board_frames]}
   tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.78, inputs: [cfg, src/sw, tools]}
-  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: null, inputs: [src/dv/builder, src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 4.23, inputs: [src/dv/builder, src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 2.23, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_menu_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.30, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, wiki/src/sw/menu/previews]}
   tools/n2m/tests/test_menu_v2.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.72, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, tools/sw/menu_v2, wiki/src/sw/menu/previews]}
@@ -684,7 +685,7 @@ units:
   tools/n2m/tests/test_vga_bezel.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 2.19, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/vga_bezel, wiki/src/rtl/vga/previews]}
   tools/n2m/tests/test_windows_camera.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: null, inputs: []}
   tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.14, inputs: [src/dv/display/tb_dmg_tile_pixel.sv, src/rtl/display/dmg_tile_pixel.sv]}
-  tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: 0.13, inputs: []}
+  tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: 0.21, inputs: []}
   tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.07, inputs: [tools/wiki/check.py]}
   tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.23, inputs: [README.md, src/sw/springtrail/assets, tools/n2m/dependencies.json, tools/wiki/assets, tools/wiki/board_frames, wiki]}
   tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.08, inputs: []}

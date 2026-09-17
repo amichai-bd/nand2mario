@@ -266,7 +266,7 @@ def tagged(root, args, header, publish, progress=None):
                                                     encoding="utf-8")
                 # A test in the tree but not in the catalogue fails this check.
                 model, _ = catalogue.load(root)
-                coverage = catalogue.coverage(root, model)
+                coverage = catalogue.coverage(root, model) + catalogue.unmeasured(model)
                 problems += coverage
                 report.update(status="PASS" if not problems else "FAIL", **suite,
                               catalogue_units=len(model["units"]), catalogue_problems=coverage,
@@ -332,6 +332,21 @@ def tagged(root, args, header, publish, progress=None):
                     simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
                                           questa_bin=args.questa_bin)
                 report.update(simulate(root, build, args, simulator, provenance, progress=progress, locked_at=locked_at))
+                # A target measured only here keeps its catalogue duration
+                # current, in the same canonical form `tests run` writes. The
+                # write happens before the tag is published, so the retained
+                # manifest names it. A catalogue the write cannot read is
+                # reported beside the run, never as its result.
+                try:
+                    written = catalogue.record_simulation(root, args.target, report)
+                    if written is not None:
+                        report["duration_recorded"] = written
+                        report.setdefault("notices", []).append(
+                            f"Recorded duration: {args.target} {written:.2f}s in {catalogue.CATALOGUE}")
+                except (OSError, ValueError) as error:
+                    report["duration_record_error"] = str(error)
+                    report.setdefault("notices", []).append(
+                        f"Duration not recorded in {catalogue.CATALOGUE}: {error}")
         except Exception as error:
             report.update(status="FAIL", error=str(error))
             if isinstance(error, AssemblyError):

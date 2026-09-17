@@ -292,7 +292,11 @@ Each unit declares exactly:
 - `labels`: a set, orthogonal to level. Every label must be declared in the
   file's own `labels` vocabulary; an undeclared label fails validation.
 - `duration_seconds`: the wall of the last actual run, or `null` before the
-  first. `tests run` writes it back; it is not edited by hand.
+  first. `tests run` and a passing `sim test` write it back; it is not edited by
+  hand. A measured wall is recorded with two decimals and never below 0.01
+  seconds, so `0.00` can only mean an entry nothing measured: `tests validate`
+  and `check` fail on it by name. A target selected by no label a run uses
+  keeps a measured wall this way, so budget planning never counts it as free.
 - `inputs` (host units only, optional): the repository files or directories the
   unit reads as data, sorted. Its module imports are never listed; they are
   [derived](#host-unit-closure). Declaring `inputs`, even `[]`, asserts that
@@ -402,6 +406,21 @@ Two failure modes are deliberately loud:
   bug as an ungated suite.
 
 ### Execution and contention
+
+A passing `sim test` writes its own wall, from taking the tag lock to its final
+record, back to the target's catalogue entry in that same canonical form, so a
+target measured only alone still carries a duration. A cache hit times the cache check rather than the work, and a failure
+has no trustworthy wall, so neither is recorded. The rule that flags `0.00` is
+reported by `tests validate` and `check` rather than by the coverage gate of
+`tests run`, so the run that measures such a unit is never blocked by the entry
+it is about to fix. The write lands before the tag is published, so the
+retained manifest names the duration it recorded, and the text output reports
+it as a notice.
+
+`src/dv/builder/catalogue.yaml` is tracked, so `sim test`, and therefore
+`regress` and `tests run` through their children, leave the checkout with a
+catalogue diff whenever a measured wall differs from the recorded one. That
+diff is the record of the last actual run and is committed, not reverted.
 
 A `sim` unit runs as the ordinary `sim test` worker under the run's tag, with
 the same backend, `--seed`, `--rebuild` and selected backend tool options, under the
