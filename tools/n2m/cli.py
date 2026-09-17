@@ -625,8 +625,14 @@ def main(argv=None, root=None):
         if args.command == "tests" and "problems" in report:
             for problem in report["problems"]:
                 print(problem)
-            print(f"{report['units']} units, {len(report['not_runnable'])} not runnable, "
-                  f"{len(report.get('retired', []))} retired")
+            # Each tests action shapes its own record: only validate counts the
+            # catalogue, while closure-trace reports the units it traced.
+            if args.action == "validate":
+                print(f"{report['units']} units, {len(report['not_runnable'])} not runnable, "
+                      f"{len(report.get('retired', []))} retired")
+            elif args.action == "closure-trace":
+                print(f"{report.get('traced', 0)} of {len(report.get('units', {}))} units traced, "
+                      f"{len(report['problems'])} problems")
         if args.command == "sim" and args.action == "prepare" and report.get("prepared_record"):
             print(f"Prepared attempt: {report['prepared']} ({report.get('prepare_seconds', 0):.1f}s); receipt {report['prepared_record']}")
             print("Next: " + powershell_command(["python", "tools/build.py", "sim", "test", args.target,
