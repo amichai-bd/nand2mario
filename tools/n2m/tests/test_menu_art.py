@@ -11,7 +11,7 @@ from tools.sw.menu_art import DIRECTIONS, FONT_TILES, SAMPLE, STATES, generate
 ROOT = Path(__file__).resolve().parents[3]
 PREVIEWS = ROOT / 'wiki/src/sw/menu/previews'
 # The costs the design note quotes; each direction pays for its own tiles only.
-EXPECTED = {'a-plated-list': (82, 3, 43), 'b-cartridge-shelf': (60, 21, 21),
+EXPECTED = {'a-plated-list': (82, 3, 43), 'b-cartridge-shelf': (58, 19, 19),
             'c-night-deck': (49, 10, 10)}
 
 

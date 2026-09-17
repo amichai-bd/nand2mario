@@ -572,6 +572,7 @@ rejected. There is no cache, source rewrite or automatic wiki update. The
 [focused test](../../../tools/n2m/tests/test_program_art.py) checks the bank
 against the ROM bytes, the composed frames against the independent Stackdrop
 frame oracle and the v0.5 literal image, and exact committed SVG reproduction.
+
 ## Menu design previews
 
 `python -m tools.sw.menu_art --tag menu-design` renders the

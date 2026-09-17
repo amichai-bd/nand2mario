@@ -99,18 +99,19 @@ def direction_b(root, reference):
     font = tiles_of(load_bank(root, 'font-tiles.json'))
     extra = tiles_of(load_bank(root, 'design/direction-b-tiles.json'))
     tiles = font + extra
-    names = [f'LOGO {i}' for i in range(8)] + [
-        'BOX TL', 'BOX T', 'BOX TR', 'BOX L', 'BOX R', 'BOX BL', 'BOX B', 'BOX BR',
-        'CART FULL', 'CART EMPTY', 'MORE UP', 'MORE DOWN', 'PICK LEFT']
+    names = ['LOGO TL', 'LOGO T', 'LOGO TR', 'LOGO BL', 'LOGO B', 'LOGO BR',
+             'BOX TL', 'BOX T', 'BOX TR', 'BOX L', 'BOX R', 'BOX BL', 'BOX B', 'BOX BR',
+             'CART FULL', 'CART EMPTY', 'MORE UP', 'MORE DOWN', 'PICK LEFT']
     LOGO = FONT_TILES
-    BOX_TL, BOX_T, BOX_TR, BOX_L, BOX_R, BOX_BL, BOX_B, BOX_BR = range(LOGO + 8, LOGO + 16)
-    CART_FULL, CART_EMPTY, MORE_UP, MORE_DOWN, PICK_L = range(LOGO + 16, LOGO + 21)
+    BOX_TL, BOX_T, BOX_TR, BOX_L, BOX_R, BOX_BL, BOX_B, BOX_BR = range(LOGO + 6, LOGO + 14)
+    CART_FULL, CART_EMPTY, MORE_UP, MORE_DOWN, PICK_L = range(LOGO + 14, LOGO + 19)
     WINDOW = 12
 
     def cells(cursor=0, phase=0, result=0, index=255):
         rows = blank_cells(reference.TILE_BLANK)
-        place(rows[0], 1, list(range(LOGO, LOGO + 4)))
-        place(rows[1], 1, list(range(LOGO + 4, LOGO + 8)))
+        # The emblem repeats its middle tile across both of its four-cell rows.
+        place(rows[0], 1, [LOGO, LOGO + 1, LOGO + 1, LOGO + 2])
+        place(rows[1], 1, [LOGO + 3, LOGO + 4, LOGO + 4, LOGO + 5])
         place(rows[1], 6, reference.text_tiles('GAME LIBRARY'))
         top = min(max(cursor - WINDOW // 2, 0), 16 - WINDOW)
         rows[2] = [BOX_TL] + [BOX_T] * 18 + [BOX_TR]
