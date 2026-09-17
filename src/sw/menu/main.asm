@@ -1693,7 +1693,8 @@ LD [PlateDrawn],A
 RET
 
 ; B = slot. The upper row's text cells: the entry's profile word and size, or
-; the empty-slot line. The badge beside them was written with the LCD off.
+; the empty-slot line. The cartridge badge and the press-A badge beside them
+; are written here too, on every redraw of the row.
 FooterRowA:
 LD A,B
 LD [ShownFooterA],A
