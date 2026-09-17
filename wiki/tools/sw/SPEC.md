@@ -597,6 +597,32 @@ authored banks, the quoted tile and byte costs, that every screen is a 160 by
 144 frame of four shades, that an animation phase changes the frame, and that
 the published SVGs reproduce exactly.
 
+## Menu v2 idea previews
+
+`python -m tools.sw.menu_v2 --tag menu-v2` renders the
+[menu v2 ideas](../../src/sw/menu/DESIGN_V2.md) under
+`workdir/builds/<tag>/menu-v2/<idea>/`, from the menu's
+[font atlas](../../../src/sw/menu/assets/font-tiles.json), the 82-tile bank
+[`reference.py`](../../../src/dv/menu/reference.py) builds and the idea's shade
+JSON in `src/sw/menu/assets/design/v2-*.json`. Nothing is assembled, linked or
+run: these are mockups of ideas nobody has chosen.
+
+The ideas need more than a background, so this command draws each frame layer by
+layer: a 32 by 32 background map at any pixel scroll, an opaque window from
+(WX-7, WY) to the bottom right corner, and objects whose shade 0 is transparent
+and whose shades map through an object palette. Background-to-object priority is
+not modelled. Each idea gets a screen sheet of its review frames, a labelled
+sheet of its new art, the composed tile bank as strict shade JSON and 2bpp, each
+frame as shade JSON, and a `summary.json` of tile counts, added bytes and frame
+counts. A final `result.json` records PASS, the commit and input/output hashes.
+Tags follow the sprite review limits; existing tags and symlink output paths are
+rejected.
+
+The [focused test](../../../tools/n2m/tests/test_menu_v2.py) checks the authored
+banks, the quoted tile, byte and frame counts, that every idea's bank still
+starts with the 82 tiles the menu draws today, that every frame is a distinct
+160 by 144 frame of four shades, and that the published SVGs reproduce exactly.
+
 ## VGA bezel previews
 
 `python -m tools.sw.vga_bezel --tag vga-bezel` renders the
