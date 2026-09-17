@@ -546,28 +546,24 @@ compares every captured display-eligible frame; the
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and the star field's first phase, frame 16 the nudged arrow and its second, both pixel-exact, which pins the phase boundary for the pointer and the [stars](#star-field) together. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
 | `menu-splash` | The untouched [boot splash](#boot-splash) runs its schedule: all 17 displayed frames match the reference frame by frame, fade then slide, and the last of them is pixel-identical to the menu's own frame 0. The nine slide frames are nine scroll offsets of the 32-row map, so they are also where the [star field](#star-field) is checked riding the list |
-| `menu-delayed` | The delayed catalogue path: the menu boots with `sdram_ready` clear and shows the settled list with slot numbers alone, no titles and `NOT READY` on the plate; the frame after the ready bit rises carries the committed bank and the cleared plate, and each frame after it one more title row, all eighteen pixel-exact, ending on the whole list with bank 34 and both window bits set. Every row's VBlank is measured against the [frame budget](#frame-budget) |
-| `menu-delayed-worst` | The same path held seven frames longer, so the row drawn in the frame that changes the nudge phase is the sixteen-letter title rather than an empty slot: the worst delayed frame the path can produce. A declared target wall allowance, in a label of its own, because that alignment is structurally seven frames longer than the ordinary per-simulation target permits |
+| `menu-delayed` | The delayed catalogue path: the menu boots with `sdram_ready` clear and shows the settled list with slot numbers alone, no titles and `NOT READY` on the plate; the frame after the ready bit rises carries the committed bank and the cleared plate, and each frame after it one more title row, except the frame that changes the nudge phase, which draws half its row and leaves the rest to the next one: nineteen frames, all pixel-exact, ending on the whole list with bank 34 and both window bits set. Every row's VBlank is measured against the [frame budget](#frame-budget) |
+| `menu-delayed-worst` | The same path held seven frames longer, so the row split by the frame that changes the nudge phase is the sixteen-letter title rather than an empty slot: the most expensive delayed frame the path can produce, measured at 940 against the 1140 budget. A declared target wall allowance, in a label of its own, because that alignment is structurally seven frames longer than the ordinary per-simulation target permits |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 
-Every target runs within the ordinary wall budget, and every label aggregate
-stays inside the ordinary 300-second budget with room for the work still to
-come. The 120-second per-simulation target is the one a few of them sit on:
-`menu-phase` measured 118.74 seconds, `menu-splash` 120.96 and `menu-delayed`
-123.60. Each of the three displays the fewest frames its check can prove - the
-phase boundary at frame 16, the whole splash schedule, sixteen rows drawn one
-to the frame - so the wall follows from the contract rather than from the
-stimulus, and `menu-delayed-worst` is seven frames longer again for the same
-structural reason.
-`menu-delayed` measured 123.60 seconds: its 19 frames are a floor, because
-sixteen rows drawn one to the frame cannot arrive sooner and the split row
-costs one frame more. `menu-delayed-worst` is seven frames longer again and
-measured 182.91 seconds, a declared wall allowance in a label of its own rather
-than a target of the ordinary budget.
-The
+Every target runs within the ordinary wall budget and every label aggregate
+inside the ordinary 300-second one, but three of these sit on the 120-second
+per-simulation target rather than under it, and their frame counts say why:
+`menu-phase` cannot see the phase boundary before frame 16, `menu-splash`
+displays the whole splash schedule, and `menu-delayed` draws sixteen rows one
+to the frame with one of them split in two. None of the three can be shortened
+without dropping what it proves. `menu-delayed` measured 123.60 seconds with
+the model already built and 171.97 as the last run of its own label, which
+rebuilt it; `menu-delayed-worst` measured 182.91, seven frames longer again and
+a declared wall allowance rather than a target of the ordinary budget. The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
-each target's last run. `menu-frame` and `menu-frame-fault` carry `menu`;
+each target's last run, so a run that rebuilt the model after an image change
+records the build with it. `menu-frame` and `menu-frame-fault` carry `menu`;
 `menu-select` and `menu-refused` carry `menu-library`, the selection paths;
 `menu-delayed` carries a label of its own, because `menu-library` cannot hold
 its wall as well - the three together exhausted the 300-second aggregate
