@@ -278,10 +278,10 @@ units:
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
   menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 0.00}
-  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 84.99}
-  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 23.47}
-  menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 78.98}
-  menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 38.40}
+  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 69.15}
+  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 22.40}
+  menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 77.58}
+  menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 38.26}
   menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 86.57}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
   mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 113.39}

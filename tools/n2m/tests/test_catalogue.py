@@ -152,8 +152,8 @@ class Validation(unittest.TestCase):
         loaded, _ = module.load(self.root)
         self.assertEqual(module.coverage(self.root, loaded), [])
 
-    def test_a_targets_own_validator_runs_as_a_coverage_check(self):
-        """A target that would refuse to run fails coverage by name, not only at simulation time."""
+    def test_a_preload_targets_fixture_inputs_are_a_coverage_check(self):
+        """Either testbench kind fails coverage by name when it would refuse to run."""
         self.write(model())
         loaded, _ = module.load(self.root)
         self.assertEqual(module.coverage(self.root, loaded), [])
@@ -169,6 +169,17 @@ class Validation(unittest.TestCase):
         with patch("n2m.python_tb.validate_fixture", refuse):
             self.assertEqual(module.coverage(self.root, loaded),
                              ["registry cpu-alu: preload_inputs omit fixture inputs: "
+                              "src/sw/menu/assets/design/x.json"])
+        # A Python testbench carries the same fixture inputs in python.inputs.
+        registry.write_text(json.dumps({"cpu-alu": {"sources": [], "simulators": ["verilator"],
+                                                    "testbench": "python", "preload": "menu",
+                                                    "python": {"module": "probe", "test": "run",
+                                                               "inputs": ["src/sw/menu/main.asm"]}}}),
+                            encoding="utf-8")
+        with patch("n2m.python_tb.fixture_inputs",
+                   lambda root, preload: {"src/sw/menu/main.asm", "src/sw/menu/assets/design/x.json"}):
+            self.assertEqual(module.coverage(self.root, loaded),
+                             ["registry cpu-alu: python inputs omit fixture inputs: "
                               "src/sw/menu/assets/design/x.json"])
 
     def test_undeclared_label_fails_validation(self):
