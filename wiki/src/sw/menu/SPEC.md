@@ -41,7 +41,10 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
    the index in `$A003`. Before the catalogue is listed, A does nothing.
 4. Delayed catalogue path: when bank 34 has not been committed and
    `sdram_ready` is now set, commit it; when it has been committed and
-   `window_ready` is set, draw one remaining title row per frame.
+   `window_ready` is set, draw one remaining title row per frame. A row that
+   lands under the selection bar is drawn from the inverse bank, judged
+   against the row the bar is on now rather than the slot the cursor has
+   already moved to in this same frame.
 5. Move the selection bar only when the cursor changed, redraw the status
    row only when its key or index changed, and rewrite the arrow cell alone
    when the nudge phase changed. An idle frame writes no map cell.

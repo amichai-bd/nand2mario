@@ -37,6 +37,9 @@ module tb_menu_system;
     // VBlank is ten lines of 456 dots: 4560 dots, 1140 M-cycles. Every frame
     // body of the menu's loop must finish inside it (wiki/src/sw/menu/SPEC.md).
     localparam int VBLANK_MCYCLES = 1140;
+    // The menu's tile bank: font, inverse font, nudged arrow, two plate caps
+    // and the inverse nudged arrow (wiki/src/sw/menu/SPEC.md).
+    localparam int BANK_TILES = 82;
 
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx, key1_n;
     logic physical_commit;
@@ -183,6 +186,17 @@ module tb_menu_system;
                         cost_samples - 1, cost_last, VBLANK_MCYCLES);
             end
         end
+    end
+
+    // Every background map cell the menu writes names a tile in its bank. A
+    // row drawn with the wrong inverse offset lands outside it, either above
+    // the bank or wrapped past zero, so this bounds that whole class wherever
+    // it runs, including the delayed catalogue path no fixture reaches yet.
+    always @(posedge clk_sys) begin
+        if (!reset_sys && dut.bus_commit && dut.write_enable && dut.profile == PROFILE_LOADER_ID
+            && dut.address >= 16'h9800 && dut.address <= 16'h9BFF && dut.write_data >= 8'(BANK_TILES))
+            $fatal(1, "MENU_TILE_RANGE address=%04h tile=%0d bank=%0d",
+                dut.address, dut.write_data, BANK_TILES);
     end
 
     // The select register commit: the menu's only write into $6000-$7FFF.

@@ -366,10 +366,14 @@ LD A,[LOADER_STATUS]
 AND A,LIBRARY_STATUS_WINDOW_READY
 RET Z
 ; A row drawn under the selection bar is drawn in the inverse bank, which
-; costs one M-cycle a cell instead of a second pass over the row.
+; costs one M-cycle a cell instead of a second pass over the row. The row the
+; bar is on right now is ShownCursor, not Cursor: Navigate has already moved
+; Cursor this frame and ShowCursor only moves the bar after this call, so
+; comparing against Cursor would draw a row in the wrong bank and let
+; ShowCursor invert it a second time or unwind it past zero.
 LD A,[Pending]
 LD B,A
-LD A,[Cursor]
+LD A,[ShownCursor]
 CP A,B
 LD A,0
 JR NZ,PendingOffset
