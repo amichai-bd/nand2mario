@@ -280,10 +280,10 @@ units:
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
   menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 125.48}
-  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 93.10}
-  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 38.00}
+  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 102.99}
+  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 47.73}
   menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 111.07}
-  menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 97.22}
+  menu-refused: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 109.42}
   menu-select: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 53.00}
   menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 89.08}
   menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 106.87}
