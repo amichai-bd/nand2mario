@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import lint
-from n2m.cli import LINT_HOST, main, parser
+from n2m.cli import main, parser
 from n2m.doctor import doctor, questa_lint
 from n2m.records import read_json
 from n2m.simulator import ToolError
@@ -216,6 +216,15 @@ class LintGateTests(unittest.TestCase):
         self.assertEqual((report["status"], report["error"], report["commands"]), ("FAIL", "bad plan", []))
         self.assertNotIn("tools", report)
 
+    def test_missing_tool_names_the_tool_not_an_operating_system(self):
+        """Availability is a tool fact: nothing on PATH names vlib, on any host."""
+        with patch("n2m.simulator.shutil.which", return_value=None):
+            report = lint.lint_questa(ROOT, self.build, self.args, {})
+        self.assertEqual((report["status"], report["commands"]), ("FAIL", []))
+        self.assertIn("missing vlib", report["error"])
+        for system in ("Windows", "Linux", "PowerShell"):
+            self.assertNotIn(system, report["error"])
+
     def test_discovery_failure_is_recorded(self):
         with patch("n2m.lint.questa_tools", side_effect=ToolError("missing vopt; select the Questa tool directory explicitly")):
             report = lint.lint_questa(ROOT, self.build, self.args, {})
@@ -241,24 +250,20 @@ class LintCliTests(unittest.TestCase):
             code = main([*argv, "--json"], self.root)
         return code, json.loads(output.getvalue())
 
-    def test_linux_refuses_before_any_workspace(self):
-        code, report = self.run_cli("Linux", "lint", "questa", "--tag", "refused",
-                                    **{"n2m.cli.lint_questa": {"side_effect": AssertionError("ran")}})
-        self.assertEqual(code, 1)
-        self.assertEqual((report["status"], report["error"], report["os"]), ("FAIL", LINT_HOST, "Linux"))
-        self.assertFalse((self.root / "workdir/builds/refused").exists())
-
-    def test_windows_runs_the_gate_in_its_tagged_workspace_and_exit_follows_status(self):
-        for status, code in (("PASS", 0), ("FAIL", 1)):
-            with self.subTest(status=status):
-                result = {"status": status, "attempt_result": "workdir/builds/gate/lint/questa/x/result.json"}
-                exit_code, report = self.run_cli("Windows", "lint", "questa", "--tag", "gate", "--questa-bin", "tools with spaces",
-                                                 **{"n2m.cli.lint_questa": {"return_value": result}})
-                self.assertEqual(exit_code, code)
-                self.assertEqual((report["status"], report["os"], report["requested"]["questa_bin"]),
-                                 (status, "Windows", "tools with spaces"))
-                self.assertEqual(read_json(self.root / "workdir/builds/gate/manifest.json")["status"], status)
-        self.assertEqual((self.root / "workdir/latest.txt").read_text().strip(), "gate")
+    def test_every_host_runs_the_gate_in_its_tagged_workspace_and_exit_follows_status(self):
+        """No operating system stands between the gate and an installed Questa."""
+        for system in ("Windows", "Linux"):
+            for status, code in (("PASS", 0), ("FAIL", 1)):
+                with self.subTest(system=system, status=status):
+                    tag = "gate-" + system.lower()
+                    result = {"status": status, "attempt_result": f"workdir/builds/{tag}/lint/questa/x/result.json"}
+                    exit_code, report = self.run_cli(system, "lint", "questa", "--tag", tag, "--questa-bin", "tools with spaces",
+                                                     **{"n2m.cli.lint_questa": {"return_value": result}})
+                    self.assertEqual(exit_code, code)
+                    self.assertEqual((report["status"], report["os"], report["requested"]["questa_bin"]),
+                                     (status, system, "tools with spaces"))
+                    self.assertEqual(read_json(self.root / f"workdir/builds/{tag}/manifest.json")["status"], status)
+            self.assertEqual((self.root / "workdir/latest.txt").read_text().strip(), "gate-" + system.lower())
 
     def test_parser_accepts_only_the_documented_options(self):
         args = parser().parse_args(["lint", "questa", "--inject-fault", "--questa-bin", "dir", "--tag", "t", "--json"])

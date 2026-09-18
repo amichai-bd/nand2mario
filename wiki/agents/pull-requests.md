@@ -106,11 +106,12 @@ wiki run. Then, by changed scope:
 - Any change under `tools/sim/` or `src/rtl/display/` runs
   `python -m unittest discover -s tools/sim -p test_tile_pixel.py -v`.
 - Any change under `src/rtl/` or `src/fpga/` runs the
-  [Questa compile gate](../tools/n2m/SPEC.md#questa-compile-gate) on Windows
-  PowerShell from a Windows checkout of the reviewed head:
+  [Questa compile gate](../tools/n2m/SPEC.md#questa-compile-gate) from a
+  checkout of the reviewed head, on any host with `vlib`, `vmap`, `vlog` and
+  `vopt` installed:
 
   ```text
-  python tools/build.py lint questa --tag <tag> --json
+  python3 tools/build.py lint questa --tag <tag> --json
   ```
 
   It must report `PASS`. The PR body records the result in the

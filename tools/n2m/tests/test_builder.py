@@ -382,9 +382,11 @@ class BuilderTests(unittest.TestCase):
                    "[....] Run simulation", "[done] Run simulation",
                    "[....] Check simulation result", "[PASS] Check simulation result",
                    "Result: PASS (BUILT)", "Compile log:", "Simulation log:",
-                   "Result record:", "Waveform (FST):", "Next (Windows PowerShell):"]
+                   "Result record:", "Waveform (FST):", "Next:"]
         positions = [text.index(fragment) for fragment in ordered]
         self.assertEqual(positions, sorted(positions), text)
+        # The fit runs wherever Quartus is installed, so the handoff names this host.
+        self.assertIn("Next: python3 tools/build.py fpga build v05-board", text)
         self.assertIn("--quartus-bin '<Quartus-bin>'", text)
         self.assertIn("--tag fpga-v05", text)
 
