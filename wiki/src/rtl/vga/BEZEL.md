@@ -1,11 +1,32 @@
 # VGA bezel design directions
 
+Outcome: no bezel. The owner first picked the handheld shell, then dropped
+the bezel altogether when its fit showed the shell cannot be built as drawn
+beside the flash-resident library. The [VGA MAS](MAS_vga.md#scanout) owns the
+current output unchanged: borders, blanking and invalid display banks are
+black. This page keeps the three mockups, the RTL each one would need and the
+finding that ended the direction; it describes an abandoned direction, not
+the product.
+
+The finding, from the fourth fit attempt of the shell: the ROM-backed tile
+border holds its tiles and map in M9K blocks initialized from the bitstream,
+and the `v05-board` image uses the MAX 10 internal configuration mode
+`Single Comp Image`
+([flash library contract](../storage/MAS_flash_library.md#configuration-mode)),
+which gives CFM1 and CFM2 to the user flash that holds the game library.
+Quartus stops Analysis and Synthesis with Error 16031, "Current Internal
+Configuration mode does not support memory initialization or ROM. Select
+Internal Configuration mode with ERAM": MAX 10 keeps M9K initialization data
+in CFM1/CFM2, so an initialized ROM and the flash-resident library cannot
+coexist in this configuration. The alternatives, a ROM built from logic cells
+at about a thousand logic elements or a procedural pattern generator, were
+declined, and the two pattern-generator directions below were not chosen
+either. The mockups remain reproducible and their counts exact; nothing on
+this page is scheduled.
+
 Three mockups of what a bezel drawn by the FPGA would look like on the monitor,
-with the RTL each one needs. Nothing here is implemented: the
-[VGA MAS](MAS_vga.md#scanout) still owns the current output, where borders,
-blanking and invalid display banks are black. The mockups change no RTL, no menu
-and no image geometry; they exist so the owner can pick a direction and a cost
-before any of that is written.
+with the RTL each one needs. Nothing here is implemented. The mockups change no
+RTL, no menu and no image geometry.
 
 ## What the border is
 
@@ -56,7 +77,8 @@ right. It is the only direction that uses colour.
 
 - **RTL approach: ROM-backed tile border.** Rounded corners, the stripe and the
   grille are cheaper to store than to compute, and the art stays editable
-  without touching logic. The border's 1,560 cells hold 61 distinct 8x8 cells,
+  without touching logic. This is the approach the fit found unavailable
+  under `Single Comp Image` mode, as the outcome above records. The border's 1,560 cells hold 61 distinct 8x8 cells,
   36 once the four mirrors are folded together. A cell index addresses a tile
   ROM; a 4-bit palette index per pixel addresses a 12-entry colour register
   file.
@@ -152,8 +174,9 @@ rules.
   target checks the bezel against an independent border model. The frozen frame
   CRCs cover the reconstructed image only and do not change.
 
-One thing the mockups cannot settle: the shell direction is the first colour
-this project would put on the VGA pins. The
+One thing the mockups could not settle: the shell direction would have been
+the first colour this project put on the VGA pins. The
 [display observation](../../board-bring-up.md#display-observation) on a
-connected monitor covers gray levels only, so a coloured bezel needs its own
-look at the real screen.
+connected monitor covers gray levels only, so a coloured bezel would have
+needed its own look at the real screen. With the direction dropped, no such
+observation is planned.

@@ -644,18 +644,25 @@ ideas fit; this page owns every frame the image draws.
 
 ## Verification
 
-The Verilator matrix below is the preliminary evidence. The
+The Verilator matrix below is the preliminary evidence; the board evidence is
+[session 10](../../board-bring-up.md#session-10-reflash-with-the-composite-menu)
+of the bring-up record. The board has no physical joypad and a UART round trip
+outlasts the one-frame classes, so
+[`board_menu.py`](../../../../src/dv/menu/board_menu.py) holds the core
+host-paused and steps it one frame at a time (`RESET`, `RUN_DOTS` of 70,224
+dots, `INPUT`, `SNAPSHOT`), comparing every capture through
+[`board_compare.py`](../../../../src/dv/menu/board_compare.py) with
+`reference.py` against the catalogue read from the board. That session read
+back every frame class of this page pixel for pixel: the seventeen
+[splash](#boot-splash) frames, both nudge phases sixteen frames apart, the
+staged and settled [footer](#the-information-footer) of every cursor move
+with a tagline and with `EMPTY SLOT`, the four frames of the
+[scroll ramp](#the-scroll-ramp) onto slot 15 and the four off it, the refused
+select with `SLOT 11 INVALID` kept across a move, the select that started a
+game and the menu after the host return. The earlier
 [game library sessions](../../board-bring-up.md#game-library-sessions) proved
-the board path on the plated list: after a host library load the menu frame,
-the cursor frames after a host-injected joypad Down (`host input`), and the
-menu frame after the return from a started game were read back with
-`SNAPSHOT`/`READ_FRAME` and matched `reference.py` pixel for pixel, and a
-host-injected A started the selected slot; the board has no physical joypad.
-The owner's physical KEY1 hold returned from a running game to a pixel-exact
-menu frame; the host return exercised the same swap. Those frames are the
-plated list, not the grey plates and cursor object this page now specifies;
-[issue #794](https://github.com/amichai-bd/nand2mario/issues/794) tracks
-reading the composite menu back from the board.
+the same path on the plated list, and the owner's physical KEY1 hold returned
+from a running game to a pixel-exact menu frame.
 
 `python tools/build.py sw build menu --tag <tag> --json` builds the image;
 its result records `profile: dmg-loader-v1` and `profile_id: 2`.

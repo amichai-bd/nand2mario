@@ -16,16 +16,16 @@ The [flash-resident boot sessions](../../board-bring-up.md#flash-resident-boot-a
 record the programmed `.pof`, the power-up to the menu and the read-back
 library state on the board; the programming section below is the contract
 those slices derive from. The board's current flash-resident image is the
-[session 9](../../board-bring-up.md#session-9-reflash-with-the-plated-list-menu)
-`v05-board` fit, packed `catalogue.bin` SHA-256 `696868ab…`. That digest
+[session 10](../../board-bring-up.md#session-10-reflash-with-the-composite-menu)
+`v05-board` fit, packed `catalogue.bin` SHA-256 `f8425a03…`. That digest
 records what is programmed into the board, not what the packer writes today:
-the catalogue carries each image's CRC-32 and title, so every change to the
-menu image since that session already moved it, and the board keeps the bytes
-of its own session until it is reflashed. The tagline table moves the digest
-only when an entry declares a tagline, because an undeclared one packs zero
-into bytes that were already zero; the registered games declare theirs, so the
-packed catalogue now differs from the session-9 bytes there too. The board
-shows no tagline until it is reflashed with a current image.
+the catalogue carries each image's CRC-32 and title and the tagline table,
+so any change to the menu image or to a declared tagline after that session
+moves it, and the board keeps the bytes of its own session until it is
+reflashed. The tagline table moves the digest only when an entry declares a
+tagline, because an undeclared one packs zero into bytes that were already
+zero; every registered game declares one, and session 10 is the first image
+whose board copy carries them.
 
 ## Scope
 
@@ -391,11 +391,16 @@ catalogue read from SDRAM equalled the packed one, the menu frame was
 pixel-exact, and the rebuilt game started from the menu and answered the joypad
 ([session 8](../../board-bring-up.md#session-8-reflash-with-the-updated-v05-image)).
 A fifth write carried the plated-list menu image into CFM0 and repeated the
-same proofs on the image the board now holds: the device reconfigured from CFM0
+same proofs: the device reconfigured from CFM0
 without a power cycle, the catalogue read from SDRAM equalled the packed one,
 the menu frames were pixel-exact in both nudge phases, and a game started from
 the menu and returned to it
 ([session 9](../../board-bring-up.md#session-9-reflash-with-the-plated-list-menu)).
+A sixth write carried the composite menu and the populated tagline table into
+CFM0, the image the board now holds: the catalogue read from SDRAM equalled the
+packed one, taglines included, and every menu frame class was read back
+pixel-exact
+([session 10](../../board-bring-up.md#session-10-reflash-with-the-composite-menu)).
 The copier's and reader's timing evidence remains simulation against the
 double plus the fit.
 
