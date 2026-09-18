@@ -15,6 +15,10 @@ import re
 # Every family with a clocking evidence implementation, and the module that owns it.
 IMPLEMENTATIONS = {"MAX 10": "fpga_pll", "Cyclone V": "fpga_pll_cyclonev"}
 CHAINS = ("board_release", "lock_samples", "sys_release", "pix_release")
+# Quartus writes design.fit.rpt in cp1252 on every host; a MAX 10 report carries
+# the degree sign (0xb0), which utf-8 refuses. The encoding belongs to Quartus,
+# not to the host, so every family reads the report through this one fact.
+FIT_ENCODING = "cp1252"
 
 
 def implementation(family):

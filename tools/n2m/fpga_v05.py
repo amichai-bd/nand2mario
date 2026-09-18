@@ -1,5 +1,6 @@
 """Scoped v0.5 composition crossing reports using the existing VGA profile."""
 from . import fpga_vga, fpga_controls, fpga_memory_stores
+from .fpga_clocking import FIT_ENCODING
 
 # The UART receiver and the loader profile's KEY1 return both end at checked
 # two-flop synchronizers (wiki/src/rtl/cartridge/MAS_loader_profile.md#key1-return).
@@ -71,9 +72,8 @@ def verify_paths(folder, *, system_clock, controls=False):
 def verify_memory(folder, *, system_net, top="v05_proof"):
     """Partition the complete composition across existing memory checkers."""
     import re
-    import os
     text = (folder / 'simulation/questa/design.vo').read_text(encoding='utf-8')
-    fit = (folder / 'output/design.fit.rpt').read_text(encoding='cp1252' if os.name == 'nt' else 'utf-8')
+    fit = (folder / 'output/design.fit.rpt').read_text(encoding=FIT_ENCODING)
     prefix = "u_controls|" if top == "v05_controls_proof" else ""
     stores = {prefix + 'u_system|u_stores|' + owner: shape for owner, shape in fpga_memory_stores.STORES.items()}
     stores.update({f'{prefix}u_system|u_snapshot|banks[{bank}].u_{side}': (5760, 8)

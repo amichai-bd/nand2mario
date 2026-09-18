@@ -298,9 +298,9 @@ def verify_lock_event(folder, checks, top="nano_clocking_proof", *, parallel=Fal
     return fpga_lock_cyclonev.verify((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
 
 
-# The fit report carries a degree sign in its junction temperature rows, so it
-# is cp1252 on every host; utf-8 cannot decode it.
-FIT_ENCODING = "cp1252"
+# The fit report carries a degree sign in its junction temperature rows; the
+# registry owns that encoding fact so both families cannot drift apart.
+FIT_ENCODING = fpga_clocking.FIT_ENCODING
 FIT_EXPECTED = {
     "PLL Type": "Integer PLL", "PLL Feedback clock type": "none", "PLL Bandwidth": "Auto",
     "Reference Clock Frequency": "50.0 MHz", "Reference Clock Sourced by": "Dedicated Pin",

@@ -42,12 +42,22 @@ def memory_netlist(lcd=False):
     return text
 
 
+# Quartus writes the junction temperature rows with a degree sign, so a real fit
+# report is not ASCII; the fixture carries one byte of it.
+FIT_PROLOGUE = "; Low Junction Temperature ; 0 \N{DEGREE SIGN}C ;\n"
+
+
+def report_encoding(name):
+    """Fit reports are written as Quartus writes them; the rest are ASCII."""
+    return fpga_vga.FIT_ENCODING if name == "design.fit.rpt" else "utf-8"
+
+
 def fixture(folder, lcd=False):
     """Original minimal tables exercise report semantics, not vendor prose."""
     output = folder / "output"
     output.mkdir()
     def write(name, text):
-        (output / name).write_text(text, encoding="utf-8")
+        (output / name).write_text(text, encoding=report_encoding(name))
     def row(*cells):
         return "; " + " ; ".join(str(c) for c in cells) + " ;\n"
     def report(header, model, data):
@@ -64,7 +74,7 @@ def fixture(folder, lcd=False):
     outputs += [("hsync_n", "u_bridge|u_scan|hs_out"), ("vsync_n", "u_bridge|u_scan|vs_out")]
     for port, register in outputs:
         ram += row(register, "Packed Register", "Register Packing", "Timing optimization", "Q", "", port + "~output", "I", "")
-    write("design.fit.rpt", ram)
+    write("design.fit.rpt", FIT_PROLOGUE + ram)
     netlist = folder / "simulation/questa/design.vo"
     netlist.parent.mkdir(parents=True)
     netlist.write_text(memory_netlist(lcd=lcd), encoding="utf-8")
@@ -229,12 +239,12 @@ class VgaEvidenceTests(unittest.TestCase):
             ]
             for name, old, new in changes:
                 path = folder / "output" / name
-                original = path.read_text()
+                original = path.read_text(encoding=report_encoding(name))
                 self.assertIn(old, original)
-                path.write_text(original.replace(old, new, 1))
+                path.write_text(original.replace(old, new, 1), encoding=report_encoding(name))
                 with self.subTest(name=name), self.assertRaises(ValueError):
                     fpga_vga.verify(folder)
-                path.write_text(original)
+                path.write_text(original, encoding=report_encoding(name))
             for name in fpga_vga.required_reports():
                 path = folder / "output" / name
                 original = path.read_bytes()

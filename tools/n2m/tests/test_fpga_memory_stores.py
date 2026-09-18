@@ -3,7 +3,11 @@ import unittest
 from pathlib import Path
 import tempfile
 
-from n2m.fpga_memory_stores import verify_netlist, verify
+from n2m.fpga_memory_stores import verify_netlist, verify, FIT_ENCODING
+
+# Quartus writes the junction temperature rows with a degree sign, so a real fit
+# report is not ASCII; the fixture carries one byte of it.
+FIT_PROLOGUE = "; Low Junction Temperature ; 0 \N{DEGREE SIGN}C ;\n"
 
 
 def fixture():
@@ -44,20 +48,20 @@ class StoreFitTests(unittest.TestCase):
                       "Old data", "New data with NBE Read", "New data with NBE Read"]
             lines.append("; " + " ; ".join(fields) + " ;")
         lines.append("; Total block memory bits ; 657,784 / 1,677,312 ;")
-        original = "\n".join(lines)
+        original = FIT_PROLOGUE + "\n".join(lines)
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             (folder / "output").mkdir()
             (folder / "simulation/questa").mkdir(parents=True)
             (folder / "simulation/questa/design.vo").write_text(fixture())
             report = folder / "output/design.fit.rpt"
-            report.write_text(original)
+            report.write_text(original, encoding=FIT_ENCODING)
             self.assertEqual(len(verify(folder)["physical_atoms"]), 84)
             for changed in (original.replace("657,784", "262,144"),
                             original.replace("yes ; no ; yes ; no", "yes ; yes ; yes ; no", 1),
                             original.replace("64 ; None", "63 ; None", 1),
                             original + "\n" + lines[0], "\n".join(lines[1:])):
-                report.write_text(changed)
+                report.write_text(changed, encoding=FIT_ENCODING)
                 with self.assertRaises(ValueError):
                     verify(folder)
 

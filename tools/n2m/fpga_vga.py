@@ -1,7 +1,8 @@
 """Exact VGA proof hierarchy: checked CDC collections and retained path reports."""
 import math
-import os
 import re
+
+from .fpga_clocking import FIT_ENCODING
 
 CHAINS = ("pix_ready_sys", "sys_ready_pix", "ack_sys", "req_pix")
 LAUNCHES = ("u_clocking|u_reset|pix_release[1]", "u_clocking|u_reset|sys_release[1]",
@@ -188,7 +189,7 @@ def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_
     for (name, _, _), line in zip(chain_profile(lcd), pins):
         if line not in [f"{name} u_bridge|{name}[0]|{suffix}" for suffix in ("d", "asdata")]:
             raise ValueError("unsupported VGA first data pin")
-    fit = (output / "design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    fit = (output / "design.fit.rpt").read_text(encoding=FIT_ENCODING)
     if [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "M9Ks"] != (["27 / 182 ( 15 % )"] if controls else ["18 / 182 ( 10 % )"]):
         raise ValueError("unexpected total fitted M9K usage")
     memory = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
