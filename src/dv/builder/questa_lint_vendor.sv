@@ -2,7 +2,7 @@
 // installs during `fpga build`. Port- and parameter-compatible empty bodies:
 // `lint questa` binds repository RTL to these ports and claims no vendor
 // behavior. Only that command compiles this file; it is in no synthesis source
-// set. tools/n2m/lint.py requires exactly these six units, in this order.
+// set. tools/n2m/lint.py requires exactly these eight units, in this order.
 `timescale 1ns/1ps
 module n2m_system_pll (
     input  logic inclk0,
@@ -16,6 +16,24 @@ module n2m_pixel_pll (
     input  logic inclk0,
     input  logic areset,
     output logic c0,
+    output logic locked
+);
+endmodule
+
+// The Cyclone V pair the Altera PLL IP generates: a different reference and
+// reset port name from ALTPLL's, and the outclk_0 the wrapper reads.
+module n2m_system_pll_cyclonev (
+    input  logic refclk,
+    input  logic rst,
+    output logic outclk_0,
+    output logic locked
+);
+endmodule
+
+module n2m_pixel_pll_cyclonev (
+    input  logic refclk,
+    input  logic rst,
+    output logic outclk_0,
     output logic locked
 );
 endmodule

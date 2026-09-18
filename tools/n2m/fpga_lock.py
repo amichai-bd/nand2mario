@@ -13,7 +13,14 @@ OUTPUTS = {
 }
 
 
-def parse_netlist(text, top):
+def parse_netlist(text, top, outputs=None):
+    """Consume every statement of a structural netlist against a family's primitives.
+
+    `outputs` names the supported primitive types and their output ports; it
+    defaults to the MAX 10 set. A family passes its own table so an unsupported
+    primitive still fails instead of hiding a sink.
+    """
+    outputs = OUTPUTS if outputs is None else outputs
     text = re.sub(r"//[^\n]*", "", text)
     text = re.sub(r"(?m)^\s*`timescale[^\n]*", "", text)
     cells = {}
@@ -49,7 +56,7 @@ def parse_netlist(text, top):
         if not match:
             raise ValueError(f"unsupported structural netlist statement: {statement[:80]}")
         kind, escaped, plain, body = match.groups()
-        if kind not in OUTPUTS:
+        if kind not in outputs:
             raise ValueError("unsupported vendor primitive type")
         name = escaped or plain
         if name in cells:
@@ -68,7 +75,7 @@ def parse_netlist(text, top):
         if values != ([(constant, "1'b0")] if constant == "gnd" else [(constant, "1'b1")] if constant == "vcc" else []):
             raise ValueError("vendor constant assignment differs")
         if any(re.search(r"\b" + constant + r"\b", value) for kind, ports in cells.values() for port, value in ports.items()
-               if port in OUTPUTS[kind]):
+               if port in outputs[kind]):
             raise ValueError("vendor constant has a primitive driver")
 
     return text, cells, parameters, declarations, assignments, assigned_nets

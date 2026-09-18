@@ -46,6 +46,13 @@ The system PLL uses `M=104, N=8, C=26`, with 650 MHz VCO and
 and the requested output ratio; record the actual generated settings. Do not
 silently substitute 25 MHz. No clock switching or dynamic PLL reconfiguration.
 
+The rates are the contract; the vendor IP that realizes them is the board's. The
+paragraph above is the qualified DE10-Lite implementation. A Cyclone V board has
+no ALTPLL and uses the Altera PLL IP for the same two outputs from the same
+reference, with its own solved counters and its own evidence path
+([DE10-Nano](de10-nano-board.md#targets),
+[builder contract](../tools/n2m/SPEC.md#generated-clocking-inputs)).
+
 The +/-100 ppm reference bound is a project acceptance requirement, not a
 claimed oscillator specification or measurement. It puts `gb_tick` within
 +/-419.4304 Hz and `clk_pix` within +/-2,520 Hz. Simulation uses nominal clocks;
@@ -232,8 +239,11 @@ a second writer or a reset that independently clears one end of a live mailbox.
 
 ## Timing constraints
 
-Use Quartus Prime Lite/Standard TimeQuest for the exact MAX 10 part. Define the
-50 MHz input with `create_clock -period 20.000`, derive ALTPLL clocks with
+The constants below are the MAX 10 part's. Each other board states its own
+analysed corners and its own derived clock names.
+
+Use Quartus Prime Lite/Standard TimeQuest for the exact part. Define the
+50 MHz input with `create_clock -period 20.000`, derive the PLL clocks with
 `derive_pll_clocks`, then `derive_clock_uncertainty`. Also analyze the upper
 reference bound with input period 19.998 ns. Generated clocks must retain the
 actual input/output relationship; tick enables get no clock declaration.

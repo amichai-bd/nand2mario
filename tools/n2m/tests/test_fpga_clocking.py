@@ -8,6 +8,11 @@ from tools.n2m import fpga_lock, fpga_constraints, fpga, fpga_pll
 from tools.n2m.records import file_hash
 
 
+# The single-PLL definition the cache fixtures declare; the family selects the
+# clocking implementation that names the generated files.
+SINGLE_PLL = {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125}
+
+
 def fixture():
     # Construct an abstract evidence fixture, not a copied vendor implementation.
     pll, reset = fpga_lock.PLL, fpga_lock.RESET
@@ -61,12 +66,12 @@ class ClockingEvidenceTests(unittest.TestCase):
                       "evidence_directory": folder.relative_to(root).as_posix(), "evidence": {}}
             (folder / "result.json").write_text(json.dumps(record))
             with patch.object(fpga, "timing_evidence", return_value={}):
-                self.assertTrue(fpga.complete_cache(record, "request", root, build, {"pll": {}, "timing": {}}))
+                self.assertTrue(fpga.complete_cache(record, "request", root, build, {"family": "MAX 10", "pll": SINGLE_PLL, "timing": {}}))
                 for missing in ("n2m_pixel_pll.v", "simulation/questa/design.vo", "checked.sdc", "output/chain_pix_release_hold.rpt"):
                     truncated = {**record, "artifacts": {k: v for k, v in record["artifacts"].items() if k != (folder / missing).relative_to(root).as_posix()}}
                     (folder / "result.json").write_text(json.dumps(truncated))
                     with self.subTest(missing=missing):
-                        self.assertFalse(fpga.complete_cache(truncated, "request", root, build, {"pll": {}, "timing": {}}))
+                        self.assertFalse(fpga.complete_cache(truncated, "request", root, build, {"family": "MAX 10", "pll": SINGLE_PLL, "timing": {}}))
     def test_only_documented_lock_event_is_classified(self):
         text, checks = fixture()
         self.assertEqual(fpga_lock.verify(text, checks)["endpoint"], fpga_lock.ROW)

@@ -41,9 +41,12 @@ Quartus Prime Lite 25.1std.0 Build 1129.
   transmitter instead.
 - No FPGA-side SDRAM. The 1 GiB DDR3 belongs to the hard processor system, not
   to the FPGA fabric.
-- No ALTPLL. Cyclone V uses a different PLL primitive, so the pixel and system
-  PLLs do not port across unchanged; `nano-smoke` runs from the 50 MHz
-  reference directly.
+- No ALTPLL. Cyclone V uses the Altera PLL IP instead, with its own instance
+  hierarchy, port names and fit-report shape, so the generator and every
+  clocking check are per family
+  ([builder contract](../tools/n2m/SPEC.md#generated-clocking-inputs)).
+  `nano-clocking` generates the contract's system and pixel clocks with it;
+  `nano-smoke` still runs from the 50 MHz reference directly.
 
 It gains block memory: 5,662,720 bits against 1,677,312, about 3.4 times as
 much.
@@ -352,9 +355,24 @@ assignments; every other pin on this board is stated only in the table above.
 
 Quartus analyses this industrial device at four corners, `Slow 1100mV 100C`,
 `Slow 1100mV -40C`, `Fast 1100mV 100C` and `Fast 1100mV -40C`, and the builder
-requires setup, hold and minimum-pulse-width slack at each of them. It also
+requires setup, hold and minimum-pulse-width slack at each of them, and recovery
+and removal as well from a target that carries generated clocks. It also
 requires a drive strength and a slew rate on every `LED` pin, because Cyclone V
 reports an output pin without both as an incomplete I/O assignment.
+
+`nano-clocking` is the clocking proof: the Cyclone V wrapper
+[`n2m_clocking_cyclonev.sv`](../../src/fpga/de10_nano/n2m_clocking_cyclonev.sv)
+with the shared `n2m_reset_control` and `n2m_timebase` under
+[`nano_clocking_proof.sv`](../../src/fpga/de10_nano/nano_clocking_proof.sv). It
+uses one real pin, `FPGA_CLK1_50`; every control and observation port is virtual,
+so it is a fit proof and not a board image. The two generated Altera PLL
+instances give the [clock contract](clocks-resets-cdc.md)'s 25 MHz system and
+25.2 MHz pixel clocks from that reference. The fit reports both PLLs as physical
+resources, the solved counters `M=12, N=2, C=12` (300 MHz VCO) for the system
+clock and `M=63, N=5, C=25` (630 MHz VCO) for the pixel clock, 58 ALMs and 86
+registers. `nano-clocking-invalid` shares those sources and deliberately names
+the MAX 10 ALTPLL system clock as a checked output-delay endpoint, which no
+Cyclone V netlist contains, so it must fail naming that endpoint.
 
 `GPIO_0`, `GPIO_1`, the ADV7513 group, the Arduino header and the LTC2308 are
 mapped above but belong to no target. Nothing places them until a target needs
@@ -371,8 +389,15 @@ them.
 - `python3 tools/build.py fpga build nano-smoke` must PASS with its fit, timing
   and assembly reports retained; `nano-invalid` must FAIL. Both are recorded in
   the [builder contract](../tools/n2m/SPEC.md#fpga-build).
-- The Questa compile gate elaborates `nano_smoke` with every other registered
-  top.
+- `python3 tools/build.py fpga build nano-clocking` must PASS with its generated
+  vendor HDL, PLL usage, clock inventory, lock, metastability, clock-transfer and
+  reset-chain reports retained and checked; `nano-clocking-invalid` must FAIL.
+  The [builder contract](../tools/n2m/SPEC.md#generated-clocking-inputs) owns
+  those checks and
+  [`test_fpga_cyclonev.py`](../../tools/n2m/tests/test_fpga_cyclonev.py) proves
+  their rejections.
+- The Questa compile gate elaborates `nano_smoke` and `nano_clocking_proof` with
+  every other registered top.
 
 Physical verification of this board is not done. It needs explicit hardware
 authorization, and it is not part of the flow proof.

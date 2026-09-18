@@ -5,31 +5,63 @@ import math
 import re
 
 from .records import file_hash
-from . import fpga_lock
+from . import fpga_clocking, fpga_lock
 
-CHAINS = ("board_release", "lock_samples", "sys_release", "pix_release")
+# The reset chain audit and its report inventory are family-neutral; the
+# clocking registry owns them and both families keep the same names.
+CHAINS = fpga_clocking.CHAINS
+chain_audit = fpga_clocking.chain_audit
+required_reports = fpga_clocking.required_reports
+TOOLS_KEY = "altpll"
+FAMILY = "MAX 10"
+# The proof tops whose exact u_clocking hierarchy these checks recognize.
+SUPPORTED_TOPS = ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof",
+                  "v05_proof", "v05_controls_proof", "sdram_proof", "flash_proof")
 SYSTEM_PLL = "u_clocking|u_system_pll|altpll_component|auto_generated|pll1"
 PIXEL_PLL = "u_clocking|u_pll|altpll_component|auto_generated|pll1"
 ADC_PLL = "u_adc|u_pll|altpll_component|auto_generated|pll1"
 SYSTEM_CLOCK = SYSTEM_PLL + "|clk[0]"
+PIXEL_CLOCK = PIXEL_PLL + "|clk[0]"
 SYSTEM_NET = r"\u_clocking|u_system_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk"
 
 
-def chain_audit(quote):
-    lines = []
-    for name in CHAINS:
-        for i in (0, 1):
-            endpoint = quote(f"u_clocking|u_reset|{name}[{i}]")
-            message = quote(f"missing reset stage: {name}[{i}]")
-            lines.extend([f"set chain_{i} [get_registers {endpoint}]",
-                          f'if {{[get_collection_size $chain_{i}] != 1}} {{error {message}}}'])
-        for check in ("setup", "hold"):
-            lines.append(f"report_timing -from $chain_0 -to $chain_1 -{check} -npaths 1 -detail full_path -file output/chain_{name}_{check}.rpt")
-    return "\n".join(lines) + "\n"
+def generated_sources(definition):
+    """The generated vendor HDL the project compiles, in a fixed order."""
+    validate(definition)
+    return ["n2m_pixel_pll.v"] + (["n2m_system_pll.v"] if definition.get("system_divide") == 2 else [])
 
 
-def required_reports():
-    return ["metastability.rpt", "clock_transfers.rpt"] + [f"chain_{name}_{check}.rpt" for name in CHAINS for check in ("setup", "hold")]
+def assignments(definition):
+    """ALTPLL needs no project assignment beyond its generated HDL."""
+    validate(definition)
+    return []
+
+
+def cache_files(definition):
+    """Generated HDL and generation log per PLL; reuse needs all of them."""
+    validate(definition)
+    names = ["n2m_pixel_pll.v", "generate-pll.log"]
+    if definition.get("system_divide") == 2:
+        names += ["n2m_system_pll.v", "generate-system-pll.log"]
+    return names
+
+
+def timed_clocks(target):
+    """The clocks every corner and check must report."""
+    if target.get("pll", {}).get("system_divide") == 2:
+        return ("clk_reference", SYSTEM_CLOCK, PIXEL_CLOCK)
+    return ("clk_sys", PIXEL_CLOCK)
+
+
+def corner_slacks(target, corner):
+    """No MAX 10 clock needs a corner entry beyond its timed clocks."""
+    return []
+
+
+def lock_event_count(target):
+    """The documented ALTPLL lock event latches this composition contains."""
+    count = 2 if target["top"] in ("controls_proof", "v05_controls_proof") else 1
+    return count + int(target.get("pll", {}).get("system_divide") == 2)
 
 
 def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, extra_rows=()):
@@ -251,7 +283,8 @@ def generation_command(identity, definition):
     return _command(identity, "n2m_pixel_pll", 20000, 63, 125)
 
 
-def generate(folder, identity, definition, execute, timeout, record, build):
+def generate(folder, identity, definition, execute, timeout, record, build, *, device=None):
+    """Generate both ALTPLL instances. The device is implied by the family here."""
     execute(generation_command(identity, definition), folder,
             folder / "generate-pll.log", timeout, record, build)
     if definition.get("system_divide") == 2:

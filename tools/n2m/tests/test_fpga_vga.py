@@ -155,7 +155,8 @@ class VgaEvidenceTests(unittest.TestCase):
                       "attempt_result": (folder / "result.json").relative_to(root).as_posix(),
                       "evidence_directory": folder.relative_to(root).as_posix(), "evidence": {}}
             (folder / "result.json").write_text(json.dumps(record))
-            target = {"top": "ppu_proof" if lcd else "vga_proof", "pll": {}, "timing": {}}
+            target = {"top": "ppu_proof" if lcd else "vga_proof", "family": "MAX 10", "timing": {},
+                      "pll": {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125}}
             with patch.object(fpga, "timing_evidence", return_value={}):
                 self.assertTrue(fpga.complete_cache(record, "request", root, build, target))
                 for name in fpga_vga.required_reports(lcd=lcd):

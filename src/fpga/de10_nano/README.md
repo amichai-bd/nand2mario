@@ -15,9 +15,16 @@ operation: nothing here has been programmed onto a DE10-Nano.
 `nano-invalid` deliberately uses a negative clock period and must fail, so a
 passing `nano-smoke` fit is evidence rather than an absent check.
 
-This board has no pixel or system PLL target. ALTPLL does not serve Cyclone V,
-and the PLL evidence in [`fpga_pll.py`](../../../tools/n2m/fpga_pll.py) and
-[`fpga_lock.py`](../../../tools/n2m/fpga_lock.py) asserts ALTPLL hierarchy and
-MAX 10 report fields throughout, so `nano_smoke` runs from the 50 MHz reference
-directly. The DE10-Lite remains the qualified board; its physical verification
+`nano-clocking` generates this board's system and pixel clocks. ALTPLL does not
+serve Cyclone V, so
+[`n2m_clocking_cyclonev.sv`](n2m_clocking_cyclonev.sv) instantiates the Altera
+PLL IP instead and presents the same interface to `n2m_reset_control` as the
+MAX 10 wrapper does; `nano_clocking_proof` fits it with the shared timebase on
+virtual control and observation ports.
+[`fpga_pll_cyclonev.py`](../../../tools/n2m/fpga_pll_cyclonev.py) and
+[`fpga_lock_cyclonev.py`](../../../tools/n2m/fpga_lock_cyclonev.py) own that
+family's generation and evidence, selected by
+[`fpga_clocking.py`](../../../tools/n2m/fpga_clocking.py).
+`nano-clocking-invalid` names a MAX 10 ALTPLL clock as a checked endpoint and
+must fail. The DE10-Lite remains the qualified board; its physical verification
 is in [board bring-up](../../../wiki/src/board-bring-up.md).

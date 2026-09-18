@@ -1,6 +1,11 @@
 """Generate checked endpoint collections from declarative timing assignments."""
 import re
 
+# A clock endpoint is a hierarchical instance path. A segment may carry a vendor
+# index, a dot or a tilde, because the Altera PLL's fitted atom is named
+# `general[0].gpll~PLL_OUTPUT_COUNTER`; ALTPLL's `pll1|clk[0]` is the same shape.
+CLOCK = r"[A-Za-z_][A-Za-z0-9_.~]*(?:\[\d+\][A-Za-z0-9_.~]*)*(?:\|[A-Za-z_][A-Za-z0-9_.~]*(?:\[\d+\][A-Za-z0-9_.~]*)*)*"
+
 
 def validate(value):
     if not isinstance(value, dict) or set(value) != {"async_reset_pins", "output_delays", "reference_ns"}:
@@ -18,7 +23,7 @@ def validate(value):
     for entry in value["output_delays"]:
         if not isinstance(entry, dict) or set(entry) != {"clock", "ports", "count"}:
             raise ValueError("invalid checked output delay")
-        if not isinstance(entry["clock"], str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_|]*(?:\[\d+\])?", entry["clock"]):
+        if not isinstance(entry["clock"], str) or not re.fullmatch(CLOCK, entry["clock"]):
             raise ValueError("output delay requires an exact clock")
         if type(entry["count"]) is not int or entry["count"] < 1:
             raise ValueError("invalid checked output count")
