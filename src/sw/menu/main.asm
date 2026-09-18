@@ -124,6 +124,12 @@ STAR_ENTRY EQU 3
 TILE_CART EQU 98
 TILE_DOT EQU 99
 FOOTER_ART_ROWS EQU 16
+; The press-A badge, two phases on the grey page: dim, then ink. The authored
+; cells use shade 1 and shade 3 on shade 0, so the grey copy keeps every row's
+; low plane and sets the high plane wherever the low plane is clear, which
+; moves shade 0 to 2 and leaves 1 and 3 where they are.
+TILE_PULSE EQU 100
+PULSE_ART_ROWS EQU 16
 ; The header and bottom plates: a grey cap in each outer column and 18 cells
 ; between them, filled with a dithered gradient behind the grey text.
 PLATE_COLUMN EQU 1
@@ -144,6 +150,9 @@ WINDOW_Y EQU 128
 ; size in three digit cells at FOOTER_DIGIT_COLUMN. The lower row is the status
 ; row: it carries the entry's tagline whenever no message is on it.
 FOOTER_BADGE_COLUMN EQU 1
+; The press-A badge sits in the plate cell before the cartridge badge and
+; pulses on the nudge phase. The footer's own rows never write that cell.
+PULSE_COLUMN EQU 0
 FOOTER_TEXT_COLUMN EQU 2
 FOOTER_TEXT_CELLS EQU 16
 FOOTER_DIGIT_COLUMN EQU 8
@@ -167,6 +176,14 @@ OAM_CURSOR EQU GB_OAM_START
 OAM_BYTES EQU 160
 CURSOR_X EQU 8
 CURSOR_Y EQU 16 + SLOT_ROW * 8
+; The scroll ramp. The window hides the sixteenth slot row at the settled
+; SCY, so a cursor on the last slot scrolls the list up one row, the header
+; with it, SCROLL_STEP pixels a frame; leaving that slot ramps back the same
+; way. The target is a function of the cursor alone, and the pointer rides
+; the list. src/dv/menu/reference.py holds the same two constants.
+SCROLLED_SCY EQU SETTLED_SCY + 8
+SCROLL_STEP EQU 2
+SCROLL_SLOT EQU LIBRARY_SLOTS - 1
 ; The nudge phase is bit 4 of the frame counter, so each phase holds 16
 ; frames and the frame number alone decides it.
 PHASE_BIT EQU 16
@@ -235,6 +252,10 @@ ShownFooterB:
 DS 1
 PlateDrawn:
 DS 1
+Scroll:
+DS 1
+ScrollTarget:
+DS 1
 
 ; Every byte of a plate row maps through this table to the cell it draws: the
 ; grey page for a glyph, the plate's own gradient fill for the pad byte and the
@@ -270,6 +291,11 @@ LD [SplashSkip],A
 LD A,KEY_NONE
 LD [ShownKey],A
 LD [ShownIndex],A
+; The list starts settled and unscrolled whichever way it boots: the splash
+; ends on the settled SCY and the cursor starts on slot 0.
+LD A,SETTLED_SCY
+LD [Scroll],A
+LD [ScrollTarget],A
 LD A,$E4
 LDH [GB_REG_OBP0],A
 ; The boot splash owns BGP and SCY: it starts on the blank page at SCY 0 and
@@ -381,6 +407,23 @@ LD A,$FF
 LD [HL+],A
 DEC B
 JR NZ,CopyFooterArt
+; The press-A badge's two phases on the grey page. The dim phase uses shade 1,
+; so the font's derivation would not do: the high plane is set only where the
+; low plane is clear, which moves shade 0 to 2 and keeps 1 and 3.
+LD DE,Pulse
+LD B,PULSE_ART_ROWS
+CopyPulseArt:
+LD A,[DE]
+INC DE
+LD [HL+],A
+CPL
+LD C,A
+LD A,[DE]
+INC DE
+OR A,C
+LD [HL+],A
+DEC B
+JR NZ,CopyPulseArt
 ; Every object but the cursor stays off screen, so clear the table.
 LD HL,OAM_CURSOR
 LD B,OAM_BYTES
@@ -762,12 +805,38 @@ LDH [GB_REG_LCDC],A
 ; The cursor object's Y byte: column 0 of the selected slot's row.
 RevealCursor:
 LD A,[Cursor]
+; A = slot: the object's Y for that slot's row on screen. The row rides the
+; scroll ramp, so the pointer is lifted by however far the list has scrolled
+; past the settled view; at rest that is nothing.
+PointerY:
 ADD A,A
 ADD A,A
 ADD A,A
 ADD A,CURSOR_Y
+LD B,A
+LD A,[Scroll]
+SUB A,SETTLED_SCY
+LD C,A
+LD A,B
+SUB A,C
 LD [OAM_CURSOR],A
 RET
+
+; One step of the scroll ramp: SCY moves SCROLL_STEP toward the target the
+; cursor names and the pointer follows its row. Called only when the two
+; differ, and only once the list is whole, from the branch the footer hangs
+; off, so a frame that draws a title row pays nothing for it.
+ScrollStep:
+JR C,ScrollDown
+SUB A,SCROLL_STEP
+JR ScrollWrite
+ScrollDown:
+ADD A,SCROLL_STEP
+ScrollWrite:
+LD [Scroll],A
+LDH [GB_REG_SCY],A
+LD A,[Cursor]
+JP PointerY
 
 ; A = the wrapped list row, 0..WRAPPED_ROWS-1: its twenty prebuilt cells into
 ; map row A, the row the splash leaves blank until the slide has carried it
@@ -1198,7 +1267,14 @@ INC A
 LD [Pending],A
 RET
 
+; The list is whole: the scroll ramp steps when SCY is not where the cursor
+; wants it, then the footer draws at most one row.
 FooterHook:
+LD A,[ScrollTarget]
+LD B,A
+LD A,[Scroll]
+CP A,B
+CALL NZ,ScrollStep
 JP ShowFooter
 
 CommitBank:
@@ -1445,11 +1521,18 @@ LD A,[Cursor]
 CP A,B
 JR Z,SamePlace
 LD [ShownCursor],A
-ADD A,A
-ADD A,A
-ADD A,A
-ADD A,CURSOR_Y
-LD [OAM_CURSOR],A
+; The last slot is the one the window hides at rest, so it alone asks for
+; the scrolled view; the ramp itself runs from FooterHook once the list is
+; whole. The pointer moves now, at the scroll the list has.
+CP A,SCROLL_SLOT
+LD B,SETTLED_SCY
+JR NZ,ScrollWanted
+LD B,SCROLLED_SCY
+ScrollWanted:
+LD A,B
+LD [ScrollTarget],A
+LD A,[Cursor]
+CALL PointerY
 SamePlace:
 LD A,[FrameCount]
 AND A,PHASE_BIT
@@ -1468,6 +1551,12 @@ LD [OAM_CURSOR + 2],A
 ; The twinkle rewrites eight cells, so the footer waits for the next frame.
 LD A,1
 LD [PlateDrawn],A
+; The press-A badge pulses on the same bit, once the footer has drawn it.
+; While the catalogue is still listing there is no footer and no badge, so
+; the delayed path's twinkle frame pays only for this test.
+LD A,[ShownFooterA]
+CP A,NO_SLOT
+CALL NZ,DrawPulse
 ; The same bit twinkles the star field, so the page and the cursor change
 ; together and both follow from the frame number alone.
 LD A,[ShownPhase]
@@ -1604,7 +1693,8 @@ LD [PlateDrawn],A
 RET
 
 ; B = slot. The upper row's text cells: the entry's profile word and size, or
-; the empty-slot line. The badge beside them was written with the LCD off.
+; the empty-slot line. The cartridge badge and the press-A badge beside them
+; are written here too, on every redraw of the row.
 FooterRowA:
 LD A,B
 LD [ShownFooterA],A
@@ -1612,6 +1702,9 @@ LD [ShownFooterA],A
 ; footer carries no badge either, so this row writes it.
 LD A,TILE_CART
 LD [FOOTER_PLATE + FOOTER_BADGE_COLUMN],A
+; The press-A badge comes with it, in the phase the frame is in; from here on
+; the phase change keeps it pulsing.
+CALL DrawPulse
 LD A,B
 CALL EntryAt
 LD A,[HL]
@@ -1830,6 +1923,19 @@ LD A,TILE_FADE21
 LD [HL+],A
 JR FooterTail
 
+; The press-A badge in the nudge phase the frame is in: the dim cell on phase
+; 0, the ink cell on phase 1. Only A and the flags are touched, so FooterRowA
+; keeps its slot in B across the call.
+DrawPulse:
+LD A,[ShownPhase]
+OR A,A
+LD A,TILE_PULSE
+JR Z,PulseWrite
+INC A
+PulseWrite:
+LD [FOOTER_PLATE + PULSE_COLUMN],A
+RET
+
 ; A = slot -> HL = its catalogue entry in the window bank.
 EntryAt:
 LD L,A
@@ -1911,3 +2017,5 @@ Stars:
 ASSET "Stars"
 Footer:
 ASSET "Footer"
+Pulse:
+ASSET "Pulse"

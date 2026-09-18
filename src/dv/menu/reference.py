@@ -33,6 +33,7 @@ POINTER_ART = ROOT / 'src/sw/menu/assets/design/v2-cursor-tiles.json'
 SPLASH_ART = ROOT / 'src/sw/menu/assets/design/v2-splash-tiles.json'
 STAR_ART = ROOT / 'src/sw/menu/assets/design/v2-stars-tiles.json'
 FOOTER_ART = ROOT / 'src/sw/menu/assets/design/v2-footer-tiles.json'
+PULSE_ART = ROOT / 'src/sw/menu/assets/design/v2-pulse-tiles.json'
 WIDTH, HEIGHT = 160, 144
 COLUMNS, ROWS = 20, 18
 SLOTS = 16
@@ -62,7 +63,11 @@ TILE_STAR, STAR_TILES = 94, 4
 # The footer's two cells, on the grey page like the font: the cartridge badge
 # the upper footer row draws and the separator dot no cell names yet.
 TILE_CART, TILE_DOT, FOOTER_ART_TILES = 98, 99, 2
-BANK_TILES = 100
+# The press-A badge's two phases on the grey page: dim (shade 1 on the grey
+# page) in nudge phase 0, ink in phase 1. The same frame-counter bit drives the
+# pointer nudge, the star twinkle and this pulse.
+TILE_PULSE, PULSE_TILES = 100, 2
+BANK_TILES = 102
 # The grey page shade: the font's shade 0 becomes 2, its ink stays 3.
 GREY_PAGE = 2
 # Cells between the two plate caps of the header and bottom plates.
@@ -89,6 +94,9 @@ FOOTER_ROW, WINDOW_STATUS_ROW = 0, 1
 # status rows do. The lower row is the tagline, centred like the status text,
 # unless a message is on it.
 FOOTER_BADGE_COLUMN, FOOTER_TEXT_COLUMN, FOOTER_TEXT_CELLS = 1, 2, 16
+# The press-A badge: the plate cell before the cartridge badge, drawn with the
+# upper row and pulsing on the nudge phase. The footer's text never reaches it.
+PULSE_COLUMN = 0
 PLATE_PAD = '#'
 # The profile ID of an entry to the word the footer draws (cfg/interfaces.json
 # profile group); any other ID draws dashes.
@@ -126,6 +134,17 @@ SETTLED_FRAME = FADE_FRAMES + SLIDE_FRAMES - 1
 # A skip draws at most this many wrapped rows in one VBlank, which keeps the
 # frame's work well inside the VBlank budget the testbench measures.
 SKIP_ROWS = 2
+# The scroll ramp (wiki/src/sw/menu/SPEC.md#the-scroll-ramp). The window hides
+# the sixteenth slot row at the settled SCY, so a cursor on SCROLL_SLOT asks
+# for the view one row up, SCROLLED_SCY, and the header scrolls off with the
+# list; any other slot asks for the settled view. SCY moves SCROLL_STEP a
+# frame toward the view the cursor names, so a move across that boundary is
+# SCROLL_FRAMES frames long and the pointer rides its row throughout. The image
+# holds the same constants.
+SCROLL_SLOT = SLOTS - 1
+SCROLLED_SCY = SETTLED_SCY + 8
+SCROLL_STEP = 2
+SCROLL_FRAMES = (SCROLLED_SCY - SETTLED_SCY) // SCROLL_STEP
 # The splash art, from the approved sheet: the badge and its two lines.
 BADGE_ROW, BADGE_COLUMN = 4, 8
 SPLASH_TITLE, SPLASH_TITLE_ROW, SPLASH_TITLE_COLUMN = 'GAME LIBRARY', 8, 4
@@ -229,9 +248,10 @@ def plate_cell(character):
     return TILE_GREY + glyph_tile(ord(character))
 
 
-def footer_row(entry):
-    """The footer's upper row: the cartridge badge, then the entry's profile and size."""
+def footer_row(entry, phase=0):
+    """The footer's upper row: the press-A badge in nudge phase `phase`, the cartridge badge, then the entry's profile and size."""
     cells = [TILE_FADE21] * PLATE_CELLS
+    cells[PULSE_COLUMN] = TILE_PULSE + phase
     cells[FOOTER_BADGE_COLUMN] = TILE_CART
     for offset, character in enumerate(footer_line(entry)):
         cells[FOOTER_TEXT_COLUMN + offset] = plate_cell(character)
@@ -302,7 +322,7 @@ def list_rows(entries, cursor=0, phase=0, result=RESULT_NONE, index=NO_INDEX, sd
     return rows
 
 
-def window_rows(entries=(), footer=(0, 0), result=RESULT_NONE, index=NO_INDEX, sdram_ready=True):
+def window_rows(entries=(), footer=(0, 0), phase=0, result=RESULT_NONE, index=NO_INDEX, sdram_ready=True):
     """The window's two rows: the information footer of the slots `footer` names.
 
     The window is opaque from its top left corner to the bottom right of the
@@ -311,10 +331,11 @@ def window_rows(entries=(), footer=(0, 0), result=RESULT_NONE, index=NO_INDEX, s
     and its lower row carries the tagline of `footer[1]`, which lags the
     cursor by a frame because no VBlank writes two plate rows. A status
     message owns the lower row while it is shown, and a row the image has not
-    drawn is None: the plate's own fill.
+    drawn is None: the plate's own fill, with no badge and no pulse either.
+    `phase` is the nudge phase the press-A badge pulses on.
     """
     upper, lower = footer
-    rows = [footer_row(entry_of(entries, upper)) if upper is not None else plate(TILE_FADE21)]
+    rows = [footer_row(entry_of(entries, upper), phase) if upper is not None else plate(TILE_FADE21)]
     message = status_text(result, index, sdram_ready).strip()
     if message:
         return rows + [plate(TILE_FADE21, message)]
@@ -323,8 +344,29 @@ def window_rows(entries=(), footer=(0, 0), result=RESULT_NONE, index=NO_INDEX, s
 
 
 def window_on(scy=SETTLED_SCY):
-    """Whether the window is on: the image enables it on the settled frame, with the cursor."""
-    return scy == SETTLED_SCY
+    """Whether the window is on: the image enables it on the settled frame, with the cursor, and the scroll ramp keeps it on."""
+    return SETTLED_SCY <= scy <= SCROLLED_SCY
+
+
+def scroll_target(cursor=0):
+    """The SCY the list settles at for this cursor: one row up on the last slot, which the window otherwise hides."""
+    if not 0 <= cursor < SLOTS:
+        raise ValueError('cursor must select a slot 0..15')
+    return SCROLLED_SCY if cursor == SCROLL_SLOT else SETTLED_SCY
+
+
+def scroll_ramp(scy, cursor):
+    """The SCY of each frame after a move to `cursor` from a list at `scy`, until it settles.
+
+    A frame steps SCROLL_STEP toward the view the cursor names, and the move's
+    own frame carries the first step, so a move across the boundary shows
+    SCROLL_FRAMES frames and a move that stays on one side shows none.
+    """
+    if not SETTLED_SCY <= scy <= SCROLLED_SCY or scy % SCROLL_STEP:
+        raise ValueError('a settled list scrolls between SETTLED_SCY and SCROLLED_SCY in whole steps')
+    target = scroll_target(cursor)
+    step = SCROLL_STEP if target > scy else -SCROLL_STEP
+    return list(range(scy + step, target + step, step)) if target != scy else []
 
 
 def splash_rows():
@@ -368,20 +410,22 @@ def tilemap(entries, scy=SETTLED_SCY, wrapped=WRAPPED_ROWS, **state):
 
 
 def objects(cursor=0, phase=0, scy=SETTLED_SCY, **ignored):
-    """The object list: the cursor pointer alone, at screen (0, 8 * (1 + cursor)).
+    """The object list: the cursor pointer alone, on its slot's row wherever the scroll ramp has put it.
 
     One object never reaches the ten-per-line limit, and its priority flag is
-    clear, so it draws in front of the background wherever its shade is not 0.
-    The list rides SCY while the splash slides away and the object does not,
-    so the menu shows the cursor only once the slide has settled.
+    clear, so it draws in front of the background, and of the window, wherever
+    its shade is not 0. The list rides SCY while the splash slides away and the
+    object does not, so the menu shows the cursor only once the slide has
+    settled; from then on the pointer rides the list, lifted by however far
+    the ramp has scrolled past the settled view.
     """
     if not 0 <= cursor < SLOTS:
         raise ValueError('cursor must select a slot 0..15')
     if phase not in range(PHASES):
         raise ValueError('phase must be 0 or 1')
-    if scy != SETTLED_SCY:
+    if not window_on(scy):
         return []
-    return [(0, 8 * (SLOT_ROW + cursor), TILE_POINTER + phase)]
+    return [(0, 8 * (SLOT_ROW + cursor) - (scy - SETTLED_SCY), TILE_POINTER + phase)]
 
 
 def phase_of_frame(number):
@@ -457,12 +501,13 @@ def greyed(tile):
 
 
 def bank_tiles():
-    """The 100-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge, the stars, the footer cells."""
+    """The 102-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge, the stars, the footer cells, the press-A phases."""
     font = font_tiles()
     bank = (font + [greyed(tile) for tile in font]
             + atlas_tiles(GREY_ART, GREY_ART_TILES) + atlas_tiles(POINTER_ART, POINTER_TILES)
             + atlas_tiles(SPLASH_ART, BADGE_TILES) + atlas_tiles(STAR_ART, STAR_TILES)
-            + [greyed(tile) for tile in atlas_tiles(FOOTER_ART, FOOTER_ART_TILES)])
+            + [greyed(tile) for tile in atlas_tiles(FOOTER_ART, FOOTER_ART_TILES)]
+            + [greyed(tile) for tile in atlas_tiles(PULSE_ART, PULSE_TILES)])
     if len(bank) != BANK_TILES:
         raise ValueError(f'the menu bank is {BANK_TILES} tiles')
     return bank
@@ -497,20 +542,26 @@ def frame(entries, bgp=FADE[-1], footer=None, **state):
     on the cursor's own slot yet.
     """
     tiles = bank_tiles()
-    rows = tilemap(entries, **state)
+    # The background is read at a pixel scroll: the splash slides in whole
+    # rows, the scroll ramp in SCROLL_STEP pixels, and both wrap the 32-row map.
+    scy = state.pop('scy', SETTLED_SCY)
+    if not 0 <= scy < 8 * MAP_ROWS:
+        raise ValueError('scy is a pixel row of the 32-row map')
+    rows = background_map(entries, **state)
     palette = [(bgp >> (2 * shade)) & 3 for shade in range(4)]
-    pixels = [palette[tiles[rows[y // 8][x // 8]][y % 8][x % 8]] for y in range(HEIGHT) for x in range(WIDTH)]
-    if window_on(state.get('scy', SETTLED_SCY)):
+    pixels = [palette[tiles[rows[((scy + y) // 8) % MAP_ROWS][x // 8]][(scy + y) % 8][x % 8]]
+              for y in range(HEIGHT) for x in range(WIDTH)]
+    if window_on(scy):
         cells = window_rows(entries, footer=footer_slots(
                                 state.get('cursor', 0), footer,
                                 **{key: state[key] for key in ('drawn_slots', 'sdram_ready') if key in state}),
-                            **{key: state[key] for key in ('result', 'index', 'sdram_ready') if key in state})
+                            **{key: state[key] for key in ('phase', 'result', 'index', 'sdram_ready') if key in state})
         for y in range(WINDOW_Y, HEIGHT):
             for x in range(max(WINDOW_X - 7, 0), WIDTH):
                 row, column = y - WINDOW_Y, x - (WINDOW_X - 7)
                 shade = tiles[cells[row // 8][column // 8]][row % 8][column % 8]
                 pixels[y * WIDTH + x] = palette[shade]
-    for left, top, tile in objects(**{key: state[key] for key in ('cursor', 'phase', 'scy') if key in state}):
+    for left, top, tile in objects(scy=scy, **{key: state[key] for key in ('cursor', 'phase') if key in state}):
         for y in range(8):
             for x in range(8):
                 shade = tiles[tile][y][x]
@@ -537,16 +588,36 @@ def check_pixels(packed, entries, **state):
 
 
 def expected(sample, entries):
-    """Named frames for board checks: 'menu' is the fresh menu, 'cursor-N' the pointer on slot N with its footer settled, 'footer-A-B' the frame after a move to slot A whose lower footer row still describes slot B, 'phase-N' the fresh menu in nudge phase N, 'splash-N' the boot splash at displayed frame N."""
+    """Named frames for board checks.
+
+    'menu' is the fresh menu; 'cursor-N' the pointer on slot N with its footer
+    settled and the list scrolled as that slot asks; 'footer-A-B' the frame
+    after a move to slot A whose lower footer row still describes slot B;
+    'phase-N' the fresh menu in nudge phase N, which is also the press-A
+    badge's pulse phase N; 'footer-15-14' and 'footer-14-15' therefore carry
+    the first step of the scroll ramp; 'scroll-N' frame N (1..SCROLL_FRAMES) of the ramp
+    toward the last slot with the footer settled on it, so 'scroll-4' is
+    'cursor-15'; 'splash-N' the boot splash at displayed frame N.
+    """
     if sample == 'menu':
         return frame(entries)
     if sample.startswith('footer-'):
+        # The frame after a move from B to A carries the ramp's first step
+        # when the move crosses the scroll boundary, and the settled view of A
+        # otherwise.
         upper, lower = (int(part) for part in sample.removeprefix('footer-').split('-'))
-        return frame(entries, cursor=upper, footer=(upper, lower))
+        ramp = scroll_ramp(scroll_target(lower), upper)
+        return frame(entries, cursor=upper, footer=(upper, lower), scy=ramp[0] if ramp else scroll_target(upper))
     if sample.startswith('cursor-'):
-        return frame(entries, cursor=int(sample.removeprefix('cursor-')))
+        cursor = int(sample.removeprefix('cursor-'))
+        return frame(entries, cursor=cursor, scy=scroll_target(cursor))
     if sample.startswith('phase-'):
         return frame(entries, phase=int(sample.removeprefix('phase-')))
+    if sample.startswith('scroll-'):
+        step = int(sample.removeprefix('scroll-'))
+        if not 1 <= step <= SCROLL_FRAMES:
+            raise ValueError(f'a scroll frame is 1..{SCROLL_FRAMES}')
+        return frame(entries, cursor=SCROLL_SLOT, scy=SETTLED_SCY + SCROLL_STEP * step)
     if sample.startswith('splash-'):
         bgp, scy, wrapped = splash_state(int(sample.removeprefix('splash-')))
         return frame(entries, bgp=bgp, scy=scy, wrapped=wrapped)

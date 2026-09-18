@@ -213,9 +213,19 @@ class Layout(unittest.TestCase):
         self.assertEqual(bank[reference.TILE_STAR:reference.TILE_STAR + reference.STAR_TILES],
                          reference.atlas_tiles(reference.STAR_ART, reference.STAR_TILES))
         footer = reference.atlas_tiles(reference.FOOTER_ART, reference.FOOTER_ART_TILES)
-        self.assertEqual(bank[reference.TILE_CART:], [reference.greyed(tile) for tile in footer])
+        self.assertEqual(bank[reference.TILE_CART:reference.TILE_CART + reference.FOOTER_ART_TILES],
+                         [reference.greyed(tile) for tile in footer])
         for tile in footer:
             self.assertLessEqual({shade for row in tile for shade in row}, {0, 3})
+        # The press-A badge closes the bank: two phases on the grey page, the dim
+        # one drawn in shade 1, the ink one in shade 3, both on the grey page.
+        pulse = reference.atlas_tiles(reference.PULSE_ART, reference.PULSE_TILES)
+        self.assertEqual(bank[reference.TILE_PULSE:], [reference.greyed(tile) for tile in pulse])
+        self.assertEqual({shade for row in pulse[0] for shade in row}, {0, 1})
+        self.assertEqual({shade for row in pulse[1] for shade in row}, {0, 3})
+        self.assertEqual([[3 if shade else 0 for shade in row] for row in pulse[0]], pulse[1])
+        self.assertEqual({shade for row in bank[reference.TILE_PULSE] for shade in row}, {1, 2})
+        self.assertEqual({shade for row in bank[reference.TILE_PULSE + 1] for shade in row}, {2, 3})
 
     def test_the_star_field_is_the_rule_the_spec_states(self):
         """Eight cells, in the two columns the list always leaves blank, twinkling on the nudge bit."""
@@ -278,7 +288,14 @@ class Layout(unittest.TestCase):
         row = R.footer_row(self.entries[0])
         self.assertEqual((row[0], row[-1]), (R.TILE_CAP_LEFT, R.TILE_CAP_RIGHT))
         self.assertEqual(row[1 + R.FOOTER_BADGE_COLUMN], R.TILE_CART)
-        self.assertEqual(row[1], R.TILE_FADE21)
+        # The press-A badge is the cell before the cartridge, in the nudge phase.
+        self.assertEqual(row[1 + R.PULSE_COLUMN], R.TILE_PULSE)
+        self.assertEqual(R.footer_row(self.entries[0], phase=1)[1 + R.PULSE_COLUMN], R.TILE_PULSE + 1)
+        self.assertEqual(R.footer_row(self.entries[0], phase=1)[2:], row[2:])
+        self.assertEqual(R.window_rows(self.entries, footer=(0, 0), phase=1)[0],
+                         R.footer_row(self.entries[0], phase=1))
+        # A row the image has not drawn carries neither badge.
+        self.assertEqual(R.window_rows(self.entries, footer=(None, None), phase=1)[0], R.plate(R.TILE_FADE21))
         self.assertEqual(row[1 + R.FOOTER_TEXT_COLUMN:1 + R.FOOTER_TEXT_COLUMN + 6],
                          [R.TILE_GREY + tile for tile in R.text_tiles('DIRECT')])
         self.assertEqual(row[-3:-1], [R.TILE_FADE21] * 2)
@@ -433,6 +450,62 @@ class Layout(unittest.TestCase):
         self.assertEqual(reference.objects(scy=0), [])
         self.assertEqual(reference.objects(scy=reference.SETTLED_SCY), reference.objects())
 
+    def test_the_scroll_ramp(self):
+        """The last slot scrolls the list one row up, two pixels a frame, and the pointer rides its row."""
+        R = reference
+        self.assertEqual((R.SCROLL_SLOT, R.SCROLLED_SCY, R.SCROLL_STEP, R.SCROLL_FRAMES), (15, 152, 2, 4))
+        self.assertEqual([R.scroll_target(slot) for slot in (0, 1, 14, 15)], [144, 144, 144, 152])
+        self.assertEqual(R.scroll_ramp(R.SETTLED_SCY, 15), [146, 148, 150, 152])
+        self.assertEqual(R.scroll_ramp(R.SCROLLED_SCY, 14), [150, 148, 146, 144])
+        self.assertEqual(R.scroll_ramp(R.SETTLED_SCY, 3), [])
+        self.assertEqual(R.scroll_ramp(R.SCROLLED_SCY, 15), [])
+        # A deposit onto the last slot from any slot ramps the same four frames.
+        self.assertEqual(R.scroll_ramp(R.SETTLED_SCY, 15), fixture.RAMP_UP)
+        for bad in ((R.SETTLED_SCY - 2, 15), (R.SETTLED_SCY + 1, 15), (R.SETTLED_SCY, 16)):
+            with self.assertRaises(ValueError):
+                R.scroll_ramp(*bad)
+        # The window and the pointer stay on across the ramp, and the pointer is
+        # lifted by the scroll so it stays on its row; on the way up it draws
+        # over the plate, as an object with its priority flag clear does.
+        for scy in (144, 146, 150, 152):
+            self.assertTrue(R.window_on(scy), scy)
+            self.assertEqual(R.objects(cursor=15, scy=scy), [(0, 128 - (scy - 144), R.TILE_POINTER)], scy)
+            self.assertEqual(R.objects(cursor=14, scy=scy), [(0, 120 - (scy - 144), R.TILE_POINTER)], scy)
+        self.assertFalse(R.window_on(R.SCROLLED_SCY + 2))
+        bank = R.bank_tiles()
+        scrolled = R.frame(self.entries, cursor=15, scy=R.SCROLLED_SCY)
+        settled = R.frame(self.entries, cursor=14)
+        # Scrolled, screen row 0 is slot 0's row and the header is gone; slot
+        # 15's row is screen row 15, LAST SLOT beside its number, above the plate.
+        listing = R.list_rows(self.entries)
+        for row in range(16):
+            for x in range(8, 160):
+                self.assertEqual(scrolled[(8 * row) * 160 + x], bank[listing[row + 1][x // 8]][0][x % 8], (row, x))
+        self.assertEqual(listing[16][R.TITLE_COLUMN:R.TITLE_COLUMN + 9], R.text_tiles('LAST SLOT'))
+        # Every ramp frame reads the map at its own pixel offset: the row below
+        # the header enters two pixels a frame, and the whole ramp is the
+        # settled frame shifted up by the step, plate and pointer aside.
+        for step, scy in enumerate(fixture.RAMP_UP, 1):
+            frame = R.frame(self.entries, cursor=15, scy=scy)
+            for y in range(0, R.WINDOW_Y - 8):
+                self.assertEqual(frame[y * 160 + 8:(y + 1) * 160], settled[(y + 2 * step) * 160 + 8:(y + 2 * step + 1) * 160], (step, y))
+            for y in range(R.WINDOW_Y, 144):
+                self.assertEqual(frame[y * 160 + 8:(y + 1) * 160], scrolled[y * 160 + 8:(y + 1) * 160], (step, y))
+        # The pointer on the last slot overlaps the plate until the ramp ends.
+        halfway = R.frame(self.entries, cursor=15, scy=146)
+        self.assertNotEqual(halfway[R.WINDOW_Y * 160:(R.WINDOW_Y + 6) * 160 - 152],
+                            scrolled[R.WINDOW_Y * 160:(R.WINDOW_Y + 6) * 160 - 152])
+        self.assertEqual(scrolled[(R.WINDOW_Y - 8) * 160:(R.WINDOW_Y - 8) * 160 + 8],
+                         bytes(bank[R.TILE_POINTER][0]))
+        # The scenario carries the ramp: the deposit staged and settled, four
+        # frames up and three back, the fourth being the settled frame again.
+        self.assertEqual([state.get('scy', R.SETTLED_SCY) for state in fixture.SCENARIO[fixture.SCROLL_FRAME:]],
+                         [144, 144, 146, 148, 150, 152, 150, 148, 146])
+        self.assertEqual(fixture.SCENARIO[fixture.SCROLL_FRAME]['footer'], (14, 0))
+        self.assertEqual(fixture.SCENARIO[fixture.SCROLL_FRAME + 2]['footer'], (15, 14))
+        self.assertEqual(fixture.SCENARIO[fixture.SCROLL_FRAME + 6]['footer'], (14, 15))
+        self.assertEqual(fixture.GAME_FRAME, fixture.SCROLL_FRAME + 9)
+
     def test_the_pointer_draws_over_the_page_and_keeps_shade_0_clear(self):
         frame = reference.frame(self.entries, cursor=4)
         plain = reference.frame(self.entries, cursor=4, phase=1)
@@ -444,10 +517,17 @@ class Layout(unittest.TestCase):
             for x in range(8):
                 self.assertEqual(frame[(top + y) * 160 + x], bank[reference.TILE_POINTER][y][x], (x, y))
         self.assertTrue(any(bank[reference.TILE_POINTER][y][x] == 0 for y in range(8) for x in range(8)))
-        # A phase change moves the pointer's own eight rows and the star cells, nothing else.
+        # A phase change moves the pointer's own eight rows, the star cells and
+        # the press-A badge on the window's upper row, nothing else.
         stars = {(row, column) for row, cells in enumerate(reference.tilemap(self.entries, cursor=4))
                  for column, tile in enumerate(cells) if tile >= reference.TILE_STAR}
-        allowed = set(range(top, top + 8)) | {8 * row + line for row, _ in stars for line in range(8)}
+        allowed = (set(range(top, top + 8)) | {8 * row + line for row, _ in stars for line in range(8)}
+                   | set(range(reference.WINDOW_Y, reference.WINDOW_Y + 8)))
+        pulse_x = 8 * (1 + reference.PULSE_COLUMN)
+        self.assertTrue(all(frame[y * 160 + x] == plain[y * 160 + x] for y in range(reference.WINDOW_Y, 144)
+                            for x in range(160) if not pulse_x <= x < pulse_x + 8))
+        self.assertTrue(any(frame[y * 160 + x] != plain[y * 160 + x]
+                            for y in range(reference.WINDOW_Y, reference.WINDOW_Y + 8) for x in range(pulse_x, pulse_x + 8)))
         differing = {position // 160 for position in range(23040) if frame[position] != plain[position]}
         self.assertTrue(differing)
         self.assertLessEqual(differing, allowed)
@@ -488,6 +568,20 @@ class Layout(unittest.TestCase):
         self.assertEqual(reference.expected('cursor-2', self.entries), frames[4])
         self.assertEqual(reference.expected('phase-1', self.entries), frames[fixture.PHASE_FRAME])
         self.assertEqual(reference.expected('phase-0', self.entries), frames[0])
+        # The scroll frames: 'scroll-N' is ramp frame N onto the last slot with
+        # its footer settled, the last of them 'cursor-15', the scrolled view.
+        self.assertEqual(reference.expected('cursor-14', self.entries), frames[fixture.SCROLL_FRAME + 1])
+        self.assertEqual(reference.expected('footer-15-14', self.entries), frames[fixture.SCROLL_FRAME + 2])
+        self.assertEqual(reference.expected('footer-14-15', self.entries), frames[fixture.SCROLL_FRAME + 6])
+        self.assertEqual(reference.expected('footer-14-0', self.entries), frames[fixture.SCROLL_FRAME])
+        for step in range(2, reference.SCROLL_FRAMES + 1):
+            self.assertEqual(reference.expected(f'scroll-{step}', self.entries), frames[fixture.SCROLL_FRAME + 1 + step])
+        self.assertEqual(reference.expected('cursor-15', self.entries), frames[fixture.SCROLL_FRAME + 5])
+        self.assertEqual(reference.expected('scroll-4', self.entries), reference.expected('cursor-15', self.entries))
+        self.assertNotEqual(reference.expected('cursor-15', self.entries), reference.frame(self.entries, cursor=15))
+        for bad in ('scroll-0', 'scroll-5'):
+            with self.assertRaises(ValueError):
+                reference.expected(bad, self.entries)
         broken = bytearray(packed)
         broken[(9 * 160 + 40) // 4] ^= 3
         with self.assertRaisesRegex(AssertionError, 'MENU_PIXEL x=40 y=9'):

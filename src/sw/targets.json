@@ -273,6 +273,10 @@
         "Footer": {
           "source": "assets/design/v2-footer-tiles.json",
           "author": "Original cartridge badge and separator dot of the menu v2 design by the nand2mario project; no external source"
+        },
+        "Pulse": {
+          "source": "assets/design/v2-pulse-tiles.json",
+          "author": "Original two-phase press-A badge of the menu v2 design by the nand2mario project; no external source"
         }
       },
       "layout": "layout.json",

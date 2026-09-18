@@ -15,10 +15,10 @@ the menu's behavior, memory use, frame layout and verification.
 
 Boot, from the direct entry state with the LCD off:
 
-1. Load the 100-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
+1. Load the 102-tile bank into VRAM `$8000`: the 39 font tiles, the same 39 on
    a mid-grey page, the six authored grey cells, the two pointer phases, the
-   eight boot splash badge cells, the four star cells and the two footer
-   cells. Clear the object
+   eight boot splash badge cells, the four star cells, the two footer cells
+   and the two [press-A badge](#the-press-a-pulse) phases. Clear the object
    table, blank the background map at `$9800`, paint the
    [star field](#star-field) over it, set OBP0 to `$E4` and draw the
    [boot splash](#background-map), the header plate, the
@@ -82,14 +82,16 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
    frames.
 6. Move the cursor object only when the cursor changed, redraw the status
    row only when its key or index changed, and when the nudge phase changed
-   rewrite the object's tile and the [star field](#star-field)'s own cells.
-7. Once the list is whole, draw at most one
+   rewrite the object's tile, the [star field](#star-field)'s own cells and,
+   once the footer has drawn it, the [press-A badge](#the-press-a-pulse).
+7. Once the list is whole, step the [scroll ramp](#the-scroll-ramp) when SCY
+   is not at the view the cursor names, then draw at most one
    [footer](#the-information-footer) row: the upper row when
    the cursor has left the slot it describes, otherwise the lower row when it
    lags the upper one and no message is on it. A frame that has already drawn
    the status row or the star twinkle draws neither, so no VBlank writes two
-   plate rows, and a frame that draws a catalogue row draws no footer row and
-   spends nothing on the choice.
+   plate rows, and a frame that draws a catalogue row draws no footer row,
+   takes no ramp step and spends nothing on either choice.
    An idle frame writes nothing.
 
 The catalogue is read once, at boot or through the delayed path; the drawn
@@ -125,17 +127,17 @@ The menu itself is unchanged by it.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$0B21` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, [footer](#the-information-footer), drawing routines and text tables (2338 bytes) |
-| `$1000`-`$13CF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"`, the eight badge cells from `ASSET "Splash"`, the four star cells from `ASSET "Stars"` and the two footer cells from `ASSET "Footer"`, 976 bytes |
+| `$0200`-`$0B83` | `code` section: entry `Start`, frame loop, boot splash schedule, star field, [footer](#the-information-footer), [scroll ramp](#the-scroll-ramp), drawing routines and text tables (2436 bytes) |
+| `$1000`-`$13EF` | `assets` section: the 39 font tiles from `ASSET "Font"`, the six grey cells from `ASSET "GreyArt"`, the two pointer phases from `ASSET "Pointer"`, the eight badge cells from `ASSET "Splash"`, the four star cells from `ASSET "Stars"`, the two footer cells from `ASSET "Footer"` and the two press-A badge phases from `ASSET "Pulse"`, 1008 bytes |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
 | `$6000`-`$7FFF` write | Select register: the cursor's slot on an A edge |
 | `$A000`, `$A002`, `$A003` | Status byte, last result, last selected index |
-| `$8000`-`$863F` | The 100-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85, the badge 86..93, the star cells 94..97, the footer's cartridge badge 98 and separator dot 99 |
+| `$8000`-`$865F` | The 102-tile bank: font 0..38, the font on the grey page 39..77, grey caps 78 and 79, the gradient cells 80..83, pointer phases 84 and 85, the badge 86..93, the star cells 94..97, the footer's cartridge badge 98 and separator dot 99, the press-A badge's dim phase 100 and ink phase 101 |
 | `$9800`-`$9BFF` | [Background map](#background-map), all 32 rows: the boot splash above the list |
 | `$9C00`-`$9FFF` | [Window map](#window): blank but for the plate's two rows |
 | `$FE00`-`$FE9F` | Object table; cleared at boot, then object 0 alone is the cursor |
-| `$C000`-`$C102` | `vars`, 259 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `Half` for the row split in two frames, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, the splash's `SplashOn`, `SplashNumber`, `SplashRows`, `SplashSkip`, `BootSlots` and `BootDraw`, the star field's `StarCount`, `StarPtr` and `StarTable`, `SplashRowCells`, the four 20-cell wrapped rows built at boot, `StatusCells`, the six 18-cell status rows, and the footer's `ShownFooterA`, `ShownFooterB` and `PlateDrawn` |
+| `$C000`-`$C104` | `vars`, 261 bytes: `Cursor`, `Previous` and `Pressed` buttons, `Pending` title row, `BankDone`, `Half` for the row split in two frames, `ShownCursor`, `ShownKey`, `ShownIndex`, `FrameCount`, `ShownPhase`, the splash's `SplashOn`, `SplashNumber`, `SplashRows`, `SplashSkip`, `BootSlots` and `BootDraw`, the star field's `StarCount`, `StarPtr` and `StarTable`, `SplashRowCells`, the four 20-cell wrapped rows built at boot, `StatusCells`, the six 18-cell status rows, the footer's `ShownFooterA`, `ShownFooterB` and `PlateDrawn`, and the [scroll ramp](#the-scroll-ramp)'s `Scroll` and `ScrollTarget` |
 | `$C200`-`$C2FF` | `table`, 256 bytes: `PlateTiles`, the [plate cell table](#the-information-footer) built at boot. The section is page aligned, so a plate cell is one lookup |
 | `$DFFE` | Stack pointer |
 
@@ -149,7 +151,7 @@ The frame is three layers, as the
 
 | Layer | Carries | Registers |
 |---|---|---|
-| Background | The header row, the sixteen slot rows and the [star field](#star-field), in the 32-row map | SCY for the splash slide; SCX unused |
+| Background | The header row, the sixteen slot rows and the [star field](#star-field), in the 32-row map | SCY for the splash slide and the [scroll ramp](#the-scroll-ramp); SCX unused |
 | [Window](#window) | The bottom plate alone: the [information footer](#the-information-footer) | LCDC bits 5 and 6, WX 7, WY 128 |
 | Objects | The [cursor pointer](#cursor-object), one entry | LCDC bit 1, OBP0 |
 
@@ -254,16 +256,17 @@ list itself is the same cells whatever the cursor does.
 | 1..16 | Background | 1..2 | Slot number `00`..`15` |
 | 1..16 | Background | 4..19 | The 16 title bytes of a valid entry; blank for any other entry |
 | 16 and 17 | [Window](#window) | 0 and 19 | Left and right grey plate cap |
-| 16 | Window | 1..18 | The [footer](#the-information-footer)'s upper row: the cartridge badge at column 2 and the selected entry's profile and size at columns 3..18, on the 2-to-1 gradient fill |
+| 16 | Window | 1..18 | The [footer](#the-information-footer)'s upper row: the [press-A badge](#the-press-a-pulse) at column 1, the cartridge badge at column 2 and the selected entry's profile and size at columns 3..18, on the 2-to-1 gradient fill |
 | 17 | Window | 1..18 | The footer's lower row: the tagline of the selected entry, or the status text, centred on the grey page over the same fill |
 
-The window covers screen rows 16 and 17 whenever the list is settled, so the
-background shows the header and fifteen slot rows and slot 15's own row is
-behind the plate. The cursor still visits every slot 0..15, and on slot 15 the
-pointer draws over the plate's upper row with no title beside it. The
-[composite layout](DESIGN_V2.md#slot-count) owns that: the smooth scroll of
-[issue #793](https://github.com/amichai-bd/nand2mario/issues/793) is what
-brings the sixteenth row back into view.
+The window covers screen rows 16 and 17 whenever the list is settled, so at
+rest the background shows the header and fifteen slot rows and slot 15's own
+row is behind the plate. The rows above are the resting view, SCY 144. A
+cursor on slot 15 asks for the [scroll ramp](#the-scroll-ramp): the list
+slides one row up, the header leaves the top of the screen and slot 15's row
+takes screen row 15, above the plate, so every slot is reached and read. The
+[composite layout](DESIGN_V2.md#slot-count) owns why the resting view is
+fifteen rows.
 
 The status text is unchanged; it is centred in the plate's 18 cells with the
 leftover space biased left, so `SLOT 03 INVALID` starts at column 2 and
@@ -301,10 +304,11 @@ plate's fill.
 The [window](#window)'s two rows describe the slot the cursor is on. This is
 [idea 3](DESIGN_V2.md#3-info-footer) of the menu v2 design.
 
-The upper row carries the cartridge badge in plate cell 1, screen column 2,
-and then sixteen text cells at plate cells 2..17. The badge belongs to the
-footer rather than to the plate, so the row writes it: a window that carries
-no footer carries no badge either. For a `valid` entry those cells are the profile
+The upper row carries the [press-A badge](#the-press-a-pulse) in plate cell
+0, screen column 1, the cartridge badge in plate cell 1, screen column 2, and
+then sixteen text cells at plate cells 2..17. Both badges belong to the footer
+rather than to the plate, so the row writes them: a window that carries no
+footer carries neither badge. For a `valid` entry those cells are the profile
 word in six columns, two blank columns, the size in six, and the plate's own
 fill in the last two: `DIRECT   32 KB` and `MBC1     64 KB`. For any other
 entry they are `EMPTY SLOT`. The profile word is `DIRECT`, `LOADER` or `MBC1`
@@ -359,6 +363,41 @@ one frame a cursor move costs on a settled list. Nothing of that path is near
 its budget, and the delay is the same on every run, because the bank commit
 always sets the flag before the gate opens.
 
+### The scroll ramp
+
+The list rides SCY, and the cursor alone names where it settles: slot 15
+asks for `SCROLLED_SCY` 152, every other slot for the settled 144. When SCY is
+not there, a frame moves it `SCROLL_STEP` 2 pixels toward it, so a move onto
+slot 15 slides the list up over four frames, 146, 148, 150, 152, and a move
+off it slides back over four, 150, 148, 146, 144. The move's own frame carries
+the first step, beside the pointer and the footer's upper row. This is
+[idea 6](DESIGN_V2.md#6-smooth-scroll-and-a-press-a-pulse) of the menu v2
+design, and `SCROLLED_SCY` and `SCROLL_STEP` are held here, in the
+[image](../../../../src/sw/menu/main.asm) and in
+[`reference.py`](../../../../src/dv/menu/reference.py).
+
+The header scrolls with the list: at 152 screen row 0 is slot 0's row and the
+header is above the screen, and the window still covers rows 16 and 17, so
+the map rows behind it, the page row and the splash's own top, never show. No
+row is drawn for the ramp. Slot 15's row has been in the map since boot or the
+delayed path, behind the plate, so the entering row costs nothing; the design
+note's estimate of a prebuilt row was for a longer list than the one this
+layout scrolls. No mid-frame scroll write is needed either, so interrupts stay
+disabled.
+
+The [cursor object](#cursor-object) rides its row: its Y is lifted by however
+far SCY is past 144, so on the way up the pointer draws over the plate's rows
+for the frames its row is still behind them, as an object with its priority
+flag clear does, and sits on screen row 15 once the list is scrolled.
+
+The ramp steps only once the list is whole, from the branch the
+[footer](#the-information-footer) hangs off, so a frame that draws a delayed
+title row pays nothing for it. A cursor moved onto slot 15 while the catalogue
+is still listing waits at the resting view, its pointer over the plate as
+before, and the ramp starts in the frame after the last row. The target is
+kept as a byte the cursor move writes, so the settled frame's test costs
+thirteen M-cycles.
+
 ### Star field
 
 The two columns the list always leaves blank carry a star field: column 0, the
@@ -389,6 +428,25 @@ frame number alone, and changes in the same frame as the pointer. The image
 keeps the cells it painted in a short table, so a twinkle rewrites eight cells
 rather than walking the map.
 
+### The press-A pulse
+
+The badge in the footer's first plate cell is the hint that A starts the
+selected slot. It has two phases, the
+[authored art](../../../../src/sw/menu/assets/design/v2-pulse-tiles.json) on
+the grey page: the dim phase draws the A in shade 1 and the ink phase in
+shade 3, both on the plate's grey. The phase is the [nudge phase](#cursor-object),
+bit 4 of the frame counter, so the badge, the pointer and the
+[star field](#star-field) change in the same frame and the pulse follows from
+the frame number alone: `phase-N` names both. The footer's upper row writes
+the badge whenever it is drawn, and the phase change rewrites it once the
+footer exists; before the list is whole there is no footer and no badge, so
+the delayed path's twinkle frame pays only for that test.
+
+The dim phase is why the grey copy is not the font's: the font's derivation
+sets the whole high plane, which would turn shade 1 into shade 3. The badge's
+copy sets the high plane only where the low plane is clear, which moves shade
+0 to 2 and keeps 1 and 3, and `reference.greyed` is the same rule.
+
 ### Window
 
 The window carries the bottom plate alone. It is opaque from its top left
@@ -406,19 +464,22 @@ The window draws through BGP, like the background.
 ### Cursor object
 
 The cursor is object 0 and the only object the menu uses. Its X is `8`, the
-screen's left edge, and its Y is `24 + 8 * slot`, so it sits in column 0 of
-the selected slot's row. Its flags are zero: no flip, palette OBP0, and no
-background priority, so it draws in front wherever its shade is not 0. Shade 0
+screen's left edge, and its Y is `24 + 8 * slot - (SCY - 144)`, so it sits in
+column 0 of the selected slot's row wherever the [scroll ramp](#the-scroll-ramp)
+has put that row. Its flags are zero: no flip, palette OBP0, and no
+background priority, so it draws in front of the background and the window
+wherever its shade is not 0. Shade 0
 is transparent, which is why the pointer's page shows through. One object
 never meets the ten-objects-a-line limit, and the rest of the object table is
 cleared at boot so nothing else is on screen. A cursor move writes the Y byte
-alone and touches no map cell.
+alone and touches no map cell; a ramp step writes it again.
 
 A frame counter byte advances once per frame
 loop iteration, after that iteration's writes, and bit 4 of it is the nudge
 phase: on phase 1 the object's tile is the second pointer, the same arrow one
 pixel to the right, so the cursor ticks every 16 frames. The same bit twinkles
-the [star field](#star-field), so the page and the pointer change together. The loop runs exactly once
+the [star field](#star-field) and pulses the [press-A badge](#the-press-a-pulse),
+so the page, the pointer and the plate change together. The loop runs exactly once
 per displayed frame and an iteration's writes appear in the frame its counter
 names, so the phase follows from the frame number alone with no console
 state: displayed frame `m`, counted from the menu's first display-eligible
@@ -437,48 +498,64 @@ measured from the new epoch's first poll rather than across the swap.
 
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|
-| Idle, or a sampled press that changes nothing | 278-292 | 24-26% |
-| Cursor move and the [footer](#the-information-footer)'s upper row | 633-861 | 56-76% |
-| The footer's lower row | 523-934 | 46-82% |
-| Nudge phase change: one object byte and the eight star cells | 457 | 40% |
+| Idle, or a sampled press that changes nothing | 291-305 | 26-27% |
+| Cursor move and the [footer](#the-information-footer)'s upper row | 694-947 | 61-83% |
+| Cursor move across the [scroll](#the-scroll-ramp) boundary: the ramp's first step with the upper row | 753-957 | 66-84% |
+| Scroll ramp step alone: SCY and the pointer's Y | 344-346 | 30% |
+| The footer's lower row | 536-941 | 47-83% |
+| Nudge phase change: one object byte, the eight star cells and the [press-A badge](#the-press-a-pulse) | 500 | 44% |
 | Boot splash fade frame, one BGP write | 166-196 | 15-17% |
 | Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
-| Boot splash slide frame after the map is whole | 199-260 | 17-23% |
-| Skipped splash frame, two wrapped rows | 599-663 | 53-58% |
-| Refused select with a 20-character status redraw | 586 | 51% |
+| Boot splash slide frame after the map is whole | 199-270 | 17-24% |
+| Skipped splash frame, two wrapped rows | 599-673 | 53-59% |
+| Refused select with a 20-character status redraw | 599 | 53% |
 | Delayed catalogue: the not-ready boot frame, idle | 233 | 20% |
 | Delayed catalogue: the bank commit and the plate's status redraw | 511 | 45% |
 | Delayed catalogue: one title row | 476-1124 | 42-99% |
-| Delayed catalogue: the first half of a row and the nudge phase change | 622-946 | 55-83% |
+| Delayed catalogue: the first half of a row and the nudge phase change | 631-955 | 55-84% |
 | Delayed catalogue: the second half of that row | 443-780 | 39-68% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
-select from `menu-refused`, the splash rows from `menu-splash` and
+select from `menu-refused`, the ramp from `menu-scroll` and
+`menu-select-last`, the splash rows from `menu-splash` and
 `menu-frame-fault` and the delayed rows from `menu-delayed` and
 `menu-delayed-worst`, each measured on
-the image this page specifies. The two footer rows are the classes this image
-adds, measured on the same targets: the upper row is cheapest on an empty slot
+the image this page specifies. The footer's two rows are measured on the same
+targets: the upper row is cheapest on an empty slot
 and dearest on a profile word with a three-digit size, and the lower row is
 cheapest with no tagline and dearest with eighteen characters of one. The first
-list frame is no longer a class of its own: the bottom plate and both footer
+list frame is not a class of its own: the bottom plate and both footer
 rows of the boot cursor's slot are built into the window map with the LCD off,
 so that frame writes nothing and measures the idle.
-Every settled frame now pays the footer's own early-out, which is why the idle
-frame measures 278-292 rather than the 238 it did before the footer, and the
+Every settled frame pays the footer's own early-out and the
+[scroll ramp](#the-scroll-ramp)'s thirteen-cycle compare, which is why the idle
+frame measures 291-305 rather than the 238 it did before the footer, and the
 star twinkle and the status redraw each cost the seven to twelve M-cycles that
 keep a footer row out of their frame.
 
+The ramp and the pulse are the classes this image adds. A move onto slot 15
+carries the ramp's first step beside the upper row, about 60 M-cycles for the
+SCY write and the pointer's Y, and the badge that every upper row now writes,
+about 26, so the move onto `LAST SLOT` measures 957 and the move back off it,
+onto an empty slot, 753. The three steps that follow a move are 344-346, an
+idle frame plus the step. The nudge frame grew from 457 to 500 for the badge's
+own cell and the test that keeps it off the delayed path.
+
 A delayed title row is still the peak, 1124, 16 M-cycles inside the budget and
-unchanged by the footer, and the not-ready idle frame is still the floor at
+unchanged by the footer, the [scroll ramp](#the-scroll-ramp) and the
+[pulse](#the-press-a-pulse), and the not-ready idle frame is still the floor at
 233. The peak is the sixteen letter cells of
 `SIXTEEN CHAR ROW`, the fixture's widest title, drawn one row to the frame. It
 is the one frame with no room left, so anything added to the title path has to
-be measured here first; the [footer](#the-information-footer) is drawn only
+be measured here first; the [footer](#the-information-footer) is drawn and the
+ramp stepped only
 once the list is whole, from the branch the catalogue path already takes, so
-it adds nothing to that frame. The
-peak of every settled path is lower: the [footer](#the-information-footer)'s
-lower row costs at most 934, 206 M-cycles inside the budget, and the skipped
-splash frame that used to hold that place costs 663. The skip frame is
+neither adds anything to that frame. The pulse's only cost on this path is the
+test that keeps it off, on the frame that changes the phase. The
+peak of every settled path is lower: the move onto slot 15 costs 957, 183
+M-cycles inside the budget, the [footer](#the-information-footer)'s
+lower row at most 941, and the skipped
+splash frame that used to hold that place costs 673. The skip frame is
 `menu-frame-fault`'s own second frame, whose skip settles the list, turns the
 window on and carries the LCDC write
 too. The cap on the skip is what holds that
@@ -503,12 +580,13 @@ Those row frames are consecutive, so one of them always falls on a multiple of
 the eight star cells are rewritten: 194 M-cycles, the 432 of a nudge frame
 against the 238 of an idle one. A whole row plus that is past the budget, so
 that frame draws the first half of its row and the next frame the other half,
-as the [behavior](#behavior) states. `menu-delayed` measured the pair at 616
+as the [behavior](#behavior) states. `menu-delayed` measured the pair at 631
 and 443 on a blank row. Which row is split follows from when the SDRAM answers,
 so `menu-delayed-worst` splits the widest title, the most expensive row the
-path can carry: 940 for the half that also twinkles and 780 for the other,
+path can carry: 955 for the half that also twinkles and 780 for the other,
 against the 1124 the whole row costs. The split is what holds the margin; the
-sum would be 1318.
+sum would be 1333. The twinkling half carries the fifteen M-cycles that keep
+the [press-A badge](#the-press-a-pulse) off a list that has no footer yet.
 
 No flow boots the menu with the bit clear today. The boot copier holds
 `sdram_ready` low only in `WAIT_SDRAM`, `CHECK` and `COPY` and raises the menu
@@ -584,14 +662,18 @@ its result records `profile: dmg-loader-v1` and `profile_id: 2`.
 
 [`reference.py`](../../../../src/dv/menu/reference.py) composes the expected
 frame from this page's layout rules and the font's shade JSON, never from
-the ROM or the DUT, and builds the 100-tile bank from the font, the grey copy
+the ROM or the DUT, and builds the 102-tile bank from the font, the grey copy
 of each glyph, the authored grey cells, the two pointer phases, the badge,
-the four star cells and the grey copy of the two footer cells. `frame`
-draws the background, then the window over its last two rows when the list is
-settled, then the cursor object, with shade 0 transparent.
+the four star cells and the grey copies of the two footer cells and the two
+press-A phases. `frame`
+draws the background at a pixel `scy`, wrapping the 32-row map, then the
+window over its last two rows when the list is settled, then the cursor object
+on its row, with shade 0 transparent.
 `star_here` and `star_tile` are the [star field](#star-field)'s own rule, so
-the field is reproduced rather than stored.
-`frame(entries, cursor=0, footer=None, phase=0, result=0, index=255, sdram_ready=True)`
+the field is reproduced rather than stored; `scroll_target(cursor)` and
+`scroll_ramp(scy, cursor)` are the [scroll ramp](#the-scroll-ramp)'s, the SCY
+a cursor settles at and the SCY of each frame after a move there.
+`frame(entries, cursor=0, footer=None, phase=0, scy=144, result=0, index=255, sdram_ready=True)`
 returns the 23040 row-major shades for a catalogue given as
 [`parse_catalogue`](../../../../tools/n2m/host/library.py) rows (`valid`,
 `profile`, `length`, 16 `title` bytes and a `tagline`, per slot); a row that
@@ -604,10 +686,15 @@ text rules.
 `host snapshot` frame (5760 packed bytes) pixel for pixel and raises
 `MENU_PIXEL x= y= expected= actual=` at the first difference;
 `expected('menu', entries)`, `expected('cursor-N', entries)`,
-`expected('footer-A-B', entries)`, `expected('phase-N', entries)` and
+`expected('footer-A-B', entries)`, `expected('phase-N', entries)`,
+`expected('scroll-N', entries)` and
 `expected('splash-N', entries)` name the
-fresh menu, a moved cursor with its footer settled, the frame after a move to
-slot A whose lower footer row still describes slot B, a nudge phase and a
+fresh menu, a moved cursor with its footer settled and the list scrolled as
+that slot asks, the frame after a move to
+slot A whose lower footer row still describes slot B, which carries the
+ramp's first step when the move crosses the scroll boundary, a nudge phase,
+which is the press-A pulse phase too, frame N of the four-frame ramp onto slot
+15 with its footer settled, and a
 [boot splash](#boot-splash) frame. `splash_state(number)` is the schedule
 itself, the BGP, SCY and rows drawn of displayed frame `number`, and
 `skip_schedule(number)` the frames a skip shows counted from displayed frame
@@ -627,7 +714,10 @@ through the game exit register, an empty slot 3, a valid entry with a
 foreign length in slot 4 and the menu at 16. Five of those slots declare a
 tagline and the rest none, so the [footer](#the-information-footer)'s lower
 row is drawn both ways. It writes `menu-library.hex`,
-`menu-frames.hex` (the scripted menu frames, then the exit-demo game frame),
+`menu-frames.hex` (the scripted menu frames, the [scroll ramp](#the-scroll-ramp)
+frames, then the exit-demo game frame), `menu-marks.hex` (the built image's
+`Frame` address, the address after its `CALL WaitVBlank` and its `Cursor`
+byte, from the build's own symbol and listing records),
 `menu-splash.hex` (every displayed frame of the splash schedule, which
 only the splash fixture reads) and `menu-delayed.hex` and
 `menu-delayed-worst.hex` (every displayed frame of the delayed catalogue path
@@ -644,7 +734,9 @@ compares every captured display-eligible frame; the
 | `menu-select-mbc1` | Five Downs reach the 64 KiB entry listed once at slot 5 (pixel-exact frames for the staged and the settled footer, which reads `MBC1     64 KB`, slot 6 blank); A commits 5 and the game boots in `MBC1_ID` with epoch + 1 and result `OK` index 5; its bank 2 code returns to the menu through the game exit register (epoch + 2, index still 5, the menu running in `LOADER_ID`) |
 | `menu-exit` | Down then A starts the built `exit-demo` image in slot 1 with a pixel-exact bar frame; Start makes it write `$10` to `$6000` and the menu returns by itself: `LOADER_ID`, epoch + 2, result `OK` index 1, running without a host `RUN`, the boot frame pixel-exact again. The returned menu starts settled, with no splash, because `$A003` kept the slot |
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 with `window_ready` still set and the frame shows `EMPTY SLOT` on the footer's upper row and `SLOT 03 INVALID` on its lower one; Up moves the upper row to slot 2 and keeps the message; A on slot 2 starts that game |
-| `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow and the star field's first phase, frame 16 the nudged arrow and its second, both pixel-exact, which pins the phase boundary for the pointer and the [stars](#star-field) together. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
+| `menu-phase` | The untouched menu animates by itself: displayed frame 15 still carries the plain arrow, the star field's first phase and the dim [press-A badge](#the-press-a-pulse), frame 16 the nudged arrow, its second phase and the ink badge, both pixel-exact, which pins the phase boundary for the pointer, the [stars](#star-field) and the pulse together. The return to phase 0 at frame 32 is not simulated: it costs sixteen more simulated frames and follows from the same bit-4 constant, which `test_menu_reference.py` covers |
+| `menu-scroll` | The [scroll ramp](#the-scroll-ramp). Slot 14 is written into the menu's `Cursor` byte at a frame's first pixel by the testbench's [deposit seam](../../../../src/dv/menu/README.md#the-cursor-deposit), and the two frames after it are checked as a navigated move's, staged then settled; Down then crosses the boundary and the next four frames carry SCY 146, 148, 150 and 152, the header sliding off, `LAST SLOT` sliding in above the plate and the pointer riding its row over the plate, the footer staged on the first; Up on the scrolled frame ramps back over four frames to the settled slot 14. Every frame is pixel-exact and every ramp frame's VBlank is measured |
+| `menu-select-last` | The same deposit and Down, the same four ramp frames, and A on the scrolled frame commits 15 to the select register: `LAST SLOT` boots in `DIRECT_ID` with epoch + 1 and result `OK` index 15, so every slot 0..15 is reachable and selectable |
 | `menu-splash` | The untouched [boot splash](#boot-splash) runs its schedule: all 17 displayed frames match the reference frame by frame, fade then slide, and the last of them is pixel-identical to the menu's own frame 0. The nine slide frames are nine scroll offsets of the 32-row map, so they are also where the [star field](#star-field) is checked riding the list |
 | `menu-delayed` | The delayed catalogue path: the menu boots with `sdram_ready` clear and shows the settled list with slot numbers alone, no titles and `NOT READY` on the plate; the frame after the ready bit rises carries the committed bank and the cleared plate, and each frame after it one more title row, except the frame that changes the nudge phase, which draws half its row and leaves the rest to the next one: nineteen frames, all pixel-exact, ending on the whole list with bank 34 and both window bits set. Every row's VBlank is measured against the [frame budget](#frame-budget) |
 | `menu-delayed-worst` | The same path held seven frames longer, so the row split by the frame that changes the nudge phase is the sixteen-letter title rather than an empty slot: the most expensive delayed frame the path can produce, measured at 940 against the 1140 budget. A declared target wall allowance, in a label of its own, because that alignment is structurally seven frames longer than the ordinary per-simulation target permits |
@@ -657,9 +749,9 @@ per-simulation target rather than under it, and their frame counts say why:
 `menu-phase` cannot see the phase boundary before frame 16, `menu-splash`
 displays the whole splash schedule, and `menu-delayed` draws sixteen rows one
 to the frame with one of them split in two. None of the three can be shortened
-without dropping what it proves. `menu-delayed` measured 123.60 seconds with
-the model already built and 171.97 as the last run of its own label, which
-rebuilt it; `menu-delayed-worst` measured 182.91, seven frames longer again and
+without dropping what it proves. `menu-delayed` measured 119.14 seconds with
+the model already built, in a quiet window with the host load near two;
+`menu-delayed-worst` measured 156.77 in the same window, seven frames longer again and
 a declared wall allowance rather than a target of the ordinary budget. The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
 each target's last run, so a run that rebuilt the model after an image change
@@ -672,7 +764,9 @@ own too, so its declared allowance enters no ordinary aggregate. Both carry
 `system` beside it, which is the aggregate above one RTL owner, a
 milestone-scale label rather than a 300-second one;
 `menu-phase` and `menu-splash` carry `menu-animation`; `menu-select-mbc1`
-carries `mbc1`. `menu-exit` carries only `system`, the aggregate above one
+carries `mbc1`; `menu-scroll` and `menu-select-last` carry `menu-scroll`,
+because neither `menu` nor `menu-library` can hold two more ramps inside the
+aggregate budget. `menu-exit` carries only `system`, the aggregate above one
 RTL owner, so it is run as a single target.
 
 Simulated frames set those walls, so each fixture displays as few as its
