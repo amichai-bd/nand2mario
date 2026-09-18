@@ -594,9 +594,12 @@ def run_unit(root, path, entry):
             return {"status": "FAIL", "error": f"broken checkout: {error}"}
         if python is None:
             return {"status": "SKIPPED", "reason": "wiki-environment",
+                    # Spelled as `wiki/tools/wiki/SPEC.md` spells it, which is the
+                    # document this points the reader at. `discovery_note` says
+                    # `python3` because its own SPEC's Linux examples do.
                     "error": "the pinned tools/wiki environment is not installed here and could "
                              "not be built; see the run's preparation record, or build it "
-                             "with python3 tools/wiki/check.py"}
+                             "with python tools/wiki/check.py"}
     command = unit_command(root, path, entry, python)
     started = time.monotonic()
     try:
