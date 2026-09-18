@@ -415,9 +415,50 @@ def check_views(browser, base):
             page.emulate_media(media='print')
             expect(plot.locator('svg')).to_have_css('min-width', '0px')
             page.close()
+        # The RTL explorer is generated, so its blocks, panels and source links
+        # must all be checked in the browser rather than read in the markup.
+        for width in (1440, 390):
+            page = new_page()
+            page.set_viewport_size({'width': width, 'height': 900})
+            page.goto(base + '/files/wiki/presentations/rtl-explorer.html')
+            expect(page.locator('[data-progress]')).to_have_text('1 / 5')
+            # Every panel starts open, so the page reads without this script; the
+            # script closes them and opens one at a time.
+            expect(page.locator('details.module[open]')).to_have_count(0)
+            page.evaluate("location.hash = 'slide-3'")
+            expect(page.locator('section[data-slide]:visible h2')).to_have_text('The composed machine')
+            map_region = page.locator('.diagram-scroll').first
+            expect(map_region).to_have_attribute('role', 'region')
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (
+                f'The explorer overflows at {width}')
+            if width == 390:
+                assert map_region.evaluate('e => e.scrollWidth > e.clientWidth'), (
+                    'The module map shrank instead of scrolling')
+                map_region.focus()
+                page.keyboard.press('ArrowRight')
+                page.wait_for_function("document.querySelector('.diagram-scroll').scrollLeft > 0")
+            page.locator('a[data-module="n2m_ppu_timing"]').first.click()
+            expect(page.locator('details.module[open]')).to_have_count(1)
+            expect(page.locator('details.module[open]')).to_have_id('m-n2m_ppu_timing')
+            expect(page.locator('a.is-selected')).to_have_count(1)
+            panel = page.locator('#m-n2m_ppu_timing')
+            expect(panel).to_contain_text('200 lines')
+            expect(panel).to_contain_text('21 register macros')
+            source = panel.locator('p.links a').first
+            expect(source).to_have_attribute(
+                'href', 'https://github.com/amichai-bd/nand2mario/blob/main/'
+                        'src/rtl/ppu/n2m_ppu_timing.sv#L8')
+            expect(source).to_have_attribute('target', '_blank')
+            # A block on the next slide opens the panel that lives on this one.
+            page.evaluate("location.hash = 'slide-4'")
+            page.locator('a[data-module="n2m_v05_system"]').last.click()
+            expect(page.locator('[data-progress]')).to_have_text('3 / 5')
+            expect(page.locator('details.module[open]')).to_have_id('m-n2m_v05_system')
+            page.screenshot(path=str(OUTPUT / f'quality-rtl-explorer-{width}.png'))
+            page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'games gallery phases, decodes and holds one frame a game', 'lesson terminal sessions and deck embeds', 'figures fit the text column', 'figure paragraph shapes', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'games gallery phases, decodes and holds one frame a game', 'lesson terminal sessions and deck embeds', 'figures fit the text column', 'figure paragraph shapes', 'chart scrolling', 'RTL explorer selection, source links and narrow scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             try:
