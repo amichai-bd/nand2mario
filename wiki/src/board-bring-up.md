@@ -474,7 +474,7 @@ note and linked from the closing PR.
 Six flash writes have been made on this board: sessions 4, 5, 6, 8, 9 and 10.
 The current flash-resident image is
 [session 10](#session-10-reflash-with-the-composite-menu): `v05-board` build
-id `bcb23cdf8d544047900af649feb131e7`, wire build id `TBD`, `.pof`
+id `bcb23cdf8d544047900af649feb131e7`, wire build id `e731b1fe…`, `.pof`
 SHA-256 `589b99f1…`, packed `catalogue.bin` SHA-256 `f8425a03…`, eleven games
 with their taglines and the composite menu. The images of sessions 4 to 9 are
 history; each earlier record names the image it was taken on.
@@ -780,8 +780,8 @@ matched the packed library. The reflash carries the new menu image and the
 tagline table into CFM0 and reads every
 [frame class](sw/menu/SPEC.md#verification) back from the board, pixel-exact
 against [`reference.py`](../../src/dv/menu/reference.py). Root drove the UART
-and JTAG under the owner's standing authorization; TBD whether a power cycle
-was performed; nothing was rewired.
+and JTAG under the owner's standing authorization; no power cycle was
+performed and nothing was rewired.
 
 - Git commit: the fit was taken at `970afc6a` (`main`), whose `v05-board`
   sources, constraints, software and registry are byte-identical to the head
@@ -800,9 +800,9 @@ was performed; nothing was rewired.
   three digests.
 - Fit: `v05-board` attempt `626baa1e12a9` (tag `794-fit`), status `PASS`,
   05:30:50 to 05:35:00 UTC on 2026-09-18 (08:30 to 08:35 board clock, UTC+3),
-  build id `bcb23cdf8d544047900af649feb131e7`, wire build id `TBD` reported
-  by every host record; configuration mode `Single Comp Image`,
-  `UFM blocks : 1 / 1`, `.pof` SHA-256
+  build id `bcb23cdf8d544047900af649feb131e7`, wire build id
+  `e731b1fe49f60a904740548ddf3cb2bc` reported by every host record;
+  configuration mode `Single Comp Image`, `UFM blocks : 1 / 1`, `.pof` SHA-256
   `589b99f15d6ca8245413a3fb01bd04a9759149504e473a509af72dfbc36ca4cb`, `.sof`
   SHA-256 `60c1c0b6…`, user range matched, CFM0 used 370,784 of 688,128
   bytes; the classified flash IP diagnostic 10036 only, ignored constraints
@@ -811,52 +811,67 @@ was performed; nothing was rewired.
   memory bits.
 - Quartus version: Prime 25.1std.0 Build 1129 SC Lite Edition, for fit and
   programmer.
-- Flash programming: `fpga-program/TBD` (tag `794-program`),
-  `quartus_pgm -c 1 -m jtag -o pvb;<pof>` against the one `USB-Blaster`
-  chain with `10M50DA(.|ES)/10M50DC` (IDCODE `031050DD`), "Quartus Prime
-  Programmer was successful. 0 errors, 0 warnings", processing TBD board
-  clock, `isp_seconds` TBD, `device_state` `TBD`; `pof_sha256` equal to the
-  fit's.
+- Flash programming: dry run `fpga-program/2e13a4deaf1e` (tag
+  `794-program-dry`), then `fpga-program/5f3175934aa6` (tag `794-program`),
+  `quartus_pgm -c 1 -m jtag -o pvb;<pof>` against the one
+  `USB-Blaster [USB-0]` chain with `10M50DA(.|ES)/10M50DC` (IDCODE
+  `031050DD`), "Quartus Prime Programmer was successful. 0 errors, 0
+  warnings", processing 08:59:22 to 09:00:04 board clock, `isp_seconds`
+  43.438, `device_state` `changed`; `pof_sha256` equal to the fit's.
 - Wiring: the documented UART and JTAG connections above.
 
-Host records under tags `794-board-*`, transaction stamps TBD UTC on
-2026-09-18. The board has no joypad and a UART round trip is longer than the
-one-frame classes last, so the frame proof holds the core host-paused and
-advances it one frame at a time:
-[`board_menu.py`](../../src/dv/menu/board_menu.py) sends `RESET` (the core
-comes back `PAUSED`), `RUN_DOTS` of one frame (70,224 dots), `INPUT` for the
-edge the next VBlank samples, and `SNAPSHOT` for the frame that completed,
-then compares each capture through
+Host records under tags `794-board-*` and `794-board3`, transaction stamps
+06:00:21 to 06:19:40 UTC on 2026-09-18 (09:00 to 09:19 board clock). The
+board has no joypad and a UART round trip is longer than the one-frame
+classes last, so the frame proof holds the core host-paused and advances it
+one frame at a time: [`board_menu.py`](../../src/dv/menu/board_menu.py)
+sends `RESET` (the core comes back `PAUSED`), `RUN_DOTS` of one frame
+(70,224 dots), `INPUT` for the edge the next VBlank samples, and `SNAPSHOT`
+for the frame that completed, then compares each capture through
 [`board_compare.py`](../../src/dv/menu/board_compare.py) with the catalogue
 read from the board's own SDRAM. A core reset keeps the loader's selected
 index, so the splash, which the menu arms only while `$A003` is still `$FF`,
 runs first and the refused and accepted selects come last. Every capture
 retains its packed frame, the frame, reference and diff pictures, the
 comparison record with CRC32 and SHA-256, and the snapshot's epoch, sequence
-and dot. The dot counter runs at 4,194,304 dots per second.
+and dot; the dot counter runs at 4,194,304 dots per second, and every step
+advanced the dot by exactly 70,224 and the sequence by one. The passing run,
+`794-board3`, made 85 captures in 115.4 s of wall time, 06:17:20 to 06:19:14
+UTC, every one pixel-exact.
 
 | Step | Record | Result |
 |---|---|---|
-| `host status` after programming ended | `794-board-status`, `status/TBD` | endpoint build id `TBD` equals the program record's `wire_build_id`, so the MAX 10 reconfigured from CFM0 as in sessions 6, 8 and 9; `IMAGE_VALID` 1, `PROFILE` 2, `STATE` TBD, `INPUT` 0 |
-| `host library status` | `794-board-libstatus`, `library-status/TBD` | `$A000` 0x68: `window_ready`, `sdram_ready`, `flash_boot`; result `OK`, `$A003` 255 (no selection); catalogue read from SDRAM SHA-256 `f8425a03…`, byte-identical to the fit's packed catalogue; twelve valid entries with their taglines, slot 2 `V05 BUTTONS` `dda78e9e`, slot 10 `POSTBOT` `7daea6a1` at 65,536 bytes, the menu at 16 with `cda473fb` |
-| Boot splash: `RESET`, then one frame a step | `794-board`, captures `00-splash-first` to `TBD-splash-16` | the first complete frame is `splash-0` after TBD frames with the LCD off; the 17 displayed frames match `splash-0` to `splash-16` in order, one frame per step (sequence +1 each), fade `$00`, `$40`, `$90`, `$E4` two frames a step, then the nine slide steps of SCY 16 to 144 drawing the wrapped rows; `splash-16` is the settled menu, CRC32 `TBD` |
-| Idle, both phases: 16 frames a step | `idle-first`, `idle-phase-1`, `idle-phase-0` | `phase-0` (CRC32 `TBD`), then `phase-1` sixteen frames later (nudged arrow, star twinkle, ink press-A badge; CRC32 `TBD`), then `phase-0` again |
-| Down, Down: staged and settled footer | `footer-1-0`, `cursor-1`, `footer-2-1`, `cursor-2` | each move shows the new slot on the footer's upper row with the old slot's lower row for one frame, then settles; `cursor-2` carries `DIRECT   32 KB` and the tagline `BUTTON TEST`, CRC32 `TBD` |
-| Down to slot 14, Down onto slot 15 | `footer-3-2` … `cursor-14`, `scroll-1` … `scroll-4` | every move pixel-exact staged and settled; the move onto slot 15 carries SCY 146 with the staged footer, then 148, 150 and 152, the header leaving the top and the pointer riding its row over the plate; `scroll-4` is `cursor-15` |
-| Up off slot 15 | `back-1`, `back-2`, `back-3`, `cursor-14` | SCY 150 with the staged footer, then 148, 146 and the settled 144 |
-| Up to slot 11 | `footer-13-14` … `cursor-11` | the empty slot's footer reads `EMPTY SLOT` with the plate's own fill on the lower row |
-| A on slot 11, then Up | `refused`, `footer-10-11`, `cursor-10`; `LIBRARY_STATUS` read | result `INVALID_SLOT` index 11 with `window_ready` set; the frame shows `SLOT 11 INVALID` in place of the lower row; Up moves the pointer to slot 10 (`MBC1     64 KB`) and the message stays, staged then settled |
-| Up to slot 2, A | `footer-9-10` … `cursor-2` (message kept), then `host status` view in `result.json` | the loader swapped slot 2: result `OK` index 2, `PROFILE` 1, `IMAGE_VALID` 1, `STATE` TBD after the swap |
-| V05 frame, 2 s after the game started | `TBD-game` | epoch TBD, 5760 packed bytes, SHA-256 `bc51aaa8ca4c10ff75b9845766eb05094866a150a9707fc0aaf3ae966d041d3f`, equal to the session 8 and 9 frames of the unchanged image |
-| `host library return --wait`, menu frame | `menu-after-return` | `PROFILE` 1 before, `PROFILE` 2 after, settled; the menu starts settled with no splash because `$A003` kept slot 2, cursor 0, status row blank; pixel-exact `phase-TBD`, CRC32 `TBD` |
-| `host status`, `host library status` after the session | `794-board-status-after`, `794-board-libstatus-after` | TBD |
+| `host status` about 21 s after programming ended | `794-board-status`, `status/09d57344…` | endpoint build id `e731b1fe…` equals the program record's `wire_build_id`, so the MAX 10 reconfigured from CFM0 without a power cycle, as in sessions 6, 8 and 9; `IMAGE_VALID` 1, `PROFILE` 2, `STATE` running, `INPUT` 0 |
+| `host library status` | `794-board-libstatus`, `library-status/99ff28f0…` | `$A000` 0x68: `window_ready`, `sdram_ready`, `flash_boot`; result `OK`, `$A003` 255 (no selection); catalogue read from SDRAM SHA-256 `f8425a03…`, byte-identical to the fit's packed catalogue; twelve valid entries with their taglines, slot 2 `V05 BUTTONS` `dda78e9e`, slot 10 `POSTBOT` `7daea6a1` at 65,536 bytes, the menu at 16 with `cda473fb` |
+| Boot splash: `RESET`, then one frame a step | captures `00-splash-first` to `17-splash-16`, epoch 4 | the first complete frame arrived after 6 frames with the LCD off. Sequences 0, 1 and 2 are all the BGP `$00` frame (CRC32 `b15161f6`): the observer publishes the frame that ends at the VBlank of the menu's first loop iteration, one frame before displayed frame 0, and the two-frame fade hold follows it. From there the 17 displayed frames match `splash-0` to `splash-16` in order, one a step: `$40` (`3afb972e`), `$90` (`86a6fa5c`), `$E4` (`15b07131`), then the nine slide steps SCY 16 to 144 (`0ca82437`, `99e7f0a5`, `c67b7d4b`, `0204f124`, `ece8d680`, `82ef4f54`, `bd413b01`, `43769591`) drawing the wrapped rows; `splash-16`, sequence 17, is the settled menu, CRC32 `b55d707f` |
+| Idle, both phases: 16 frames a step | `18-idle-first`, `19-idle-phase-1`, `20-idle-phase-0` | `phase-0` at sequence 17 (`b55d707f`), `phase-1` at 33 (nudged arrow, star twinkle, ink press-A badge; `a79e1c8e`), `phase-0` again at 49 (`b55d707f`) |
+| Down, Down: staged and settled footer | `21-move-1-from-0-f0` … `24-move-2-from-1-f1` | each move shows the pointer on the new slot with the new slot's upper footer row and the old slot's lower row for one frame (`cb345b5a`, `0b1e2fda`), then the settled footer (`727eb34a`, `59acbdc9`: `DIRECT   32 KB` and the tagline `BUTTON TEST`) |
+| Down to slot 14, Down onto slot 15 | `25-move-3-from-2-f0` … `57-move-15-from-14-f3` | every move pixel-exact staged and settled. The Down onto slot 11 landed on menu frame 64, a nudge-phase boundary: that frame (`eb3b95e1`) shows the pointer on slot 11 with both footer rows still describing slot 10, the [footer rule](sw/menu/SPEC.md#the-information-footer)'s twinkle-frame deferral, then `75cdfd06` staged and `b63caaa0` settled; the driver accepts a deferred row only on that boundary. The move onto slot 15 carries SCY 146 with the staged footer (`e3d06ec5`), then 148 (`6f7831f7`), 150 (`ff5552ba`) and 152 (`9b54596b`), the header leaving the top and the pointer riding its row over the plate |
+| Up off slot 15 | `58-move-14-from-15-f0` … `61-move-14-from-15-f3` | SCY 150 with the staged footer (`d2868cc9`), then 148 (`4db5af4f`), 146 (`543c52d6`) and the settled 144 (`9eb63a07`) |
+| Up to slot 11 | `62-move-13-from-14-f0` … `67-move-11-from-12-f1` | the empty slots' footer reads `EMPTY SLOT` with the plate's own fill on the lower row (`29ce7581`, `4bf1811a`, `a1ce3873`) |
+| A on slot 11, then Up | `68-refused` (`7f574ad6`), `69-move-10-from-11-f0`, `70-move-10-from-11-f1` (`ed3c114c`); `LIBRARY_STATUS` read | result `INVALID_SLOT` index 11 with `window_ready` set; the frame shows `SLOT 11 INVALID` in place of the lower row; Up moves the pointer to slot 10 (`MBC1     64 KB`) and the message stays, staged then settled |
+| Up to slot 2, A | `71-move-9-from-10-f0` … `82-move-2-from-3-f1` (message kept, `85553e79`), then the endpoint view in `result.json` | the loader swapped slot 2: result `OK` index 2, `PROFILE` 1, `IMAGE_VALID` 1, `STATE` paused, because the core was host-paused when the select committed; the driver sent `RUN` |
+| V05 frame, 2 s after the game started | `83-game` | epoch 5, sequence 118; 5760 packed bytes, SHA-256 `bc51aaa8ca4c10ff75b9845766eb05094866a150a9707fc0aaf3ae966d041d3f`, equal to the session 8 and 9 frames of the unchanged image |
+| `host library return --wait`, menu frame | `84-menu-after-return` | `PROFILE` 1 running before, `PROFILE` 2 running after, settled in one status read, result `OK`, `$A003` 2; the menu starts settled with no splash because `$A003` kept slot 2, cursor 0, status row blank; epoch 6, pixel-exact `phase-1`, CRC32 `a79e1c8e`, the idle phase-1 frame of the session |
+| `host status`, `host library status` after the session | `794-board-status-after`, `status/92b7bd45…`; `794-board-libstatus-after`, `library-status/9a006d42…` | same wire build id, `PROFILE` 2, running, `INPUT` 0; catalogue SHA-256 `f8425a03…` unchanged, flags unchanged, result `OK`, `$A003` 2 |
+
+Two earlier runs of the same session failed on the driver's expectations
+and are retained beside the passing one. `794-board` (driver at `a8953f5`)
+stopped at the third splash capture: it demanded `splash-2` at sequence 2
+and did not know the observer's leading frame. `794-board2` (driver at
+`27122b2`) accepted the leading frame and matched the splash, the idle
+phases and the moves through slot 10, then stopped on the Down onto slot 11:
+it expected the staged footer in the move's own frame and did not know the
+twinkle-frame deferral. The menu behaved as its contract states in both; the
+driver at `f904783` models both rules and ran the whole session.
 
 This session proves every [frame class](sw/menu/SPEC.md#verification) of the
 composite menu on the board: splash, both nudge phases, staged and settled
 footer, tagline and empty-slot footer, scroll ramp on and off the last slot,
 refused select with its message, select and return. Board state after the
 session: flash holds this eleven-game image with the composite menu, menu
-running from the SDRAM copy the boot copier made, COM7 released.
+running from the SDRAM copy the boot copier made, cursor 0, `$A003` 2 so the
+splash is disarmed until the next global reset, COM7 released.
 
 ### Full SDRAM sweep
 
