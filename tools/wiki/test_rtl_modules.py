@@ -148,7 +148,7 @@ class PageTests(unittest.TestCase):
                 self.assertIn(f"</code> {port.name}</li>", panel, f"{name}.{port.name}")
 
     def test_the_captions_name_every_module_outside_this_repository(self):
-        # Four vendor primitives and Quartus-generated components are
+        # Six vendor primitives and Quartus-generated components are
         # instantiated but never drawn, because nothing here measures them.
         outside = sorted({instance.module for module in self.modules.values()
                           for instance in module.vendor})
