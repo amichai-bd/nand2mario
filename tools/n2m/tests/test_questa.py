@@ -206,11 +206,22 @@ class QuestaLicenseTests(unittest.TestCase):
                          (["/tools/vsim", *QUESTA_LICENSE_PROBE], 0))
 
     def test_a_nonzero_exit_without_license_wording_is_recorded_not_refused(self):
-        """The probe names a missing license. It does not second-guess a vsim
+        """The probe names an unconfigured license. It does not second-guess a vsim
         whose own run reports the detail, so Windows keeps its existing behavior."""
         record = questa_license("/tools/vsim", lambda argv: SimpleNamespace(
             returncode=1, stdout="** Error: something else entirely\n"))
         self.assertEqual((record["licensed"], record["exit_code"]), (True, 1))
+
+    def test_a_busy_license_server_is_left_to_the_run_that_can_queue(self):
+        """`-lic_noqueue` makes the probe answer at once rather than block, so a
+        seat that is merely taken must not become a refusal: the real run queues."""
+        for busy in ("** Error: All licenses are in use.\n",
+                     "** Error: Licensed number of users already reached.\n",
+                     "Unable to checkout a license.  Vsim is closing.\n"):
+            with self.subTest(busy=busy):
+                record = questa_license("/tools/vsim", lambda argv: SimpleNamespace(
+                    returncode=4, stdout=busy))
+                self.assertTrue(record["licensed"])
 
     def test_preparation_discovers_the_tools_without_consulting_the_license(self):
         """`sim prepare` launches no vsim, so it must not need a checkout: the run

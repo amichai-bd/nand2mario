@@ -333,13 +333,15 @@ banners and before any workspace work depends on it. The probe is
 transcript into the caller's directory, and refuses to wait behind a busy
 license server. Its argv, exit code and output join the discovery record.
 
-A license failure in that output fails the command naming the license and
+An unconfigured license in that output fails the command naming the license and
 quoting the vendor's own line, never an operating system:
-`no Questa runtime license: vsim could not check one out. Point
+`no Questa runtime license: vsim found no license file or server. Point
 SALT_LICENSE_SERVER or LM_LICENSE_FILE at a license that grants vsim and retry;
-the Questa compile gate needs none because it never launches vsim`. Any other
-nonzero probe exit is recorded and not refused: the probe exists to name a
-missing license, not to pre-empt a `vsim` whose own run reports the detail.
+the Questa compile gate needs none because it never launches vsim`. Only that
+case refuses, because no amount of waiting would supply a license that is not
+configured. Any other nonzero probe exit is recorded and not refused: a seat that
+is merely taken is left to the run, which queues normally, and a `vsim` broken
+for another reason reports its own detail.
 
 This is why the two Questa paths differ on the same host. The Quartus-bundled
 Questa on a Linux host compiles and elaborates the gate to PASS, and the same

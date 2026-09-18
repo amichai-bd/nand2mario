@@ -24,10 +24,13 @@ QUESTA_COMPILE_TOOLS = ("vlib", "vmap", "vlog", "vopt")
 # caller's directory; `-lic_noqueue` refuses to wait behind a busy license
 # server instead of blocking the probe.
 QUESTA_LICENSE_PROBE = ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f")
+# Only a license *environment* failure refuses: no license file or server is
+# configured, so no amount of waiting would help. A server that is merely busy
+# reports something else, and `-lic_noqueue` makes the probe say so at once
+# instead of blocking; contention is left to the run, which queues normally.
 QUESTA_LICENSE_FAILURE = re.compile(
-    r"(?i)unable to (?:checkout|check out) a licen[cs]e|invalid licen[cs]e"
-    r"|unable to find the licen[cs]e|licen[cs]e (?:checkout|check out) failed")
-QUESTA_LICENSE = ("no Questa runtime license: vsim could not check one out. "
+    r"(?i)unable to find the licen[cs]e file|invalid licen[cs]e environment")
+QUESTA_LICENSE = ("no Questa runtime license: vsim found no license file or server. "
                   "Point SALT_LICENSE_SERVER or LM_LICENSE_FILE at a license that grants "
                   "vsim and retry; the Questa compile gate needs none because it never "
                   "launches vsim")
@@ -85,11 +88,11 @@ def questa_tools(directory, names, run=run_tool):
 def questa_license(vsim, run=run_tool):
     """Prove vsim can check out a runtime license, and name the license when it cannot.
 
-    Returns the probe record for the discovery log. A license failure is a
+    Returns the probe record for the discovery log. An unconfigured license is a
     ToolError carrying the vendor's own words, so the refusal names the license
     rather than a host. Any other nonzero exit is recorded and left alone: this
-    probe exists to name a missing license, not to second-guess a vsim whose
-    own run reports the detail.
+    probe exists to name an unconfigured license, not to second-guess a vsim
+    whose own run reports the detail or would queue for a busy seat.
     """
     argv = [vsim, *QUESTA_LICENSE_PROBE]
     result = run(argv)
