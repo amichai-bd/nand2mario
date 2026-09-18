@@ -1,4 +1,4 @@
-"""Explicit healthy Windows selection before any serial object is opened."""
+"""Explicit healthy port selection before any serial object is opened."""
 from contextlib import contextmanager
 import hashlib
 import json
@@ -92,7 +92,7 @@ def session(folder, args, state_root, *, discover=uart, opener=open_serial):
     selection = discover(folder, args)
     selected = selection.get('selected')
     if not selected:
-        raise ValueError('explicit healthy Windows UART selection required before opening')
+        raise ValueError('explicit healthy UART selection required before opening')
     # Discovery provides the same identity/health rules as doctor. Retain that
     # evidence privately and serialize across tags/worktrees using shared state.
     atomic_json(folder / 'device.json', selection)

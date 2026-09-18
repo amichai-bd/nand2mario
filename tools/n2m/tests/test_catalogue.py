@@ -1,5 +1,6 @@
 """Catalogue contract tests: coverage, selection, validation and write-back."""
 import contextlib
+import importlib.util
 import io
 import json
 from pathlib import Path
@@ -574,6 +575,209 @@ class UnitExecution(unittest.TestCase):
         self.write("import unittest\n")
         outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-cocotb"]})
         self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "cocotb-environment"))
+
+    def test_a_wiki_unit_runs_on_the_pinned_environment_or_is_skipped_by_name(self):
+        self.write("import unittest\n")
+        # No tools/wiki/check.py in this root: nothing to locate the environment with.
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+        self.assertIn("tools/wiki/check.py", outcome["error"])
+        shutil.copytree(ROOT / "tools/wiki", self.root / "tools/wiki",
+                        ignore=shutil.ignore_patterns("__pycache__", "assets", "board_frames"))
+        # The rule comes from check.py, so the located directory is the one it builds.
+        self.assertIsNone(module.wiki_python(self.root))
+        directory, interpreter, _ = self.wiki_check().environment(self.root)
+        interpreter.parent.mkdir(parents=True)
+        interpreter.write_text("", encoding="utf-8")
+        self.assertIsNone(module.wiki_python(self.root))  # built but never marked ready
+        (directory / ".ready").write_text(directory.name + "\n", encoding="utf-8")
+        self.assertEqual(module.wiki_python(self.root), str(interpreter))
+        command = module.unit_command(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]},
+                                      module.wiki_python(self.root))
+        self.assertEqual(command[0], str(interpreter))
+
+    def wiki_check(self):
+        spec = importlib.util.spec_from_file_location("wiki_check_fixture",
+                                                      self.root / "tools/wiki/check.py")
+        check = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(check)
+        return check
+
+
+# A check.py double: it answers the two questions the catalogue asks and records
+# every build, so the contract is exercised without a venv or the network.
+STUB_CHECK = '''\
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def interpreter(root):
+    return Path(root) / "workdir/tools/wiki/python-stub/bin/python"
+
+
+def installed(root=ROOT):
+    found = interpreter(root)
+    return found if found.is_file() else None
+
+
+def build(root=ROOT, *, browser=False, capture=False):
+    log = Path(root) / "build-calls.log"
+    log.write_text((log.read_text(encoding="utf-8") if log.is_file() else "") + "call\\n",
+                   encoding="utf-8")
+    if (Path(root) / "offline").is_file():
+        raise RuntimeError("no network")
+    found = interpreter(root)
+    found.parent.mkdir(parents=True, exist_ok=True)
+    found.write_text("", encoding="utf-8")
+    return found
+'''
+
+
+# A check.py double whose environment is already BUILT: `installed` names a real
+# interpreter, so preparation reports PRESENT and `build` must not be reached.
+BUILT_CHECK = """\
+import sys
+from pathlib import Path
+
+
+def installed(root=None):
+    return Path(sys.executable)
+
+
+def build(root=None, *, browser=False, capture=False):
+    raise AssertionError('a built environment must not be rebuilt')
+"""
+
+
+class WikiEnvironmentPreparation(unittest.TestCase):
+    """The pinned wiki interpreter is built before the clock, never skipped past."""
+
+    def setUp(self):
+        base = ROOT / "workdir/builds/catalogue-unit-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        temp = tempfile.TemporaryDirectory(dir=base)
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+
+    def install_stub(self):
+        path = self.root / "tools/wiki/check.py"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(STUB_CHECK, encoding="utf-8")
+
+    def builds(self):
+        log = self.root / "build-calls.log"
+        return log.read_text(encoding="utf-8").count("call") if log.is_file() else 0
+
+    def test_preparation_without_check_py_reports_it_and_builds_nothing(self):
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "UNAVAILABLE")
+        self.assertIn("tools/wiki/check.py", record["error"])
+        self.assertIsNone(module.wiki_python(self.root))
+
+    def test_a_missing_environment_is_built_once_so_the_unit_runs_for_real(self):
+        self.install_stub()
+        self.assertIsNone(module.wiki_python(self.root))
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "BUILT")
+        self.assertGreaterEqual(record["elapsed_seconds"], 0)
+        self.assertEqual(module.wiki_python(self.root), record["interpreter"])
+        self.assertEqual(self.builds(), 1)
+        # A second run finds it present and builds nothing again.
+        again = module.prepare_wiki_environment(self.root)
+        self.assertEqual((again["status"], again["interpreter"]), ("PRESENT", record["interpreter"]))
+        self.assertEqual(self.builds(), 1)
+        command = module.unit_command(self.root, "suite/test_one.py",
+                                      {"labels": ["needs-wiki-env"]}, module.wiki_python(self.root))
+        self.assertEqual(command[0], record["interpreter"])
+
+    def test_a_build_that_cannot_complete_is_reported_and_the_unit_is_skipped(self):
+        self.install_stub()
+        (self.root / "offline").write_text("", encoding="utf-8")
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "UNAVAILABLE")
+        self.assertIn("could not be prepared", record["error"])
+        self.assertIn("no network", record["error"])
+        self.assertEqual(self.builds(), 1)
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+
+    def test_a_check_py_that_cannot_be_read_is_recorded_not_raised(self):
+        """Locating the environment can fail too; that belongs in the record."""
+        path = self.root / "tools/wiki/check.py"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # `installed` raises rather than returning None: a missing lock file is
+        # the real case, and it used to abort the whole selection.
+        path.write_text("def installed(root=None):\n"
+                        "    raise FileNotFoundError(2, 'No such file', 'requirements.txt')\n"
+                        "def build(root=None, *, browser=False, capture=False):\n"
+                        "    raise AssertionError('must not be reached')\n", encoding="utf-8")
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "UNAVAILABLE")
+        self.assertIn("could not be prepared", record["error"])
+        self.assertIn("requirements.txt", record["error"])
+        self.assertIsNone(module.wiki_python(self.root))
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+        # A check.py that raises on import is the same class of problem.
+        path.write_text("raise RuntimeError('broken check')\n", encoding="utf-8")
+        self.assertIn("broken check", module.prepare_wiki_environment(self.root)["error"])
+        self.assertIsNone(module.wiki_python(self.root))
+
+    def test_a_broken_dependency_in_a_built_environment_fails_and_never_skips(self):
+        """The property level 0 turns on: once the environment exists, a genuine
+        import failure inside it is a FAIL. Were it a skip, the selection could go
+        green while `test_site.py` never ran, which is the whole point of building
+        the environment rather than labelling the unit past it."""
+        (self.root / "tools/wiki").mkdir(parents=True, exist_ok=True)
+        (self.root / "tools/wiki/check.py").write_text(BUILT_CHECK, encoding="utf-8")
+        suite = self.root / "suite"
+        suite.mkdir()
+        # Stands in for `site.py` importing the pinned Python-Markdown.
+        (suite / "test_one.py").write_text(
+            "import unittest\nimport n2m_absent_pinned_package\n", encoding="utf-8")
+        self.assertEqual(module.prepare_wiki_environment(self.root)["status"], "PRESENT")
+        entry = {"kind": "unit", "level": 0, "labels": ["needs-wiki-env"],
+                 "duration_seconds": None}
+        outcome = module.run_unit(self.root, "suite/test_one.py", entry)
+        self.assertEqual(outcome["status"], "FAIL")
+        self.assertNotIn("reason", outcome)          # a FAIL is never dressed as a skip
+        self.assertIn("n2m_absent_pinned_package", outcome["output"])
+        self.assertEqual(outcome["command"][0], sys.executable)
+        # And the selection carrying it fails rather than passing with a skip.
+        catalogue_path = self.root / module.CATALOGUE
+        catalogue_path.parent.mkdir(parents=True, exist_ok=True)
+        selection = {"version": 1,
+                     "labels": {"needs-wiki-env": "Imports the pinned Python-Markdown."},
+                     "units": {"suite/test_one.py": entry}, "not_runnable": {}}
+        catalogue_path.write_text(module.format_document(selection), encoding="utf-8")
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
+                                 "questa_bin": None, "intel_sim_lib": None,
+                                 "sim": "verilator", "level": 0, "label": [],
+                                 "broader": False})()
+        record = module.run_selection(self.root, selection, catalogue_path, "tag", args, 300, {})
+        self.assertEqual(record["status"], "FAIL")
+        self.assertEqual((record["failed"], record["skipped"]), (["suite/test_one.py"], []))
+        self.assertEqual(record["preparation"]["wiki-environment"]["status"], "PRESENT")
+
+    def test_a_selection_prepares_the_environment_only_when_a_unit_needs_it(self):
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
+                                 "questa_bin": None, "intel_sim_lib": None, "sim": "verilator",
+                                 "level": 0, "label": [], "broader": False})()
+        loaded, path = module.load(ROOT)
+        copy = self.root / "catalogue.yaml"
+        shutil.copy(path, copy)
+        needy = "tools/wiki/test_site.py"
+        self.assertIn("needs-wiki-env", loaded["units"][needy]["labels"])
+        prepared = {"status": "BUILT", "elapsed_seconds": 1.0, "interpreter": "/stub/python"}
+        for units, expected in ((["tools/n2m/tests/test_fpga_hold.py"], {}),
+                                ([needy], {"wiki-environment": prepared})):
+            selection = {**loaded, "units": {name: loaded["units"][name] for name in units}}
+            with patch("n2m.catalogue.prepare_wiki_environment", return_value=prepared) as prepare, \
+                    patch("n2m.catalogue.run_unit", return_value={"status": "PASS"}):
+                record = module.run_selection(ROOT, selection, copy, "tag", args, 300, {})
+            self.assertEqual(record["preparation"], expected)
+            self.assertEqual(prepare.call_count, 0 if expected == {} else 1)
 
 
 class UnitErrorTests(unittest.TestCase):

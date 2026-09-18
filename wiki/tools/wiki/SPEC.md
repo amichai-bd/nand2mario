@@ -13,6 +13,19 @@ This creates the pinned environment, runs publication tests, checks tracked
 content and links, then writes `workdir/wiki/site/`. Serve that directory over
 HTTP for local viewing. The command does not deploy.
 
+The environment is a venv under ignored
+`workdir/tools/wiki/python-<major>.<minor>/<lock-hash>/`, installed from
+[`requirements.txt`](../../../tools/wiki/requirements.txt) with
+`--require-hashes`, and a changed pin builds a new one. `check.py` owns both the
+location rule and the creation step; it builds the environment when absent, which installs the pinned package and so
+reaches the network unless pip can satisfy it from cache, and reuses it otherwise, writing the ready marker last so an interrupted install is
+rebuilt rather than discovered. The
+[test catalogue](../n2m/SPEC.md#execution-and-contention) calls the same two
+functions to run `test_site.py`, which imports the pinned Python-Markdown
+through `site.py`: it builds the environment before its aggregate clock and
+skips the unit by name only when that build cannot complete. No command installs
+the package into the caller's interpreter.
+
 ## Browser checks
 
 First run `python tools/wiki/check.py --browser --install-browser`.

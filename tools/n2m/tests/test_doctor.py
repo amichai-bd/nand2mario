@@ -13,9 +13,11 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.doctor import (LICENSE_VARIABLES, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, doctor, execute,
-                        parse_jtag, quartus, questa, select_uart, uart, verilator, warning)
+                        linux_ports, node_state, parse_jtag, quartus, questa, select_uart, uart,
+                        verilator, warning)
 from n2m.fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from n2m.cli import main, parser
+import serial_fixture
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -58,7 +60,8 @@ class DoctorTests(unittest.TestCase):
                  dict(run_output=good, fault_output=good, fault_code=1))
         for case in cases:
             calls = []
-            with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
+            with patch("n2m.doctor.verilator_executable",
+                       side_effect=lambda d, r: (str(self.folder / "verilator"), "explicit")), \
                     patch("n2m.doctor.subprocess.run", side_effect=self.runner(calls, **case)):
                 with self.assertRaises(RuntimeError):
                     verilator(ROOT, self.folder, str(self.folder))
@@ -74,12 +77,14 @@ class DoctorTests(unittest.TestCase):
                  + "\n%Error: builder_smoke.sv:31: Verilog $stop\nAborting...\n")
         licensed = {name: "27000@example" for name in LICENSE_VARIABLES}
         with patch.dict("n2m.doctor.os.environ", {**licensed, "N2M_KEEP": "1"}), \
-                patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
+                patch("n2m.doctor.verilator_executable",
+                      side_effect=lambda d, r: (str(self.folder / "verilator"), "explicit")), \
                 patch("n2m.doctor.subprocess.run",
                       side_effect=self.runner(calls, run_output=good, fault_output=fault)):
             result = verilator(ROOT, self.folder, str(self.folder))
         self.assertEqual(result["release"], "5.052")
         self.assertEqual(result["tools"], {"verilator": str(self.folder / "verilator")})
+        self.assertEqual(result["discovery"], "explicit")
         self.assertTrue(result["fault"]["detected"])
         self.assertIn("none consulted", result["license"])
         self.assertEqual(len(calls), 4)
@@ -186,6 +191,81 @@ class DoctorTests(unittest.TestCase):
         args.uart_identity = "wrong identity"
         with self.assertRaisesRegex(RuntimeError, "exactly one"):
             probe([serial])
+
+    def linux_inventory(self):
+        """Point enumeration at the fixture inventory and return its records."""
+        by_id, tty_class = serial_fixture.inventory(self.folder / "linux")
+        patches = (patch("n2m.doctor.SERIAL_BY_ID", by_id), patch("n2m.doctor.TTY_CLASS", tty_class))
+        for item in patches:
+            item.start()
+            self.addCleanup(item.stop)
+        return by_id
+
+    def test_linux_enumeration_uses_udev_names_and_sysfs_identity(self):
+        self.linux_inventory()
+        ports = linux_ports(self.folder)
+        # The platform tty has no USB device behind it, so it carries no identity.
+        self.assertEqual([port["PNPDeviceID"] for port in ports],
+                         [serial_fixture.HEALTHY_IDENTITY, serial_fixture.UNHEALTHY_IDENTITY,
+                          serial_fixture.OTHER_IDENTITY])
+        healthy, unhealthy, other = ports
+        self.assertEqual((healthy["DeviceID"], healthy["Status"], healthy["ConfigManagerErrorCode"]),
+                         ("/dev/null", "OK", 0))
+        self.assertEqual((healthy["Serial"], healthy["Manufacturer"], healthy["Product"]),
+                         ("ABC123", "Example Systems", "Serial Bridge"))
+        self.assertTrue(healthy["ByIdPath"].endswith("Serial_Bridge_ABC123-if00-port0"))
+        self.assertEqual((other["DeviceID"], other["ConfigManagerErrorCode"]), ("/dev/zero", 0))
+        self.assertEqual((unhealthy["Status"], unhealthy["ConfigManagerErrorCode"]), ("Error", 1))
+        self.assertIn("device node unavailable", unhealthy["Detail"])
+        retained = json.loads((self.folder / "ports.log").read_text())
+        self.assertEqual(retained["ports"], ports)
+
+    def test_linux_selection_matches_one_healthy_port_or_refuses(self):
+        self.linux_inventory()
+        def select(**selectors):
+            return uart(self.folder, SimpleNamespace(**{"uart_port": None, "uart_vid": None,
+                                                        "uart_pid": None, "uart_identity": None,
+                                                        **selectors}))
+        self.assertEqual(select()["status"], "WARNING")
+        self.assertEqual(select(uart_vid="1234", uart_pid="5678")["selected"]["DeviceID"], "/dev/zero")
+        self.assertEqual(select(uart_port="/dev/null")["selected"]["PNPDeviceID"],
+                         serial_fixture.HEALTHY_IDENTITY)
+        self.assertEqual(select(uart_identity=serial_fixture.HEALTHY_IDENTITY)["selected"]["DeviceID"],
+                         "/dev/null")
+        # Both FTDI-style names carry the same vendor and product: ambiguous.
+        with self.assertRaisesRegex(RuntimeError, "exactly one"):
+            select(uart_vid="0403", uart_pid="6001")
+        with self.assertRaisesRegex(RuntimeError, "not healthy"):
+            select(uart_identity=serial_fixture.UNHEALTHY_IDENTITY)
+        with self.assertRaisesRegex(RuntimeError, "exactly one"):
+            select(uart_port="/dev/ttyUSB404")
+        self.assertNotIn("Windows", json.dumps([str(error) for error in self.refusals(select)]))
+
+    def refusals(self, select):
+        """Every Linux refusal this selection rule can raise, as raised."""
+        errors = []
+        for selectors in ({"uart_vid": "0403", "uart_pid": "6001"},
+                          {"uart_identity": serial_fixture.UNHEALTHY_IDENTITY},
+                          {"uart_port": "/dev/ttyUSB404"}):
+            try:
+                select(**selectors)
+            except RuntimeError as error:
+                errors.append(error)
+        return errors
+
+    def test_device_node_health_is_classified_without_opening(self):
+        regular = self.folder / "not-a-node"
+        regular.write_text("", encoding="utf-8")
+        self.assertEqual(node_state("/dev/null"), ("OK", 0, ""))
+        self.assertEqual(node_state(regular)[:2], ("Error", 2))
+        self.assertEqual(node_state(self.folder / "absent")[:2], ("Error", 1))
+
+    def test_unsupported_host_enumeration_names_both_supported_hosts(self):
+        with patch("n2m.doctor.os.name", "posix"), patch("n2m.doctor.sys.platform", "darwin"):
+            result = uart(self.folder, SimpleNamespace(uart_port=None, uart_vid=None,
+                                                       uart_pid=None, uart_identity=None))
+        self.assertEqual(result["status"], "WARNING")
+        self.assertEqual(result["detail"], "UART enumeration supported on Windows and Linux only")
 
     def test_zero_warning_summary_only(self):
         self.assertFalse(warning("Errors: 0, Warnings: 0"))

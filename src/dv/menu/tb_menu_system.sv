@@ -102,7 +102,8 @@ module tb_menu_system;
     // hold, and it goes on after the swap has copied the menu image in.
     logic sdram_hold;
     bit delayed_boot;
-    wire dut_sdram_initialized = sdram_initialized && !sdram_hold;
+    logic dut_sdram_initialized;
+    assign dut_sdram_initialized = sdram_initialized && !sdram_hold;
     logic [25:0] sdram_request_address;
     logic [127:0] sdram_request_data, sdram_response_data;
     logic [12:0] dram_addr;

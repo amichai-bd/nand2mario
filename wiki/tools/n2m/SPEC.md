@@ -1,6 +1,6 @@
 # Build system
 
-Status: host-native Verilator on WSL and Questa on Windows support `doctor`,
+Status: host-native Verilator on Linux and Questa on Windows support `doctor`,
 `sim test`, `tests run` and `regress`. `check`, the Windows
 [Questa compile gate](#questa-compile-gate) `lint questa`, MAX 10 `fpga build`,
 [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md),
@@ -22,8 +22,8 @@ under `tools/n2m/`.
 
 ## Available commands
 
-Simulation commands run on WSL Linux with Verilator or Windows PowerShell with
-Questa. Omit `--sim` for the host-native default:
+Simulation commands run on Linux with Verilator, native or under WSL, or on
+Windows PowerShell with Questa. Omit `--sim` for the host-native default:
 
 ```bash
 python3 tools/build.py doctor --json
@@ -44,6 +44,7 @@ python3 tools/build.py tests closure-trace --unit tools/n2m/tests/test_baseline.
 python3 tools/build.py regress pre-merge --tag pre-merge --json
 python3 tools/build.py regress builder-fault --tag deliberate-aggregate --json
 python3 tools/build.py sw library --tag flash-library --json
+python3 tools/build.py tools verilator --tag pinned-verilator --json
 python3 tools/build.py clean --tag deliberate-aggregate --json
 ```
 
@@ -131,14 +132,14 @@ it is exactly 32 hexadecimal digits and nonzero. They also hide
 `--endpoint-restarted`. The doctor asks
 for scope first: simulation scope then
 offers either backend, while the full hardware environment fixes Questa and
-Windows because Quartus, JTAG and UART discovery are Windows-owned. `--json` is
+Windows because Quartus and JTAG discovery are Windows-owned. `--json` is
 intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
 simulation, deletes a build, programs the FPGA, transmits over UART, or launches
 a GUI. A runnable current-host command displays the actual Python interpreter.
 A foreign-host command uses the repository's portable `python` spelling for
-Windows or `python3` for WSL, because the current interpreter belongs to the
+Windows or `python3` for Linux, because the current interpreter belongs to the
 wrong host. The relative script and arguments are quoted for POSIX, PowerShell,
 or classic `conhost.exe cmd.exe` as required. A PowerShell display uses the
 invocation operator. A classic interactive `cmd.exe` display quotes every token
@@ -160,7 +161,7 @@ progress and exit status. The launcher remains its own one-window process.
 No selected operation or child command starts until **Run now** is selected.
 The read-only Windows UART discovery subprocess above is the sole browse-time
 exception. A foreign-host review shows the native command but offers no run
-choice; it never crosses WSL and Windows. Programming, UART transmission,
+choice; it never crosses Linux and Windows. Programming, UART transmission,
 cleanup and GUI launch cannot occur while browsing, moving back or cancelling.
 The terminal restores its prior input and output modes before a confirmed child
 starts or the menu exits.
@@ -206,8 +207,8 @@ check, the chain, the flash program and its success check the same way, then
 the measured time, the `.pof` hash and the power-cycle step; its dry run
 reports the record check and the written command only.
 
-These handoffs never execute their next command. WSL remains the Verilator host;
-Windows PowerShell remains the Questa, Quartus, JTAG, UART and launcher host.
+These handoffs never execute their next command. Linux remains a Verilator host;
+Windows PowerShell remains the Questa, Quartus, JTAG and launcher host.
 No command silently crosses that boundary. The ordinary hardware safeguards
 still apply before a person runs the printed programming or launcher command.
 With `--json`, none of these human lines is written and stdout remains exactly
@@ -215,8 +216,8 @@ one parseable result object for aggregate and child callers.
 
 ## Simulator policy
 
-The supported backends are Verilator v5.052 on WSL Linux and native Questa on
-Windows PowerShell. `doctor`, `sim test`, `regress` and `tests run` accept
+The supported backends are Verilator v5.052 on Linux, native or under WSL, and
+native Questa on Windows PowerShell. `doctor`, `sim test`, `regress` and `tests run` accept
 `--sim verilator|questa`; omission selects Verilator on non-Windows hosts and
 Questa on Windows. `--verilator-bin` belongs only to Verilator.
 `--questa-bin` and `--intel-sim-lib` belong only to Questa. Supplying an option
@@ -232,13 +233,13 @@ is the standing Questa evidence for the product RTL: every PR that changes
 compiles and elaborates without a runtime license. Runtime acceptance, meaning
 `sim test`, `tests run`, `regress` and the
 [verification tiers](../../src/dv/integration/SPEC.md#verification-tiers), runs
-on Verilator on WSL; every registered target declares that backend. Questa
+on Verilator on Linux; every registered target declares that backend. Questa
 runtime execution stays supported for the targets that declare it and for the
 Windows [doctor](#environment-doctor) smoke, which records a successful
 checkout when the caller's license environment provides one. No acceptance
 criterion requires a licensed Questa run.
 
-One build tool serves two operating systems. WSL owns Verilator execution;
+One build tool serves two operating systems. Linux owns Verilator execution;
 Windows PowerShell owns Questa execution, `fpga build` and `fpga program`.
 Caches and fingerprints stay per backend and OS under `workdir/`.
 [Command ownership](#command-ownership-by-operating-system) names the refusals.
@@ -260,14 +261,17 @@ counting it as neither pass nor defect, and never falls back; see
 
 ### Command ownership by operating system
 
-One build tool serves two hosts. WSL Linux owns Verilator simulation. Windows
+One build tool serves two hosts. Linux owns Verilator simulation, natively or
+under WSL. Windows
 PowerShell owns Questa simulation, the [Questa compile gate](#questa-compile-gate),
 `fpga build` and `fpga program`. Each side
 refuses a foreign simulator before any workspace is taken: Windows reports
-`Verilator simulation runs on WSL Linux`; non-Windows hosts report `Questa
+`Verilator simulation runs on Linux`; non-Windows hosts report `Questa
 simulation runs on Windows PowerShell`. Linux still refuses `fpga` commands
 with `FPGA build and programming run on Windows PowerShell` and `lint questa`
-with `Questa compile gate runs on Windows PowerShell`. Every command
+with `Questa compile gate runs on Windows PowerShell`. Windows refuses `tools`
+with `Pinned host tool installation runs on Linux`, because the pinned Verilator
+is an autoconf, `make` and `g++` source build. Every command
 header and simulation record carries `os`
 (`platform.system()`), and caches, fingerprints and compiled objects live under
 the running host's own `workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
@@ -437,7 +441,29 @@ requested backend is skipped with reason `unsupported-backend` and never
 launched, so a label that mixes Verilator-capable and Questa-only rows runs its
 supported rows on either host. There is no fallback to the other simulator. A
 unit labelled `needs-cocotb` is skipped with reason `cocotb-environment` when
-the pinned `src/dv/python` interpreter is absent. A skip is not a defect, and
+the pinned `src/dv/python` interpreter is absent. A unit labelled
+`needs-wiki-env` runs on the pinned [wiki environment](../wiki/SPEC.md), which
+the selection builds for itself: before the aggregate clock starts, and only
+when such a unit is selected, the run creates that environment if it is absent,
+so the unit runs rather than skips on a host that has never built it. Creating it
+installs [`requirements.txt`](../../../tools/wiki/requirements.txt) with
+`--require-hashes`, which reaches the network unless pip can satisfy the pin from
+its own cache; that is the one command in a selection which does. The result
+is recorded as `preparation.wiki-environment` with `PRESENT`, `BUILT` and its
+wall, or `UNAVAILABLE` and the reason the build could not complete, and the text
+summary names it. Only `UNAVAILABLE` leaves the unit skipped with reason
+`wiki-environment`; a failure inside a built environment is a unit failure, never a
+skip. `UNAVAILABLE` covers both a host that cannot reach the network and a checkout
+whose lock file is missing or unreadable. The second stays loud only because
+[`test_check.py`](../../../tools/wiki/test_check.py) is itself a level-0 `wiki` unit
+that reads the same files and fails on the same input. Anything that relabels, moves
+or narrows that unit removes the only failure a broken checkout produces in a
+selection narrowed to `needs-wiki-env`, which would then pass with a named skip.
+Installing an interpreter is preparation, not test work, so its wall is reported
+beside the aggregate rather than inside the budget. The
+environment's location and build rules both live in
+[`check.py`](../../../tools/wiki/check.py) and are read from there, never
+repeated. A skip is not a defect, and
 is never silently swallowed: the summary lists every skipped unit in
 `skipped`, the unit's record carries its `reason`, and the text summary names
 each skipped unit with that reason.
@@ -450,7 +476,7 @@ regression subset does. The result is published as
 
 ## Verilator simulation
 
-Verilator v5.052 on WSL is the executing simulator for every registry target
+Verilator v5.052 on Linux is the executing simulator for every registry target
 whose `simulators` includes `verilator`. [`verilator.py`](../../../tools/n2m/verilator.py)
 builds the commands and checks transcripts; [`simulator.py`](../../../tools/n2m/simulator.py)
 discovers the tool; [`simulation.py`](../../../tools/n2m/simulation.py) runs the
@@ -1485,9 +1511,12 @@ python3 tools/build.py doctor --verilator-bin <directory> --json
 python tools/build.py doctor --profile environment --quartus-bin <directory> --uart-port COM5 --json
 ```
 
-Executable discovery uses PATH or explicit directories, never changes global
-PATH, and never falls back from an explicit selection. Tool versions are recorded;
-commercial installations are user-provided, not bootstrapped or assumed pinned.
+Executable discovery uses an explicit directory, then PATH, then the
+[repository-pinned Verilator](#pinned-verilator-installation); it never changes
+global PATH and never falls back from an explicit selection. The Verilator check
+records which of the three found the tool as `discovery`. Tool versions are
+recorded; commercial installations are user-provided, not bootstrapped or assumed
+pinned.
 The [tool provenance](../../../tools/sim/THIRD_PARTY.md) owns installation boundaries.
 
 Each invocation gets fresh logs under
@@ -1500,7 +1529,7 @@ smoke and checks 22 reset, count, and wrap observations.
 The default profile checks the host-native simulator; the environment profile
 adds the remaining tools:
 
-- Verilator (WSL only): `verilator --version` must report a `Verilator <release>`
+- Verilator (Linux only): `verilator --version` must report a `Verilator <release>`
   banner, recorded as `version` and `release`. The check builds
   [`builder_smoke.sv`](../../../src/dv/builder/builder_smoke.sv) with
   `--binary --timing --trace-vcd --x-initial unique` into `obj_dir/smoke`,
@@ -1515,7 +1544,8 @@ adds the remaining tools:
   and `MGLS_LICENSE_FILE`
   from the child environment and records `license` as none consulted, so a
   PASS cannot depend on a license. `--verilator-bin <directory>` selects the
-  directory holding `verilator`; otherwise it is resolved on PATH. The compile
+  directory holding `verilator`; otherwise it is resolved on PATH, and then in
+  the [pinned installation](#pinned-verilator-installation). The compile
   step has a 300-second bound; the runs keep the 60-second default.
 - Questa (Windows only): discover and record `vlib`, `vmap`, `vlog` and `vsim`,
   create isolated mappings and a work library, compile the same smoke, and run
@@ -1542,14 +1572,44 @@ adds the remaining tools:
 - JTAG: invoke only `jtagconfig` enumeration. Exactly one USB-Blaster chain must
   report `10M50DA`; `--jtag-cable <index>` selects among multiple chains. This is
   reported identity, not wiring, voltage, or programming proof.
-- UART: Windows CIM PnP Ports enumeration, including FTDI virtual COM ports.
-  Require a serial `(COM<number>)` name suffix and retain the exact PnP identity;
-  exclude parallel ports and malformed names. Select with `--uart-port`, `--uart-vid`,
-  `--uart-pid`, or exact `--uart-identity` (the OS PNP identity, which may include
-  a serial). Combined selectors must all match exactly one port. No selection
-  is a warning; a missing, ambiguous, or unhealthy explicit selection fails.
-  Windows must report `Status=OK` and `ConfigManagerErrorCode=0`. Non-Windows
-  enumeration is unsupported and reports a warning.
+- UART: Windows and Linux enumerate serial ports into the same records, so one
+  selection rule serves both hosts. Select with `--uart-port`, `--uart-vid`,
+  `--uart-pid`, or exact `--uart-identity` (the OS identity, which may include a
+  serial). Combined selectors must all match exactly one port. No selection is a
+  warning; a missing, ambiguous, or unhealthy explicit selection fails. A healthy
+  port reports `Status=OK` and `ConfigManagerErrorCode=0`. Any other host reports
+  a warning and enumerates nothing. See
+  [serial port enumeration](#serial-port-enumeration) for each host's inventory
+  and health rule.
+
+### Serial port enumeration
+
+Both hosts produce records carrying `DeviceID`, `PNPDeviceID`, `Status` and
+`ConfigManagerErrorCode`, so `select_uart` and the
+[host session](host/SPEC.md#commands) read one contract. Enumeration is
+read-only on either host: no port is opened, no modem line is driven and no byte
+is sent.
+
+Windows queries CIM `Win32_PnPEntity` with `PNPClass='Ports'` through PowerShell.
+A port needs a serial `(COM<number>)` friendly-name suffix and a PnP identity;
+parallel ports and malformed names are excluded, and neither the COM number nor a
+hardware serial is ever inferred from a PnP identity tail. `Status` and
+`ConfigManagerErrorCode` are Windows' own.
+
+Linux reads udev's stable `/dev/serial/by-id` names and the sysfs USB attributes
+behind each one. A port is reported only when it has both: the by-id link gives
+the stable name, and the first ancestor of the tty's bound device carrying
+`idVendor` gives the vendor and product. A tty with no USB device behind it, such
+as a built-in `ttyS*`, has nothing to select by and is not reported. `DeviceID` is
+the device node the link resolves to (`/dev/ttyUSB0`), which is what the host
+opens. `PNPDeviceID` is `USB\VID_<vid>&PID_<pid>\<by-id name>`: the same shape as
+the Windows identity, built from the USB ids and udev's own name, which survives
+replug and renumbering. The record also keeps `ByIdPath`, `SysfsPath`, `Serial`,
+`Manufacturer` and `Product` as read. Health is the device node itself, not a
+driver database: `ConfigManagerErrorCode` is 0 when the node is a character device
+this user can read and write, 1 when the node the link names is unavailable, 2
+when it is not a character device and 3 when it cannot be read and written, each
+with its own `Detail`. The enumerated records are retained as `ports.log`.
 
 The doctor never opens UART, drives modem lines, sends bytes, programs FPGA memory,
 changes JTAG configuration, or proves physical operation. Those follow the
@@ -1583,18 +1643,60 @@ The [dependency definition](../../../tools/n2m/dependencies.json) pins Python
 tests use the standard library. Physical UART commands have an explicit optional
 [pinned serial dependency](../../../tools/n2m/host/THIRD_PARTY.md).
 
-A fresh WSL Ubuntu 24.04 machine needs the repository and three steps, each
-recorded under `verilator.install` and `cocotb.install` in the dependency
-definition: one `apt-get install` line for the build prerequisites, including
-`liblz4-dev` because Verilator 5.052 compiles its FST writer against the system
-`lz4.h` and links `-llz4` for every `--trace-fst` build; a source
-build of the pinned tag into a prefix outside the repository
-(`autoconf && ./configure --prefix=<prefix> && make -j$(nproc) && make install`),
-because the distribution package (5.020) is below cocotb's 5.036 minimum; and
-`pip install -r src/dv/python/requirements.txt` into a venv under
-`workdir/builds/python-dv-env/.venv`. Expose `<prefix>/bin` on PATH or pass
-`--verilator-bin <prefix>/bin`. Paths with spaces are supported. There is no
-simulator bootstrap, automatic download or license configuration command.
+A fresh Linux machine, native or WSL Ubuntu 24.04, needs the repository, the
+build prerequisites and two commands. The prerequisites are the upstream
+Verilator git-build set recorded under `verilator.install` in the dependency
+definition, including `liblz4-dev` because Verilator 5.052 compiles its FST
+writer against the system `lz4.h` and links `-llz4` for every `--trace-fst`
+build. Then:
+
+```bash
+python3 tools/build.py tools verilator --tag pinned-verilator --json
+python3 -m venv workdir/builds/python-dv-env/.venv
+workdir/builds/python-dv-env/.venv/bin/python -m pip install -r src/dv/python/requirements.txt
+```
+
+The [wiki build](../wiki/SPEC.md) owns its own pinned environment. Neither
+command above creates it: `python3 tools/wiki/check.py` does, and so does a
+`tests run` selection that includes the `needs-wiki-env` unit. Paths with spaces
+are supported. There is no license configuration command.
+
+### Pinned Verilator installation
+
+```bash
+python3 tools/build.py tools verilator --tag pinned-verilator --json
+```
+
+`tools verilator` builds the pinned tag from
+[`dependencies.json`](../../../tools/n2m/dependencies.json) and installs it into
+`workdir/tools/verilator/v<version>`, outside `workdir/builds` so no build tag
+owns it and `clean --tag` never removes it. The source is cloned at the pinned
+tag into `v<version>.source` and its `HEAD` must equal the pinned commit; any
+other commit fails before anything is built. The build runs `autoconf`,
+`configure --prefix`, `make -j<jobs>` and `make install` as argv, with
+Verilator's own `VERILATOR_ROOT` and `VERILATOR_BIN` removed from the child
+environment, and every step keeps its transcript under the build tag. Each
+transcript is written when its step exits, so a multi-minute `make` shows nothing
+until it finishes. The shallow clone of an annotated tag reports
+`warning: refs/tags/<tag> <sha> is not a commit!`: git is describing the tag
+object it fetched, and the `rev-parse HEAD` check that follows is what the pin is
+actually held to. A missing prerequisite is named rather than guessed. The installed `verilator --version`
+must report the pinned release. The command then writes `installation.json`
+beside the prefix: the pin, the resolved commit, the banner, the installed tool
+hashes, the resolved build tools with their hashes, the host, the interpreter,
+the job count and the elapsed build. `--jobs` sets the parallel build, `--timeout`
+the per-step bound and `--offline` builds only from an already fetched source.
+Running it again with that record in place reuses the installation and builds
+nothing. The clone is kept at `v<version>.source`, about 1.3 GB, which is what
+lets `--offline` rebuild without the network; no build tag owns it and no command
+reclaims it, so remove that directory by hand when the space is wanted.
+
+Discovery reads the record: an installation counts only with `installation.json`
+beside it, so a partially removed tree is never used. `--verilator-bin` wins,
+then PATH, then the pinned installation, so an operator-supplied Verilator keeps
+working and a host with none needs no PATH edit. No Verilator source or binary is
+committed; the prefix is ignored build output.
+
 Native Questa expects `vlib`, `vmap`, `vlog` and `vsim` on PATH or
 `--questa-bin <directory>` and uses the caller's license environment. Questa
 2025.2 requires `SALT_LICENSE_SERVER` to name a valid SALT service; a legacy
@@ -1614,7 +1716,7 @@ neither executes a simulator or reports licensed RTL acceptance, and their
 summaries state this limitation. `PR policy` is the only required hosted check.
 
 Actual local simulator positive and deliberately failing runs are mandatory author
-and independent-review evidence; they run under Verilator on WSL. No trusted
+and independent-review evidence; they run under Verilator on Linux. No trusted
 remote simulation runner is currently configured. The protected trusted-revision route and required product checks
 are out of scope while no runner can be hosted;
 [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
@@ -1995,7 +2097,7 @@ built, and writes under
 | `catalogue.bin` | The 1 KiB catalogue bytes at flash word `0x22800` (17 entries, the 17 tagline records behind them, then zero words). |
 | `result.json` | Status, the registry hash, one row per image (index, title, profile ID, CRC-32, flash word, `kind`; a package row adds its attempt, result path, fingerprint and image hash, an external row its pin, licence, pinned URL, notices and image hash) and the three file hashes; mirrored at `sw/library/result.json`. |
 
-No Quartus is needed, so WSL fixtures load the real library through
+No Quartus is needed, so Linux fixtures load the real library through
 `library.dat`. `fpga build` of an image that lists the flash reader runs the
 same assembly as its `Assemble flash library` stage, offline: an external image
 is read from its verified cache and a missing cache fails the build naming the

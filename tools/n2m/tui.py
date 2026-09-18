@@ -56,6 +56,7 @@ INTENTS = {
     "lint": ("Gate RTL under Questa", "Compile and elaborate product RTL and FPGA tops; no simulation"),
     "sw": ("Build software", "Assemble, link, package or check original software"),
     "host": ("Use UART controls", "Open the selected UART and transmit a host operation"),
+    "tools": ("Install a pinned host tool", "Build the repository's own pinned Verilator; no simulation"),
 }
 
 
@@ -90,7 +91,7 @@ def _manual_value(menu, title, retained=(), *, allow_default=False, validator=No
 
 
 def _backend(menu, title="Select simulator"):
-    choices = [Choice("verilator", "Verilator", "Runs natively on WSL Linux; no license"),
+    choices = [Choice("verilator", "Verilator", "Runs natively on Linux; no license"),
                Choice("questa", "Questa", "Runs natively on Windows PowerShell; license required")]
     return menu.choose(title, choices, hint="Use arrows and Enter. Escape goes back.")
 
@@ -204,7 +205,7 @@ def _doctor_plan(menu, root):
             Choice("environment", "Full Windows environment", "Inspect Questa, Quartus, JTAG and UART without programming or transmission")])),
         ("sim", lambda answers: menu.choose(
             "Select simulator" if answers["profile"] == "simulation" else "Full environment simulator",
-            [Choice("verilator", "Verilator", "Runs natively on WSL Linux; no license"),
+            [Choice("verilator", "Verilator", "Runs natively on Linux; no license"),
              Choice("questa", "Questa", "Runs natively on Windows PowerShell; license required")]
             if answers["profile"] == "simulation" else
             [Choice("questa", "Questa", "The full hardware environment is Windows-owned")]))]
@@ -459,7 +460,7 @@ def _launcher_plan(menu, root):
 
 
 def _sim_host(backend):
-    return "WSL Linux" if backend == "verilator" else "Windows PowerShell"
+    return "Linux" if backend == "verilator" else "Windows PowerShell"
 
 
 def _simulator_default(plan, root):
@@ -496,6 +497,11 @@ def make_plan(menu, root, intent):
         return _sw_plan(menu, root)
     if intent == "host":
         return _host_plan(menu, root)
+    if intent == "tools":
+        # The pinned Verilator is a source build: autoconf, make and g++ on the
+        # Linux simulation host, never Windows.
+        return Plan(["tools", "verilator"], ("tools", "verilator"), "Linux",
+                    "Build and install the pinned Verilator under workdir/tools; no simulation")
     raise ValueError(f"unsupported builder family: {intent}")
 
 
@@ -692,7 +698,7 @@ def compatible_host(plan, system=None, classic_console=None):
             from .host.console import classic_cmd_console_available
             classic_console = classic_cmd_console_available
         return bool(classic_console())
-    if plan.host == "WSL Linux":
+    if plan.host == "Linux":
         return system != "Windows"
     return True
 

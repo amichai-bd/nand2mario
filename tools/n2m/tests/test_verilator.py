@@ -10,11 +10,11 @@ import unittest
 from unittest.mock import patch
 
 import test_builder
-from n2m import verilator
-from n2m.cli import FPGA_HOST, QUESTA_HOST, VERILATOR_HOST, main
+from n2m import verilator, verilator_install
+from n2m.cli import FPGA_HOST, QUESTA_HOST, TOOLS_HOST, VERILATOR_HOST, main
 from n2m.records import read_json
 from n2m.simulation import load_target
-from n2m.simulator import Simulator, ToolError
+from n2m.simulator import Simulator, ToolError, verilator_executable
 
 VERSION = "Verilator 5.052 2026-09-05 rev v5.052"
 SIGNATURE = "count cycle=3 expected=7 actual=3 seed=1"
@@ -81,9 +81,136 @@ class DiscoveryTests(unittest.TestCase):
                 patch("n2m.cli.git_state", return_value={}), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(main(command, self.root), 0)
         self.assertEqual(discover.call_args.args, ("verilator",))
-        self.assertEqual(discover.call_args.kwargs, {"verilator_bin": "tools with spaces", "questa_bin": None})
+        self.assertEqual(discover.call_args.kwargs,
+                         {"verilator_bin": "tools with spaces", "questa_bin": None, "root": self.root})
         report = json.loads(output.getvalue())
         self.assertEqual((report["simulator"], report["os"]), ("verilator", report["provenance"]["os"]))
+
+
+class PinnedInstallationTests(unittest.TestCase):
+    """The repository's own Verilator: where it lands, how it is found, how it is built."""
+    setUp = test_builder.BuilderTests.setUp
+
+    def pinned_tree(self, *, record=True):
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        (base / "bin").mkdir(parents=True, exist_ok=True)
+        tool = base / "bin/verilator"
+        tool.write_text("#!/bin/sh\n", encoding="utf-8")
+        tool.chmod(0o755)
+        if record:
+            (base / verilator_install.INSTALLATION).write_text("{}", encoding="utf-8")
+        return item, base, tool
+
+    @staticmethod
+    def present(candidate):
+        return candidate if Path(candidate).is_file() else None
+
+    def test_pinned_installation_is_found_without_a_path_edit(self):
+        self.assertIsNone(verilator_install.installed(self.root))
+        self.assertEqual(verilator_executable(None, self.root, which=self.present), (None, "pinned"))
+        item, base, tool = self.pinned_tree(record=False)
+        # A tree without its provenance record is not an installation.
+        self.assertIsNone(verilator_install.installed(self.root))
+        (base / verilator_install.INSTALLATION).write_text("{}", encoding="utf-8")
+        self.assertEqual(verilator_install.installed(self.root), base / "bin")
+        self.assertEqual(base, self.root / verilator_install.RELATIVE_PREFIX / ("v" + item["version"]))
+        self.assertEqual(verilator_executable(None, self.root, which=self.present), (str(tool), "pinned"))
+        # An operator's PATH tool keeps precedence; the pin never overrides it.
+        operator = self.root / "operator/verilator"
+        operator.parent.mkdir()
+        operator.write_text("", encoding="utf-8")
+        self.assertEqual(verilator_executable(None, self.root, which=lambda c: str(operator))[1], "path")
+        self.assertEqual(verilator_executable(str(base / "bin"), self.root, which=self.present),
+                         (str(tool), "explicit"))
+        with self.assertRaisesRegex(ToolError, "must name an existing tool directory"):
+            verilator_executable(str(base / "absent"), self.root)
+
+    def fake_build(self, commit, *, banner=VERSION):
+        """A build double: it records the steps and installs the expected tool."""
+        calls = []
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+
+        def run(argv, cwd, log_path, timeout, env):
+            argv = [str(part) for part in argv]
+            calls.append(argv)
+            Path(log_path).write_text("", encoding="utf-8")
+            self.assertNotIn("VERILATOR_ROOT", env)
+            if "rev-parse" in argv:
+                return commit + "\n"
+            if "--version" in argv:
+                return banner + "\n"
+            if argv[-1] == "install":
+                (base / "bin").mkdir(parents=True, exist_ok=True)
+                (base / "bin/verilator").write_text("#!/bin/sh\n", encoding="utf-8")
+            return ""
+        return item, base, calls, run
+
+    def install(self, commit, **kwargs):
+        item, base, calls, run = self.fake_build(commit, **kwargs.pop("banner_only", {}))
+        record = verilator_install.install(self.root, self.build / "tools", item, run=run,
+                                           which=lambda name: "/usr/bin/" + name,
+                                           environ={"PATH": "/usr/bin", "VERILATOR_ROOT": "/stale"},
+                                           **kwargs)
+        return item, base, calls, record
+
+    def test_pinned_source_build_records_its_provenance(self):
+        item, base, calls, record = self.install(item_commit := verilator_install.pin(self.root)["commit"])
+        self.assertEqual([argv[1] if argv[0].endswith("git") else Path(argv[0]).name for argv in calls],
+                         ["clone", "-C", "autoconf", "configure", "make", "make", "verilator"])
+        self.assertIn("--branch", calls[0])
+        self.assertIn(item["tag"], calls[0])
+        self.assertEqual(calls[3][:3], [str(base.parent / ("v" + item["version"] + ".source/configure")),
+                                        "--prefix", str(base)])
+        self.assertEqual(record["commit"], item_commit)
+        self.assertFalse(record["reused"])
+        provenance = json.loads((base / verilator_install.INSTALLATION).read_text())
+        self.assertEqual((provenance["commit"], provenance["version"]), (item_commit, VERSION))
+        self.assertEqual(provenance["pin"]["tag"], item["tag"])
+        self.assertEqual(provenance["local_changes"], "none")
+        self.assertIn("verilator", provenance["tools"])
+        # A second install reuses the recorded tree and builds nothing.
+        item, base, calls, record = self.install(item_commit)
+        self.assertTrue(record["reused"])
+        self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
+
+    def test_foreign_commit_banner_and_missing_prerequisite_refuse_the_install(self):
+        with self.assertRaisesRegex(ValueError, "commit mismatch"):
+            self.install("0" * 40)
+        self.assertFalse(verilator_install.prefix(self.root, "5.052").exists())
+        with self.assertRaisesRegex(ValueError, "expected 5.052"):
+            self.install(verilator_install.pin(self.root)["commit"],
+                         banner_only={"banner": "Verilator 5.020 2025-01-01"})
+        item = verilator_install.pin(self.root)
+        with self.assertRaisesRegex(ValueError, "missing Verilator build prerequisite: bison"):
+            verilator_install.install(self.root, self.build / "tools", item,
+                                      which=lambda name: None if name == "bison" else "/usr/bin/" + name)
+        with self.assertRaisesRegex(ValueError, "offline"):
+            verilator_install.install(self.root, self.build / "tools", item, offline=True,
+                                      which=lambda name: "/usr/bin/" + name)
+
+    def test_command_reports_the_discovered_pin(self):
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+
+        def install(root, folder, pin, **kwargs):
+            (base / "bin").mkdir(parents=True)
+            (base / "bin/verilator").write_text("", encoding="utf-8")
+            (base / verilator_install.INSTALLATION).write_text("{}", encoding="utf-8")
+            return {"pin": pin, "reused": False, "version": VERSION, "commands": []}
+
+        with patch("n2m.verilator_install.install", side_effect=install), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["tools", "verilator", "--tag", "pin-fixture", "--json"], self.root), 0)
+        report = json.loads(output.getvalue())
+        self.assertEqual((report["status"], report["version"]), ("PASS", VERSION))
+        self.assertEqual(report["discovered"], str(base / "bin"))
+        self.assertEqual(report["pin"]["version"], item["version"])
+        with patch("n2m.verilator_install.install", side_effect=ValueError("make exited 2")), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["tools", "verilator", "--tag", "pin-fixture", "--json"], self.root), 1)
+        self.assertIn("make exited 2", json.loads(output.getvalue())["error"])
 
 
 class DiagnosticTests(unittest.TestCase):
@@ -648,6 +775,14 @@ class HostOwnershipTests(unittest.TestCase):
                 code, report = self.run_cli("Linux", *argv)
                 self.assertEqual(code, 1)
                 self.assertEqual((report["status"], report["error"], report["os"]), ("FAIL", FPGA_HOST, "Linux"))
+
+    def test_windows_refuses_the_pinned_tool_installation(self):
+        """The pin is an autoconf/make/g++ build; Windows gets a refusal, not a
+        missing-prerequisite error from halfway into the build."""
+        code, report = self.run_cli("Windows", "tools", "verilator", "--tag", "w1")
+        self.assertEqual(code, 1)
+        self.assertEqual((report["status"], report["error"], report["os"]),
+                         ("FAIL", TOOLS_HOST, "Windows"))
 
     def test_each_host_still_runs_its_own_commands(self):
         with patch("n2m.cli.platform.system", return_value="Windows"), \

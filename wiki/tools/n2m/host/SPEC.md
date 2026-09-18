@@ -25,8 +25,11 @@ lock. Pixel observations and packet journals are retained under its build tag.
 
 Every operation accepts `--tag`, `--json` and the doctor's `--uart-port`,
 `--uart-vid`, `--uart-pid`, `--uart-identity` selectors. Selectors combine; exactly
-one healthy Windows PnP serial device must match. No selection fails. OS identity
-is not device authentication or proof of correct wiring.
+one healthy enumerated serial device must match. No selection fails. The host
+opens a port on Windows and on Linux: the doctor's
+[serial port enumeration](../SPEC.md#serial-port-enumeration) owns each host's
+inventory, identity and health rule, and this contract reads the records it
+produces. OS identity is not device authentication or proof of correct wiring.
 
 | Command | Result |
 |---|---|
@@ -292,9 +295,13 @@ stays open instead of exiting, and it resumes a paused core once at startup with
 neutral input, which `host keyboard` never does. Its desktop aliases and explicit
 Main menu library return are owned by the [pad contract](GAMEPAD.md#main-menu).
 
-Discovery reuses the doctor without running its licensed probes. The optional
+Discovery reuses the doctor without running its licensed probes, so a session
+opens only after an explicit, healthy, unambiguous selection; without one it
+refuses with `explicit healthy UART selection required before opening`. The
+optional
 [pinned serial backend](../../../../tools/n2m/host/THIRD_PARTY.md) opens only the
-selected OS port, configured to the generated baud and 8N1 without flow control.
+selected OS port, the `DeviceID` the enumeration reported, configured to the
+generated baud and 8N1 without flow control.
 DTR/RTS are set inactive before open; driver-level glitches cannot be ruled out,
 so verified wiring and the physical workflow still apply.
 
@@ -312,7 +319,7 @@ Partial writes, timeout, malformed or mismatched replies make completion
 uncertain. The host stops immediately without retry, reset, reload or another
 request. A valid endpoint error is a known failure, not an uncertain reply.
 
-Each selected PnP identity has a repository-shared lock and sequence journal in
+Each selected OS identity has a repository-shared lock and sequence journal in
 ignored `workdir/host-sessions/`, shared across build tags and linked worktrees.
 Reserve the next modulo-width sequence and mark pending before transmission;
 clear pending only after a valid reply. This retains uncertainty after crashes

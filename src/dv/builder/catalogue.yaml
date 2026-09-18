@@ -44,6 +44,7 @@ labels:
   milestone: "Carries the owner-authorized 1500-second Mooneye allowance."
   mooneye: "Pinned upstream Mooneye fixtures."
   needs-cocotb: "Imports cocotb; runs only on the pinned src/dv/python interpreter."
+  needs-wiki-env: "Imports the pinned Python-Markdown; runs only on the tools/wiki environment."
   ppu: "Pixel pipeline, OAM scan and mode timing."
   pre-merge: "Migrated regressions.json subset: the short ordinary pre-merge set."
   preload: "Intel-model program preload and its comparison."
@@ -68,9 +69,9 @@ external_imports:
   markdown: "tools/wiki/requirements.txt pins Markdown 3.10.3 for the site build."
   serial: "tools/n2m/host/THIRD_PARTY.md records the optional pySerial 3.5 physical backend."
 units:
-  .agents/skills/issue-author/scripts/test_create_issue.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.07, inputs: [.agents/skills/issue-author/scripts/create_issue.py]}
-  .agents/skills/rtl-coder/scripts/test_check_sv_style.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.04, inputs: []}
-  .agents/skills/update-crewmates/scripts/test_update_caps.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.09, inputs: [.agents/skills/update-crewmates/scripts/update_caps.py]}
+  .agents/skills/issue-author/scripts/test_create_issue.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.13, inputs: [.agents/skills/issue-author/scripts/create_issue.py]}
+  .agents/skills/rtl-coder/scripts/test_check_sv_style.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.08, inputs: []}
+  .agents/skills/update-crewmates/scripts/test_update_caps.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.14, inputs: [.agents/skills/update-crewmates/scripts/update_caps.py]}
   adc-backend: {kind: sim, level: 2, labels: [input], duration_seconds: 4.02}
   adc-backend-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.42}
   adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: 2.85}
@@ -88,7 +89,7 @@ units:
   audio-wave-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: 0.53}
   baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: 0.41}
   baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 0.41}
-  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 1.70}
+  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 13.54}
   builder-smoke-fail: {kind: sim, level: 2, labels: [builder-fault], duration_seconds: null}
   clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 6.58}
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
@@ -242,8 +243,8 @@ units:
   interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.50}
   interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.49}
   interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.48}
-  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 4.73}
-  io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 0.90}
+  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 14.15}
+  io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 15.17}
   joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 2.30}
   joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 3.78}
   joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.46}
@@ -504,11 +505,11 @@ units:
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.74}
   serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.72}
   serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.73}
-  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: 3.10}
+  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: 14.26}
   sim-adc-double-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.63}
   sim-adc-double-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.53}
   sim-adc-double-missing: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.57}
-  sim-ram-double: {kind: sim, level: 0, labels: [common], duration_seconds: 1.27}
+  sim-ram-double: {kind: sim, level: 0, labels: [common], duration_seconds: 30.08}
   sim-ram-double-bad-preload: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.09}
   sim-ram-double-collision: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.05}
   sim-ram-double-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.02}
@@ -519,80 +520,80 @@ units:
   snapshot-overwrite: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: 0.82}
   snapshot-ownership: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: 0.83}
   snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: 61.12}
-  src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.12, inputs: [src/sw/generated/interfaces.inc]}
-  src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.04, inputs: []}
-  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 1.41, inputs: [src/sw/menu/assets/design/direction-a-tiles.json, src/sw/menu/assets/design/v2-cursor-tiles.json, src/sw/menu/assets/design/v2-footer-tiles.json, src/sw/menu/assets/design/v2-grey-tiles.json, src/sw/menu/assets/design/v2-splash-tiles.json, src/sw/menu/assets/design/v2-stars-tiles.json, src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
+  src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.27, inputs: [src/sw/generated/interfaces.inc]}
+  src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.13, inputs: []}
+  src/dv/menu/test_menu_reference.py: {kind: unit, level: 0, labels: [menu, sw], duration_seconds: 1.92, inputs: [src/sw/menu/assets/design/direction-a-tiles.json, src/sw/menu/assets/design/v2-cursor-tiles.json, src/sw/menu/assets/design/v2-footer-tiles.json, src/sw/menu/assets/design/v2-grey-tiles.json, src/sw/menu/assets/design/v2-splash-tiles.json, src/sw/menu/assets/design/v2-stars-tiles.json, src/sw/menu/assets/font-tiles.json, src/sw/springtrail/assets/core/core-maps.json, src/sw/springtrail/assets/core/core-tiles.json]}
   src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 1.22, inputs: [src/dv/v05/program.json]}
-  src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.08, inputs: []}
+  src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.17, inputs: []}
   src/dv/springtrail/test_acquisition_host.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: null, inputs: [cfg/interfaces.json, src/dv/integration, src/dv/springtrail/thrower_route.py, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_blocks_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.41, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_blocks_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_blocks_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_board_bringup.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.14, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
-  src/dv/springtrail/test_composition.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.50, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_composition_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.17, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_courier_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.06, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_courier_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.06, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_current_unit_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.31, inputs: []}
-  src/dv/springtrail/test_dma_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.04, inputs: []}
+  src/dv/springtrail/test_blocks_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.95, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_blocks_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_blocks_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.22, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_board_bringup.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.25, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
+  src/dv/springtrail/test_composition.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.16, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_composition_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.39, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_courier_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_courier_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_current_unit_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.60, inputs: []}
+  src/dv/springtrail/test_dma_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: []}
   src/dv/springtrail/test_endurance.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: 32.44, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
   src/dv/springtrail/test_endurance_current.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: 26.41, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
-  src/dv/springtrail/test_endurance_images.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.17, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
-  src/dv/springtrail/test_entities_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.05, inputs: [src/sw/springtrail/assets/core/enemies-maps.json, src/sw/springtrail/assets/core/enemies-tiles.json]}
-  src/dv/springtrail/test_entities_oam_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_entities_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: []}
-  src/dv/springtrail/test_entities_render_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.30, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_entities_render_program.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.23, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_flow_physical.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.67, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_frame_proofs.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 5.91, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
-  src/dv/springtrail/test_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_historical_composition.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_historical_motion.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_hud_current.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_hud_current_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_hud_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_hud_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.33, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_hud_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.16, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_hud_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.05, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_interaction_current_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: []}
-  src/dv/springtrail/test_interaction_current_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.10, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_interaction_routes.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.05, inputs: []}
-  src/dv/springtrail/test_interactions_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.04, inputs: []}
-  src/dv/springtrail/test_legacy_renderer.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: [cfg/interfaces.json, src/sw, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_milestone.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: []}
-  src/dv/springtrail/test_motion_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.46, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_motion_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.04, inputs: []}
-  src/dv/springtrail/test_motion_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.61, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_motion_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_movement_frames.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_movement_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.05, inputs: []}
-  src/dv/springtrail/test_pause_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.50, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_paused_capture.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.26, inputs: []}
-  src/dv/springtrail/test_physical_driver.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.61, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_physical_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.06, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_power_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.46, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_power_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07, inputs: []}
-  src/dv/springtrail/test_power_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.16, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_power_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_progress_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 2.50, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json, wiki/src/sw/springtrail/progress]}
-  src/dv/springtrail/test_progress_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13, inputs: [src/dv/integration, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_renderer_oracle.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.05, inputs: []}
-  src/dv/springtrail/test_scene_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.05, inputs: [src/sw/springtrail/tiles.json]}
-  src/dv/springtrail/test_scene_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.04, inputs: []}
-  src/dv/springtrail/test_startup_anchor.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.52, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
+  src/dv/springtrail/test_endurance_images.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.27, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
+  src/dv/springtrail/test_entities_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09, inputs: [src/sw/springtrail/assets/core/enemies-maps.json, src/sw/springtrail/assets/core/enemies-tiles.json]}
+  src/dv/springtrail/test_entities_oam_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_entities_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13, inputs: []}
+  src/dv/springtrail/test_entities_render_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.61, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_entities_render_program.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 2.82, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_flow_physical.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.56, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_frame_proofs.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 12.49, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
+  src/dv/springtrail/test_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.31, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_historical_composition.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.14, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_historical_motion.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.19, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_hud_current.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_hud_current_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_hud_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.33, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_hud_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.73, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_hud_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.34, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_hud_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.10, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_interaction_current_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11, inputs: []}
+  src/dv/springtrail/test_interaction_current_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_interaction_routes.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09, inputs: []}
+  src/dv/springtrail/test_interactions_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: []}
+  src/dv/springtrail/test_legacy_renderer.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15, inputs: [cfg/interfaces.json, src/sw, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_milestone.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13, inputs: []}
+  src/dv/springtrail/test_motion_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.05, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_motion_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: []}
+  src/dv/springtrail/test_motion_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 3.50, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_motion_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.19, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_movement_frames.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_movement_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: []}
+  src/dv/springtrail/test_pause_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 3.25, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_paused_capture.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.62, inputs: []}
+  src/dv/springtrail/test_physical_driver.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.30, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_physical_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_power_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.05, inputs: [src/dv/integration, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_power_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.14, inputs: []}
+  src/dv/springtrail/test_power_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.28, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_power_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.21, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_progress_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 5.64, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json, wiki/src/sw/springtrail/progress]}
+  src/dv/springtrail/test_progress_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.14, inputs: [src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.32, inputs: [src/dv/integration, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_renderer_oracle.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.10, inputs: []}
+  src/dv/springtrail/test_scene_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: [src/sw/springtrail/tiles.json]}
+  src/dv/springtrail/test_scene_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: []}
+  src/dv/springtrail/test_startup_anchor.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.11, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json, tools/wiki/board_frames]}
   src/dv/springtrail/test_state_play.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: 65.00, inputs: [cfg/interfaces.json, src/dv/integration, src/sw, tools/sw/opcodes.json]}
   src/dv/springtrail/test_state_player.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: 25.84, inputs: [cfg/interfaces.json, src/dv/host_play, src/dv/integration, src/dv/v05/program.json, src/sw, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_state_reader.py: {kind: unit, level: 0, labels: [host, host-play, springtrail], duration_seconds: 1.45, inputs: [cfg/interfaces.json, src/dv/integration, src/sw, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_state_seed.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.06, inputs: []}
+  src/dv/springtrail/test_state_reader.py: {kind: unit, level: 0, labels: [host, host-play, springtrail], duration_seconds: 3.13, inputs: [cfg/interfaces.json, src/dv/integration, src/sw, tools/sw/opcodes.json]}
+  src/dv/springtrail/test_state_seed.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09, inputs: []}
   src/dv/springtrail/test_thrower_acquisition.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: null, inputs: [cfg/interfaces.json, src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/sw/opcodes.json]}
-  src/dv/springtrail/test_unit_markers.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.04, inputs: []}
+  src/dv/springtrail/test_unit_markers.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08, inputs: []}
   src/dv/springtrail/test_visible_bound.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: null, inputs: [cfg/interfaces.json, src/dv/integration, src/dv/v05/tb_python_v05.sv, src/rtl/clocking/n2m_timebase.sv, src/sw, tools/sw/opcodes.json]}
-  src/dv/stackdrop/test_game_check.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.16, inputs: []}
-  src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.04, inputs: []}
-  src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.22, inputs: [src/dv/stackdrop/fixtures/title-frame.txt, src/dv/stackdrop/fixtures/title.json, src/sw/stackdrop/assets/tiles.json, src/sw/stackdrop/tables.asm]}
+  src/dv/stackdrop/test_game_check.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.46, inputs: []}
+  src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.08, inputs: []}
+  src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.64, inputs: [src/dv/stackdrop/fixtures/title-frame.txt, src/dv/stackdrop/fixtures/title.json, src/sw/stackdrop/assets/tiles.json, src/sw/stackdrop/tables.asm]}
   src/dv/stackdrop/test_tail.py: {kind: unit, level: 2, labels: [needs-cocotb, stackdrop], duration_seconds: 0.17, inputs: []}
-  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 3.19}
+  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 15.34}
   tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: 0.56}
   timebase25: {kind: sim, level: 2, labels: [clocking], duration_seconds: 2.87}
   timebase25-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.49}
@@ -602,100 +603,100 @@ units:
   timer-edges: {kind: sim, level: 2, labels: [timer], duration_seconds: 1.36}
   timer-reload: {kind: sim, level: 1, labels: [timer], duration_seconds: 0.51}
   timer-request-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: 0.53}
-  tools/ci/tests/test_pr_policy.py: {kind: unit, level: 0, labels: [ci], duration_seconds: 0.13, inputs: [.github/workflows/pr-policy.yml]}
+  tools/ci/tests/test_pr_policy.py: {kind: unit, level: 0, labels: [ci], duration_seconds: 0.52, inputs: [.github/workflows/pr-policy.yml]}
   tools/ci/tests/test_profiles.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 13.46, inputs: [src/dv/builder/targets.json, src/fpga/de10_lite, src/rtl]}
   tools/ci/tests/test_trust.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 2.92, inputs: []}
-  tools/n2m/tests/test_affected.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.15, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_affected_mutations.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null}
-  tools/n2m/tests/test_assembler.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.27, inputs: [cfg, src/sw/assembler, src/sw/generated, src/sw/targets.json, tools/n2m, tools/sw]}
+  tools/n2m/tests/test_affected.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.91, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_affected_mutations.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 20.26}
+  tools/n2m/tests/test_assembler.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.63, inputs: [cfg, src/sw/assembler, src/sw/generated, src/sw/targets.json, tools/n2m, tools/sw]}
   tools/n2m/tests/test_assets.py: {kind: unit, level: 1, labels: [builder, sw], duration_seconds: 0.55, inputs: [cfg, src/sw, tools]}
-  tools/n2m/tests/test_baseline.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.11, inputs: [src/dv/baseline]}
+  tools/n2m/tests/test_baseline.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.15, inputs: [src/dv/baseline]}
   tools/n2m/tests/test_builder.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 0.88, inputs: [src/dv/builder, src/dv/display, src/rtl/common, src/rtl/display, tools/build.py, tools/n2m, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_catalogue.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.63}
-  tools/n2m/tests/test_closure_trace.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null, inputs: []}
-  tools/n2m/tests/test_columns.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.08, inputs: [src/sw/springtrail]}
-  tools/n2m/tests/test_core_art.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.45, inputs: [src/sw/springtrail/assets, wiki/src/sw/springtrail/core-art]}
-  tools/n2m/tests/test_crc_proof.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.10, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.23, inputs: [src/dv/builder/builder_smoke.sv, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.54, inputs: [tools/n2m/dependencies.json, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_catalogue.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 22.35}
+  tools/n2m/tests/test_closure_trace.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.57, inputs: []}
+  tools/n2m/tests/test_columns.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.15, inputs: [src/sw/springtrail]}
+  tools/n2m/tests/test_core_art.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 1.01, inputs: [src/sw/springtrail/assets, wiki/src/sw/springtrail/core-art]}
+  tools/n2m/tests/test_crc_proof.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.19, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.50, inputs: [src/dv/builder/builder_smoke.sv, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 1.84, inputs: [tools/n2m/dependencies.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.01, inputs: [cfg, src/dv, src/rtl, src/sw, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 2.95, inputs: [cfg/interfaces.json, src/fpga/de10_lite/library.json, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 1.41, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.06, inputs: []}
-  tools/n2m/tests/test_fpga_flash.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.70, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_hold.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.06, inputs: []}
-  tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.16, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: []}
-  tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.70, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.08, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.19, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 3.32, inputs: [cfg/interfaces.json, src/fpga/de10_lite/library.json, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.01, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.18, inputs: [tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.21, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: []}
+  tools/n2m/tests/test_fpga_flash.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 4.39, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_hold.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.10, inputs: []}
+  tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.24, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.15, inputs: []}
+  tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.95, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.13, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.32, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_vga.py: {kind: unit, level: 1, labels: [builder, fpga], duration_seconds: 6.69, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_gui_pad.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.12, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.06, inputs: []}
+  tools/n2m/tests/test_gui_pad.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.26, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.10, inputs: []}
   tools/n2m/tests/test_host.py: {kind: unit, level: 1, labels: [builder, host], duration_seconds: 1.28, inputs: [cfg/interfaces.json, src/sw, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_host_closure.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null, inputs: []}
+  tools/n2m/tests/test_host_closure.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.18, inputs: []}
   tools/n2m/tests/test_host_library.py: {kind: unit, level: 1, labels: [builder, host, storage], duration_seconds: 4.03, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_host_play.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.11, inputs: [src/dv/host_play/driver.do, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_host_suite.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null, inputs: []}
-  tools/n2m/tests/test_import_check.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.24, inputs: [src/dv, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_intel_adc.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.13, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_intel_memory.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.21, inputs: [src/dv/builder, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_interfaces.py: {kind: unit, level: 0, labels: [builder, interfaces], duration_seconds: 0.10, inputs: [cfg/interfaces.json, src/rtl/interfaces/n2m_interfaces_pkg.sv, src/sw/generated/interfaces.inc, wiki/cfg/interfaces.md]}
-  tools/n2m/tests/test_keyboard.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.18, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.15, inputs: [src/fpga/de10_lite/library.json, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/wiki/board_frames]}
-  tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.78, inputs: [cfg, src/sw, tools]}
-  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 4.23, inputs: [src/dv/builder, src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 2.23, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_menu_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.30, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, wiki/src/sw/menu/previews]}
-  tools/n2m/tests/test_menu_v2.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.72, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, tools/sw/menu_v2, wiki/src/sw/menu/previews]}
-  tools/n2m/tests/test_mooneye.py: {kind: unit, level: 0, labels: [builder, mooneye], duration_seconds: 0.10, inputs: [src/dv/mooneye, src/rtl/ppu/GPL-3.0.txt, tools/n2m/dependencies.json]}
-  tools/n2m/tests/test_peer_bridge.py: {kind: unit, level: 0, labels: [builder, integration], duration_seconds: 0.07, inputs: []}
-  tools/n2m/tests/test_ppu_scene.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.04, inputs: []}
-  tools/n2m/tests/test_preload.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.12, inputs: []}
-  tools/n2m/tests/test_preload_compare.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.06, inputs: [src/dv/preload/compare.py]}
-  tools/n2m/tests/test_preload_continuous.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.15, inputs: [src/dv/builder/targets.json, src/dv/preload/compare_continuous.py]}
-  tools/n2m/tests/test_program_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.54, inputs: [cfg/interfaces.json, src/dv/stackdrop, src/dv/v05, src/sw, tools/sw/opcodes.json, wiki/src/dv/v05/previews, wiki/src/sw/stackdrop/previews]}
+  tools/n2m/tests/test_host_play.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.24, inputs: [src/dv/host_play/driver.do, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_host_suite.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 2.42, inputs: []}
+  tools/n2m/tests/test_import_check.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.47, inputs: [src/dv, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_intel_adc.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.23, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_intel_memory.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.47, inputs: [src/dv/builder, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_interfaces.py: {kind: unit, level: 0, labels: [builder, interfaces], duration_seconds: 0.21, inputs: [cfg/interfaces.json, src/rtl/interfaces/n2m_interfaces_pkg.sv, src/sw/generated/interfaces.inc, wiki/cfg/interfaces.md]}
+  tools/n2m/tests/test_keyboard.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.36, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.26, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.30, inputs: [src/fpga/de10_lite/library.json, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/wiki/board_frames]}
+  tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 2.17, inputs: [cfg, src/sw, tools]}
+  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 6.02, inputs: [src/dv/builder, src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 7.09, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_menu_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.70, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, wiki/src/sw/menu/previews]}
+  tools/n2m/tests/test_menu_v2.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 1.58, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, tools/sw/menu_v2, wiki/src/sw/menu/previews]}
+  tools/n2m/tests/test_mooneye.py: {kind: unit, level: 0, labels: [builder, mooneye], duration_seconds: 0.21, inputs: [src/dv/mooneye, src/rtl/ppu/GPL-3.0.txt, tools/n2m/dependencies.json]}
+  tools/n2m/tests/test_peer_bridge.py: {kind: unit, level: 0, labels: [builder, integration], duration_seconds: 0.13, inputs: []}
+  tools/n2m/tests/test_ppu_scene.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.08, inputs: []}
+  tools/n2m/tests/test_preload.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.26, inputs: []}
+  tools/n2m/tests/test_preload_compare.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.11, inputs: [src/dv/preload/compare.py]}
+  tools/n2m/tests/test_preload_continuous.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.36, inputs: [src/dv/builder/targets.json, src/dv/preload/compare_continuous.py]}
+  tools/n2m/tests/test_program_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 1.61, inputs: [cfg/interfaces.json, src/dv/stackdrop, src/dv/v05, src/sw, tools/sw/opcodes.json, wiki/src/dv/v05/previews, wiki/src/sw/stackdrop/previews]}
   tools/n2m/tests/test_python_tb.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 1.67, inputs: [src/dv/builder, src/dv/python, src/rtl/common, src/rtl/interfaces, src/rtl/joypad, tools/build.py, tools/n2m, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_python_waves.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.15, inputs: [src/dv/builder, src/dv/python, src/rtl/common, src/rtl/interfaces, src/rtl/joypad, tools/build.py, tools/n2m, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_questa.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.33, inputs: [src/dv/builder, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_records.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.59, inputs: [tools/n2m/tests/lock_racer.py]}
+  tools/n2m/tests/test_python_waves.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.31, inputs: [src/dv/builder, src/dv/python, src/rtl/common, src/rtl/interfaces, src/rtl/joypad, tools/build.py, tools/n2m, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_questa.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.80, inputs: [src/dv/builder, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_records.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.42, inputs: [tools/n2m/tests/lock_racer.py]}
   tools/n2m/tests/test_regress.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 2.35, inputs: [src/dv/builder, src/dv/display, src/rtl/display, tools/build.py, tools/n2m, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_rgbds.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.12, inputs: [src/sw/oracle]}
-  tools/n2m/tests/test_run_dots.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.05, inputs: []}
-  tools/n2m/tests/test_sameboy_acceptance.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.05, inputs: [src/dv/sameboy]}
-  tools/n2m/tests/test_sameboy_pixels.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.05, inputs: []}
-  tools/n2m/tests/test_sameboy_probe.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.07, inputs: [cfg/interfaces.json, src/dv/ppu/palette194.json, src/dv/sameboy, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_sameboy_retirement.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.04, inputs: [src/dv/sameboy]}
-  tools/n2m/tests/test_sim_client_clock.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.07, inputs: [src/dv/python/integration/client_transport.py]}
+  tools/n2m/tests/test_rgbds.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.22, inputs: [src/sw/oracle]}
+  tools/n2m/tests/test_run_dots.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.09, inputs: []}
+  tools/n2m/tests/test_sameboy_acceptance.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.10, inputs: [src/dv/sameboy]}
+  tools/n2m/tests/test_sameboy_pixels.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.09, inputs: []}
+  tools/n2m/tests/test_sameboy_probe.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.14, inputs: [cfg/interfaces.json, src/dv/ppu/palette194.json, src/dv/sameboy, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_sameboy_retirement.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.09, inputs: [src/dv/sameboy]}
+  tools/n2m/tests/test_sim_client_clock.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.13, inputs: [src/dv/python/integration/client_transport.py]}
   tools/n2m/tests/test_simulation_peer.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 5.75, inputs: [src/dv/builder, src/dv/integration, src/dv/python/THIRD_PARTY.md, src/dv/python/requirements.txt, tools/build.py, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_springtrail_native.py: {kind: unit, level: 0, labels: [builder, springtrail], duration_seconds: 0.11, inputs: [cfg/interfaces.json, src/dv/ppu/palette194.json, src/dv/sameboy, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_sprite_preview.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.10, inputs: []}
-  tools/n2m/tests/test_stackdrop_finish.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.08, inputs: [src/sw/stackdrop/layout.json, src/sw/stackdrop/main.asm, tools/stackdrop_player.py]}
-  tools/n2m/tests/test_stackdrop_player.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.27, inputs: [src/dv/stackdrop/cases.py, src/dv/stackdrop/reference.py, src/dv/stackdrop/screen.py]}
-  tools/n2m/tests/test_stackdrop_session.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.16, inputs: [src/dv/stackdrop/cases.py, src/dv/stackdrop/reference.py, src/dv/stackdrop/screen.py]}
-  tools/n2m/tests/test_startup202.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.08, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_startup204.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.07, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_springtrail_native.py: {kind: unit, level: 0, labels: [builder, springtrail], duration_seconds: 0.24, inputs: [cfg/interfaces.json, src/dv/ppu/palette194.json, src/dv/sameboy, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_sprite_preview.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.15, inputs: []}
+  tools/n2m/tests/test_stackdrop_finish.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.16, inputs: [src/sw/stackdrop/layout.json, src/sw/stackdrop/main.asm, tools/stackdrop_player.py]}
+  tools/n2m/tests/test_stackdrop_player.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.81, inputs: [src/dv/stackdrop/cases.py, src/dv/stackdrop/reference.py, src/dv/stackdrop/screen.py]}
+  tools/n2m/tests/test_stackdrop_session.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.35, inputs: [src/dv/stackdrop/cases.py, src/dv/stackdrop/reference.py, src/dv/stackdrop/screen.py]}
+  tools/n2m/tests/test_startup202.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_startup204.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_test_budget.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 8.24, inputs: [src/dv/builder/targets.json, src/dv/python, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_tui.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 2.28, inputs: [src/dv/builder, src/fpga/de10_lite, src/rtl, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_v05_board.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.28, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_v05_online.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.11, inputs: [src/dv/v05/program.json]}
-  tools/n2m/tests/test_v05_preload.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.28, inputs: [cfg/interfaces.json, src/dv/builder/targets.json, src/dv/python, src/dv/v05, src/sw, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.20, inputs: [src/dv/v05/check.py, src/dv/v05/program.json, src/dv/v05/reference.py]}
-  tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.14, inputs: [src/dv/cpu/generate_vectors.py]}
-  tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.58, inputs: [src/dv/builder, src/dv/display, src/dv/integration, src/dv/mooneye, src/dv/preload, src/dv/python, src/rtl/common, src/rtl/display, src/rtl/interfaces, src/rtl/joypad, src/rtl/ppu/GPL-3.0.txt, src/sw/generated/interfaces.inc, tools/build.py, tools/n2m, tools/sw]}
-  tools/n2m/tests/test_vga_bezel.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 2.19, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/vga_bezel, wiki/src/rtl/vga/previews]}
-  tools/n2m/tests/test_windows_camera.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: null, inputs: []}
-  tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.14, inputs: [src/dv/display/tb_dmg_tile_pixel.sv, src/rtl/display/dmg_tile_pixel.sv]}
-  tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: 0.21, inputs: []}
-  tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.07, inputs: [tools/wiki/check.py]}
-  tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.23, inputs: [README.md, src/sw/springtrail/assets, tools/n2m/dependencies.json, tools/wiki/assets, tools/wiki/board_frames, wiki]}
-  tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.08, inputs: []}
-  tools/wiki/test_repository_stats.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.13, inputs: []}
-  tools/wiki/test_site.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.16, inputs: [tools/wiki/assets, tools/wiki/site.py, wiki/tools/n2m/host/assets/live-viewer-phone.jpg]}
+  tools/n2m/tests/test_tui.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 8.33, inputs: [src/dv/builder, src/fpga/de10_lite, src/rtl, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_v05_board.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.66, inputs: [src/fpga/de10_lite, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_v05_online.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.22, inputs: [src/dv/v05/program.json]}
+  tools/n2m/tests/test_v05_preload.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.55, inputs: [cfg/interfaces.json, src/dv/builder/targets.json, src/dv/python, src/dv/v05, src/sw, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.40, inputs: [src/dv/v05/check.py, src/dv/v05/program.json, src/dv/v05/reference.py]}
+  tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.16, inputs: [src/dv/cpu/generate_vectors.py]}
+  tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 3.97, inputs: [src/dv/builder, src/dv/display, src/dv/integration, src/dv/mooneye, src/dv/preload, src/dv/python, src/rtl/common, src/rtl/display, src/rtl/interfaces, src/rtl/joypad, src/rtl/ppu/GPL-3.0.txt, src/sw/generated/interfaces.inc, tools/build.py, tools/n2m, tools/sw]}
+  tools/n2m/tests/test_vga_bezel.py: {kind: unit, level: 0, labels: [builder, vga], duration_seconds: 3.64, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/vga_bezel, wiki/src/rtl/vga/previews]}
+  tools/n2m/tests/test_windows_camera.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.12, inputs: []}
+  tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.21, inputs: [src/dv/display/tb_dmg_tile_pixel.sv, src/rtl/display/dmg_tile_pixel.sv]}
+  tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: 0.14, inputs: []}
+  tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.13, inputs: [tools/wiki/check.py]}
+  tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.51, inputs: [README.md, src/sw/springtrail/assets, tools/n2m/dependencies.json, tools/wiki/assets, tools/wiki/board_frames, wiki]}
+  tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.15, inputs: []}
+  tools/wiki/test_repository_stats.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.20, inputs: []}
+  tools/wiki/test_site.py: {kind: unit, level: 0, labels: [needs-wiki-env, wiki], duration_seconds: 0.28, inputs: [tools/wiki/assets, tools/wiki/site.py, wiki/tools/n2m/host/assets/live-viewer-phone.jpg]}
   uart-endpoint: {kind: sim, level: 2, labels: [uart], duration_seconds: 52.80}
   uart-endpoint-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 3.57}
   uart-endpoint-readback: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 18.79}

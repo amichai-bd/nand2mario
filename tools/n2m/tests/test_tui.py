@@ -86,6 +86,15 @@ class TuiTests(unittest.TestCase):
     def test_live_argparse_families_all_have_an_intent(self):
         self.assertEqual(set(tui.top_families()), set(tui.INTENTS))
 
+    def test_the_pinned_tool_install_is_a_linux_plan_the_live_parser_accepts(self):
+        """`tools verilator` is a source build, so it is offered on Linux only."""
+        plan = tui.make_plan(tui.Menu(ScriptedTerminal([])), ROOT, "tools")
+        self.assertEqual((plan.argv, plan.parser_path, plan.host),
+                         (["tools", "verilator"], ("tools", "verilator"), "Linux"))
+        tui.validate_plan(plan, ROOT)
+        self.assertTrue(tui.compatible_host(plan, system="Linux"))
+        self.assertFalse(tui.compatible_host(plan, system="Windows"))
+
     def test_backend_target_choices_come_from_the_live_registry(self):
         with tempfile.TemporaryDirectory(prefix="tui registry ") as temporary:
             root = Path(temporary)
@@ -197,7 +206,7 @@ class TuiTests(unittest.TestCase):
     def test_advanced_can_clear_or_override_an_automatic_simulator_directory(self):
         automatic = "automatic tools"
         plan = tui.Plan(["sim", "test", "builder-smoke", "--sim", "verilator"],
-                        ("sim", "test"), "WSL Linux", "simulate",
+                        ("sim", "test"), "Linux", "simulate",
                         set_options={"verilator_bin": automatic})
         with patch("n2m.tui.retained_values", return_value=[automatic]):
             cleared = ScriptedTerminal([*list("verilator"), "ENTER", "DOWN", "ENTER", "ENTER"])
@@ -616,13 +625,13 @@ class TuiTests(unittest.TestCase):
         windows = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin", "tools"],
                            ("fpga", "build"), "Windows PowerShell", "build")
         wsl = tui.Plan(["sim", "test", "builder-smoke", "--sim", "verilator"],
-                       ("sim", "test"), "WSL Linux", "simulate")
+                       ("sim", "test"), "Linux", "simulate")
         with patch("n2m.tui.sys.executable", "/usr/bin/python3"):
             self.assertTrue(tui.command_text(windows, ROOT, "Linux").startswith("& python tools/build.py"))
         with patch("n2m.tui.sys.executable", r"C:\Python Folder\python.exe"):
             self.assertTrue(tui.command_text(wsl, ROOT, "Windows").startswith("python3 tools/build.py"))
         apostrophe = tui.Plan(["sw", "build", "owner's path"], ("sw", "build"),
-                              "WSL Linux", "build")
+                              "Linux", "build")
         self.assertEqual(tui.command_text(apostrophe, ROOT, "Windows"),
                          "python3 tools/build.py sw build 'owner'\"'\"'s path'")
 

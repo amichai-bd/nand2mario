@@ -144,8 +144,11 @@ class QuestaTests(unittest.TestCase):
                 patch("n2m.cli.git_state", return_value={}), contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(main(command, self.root), 0)
             self.assertEqual(discover.call_args.args, ("questa",))
+            # `root` travels with every discovery so Verilator can fall back to
+            # the repository's pinned installation; Questa never uses it.
             self.assertEqual(discover.call_args.kwargs,
-                             {"verilator_bin": None, "questa_bin": "tools with spaces"})
+                             {"verilator_bin": None, "questa_bin": "tools with spaces",
+                              "root": self.root})
             with patch("n2m.cli.Simulator", side_effect=ToolError("missing vsim", "partial discovery")):
                 self.assertEqual(main(command + ["--rebuild"], self.root), 1)
         current = self.root / "workdir/builds/questa-cli/sim/test/builder-smoke/questa/result.json"

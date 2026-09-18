@@ -23,7 +23,7 @@ from .lint import lint_questa
 from .progress import Progress, powershell_command
 from .rgbds import oracle
 from .regress import clean, regress
-from . import catalogue, host_suite, interface_codec
+from . import catalogue, host_suite, interface_codec, verilator_install
 from sw.build import assemble_target
 from sw.rom_build import build_target
 from sw.link_conformance import proof as link_proof
@@ -112,6 +112,15 @@ def parser():
     for leaf in (validate, listing, runner, affected, mutations, trace):
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true")
+    tools = commands.add_parser("tools", help="install the host tools this repository pins for itself").add_subparsers(dest="action", required=True)
+    pinned_verilator = tools.add_parser("verilator", help="build and install the pinned Verilator under workdir/tools; discovery then needs no PATH edit")
+    pinned_verilator.add_argument("--jobs", type=int, help="parallel build jobs; defaults to the host CPU count")
+    pinned_verilator.add_argument("--timeout", type=int, default=verilator_install.STEP_TIMEOUT,
+                                  help="per-step timeout in seconds")
+    pinned_verilator.add_argument("--offline", action="store_true",
+                                  help="build only from an already fetched pinned source; never download")
+    pinned_verilator.add_argument("--tag")
+    pinned_verilator.add_argument("--json", action="store_true")
     remove = commands.add_parser("clean", help="remove generated output under exactly one build tag")
     remove.add_argument("--tag", required=True)
     remove.add_argument("--json", action="store_true")
@@ -317,6 +326,10 @@ def tagged(root, args, header, publish, progress=None):
                               else build_target(root, build, args, provenance) if args.action == "build"
                               else library_stage(root, build, args, provenance) if args.action == "library"
                               else assemble_target(root, build, args, provenance))
+            elif args.command == "tools":
+                provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
+                progress.line("Install the pinned Verilator under workdir/tools; no simulation")
+                report.update(verilator_install.command(root, build, args, provenance))
             elif args.command == "sim" and args.action == "preflight":
                 from .fixture_preflight import run
                 report.update(run(root, build, args.target))
@@ -330,7 +343,7 @@ def tagged(root, args, header, publish, progress=None):
                 progress.line(f"Simulation: target {args.target}; backend {args.sim}")
                 with progress.stage(f"Discover {args.sim.capitalize()} tools"):
                     simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
-                                          questa_bin=args.questa_bin)
+                                          questa_bin=args.questa_bin, root=root)
                 report.update(simulate(root, build, args, simulator, provenance, progress=progress, locked_at=locked_at))
                 # A target measured only here keeps its catalogue duration
                 # current, in the same canonical form `tests run` writes. The
@@ -397,7 +410,7 @@ def prepare_command(root, args, header, progress):
     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
     progress.line(f"Preparation: target {args.target}; backend {args.sim}; tag lock not taken")
     with progress.stage(f"Discover {args.sim.capitalize()} tools"):
-        simulator = Simulator(args.sim, verilator_bin=args.verilator_bin, questa_bin=args.questa_bin)
+        simulator = Simulator(args.sim, verilator_bin=args.verilator_bin, questa_bin=args.questa_bin, root=root)
     with progress.stage("Prepare attempt"):
         record = prepare(root, build, args, simulator, provenance)
     # The receipt keeps PREPARED so adoption can tell it from a run result;
@@ -527,10 +540,13 @@ def _human_result(args, report, progress):
 
 # One build tool, two native simulator hosts and one FPGA host. No command
 # launches the other operating system or translates one backend into another.
-VERILATOR_HOST = "Verilator simulation runs on WSL Linux"
+VERILATOR_HOST = "Verilator simulation runs on Linux"
 QUESTA_HOST = "Questa simulation runs on Windows PowerShell"
 FPGA_HOST = "FPGA build and programming run on Windows PowerShell"
 LINT_HOST = "Questa compile gate runs on Windows PowerShell"
+# The pinned Verilator is an autoconf/make/g++ source build, so its
+# installation belongs to the same host that runs it.
+TOOLS_HOST = "Pinned host tool installation runs on Linux"
 
 
 def simulator_command(args):
@@ -564,6 +580,8 @@ def foreign_host(args):
         return FPGA_HOST
     if args.command == "lint" and system != "Windows":
         return LINT_HOST
+    if args.command == "tools" and system == "Windows":
+        return TOOLS_HOST
     return None
 
 
@@ -626,6 +644,11 @@ def main(argv=None, root=None):
             for line in affected_lines(report):
                 print(line)
         if args.command == "tests" and args.action == "run" and isinstance(report.get("units"), dict):
+            # Preparation happens before the aggregate clock, so its cost is
+            # named here rather than left to the JSON record alone.
+            for name, step in (report.get("preparation") or {}).items():
+                wall = f" in {step['elapsed_seconds']:.1f}s" if "elapsed_seconds" in step else ""
+                print(f"Prepared {name}: {step['status']}{wall} {step.get('error', '')}".rstrip())
             for name, outcome in report["units"].items():
                 if outcome["status"] != "PASS":
                     print(f"{name}: {outcome['status']} {outcome.get('reason', outcome.get('error', ''))}".rstrip())

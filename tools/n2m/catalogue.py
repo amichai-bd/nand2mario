@@ -46,6 +46,9 @@ SKIP_DIRECTORIES = frozenset({".git", "workdir", "worktrees", "__pycache__", "no
 # `needs-cocotb` import cocotb and cannot run on the builder interpreter.
 COCOTB_PYTHON = ("workdir/builds/python-dv-env/.venv/Scripts/python.exe",
                  "workdir/builds/python-dv-env/.venv/bin/python")
+# The pinned Python-Markdown environment `tools/wiki/check.py` builds; units
+# labelled `needs-wiki-env` import it and cannot run on the builder interpreter.
+WIKI_CHECK = "tools/wiki/check.py"
 
 HEADER = ("# Catalogue of every runnable test unit: one entry per registry target and\n"
           "# per standalone test_*.py file. Levels are ordered, so selecting a level runs\n"
@@ -464,6 +467,69 @@ def cocotb_python(root):
     return None
 
 
+def wiki_check(root):
+    """Load `tools/wiki/check.py`, or None when it is absent.
+
+    That module owns where the pinned wiki environment lives and how it is
+    built. Both rules are read from there rather than repeated, so a changed
+    pin moves the check and the catalogue together.
+    """
+    import importlib.util
+    path = Path(root) / WIKI_CHECK
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("wiki_check", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def wiki_python(root):
+    """The pinned wiki interpreter, or None when that environment is unusable.
+
+    Reading `check.py` or the locks it hashes can fail on its own, for instance
+    with a missing `requirements.txt`. That is reported by the preparation record
+    and by the unit's skip reason rather than raised into the middle of a
+    selection, so one unrunnable unit never aborts the other 154.
+    """
+    try:
+        module = wiki_check(root)
+        interpreter = module.installed(root) if module is not None else None
+    except Exception:
+        return None
+    return str(interpreter) if interpreter else None
+
+
+def prepare_wiki_environment(root):
+    """Build the pinned wiki environment once, before the aggregate clock starts.
+
+    `test_site.py` imports the pinned Python-Markdown through `site.py`, so on a
+    host that has never built the environment the unit has nothing to run on.
+    Building it here makes the unit run for real rather than report a skip that
+    would let the selection pass without it. A build that cannot complete,
+    offline for example, is recorded with its error and the unit is then skipped
+    by name; the skip is the honest fallback, never the ordinary path.
+    """
+    started = time.monotonic()
+    try:
+        module = wiki_check(root)
+        if module is None:
+            return {"status": "UNAVAILABLE", "error": f"{WIKI_CHECK} is not present"}
+        interpreter = module.installed(root)
+        if interpreter:
+            return {"status": "PRESENT", "interpreter": str(interpreter)}
+        # Captured: a `--json` run must leave exactly one object on stdout.
+        interpreter = module.build(root, capture=True)
+    except Exception as error:
+        # Locating the environment can fail on its own, so the guard covers
+        # reading check.py and its locks as well as the build. Every failure
+        # reaches the record; none escapes into the selection.
+        return {"status": "UNAVAILABLE", "elapsed_seconds": round(time.monotonic() - started, 3),
+                "error": f"the pinned tools/wiki environment could not be prepared: {error}"}
+    return {"status": "BUILT", "elapsed_seconds": round(time.monotonic() - started, 3),
+            "interpreter": str(interpreter)}
+
+
 def unit_error(output):
     """Name the failing test rather than whatever the unit printed last.
 
@@ -489,6 +555,13 @@ def run_unit(root, path, entry):
         if python is None:
             return {"status": "SKIPPED", "reason": "cocotb-environment",
                     "error": "the pinned src/dv/python environment is not installed"}
+    elif "needs-wiki-env" in entry["labels"]:
+        python = wiki_python(root)
+        if python is None:
+            return {"status": "SKIPPED", "reason": "wiki-environment",
+                    "error": "the pinned tools/wiki environment is neither installed nor "
+                             "buildable here; see the run's preparation record, or build it "
+                             "with python tools/wiki/check.py"}
     command = unit_command(root, path, entry, python)
     started = time.monotonic()
     try:
@@ -604,10 +677,18 @@ def run_selection(root, model, path, tag, args, budget, provenance):
         message = unsupported_backend(Path(root), target, args.sim)
         if message:
             unsupported[target] = message
+    # A unit that needs the pinned wiki interpreter gets it built here, once,
+    # before the clock starts: installing a tool is preparation, not test work,
+    # and the unit must actually run rather than skip on a fresh checkout. The
+    # wall is recorded so the cost is visible and never hides inside the budget.
+    preparation = {}
+    if any("needs-wiki-env" in model["units"][name]["labels"] for name in chosen):
+        preparation["wiki-environment"] = prepare_wiki_environment(root)
     record = {"selector": selector, "level": args.level, "labels": list(args.label),
               "selected": len(chosen), "budget_seconds": budget, "broader": bool(args.broader),
               "catalogue": {"path": CATALOGUE, "sha256": file_hash(path)},
               "seed": args.seed, "simulator": args.sim, "units": {}, "failed": [], "skipped": [],
+              "preparation": preparation,
               "provenance": provenance or {}, "started": datetime.now(timezone.utc).isoformat()}
     started = time.monotonic()
     durations = {}
