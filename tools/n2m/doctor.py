@@ -73,8 +73,7 @@ def unlicensed_environment():
 def verilator(root, folder, directory):
     found, source = verilator_executable(directory, root)
     if not found:
-        raise RuntimeError("missing verilator; select its tool directory explicitly "
-                           f"({discovery_note(root)})")
+        raise RuntimeError(f"missing verilator; {discovery_note(root)}")
     tool = str(Path(found).resolve())
     env = unlicensed_environment()
     version = execute([tool, "--version"], folder, "version.log", env=env)

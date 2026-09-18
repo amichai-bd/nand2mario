@@ -104,8 +104,7 @@ class Simulator:
         self.info = {"backend": "verilator", "tools": {}, "discovery": []}
         found, source = verilator_executable(directory, root)
         if not found:
-            raise ToolError("missing verilator; select the Verilator tool directory explicitly "
-                            f"({discovery_note(root)})")
+            raise ToolError(f"missing verilator; {discovery_note(root)}")
         path = str(Path(found).resolve())
         result = self.run([path, "--version"])
         self.info["discovery"].append({"argv": [path, "--version"], "exit_code": result.returncode,

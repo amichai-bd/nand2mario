@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 import test_builder
-from n2m import verilator, verilator_install
+from n2m import doctor, verilator, verilator_install
 from n2m.cli import FPGA_HOST, QUESTA_HOST, TOOLS_HOST, VERILATOR_HOST, main
 from n2m.records import read_json
 from n2m.simulation import load_target
@@ -189,6 +189,61 @@ class PinnedInstallationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "offline"):
             verilator_install.install(self.root, self.build / "tools", item, offline=True,
                                       which=lambda name: "/usr/bin/" + name)
+
+    def test_zero_jobs_and_zero_timeout_are_refused_rather_than_defaulted(self):
+        """The guard covers what it claims to, on both sides of zero.
+
+        `jobs or os.cpu_count()` and `timeout or STEP_TIMEOUT` turn zero into a
+        working default, so a guard placed after either fold only ever catches
+        negatives. Both are refused by name before anything is cloned."""
+        item = verilator_install.pin(self.root)
+        for value in (0, -1):
+            with self.subTest(jobs=value), self.assertRaisesRegex(ValueError, "--jobs must be at least 1"):
+                self.install(item["commit"], jobs=value)
+            with self.subTest(timeout=value), \
+                    self.assertRaisesRegex(ValueError, "--timeout must be at least 1 second"):
+                self.install(item["commit"], timeout=value)
+        # Refused before the source is touched, so no partial tree is left behind.
+        self.assertFalse(verilator_install.prefix(self.root, item["version"]).exists())
+        self.assertFalse(verilator_install.source_root(self.root, item["version"]).exists())
+        # And the whole command reports the refusal rather than building on a default.
+        with patch("n2m.verilator_install.install",
+                   side_effect=verilator_install.install), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["tools", "verilator", "--timeout", "0", "--tag", "pin-zero", "--json"],
+                        self.root)
+        self.assertEqual(code, 1)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn("--timeout must be at least 1 second", report["error"])
+
+    def test_a_missing_verilator_states_its_remedy_once(self):
+        """One remedy, spelled `python3`, with no clause repeated by the caller.
+
+        Both entry points prefix the shared note, so neither may restate either
+        half of it: the note already names installing the pin and selecting a
+        directory."""
+        note = verilator_install.discovery_note(self.root)
+        self.assertIn("python3 tools/build.py tools verilator", note)
+        for message in (self.missing_verilator_message(doctor.verilator),
+                        self.missing_verilator_message(self.discover_through_simulator)):
+            self.assertIn("missing verilator", message)
+            self.assertEqual(message.count("tool directory explicitly"), 1)
+            self.assertEqual(message.count("python3 tools/build.py tools verilator"), 1)
+            # `python3` only: the SPEC's Linux examples all spell it that way.
+            self.assertNotIn("python tools/build.py", message)
+
+    def discover_through_simulator(self, root, folder, directory):
+        del folder
+        Simulator("verilator", verilator_bin=directory, root=root)
+
+    def missing_verilator_message(self, call):
+        """The failure text one entry point produces with no Verilator anywhere."""
+        with patch("n2m.simulator.installed_verilator", return_value=None), \
+                patch("shutil.which", return_value=None), \
+                self.assertRaises((RuntimeError, ToolError)) as raised:
+            call(self.root, self.build, None)
+        return str(raised.exception)
 
     def test_command_reports_the_discovered_pin(self):
         item = verilator_install.pin(self.root)
