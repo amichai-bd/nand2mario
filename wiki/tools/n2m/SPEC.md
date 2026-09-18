@@ -137,7 +137,10 @@ it is exactly 32 hexadecimal digits and nonzero. They also hide
 `--endpoint-restarted`. The doctor asks
 for scope first: simulation scope then
 offers either backend, while the full hardware environment fixes Questa and
-Windows because Questa runtime execution and JTAG discovery are Windows-owned.
+Windows because its JTAG discovery is Windows-owned. A simulation-scope Questa
+plan names the current host: its
+[runtime license](#questa-runtime-license), not an operating system, decides
+whether the run proceeds.
 `--json` is intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
