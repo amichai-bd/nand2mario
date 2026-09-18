@@ -578,9 +578,10 @@ class UnitExecution(unittest.TestCase):
 
     def test_a_wiki_unit_runs_on_the_pinned_environment_or_is_skipped_by_name(self):
         self.write("import unittest\n")
-        # No tools/wiki/check.py in this root: nothing to locate the environment with.
+        # No tools/wiki/check.py in this root: a tracked file is missing, so this
+        # is a broken checkout and it fails rather than skipping.
         outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
-        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
+        self.assertEqual(outcome["status"], "FAIL")
         self.assertIn("tools/wiki/check.py", outcome["error"])
         shutil.copytree(ROOT / "tools/wiki", self.root / "tools/wiki",
                         ignore=shutil.ignore_patterns("__pycache__", "assets", "board_frames"))
@@ -606,6 +607,8 @@ class UnitExecution(unittest.TestCase):
 
 # A check.py double: it answers the two questions the catalogue asks and records
 # every build, so the contract is exercised without a venv or the network.
+# `installed` reads the lock file first, exactly as the real one hashes it, so
+# removing `requirements.txt` reproduces the broken-checkout case for real.
 STUB_CHECK = '''\
 from pathlib import Path
 
@@ -617,6 +620,7 @@ def interpreter(root):
 
 
 def installed(root=ROOT):
+    (Path(root) / "tools/wiki/requirements.txt").read_text(encoding="utf-8")
     found = interpreter(root)
     return found if found.is_file() else None
 
@@ -664,16 +668,23 @@ class WikiEnvironmentPreparation(unittest.TestCase):
         path = self.root / "tools/wiki/check.py"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(STUB_CHECK, encoding="utf-8")
+        self.lock().write_text("Markdown==3.10.3\n", encoding="utf-8")
+
+    def lock(self):
+        return self.root / "tools/wiki/requirements.txt"
 
     def builds(self):
         log = self.root / "build-calls.log"
         return log.read_text(encoding="utf-8").count("call") if log.is_file() else 0
 
-    def test_preparation_without_check_py_reports_it_and_builds_nothing(self):
+    def test_preparation_without_check_py_reports_a_broken_checkout(self):
+        """A tracked file that is gone is this repository's defect, not the host's."""
         record = module.prepare_wiki_environment(self.root)
-        self.assertEqual(record["status"], "UNAVAILABLE")
+        self.assertEqual(record["status"], "BROKEN")
         self.assertIn("tools/wiki/check.py", record["error"])
-        self.assertIsNone(module.wiki_python(self.root))
+        self.assertIn("broken checkout", record["error"])
+        with self.assertRaises(module.WikiEnvironmentDefect):
+            module.wiki_python(self.root)
 
     def test_a_missing_environment_is_built_once_so_the_unit_runs_for_real(self):
         self.install_stub()
@@ -692,37 +703,97 @@ class WikiEnvironmentPreparation(unittest.TestCase):
         self.assertEqual(command[0], record["interpreter"])
 
     def test_a_build_that_cannot_complete_is_reported_and_the_unit_is_skipped(self):
+        """The one host condition that degrades: the lock is there, the network is not."""
         self.install_stub()
         (self.root / "offline").write_text("", encoding="utf-8")
         record = module.prepare_wiki_environment(self.root)
         self.assertEqual(record["status"], "UNAVAILABLE")
-        self.assertIn("could not be prepared", record["error"])
+        self.assertIn("could not be built here", record["error"])
         self.assertIn("no network", record["error"])
         self.assertEqual(self.builds(), 1)
         outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
         self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
 
-    def test_a_check_py_that_cannot_be_read_is_recorded_not_raised(self):
-        """Locating the environment can fail too; that belongs in the record."""
+    def test_a_missing_lock_file_is_broken_not_unavailable_and_fails_the_unit(self):
+        """The two meanings are separated here: a checkout the host cannot fix.
+
+        An offline host gets a named skip because building is the only thing
+        missing. A lock file that is gone is a tracked file that is gone, which
+        no host can supply, so it fails rather than degrading."""
+        self.install_stub()
+        self.lock().unlink()
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "BROKEN")
+        self.assertIn("could not be located", record["error"])
+        self.assertIn("requirements.txt", record["error"])
+        self.assertEqual(self.builds(), 0)          # nothing is built over a broken checkout
+        with self.assertRaises(module.WikiEnvironmentDefect):
+            module.wiki_python(self.root)
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual(outcome["status"], "FAIL")
+        self.assertNotIn("reason", outcome)         # never dressed as a skip
+        self.assertIn("requirements.txt", outcome["error"])
+
+    def test_a_check_py_that_cannot_be_read_is_broken_not_unavailable(self):
+        """A check.py that raises on import is the same class of defect."""
         path = self.root / "tools/wiki/check.py"
         path.parent.mkdir(parents=True, exist_ok=True)
-        # `installed` raises rather than returning None: a missing lock file is
-        # the real case, and it used to abort the whole selection.
-        path.write_text("def installed(root=None):\n"
-                        "    raise FileNotFoundError(2, 'No such file', 'requirements.txt')\n"
-                        "def build(root=None, *, browser=False, capture=False):\n"
-                        "    raise AssertionError('must not be reached')\n", encoding="utf-8")
-        record = module.prepare_wiki_environment(self.root)
-        self.assertEqual(record["status"], "UNAVAILABLE")
-        self.assertIn("could not be prepared", record["error"])
-        self.assertIn("requirements.txt", record["error"])
-        self.assertIsNone(module.wiki_python(self.root))
-        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
-        self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "wiki-environment"))
-        # A check.py that raises on import is the same class of problem.
         path.write_text("raise RuntimeError('broken check')\n", encoding="utf-8")
-        self.assertIn("broken check", module.prepare_wiki_environment(self.root)["error"])
-        self.assertIsNone(module.wiki_python(self.root))
+        record = module.prepare_wiki_environment(self.root)
+        self.assertEqual(record["status"], "BROKEN")
+        self.assertIn("broken check", record["error"])
+        with self.assertRaises(module.WikiEnvironmentDefect):
+            module.wiki_python(self.root)
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-wiki-env"]})
+        self.assertEqual(outcome["status"], "FAIL")
+        self.assertNotIn("reason", outcome)
+
+    def narrowed_selection(self, unit="suite/test_one.py"):
+        """A catalogue holding exactly one `needs-wiki-env` unit, as `--label` gives."""
+        entry = {"kind": "unit", "level": 0, "labels": ["needs-wiki-env"],
+                 "duration_seconds": None}
+        selection = {"version": 1,
+                     "labels": {"needs-wiki-env": "Imports the pinned Python-Markdown."},
+                     "units": {unit: entry}, "not_runnable": {}}
+        path = self.root / module.CATALOGUE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(module.format_document(selection), encoding="utf-8")
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
+                                 "questa_bin": None, "intel_sim_lib": None, "sim": "verilator",
+                                 "level": 0, "label": ["needs-wiki-env"], "broader": False})()
+        return selection, path, args
+
+    def write_unit(self, body="import unittest\n"):
+        suite = self.root / "suite"
+        suite.mkdir(exist_ok=True)
+        (suite / "test_one.py").write_text(body, encoding="utf-8")
+
+    def test_a_narrowed_selection_fails_on_a_broken_checkout_and_skips_when_offline(self):
+        """The green-without-running path is closed, and only that path.
+
+        Both halves are asserted on the same selection, which is the one the
+        acceptance criterion names: `--level 0 --label needs-wiki-env`. Neither
+        verdict depends on any other unit being selected."""
+        self.install_stub()
+        self.write_unit()
+        selection, path, args = self.narrowed_selection()
+        # Offline, lock present: the owner-approved named skip, and it passes.
+        (self.root / "offline").write_text("", encoding="utf-8")
+        record = module.run_selection(self.root, selection, path, "tag", args, 300, {})
+        self.assertEqual(record["status"], "PASS")
+        self.assertEqual((record["failed"], record["skipped"]), ([], ["suite/test_one.py"]))
+        self.assertEqual(record["preparation"]["wiki-environment"]["status"], "UNAVAILABLE")
+        self.assertEqual(record["units"]["suite/test_one.py"]["reason"], "wiki-environment")
+        # Lock removed: the same selection now fails and names the broken checkout.
+        self.lock().unlink()
+        record = module.run_selection(self.root, selection, path, "tag", args, 300, {})
+        self.assertEqual(record["status"], "FAIL")
+        self.assertEqual((record["failed"], record["skipped"]), (["suite/test_one.py"], []))
+        self.assertEqual(record["preparation"]["wiki-environment"]["status"], "BROKEN")
+        self.assertIn("broken checkout", record["preparation"]["wiki-environment"]["error"])
+        self.assertIn("requirements.txt", record["units"]["suite/test_one.py"]["error"])
+        # No wall is written for a unit that never ran.
+        self.assertNotIn("elapsed_seconds", record["units"]["suite/test_one.py"])
 
     def test_a_broken_dependency_in_a_built_environment_fails_and_never_skips(self):
         """The property level 0 turns on: once the environment exists, a genuine
@@ -737,6 +808,9 @@ class WikiEnvironmentPreparation(unittest.TestCase):
         (suite / "test_one.py").write_text(
             "import unittest\nimport n2m_absent_pinned_package\n", encoding="utf-8")
         self.assertEqual(module.prepare_wiki_environment(self.root)["status"], "PRESENT")
+        # The interpreter is there, so the skip branch is not even reachable:
+        # whatever run_unit reports, it cannot be the absent-environment skip.
+        self.assertEqual(module.wiki_python(self.root), sys.executable)
         entry = {"kind": "unit", "level": 0, "labels": ["needs-wiki-env"],
                  "duration_seconds": None}
         outcome = module.run_unit(self.root, "suite/test_one.py", entry)
@@ -759,6 +833,33 @@ class WikiEnvironmentPreparation(unittest.TestCase):
         self.assertEqual(record["status"], "FAIL")
         self.assertEqual((record["failed"], record["skipped"]), (["suite/test_one.py"], []))
         self.assertEqual(record["preparation"]["wiki-environment"]["status"], "PRESENT")
+
+    def test_the_only_state_that_skips_a_wiki_unit_is_a_host_that_cannot_build_it(self):
+        """Pin the whole skip surface, not one case of it.
+
+        Four states make the environment unusable. Exactly one of them is a host
+        condition the owner approved degrading, and it is the only one allowed to
+        skip. A refactor that widens the skip back over any other row fails here
+        with `SKIPPED != FAIL`."""
+        self.write_unit()
+        entry = {"labels": ["needs-wiki-env"]}
+        path = self.root / "tools/wiki/check.py"
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        def outcome():
+            return module.run_unit(self.root, "suite/test_one.py", entry)
+
+        self.assertEqual(outcome()["status"], "FAIL")                    # no check.py
+        path.write_text("raise RuntimeError('broken check')\n", encoding="utf-8")
+        self.assertEqual(outcome()["status"], "FAIL")                    # check.py raises
+        self.install_stub()
+        self.lock().unlink()
+        self.assertEqual(outcome()["status"], "FAIL")                    # lock file gone
+        self.install_stub()
+        (self.root / "offline").write_text("", encoding="utf-8")
+        module.prepare_wiki_environment(self.root)
+        skipped = outcome()                                              # cannot build here
+        self.assertEqual((skipped["status"], skipped["reason"]), ("SKIPPED", "wiki-environment"))
 
     def test_a_selection_prepares_the_environment_only_when_a_unit_needs_it(self):
         args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,

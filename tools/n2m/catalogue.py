@@ -484,19 +484,46 @@ def wiki_check(root):
     return module
 
 
-def wiki_python(root):
-    """The pinned wiki interpreter, or None when that environment is unusable.
+class WikiEnvironmentDefect(Exception):
+    """The checkout cannot say where the pinned wiki environment belongs.
 
-    Reading `check.py` or the locks it hashes can fail on its own, for instance
-    with a missing `requirements.txt`. That is reported by the preparation record
-    and by the unit's skip reason rather than raised into the middle of a
-    selection, so one unrunnable unit never aborts the other 154.
+    This is a repository defect, not a host condition: `check.py` is missing or
+    unreadable, or a lock file it hashes is gone. It is kept apart from a host
+    that simply has not built the environment, because that one is a named skip
+    and this one is a failure.
+    """
+
+
+def wiki_environment(root):
+    """`(check.py module, installed interpreter)` for the pinned wiki environment.
+
+    The interpreter is None when this host has not built the environment, which
+    is an ordinary state a build can fix. A checkout that cannot answer the
+    question at all raises `WikiEnvironmentDefect` instead, so the two never
+    reach a caller as the same value.
     """
     try:
         module = wiki_check(root)
-        interpreter = module.installed(root) if module is not None else None
-    except Exception:
-        return None
+    except Exception as error:
+        raise WikiEnvironmentDefect(f"{WIKI_CHECK} could not be read: {error}") from error
+    if module is None:
+        raise WikiEnvironmentDefect(f"{WIKI_CHECK} is not present")
+    try:
+        return module, module.installed(root)
+    except Exception as error:
+        # `installed` hashes the lock files, so a missing or unreadable
+        # requirements file lands here rather than returning None.
+        raise WikiEnvironmentDefect(
+            f"the pinned tools/wiki environment could not be located: {error}") from error
+
+
+def wiki_python(root):
+    """The pinned wiki interpreter, or None when this host has not built it.
+
+    Raises `WikiEnvironmentDefect` when the checkout itself is broken, so that
+    cause can never be reported as a skipped unit.
+    """
+    _, interpreter = wiki_environment(root)
     return str(interpreter) if interpreter else None
 
 
@@ -506,26 +533,28 @@ def prepare_wiki_environment(root):
     `test_site.py` imports the pinned Python-Markdown through `site.py`, so on a
     host that has never built the environment the unit has nothing to run on.
     Building it here makes the unit run for real rather than report a skip that
-    would let the selection pass without it. A build that cannot complete,
-    offline for example, is recorded with its error and the unit is then skipped
-    by name; the skip is the honest fallback, never the ordinary path.
+    would let the selection pass without it.
+
+    Three outcomes are distinguished because they deserve different treatment:
+    `PRESENT` or `BUILT` when the unit can run, `UNAVAILABLE` when the build
+    itself cannot complete on this host, offline for example, and `BROKEN` when
+    the checkout cannot locate the environment at all. Only `UNAVAILABLE` is a
+    host condition, and only it degrades to a named skip.
     """
     started = time.monotonic()
     try:
-        module = wiki_check(root)
-        if module is None:
-            return {"status": "UNAVAILABLE", "error": f"{WIKI_CHECK} is not present"}
-        interpreter = module.installed(root)
-        if interpreter:
-            return {"status": "PRESENT", "interpreter": str(interpreter)}
+        module, interpreter = wiki_environment(root)
+    except WikiEnvironmentDefect as error:
+        return {"status": "BROKEN", "elapsed_seconds": round(time.monotonic() - started, 3),
+                "error": f"broken checkout: {error}"}
+    if interpreter:
+        return {"status": "PRESENT", "interpreter": str(interpreter)}
+    try:
         # Captured: a `--json` run must leave exactly one object on stdout.
         interpreter = module.build(root, capture=True)
     except Exception as error:
-        # Locating the environment can fail on its own, so the guard covers
-        # reading check.py and its locks as well as the build. Every failure
-        # reaches the record; none escapes into the selection.
         return {"status": "UNAVAILABLE", "elapsed_seconds": round(time.monotonic() - started, 3),
-                "error": f"the pinned tools/wiki environment could not be prepared: {error}"}
+                "error": f"the pinned tools/wiki environment could not be built here: {error}"}
     return {"status": "BUILT", "elapsed_seconds": round(time.monotonic() - started, 3),
             "interpreter": str(interpreter)}
 
@@ -556,12 +585,18 @@ def run_unit(root, path, entry):
             return {"status": "SKIPPED", "reason": "cocotb-environment",
                     "error": "the pinned src/dv/python environment is not installed"}
     elif "needs-wiki-env" in entry["labels"]:
-        python = wiki_python(root)
+        try:
+            python = wiki_python(root)
+        except WikiEnvironmentDefect as error:
+            # A broken checkout is this repository's defect, so it fails the
+            # unit. Skipping here is what would let a selection narrowed to
+            # this label report success while the unit never ran.
+            return {"status": "FAIL", "error": f"broken checkout: {error}"}
         if python is None:
             return {"status": "SKIPPED", "reason": "wiki-environment",
-                    "error": "the pinned tools/wiki environment is neither installed nor "
-                             "buildable here; see the run's preparation record, or build it "
-                             "with python tools/wiki/check.py"}
+                    "error": "the pinned tools/wiki environment is not installed here and could "
+                             "not be built; see the run's preparation record, or build it "
+                             "with python3 tools/wiki/check.py"}
     command = unit_command(root, path, entry, python)
     started = time.monotonic()
     try:

@@ -450,15 +450,15 @@ installs [`requirements.txt`](../../../tools/wiki/requirements.txt) with
 `--require-hashes`, which reaches the network unless pip can satisfy the pin from
 its own cache; that is the one command in a selection which does. The result
 is recorded as `preparation.wiki-environment` with `PRESENT`, `BUILT` and its
-wall, or `UNAVAILABLE` and the reason the build could not complete, and the text
-summary names it. Only `UNAVAILABLE` leaves the unit skipped with reason
-`wiki-environment`; a failure inside a built environment is a unit failure, never a
-skip. `UNAVAILABLE` covers both a host that cannot reach the network and a checkout
-whose lock file is missing or unreadable. The second stays loud only because
-[`test_check.py`](../../../tools/wiki/test_check.py) is itself a level-0 `wiki` unit
-that reads the same files and fails on the same input. Anything that relabels, moves
-or narrows that unit removes the only failure a broken checkout produces in a
-selection narrowed to `needs-wiki-env`, which would then pass with a named skip.
+wall, `UNAVAILABLE` and the reason the build could not complete on this host, or
+`BROKEN` and the reason the checkout could not say where the environment belongs,
+and the text summary names it. Only `UNAVAILABLE` leaves the unit skipped with
+reason `wiki-environment`; a failure inside a built environment is a unit
+failure, never a skip. `BROKEN` is a repository defect rather than a host
+condition: [`check.py`](../../../tools/wiki/check.py) missing or unreadable, or a
+lock file it hashes gone. No host can supply a tracked file that is absent, so
+the unit fails and the selection fails with it, including a selection narrowed to
+`needs-wiki-env` alone.
 Installing an interpreter is preparation, not test work, so its wall is reported
 beside the aggregate rather than inside the budget. The
 environment's location and build rules both live in
@@ -1714,12 +1714,15 @@ transcript is written when its step exits, so a multi-minute `make` shows nothin
 until it finishes. The shallow clone of an annotated tag reports
 `warning: refs/tags/<tag> <sha> is not a commit!`: git is describing the tag
 object it fetched, and the `rev-parse HEAD` check that follows is what the pin is
-actually held to. A missing prerequisite is named rather than guessed. The installed `verilator --version`
-must report the pinned release. The command then writes `installation.json`
-beside the prefix: the pin, the resolved commit, the banner, the installed tool
-hashes, the resolved build tools with their hashes, the host, the interpreter,
-the job count and the elapsed build. `--jobs` sets the parallel build, `--timeout`
-the per-step bound and `--offline` builds only from an already fetched source.
+actually held to. A missing prerequisite is named rather than guessed. The
+installed `verilator --version` must report the pinned release. The command then
+writes `installation.json` beside the prefix: the pin, the resolved commit, the
+banner, the installed tool hashes, the resolved build tools with their hashes,
+the host, the interpreter, the job count and the elapsed build. `--jobs` sets
+the parallel build, `--timeout` the per-step bound and `--offline` builds only
+from an already fetched source. Each of the first two must be at least 1: zero
+is refused by name before anything is cloned rather than folded into the host
+CPU count or the default bound.
 Running it again with that record in place reuses the installation and builds
 nothing. The clone is kept at `v<version>.source`, about 1.3 GB, which is what
 lets `--offline` rebuild without the network; no build tag owns it and no command
