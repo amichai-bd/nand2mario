@@ -284,18 +284,18 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
-  menu-delayed: {kind: sim, level: 1, labels: [menu-delayed, system], duration_seconds: 128.83}
-  menu-delayed-worst: {kind: sim, level: 1, labels: [menu-delayed-worst, system], duration_seconds: 181.63}
-  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 106.71}
-  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 94.58}
-  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 52.47}
-  menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 141.70}
-  menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 98.03}
-  menu-scroll: {kind: sim, level: 1, labels: [menu-scroll, system], duration_seconds: null}
-  menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 55.92}
-  menu-select-last: {kind: sim, level: 1, labels: [menu-scroll, system], duration_seconds: null}
-  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 103.85}
-  menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 129.19}
+  menu-delayed: {kind: sim, level: 1, labels: [menu-delayed, system], duration_seconds: 170.20}
+  menu-delayed-worst: {kind: sim, level: 1, labels: [menu-delayed-worst, system], duration_seconds: 223.47}
+  menu-exit: {kind: sim, level: 1, labels: [system], duration_seconds: 124.75}
+  menu-frame: {kind: sim, level: 1, labels: [menu, system], duration_seconds: 82.90}
+  menu-frame-fault: {kind: sim, level: 2, labels: [fault, menu, system], duration_seconds: 44.81}
+  menu-phase: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 138.85}
+  menu-refused: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 100.72}
+  menu-scroll: {kind: sim, level: 1, labels: [menu-scroll, system], duration_seconds: 106.57}
+  menu-select: {kind: sim, level: 1, labels: [menu-library, system], duration_seconds: 58.72}
+  menu-select-last: {kind: sim, level: 1, labels: [menu-scroll, system], duration_seconds: 78.52}
+  menu-select-mbc1: {kind: sim, level: 1, labels: [mbc1, system], duration_seconds: 132.67}
+  menu-splash: {kind: sim, level: 1, labels: [menu-animation, system], duration_seconds: 132.65}
   mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
   mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 113.39}
   mooneye-reg-f: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: 82.17}

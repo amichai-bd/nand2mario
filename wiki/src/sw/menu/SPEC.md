@@ -498,48 +498,64 @@ measured from the new epoch's first poll rather than across the swap.
 
 | Frame | M-cycles | Share of VBlank |
 |---|---|---|
-| Idle, or a sampled press that changes nothing | 278-292 | 24-26% |
-| Cursor move and the [footer](#the-information-footer)'s upper row | 633-861 | 56-76% |
-| The footer's lower row | 523-934 | 46-82% |
-| Nudge phase change: one object byte and the eight star cells | 457 | 40% |
+| Idle, or a sampled press that changes nothing | 291-305 | 26-27% |
+| Cursor move and the [footer](#the-information-footer)'s upper row | 694-947 | 61-83% |
+| Cursor move across the [scroll](#the-scroll-ramp) boundary: the ramp's first step with the upper row | 753-957 | 66-84% |
+| Scroll ramp step alone: SCY and the pointer's Y | 344-346 | 30% |
+| The footer's lower row | 536-941 | 47-83% |
+| Nudge phase change: one object byte, the eight star cells and the [press-A badge](#the-press-a-pulse) | 500 | 44% |
 | Boot splash fade frame, one BGP write | 166-196 | 15-17% |
 | Boot splash slide frame drawing one wrapped row | 361-376 | 32-33% |
-| Boot splash slide frame after the map is whole | 199-260 | 17-23% |
-| Skipped splash frame, two wrapped rows | 599-663 | 53-58% |
-| Refused select with a 20-character status redraw | 586 | 51% |
+| Boot splash slide frame after the map is whole | 199-270 | 17-24% |
+| Skipped splash frame, two wrapped rows | 599-673 | 53-59% |
+| Refused select with a 20-character status redraw | 599 | 53% |
 | Delayed catalogue: the not-ready boot frame, idle | 233 | 20% |
 | Delayed catalogue: the bank commit and the plate's status redraw | 511 | 45% |
 | Delayed catalogue: one title row | 476-1124 | 42-99% |
-| Delayed catalogue: the first half of a row and the nudge phase change | 622-946 | 55-83% |
+| Delayed catalogue: the first half of a row and the nudge phase change | 631-955 | 55-84% |
 | Delayed catalogue: the second half of that row | 443-780 | 39-68% |
 
 The list rows come from `menu-frame`, the nudge from `menu-phase`, the refused
-select from `menu-refused`, the splash rows from `menu-splash` and
+select from `menu-refused`, the ramp from `menu-scroll` and
+`menu-select-last`, the splash rows from `menu-splash` and
 `menu-frame-fault` and the delayed rows from `menu-delayed` and
 `menu-delayed-worst`, each measured on
-the image this page specifies. The two footer rows are the classes this image
-adds, measured on the same targets: the upper row is cheapest on an empty slot
+the image this page specifies. The footer's two rows are measured on the same
+targets: the upper row is cheapest on an empty slot
 and dearest on a profile word with a three-digit size, and the lower row is
 cheapest with no tagline and dearest with eighteen characters of one. The first
-list frame is no longer a class of its own: the bottom plate and both footer
+list frame is not a class of its own: the bottom plate and both footer
 rows of the boot cursor's slot are built into the window map with the LCD off,
 so that frame writes nothing and measures the idle.
-Every settled frame now pays the footer's own early-out, which is why the idle
-frame measures 278-292 rather than the 238 it did before the footer, and the
+Every settled frame pays the footer's own early-out and the
+[scroll ramp](#the-scroll-ramp)'s thirteen-cycle compare, which is why the idle
+frame measures 291-305 rather than the 238 it did before the footer, and the
 star twinkle and the status redraw each cost the seven to twelve M-cycles that
 keep a footer row out of their frame.
 
+The ramp and the pulse are the classes this image adds. A move onto slot 15
+carries the ramp's first step beside the upper row, about 60 M-cycles for the
+SCY write and the pointer's Y, and the badge that every upper row now writes,
+about 26, so the move onto `LAST SLOT` measures 957 and the move back off it,
+onto an empty slot, 753. The three steps that follow a move are 344-346, an
+idle frame plus the step. The nudge frame grew from 457 to 500 for the badge's
+own cell and the test that keeps it off the delayed path.
+
 A delayed title row is still the peak, 1124, 16 M-cycles inside the budget and
-unchanged by the footer, and the not-ready idle frame is still the floor at
+unchanged by the footer, the [scroll ramp](#the-scroll-ramp) and the
+[pulse](#the-press-a-pulse), and the not-ready idle frame is still the floor at
 233. The peak is the sixteen letter cells of
 `SIXTEEN CHAR ROW`, the fixture's widest title, drawn one row to the frame. It
 is the one frame with no room left, so anything added to the title path has to
-be measured here first; the [footer](#the-information-footer) is drawn only
+be measured here first; the [footer](#the-information-footer) is drawn and the
+ramp stepped only
 once the list is whole, from the branch the catalogue path already takes, so
-it adds nothing to that frame. The
-peak of every settled path is lower: the [footer](#the-information-footer)'s
-lower row costs at most 934, 206 M-cycles inside the budget, and the skipped
-splash frame that used to hold that place costs 663. The skip frame is
+neither adds anything to that frame. The pulse's only cost on this path is the
+test that keeps it off, on the frame that changes the phase. The
+peak of every settled path is lower: the move onto slot 15 costs 957, 183
+M-cycles inside the budget, the [footer](#the-information-footer)'s
+lower row at most 941, and the skipped
+splash frame that used to hold that place costs 673. The skip frame is
 `menu-frame-fault`'s own second frame, whose skip settles the list, turns the
 window on and carries the LCDC write
 too. The cap on the skip is what holds that
@@ -564,12 +580,13 @@ Those row frames are consecutive, so one of them always falls on a multiple of
 the eight star cells are rewritten: 194 M-cycles, the 432 of a nudge frame
 against the 238 of an idle one. A whole row plus that is past the budget, so
 that frame draws the first half of its row and the next frame the other half,
-as the [behavior](#behavior) states. `menu-delayed` measured the pair at 616
+as the [behavior](#behavior) states. `menu-delayed` measured the pair at 631
 and 443 on a blank row. Which row is split follows from when the SDRAM answers,
 so `menu-delayed-worst` splits the widest title, the most expensive row the
-path can carry: 940 for the half that also twinkles and 780 for the other,
+path can carry: 955 for the half that also twinkles and 780 for the other,
 against the 1124 the whole row costs. The split is what holds the margin; the
-sum would be 1318.
+sum would be 1333. The twinkling half carries the fifteen M-cycles that keep
+the [press-A badge](#the-press-a-pulse) off a list that has no footer yet.
 
 No flow boots the menu with the bit clear today. The boot copier holds
 `sdram_ready` low only in `WAIT_SDRAM`, `CHECK` and `COPY` and raises the menu
