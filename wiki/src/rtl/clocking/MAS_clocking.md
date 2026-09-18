@@ -33,8 +33,11 @@ public-boundary oracle. Assertion logic is excluded from the FPGA netlist; every
 named chain endpoint and asynchronous clear pin remains subject to the existing
 fit/timing audit without a topology waiver.
 
-The [FPGA wrapper](../../../../src/fpga/de10_lite/n2m_clocking.sv) contains the
-two parallel generated ALTPLL instances. Both take the same board reference;
+Each board has an FPGA wrapper holding its two parallel generated PLL instances
+and presenting the same interface to `n2m_reset_control`: the
+[MAX 10 wrapper](../../../../src/fpga/de10_lite/n2m_clocking.sv) instantiates
+ALTPLL, the [Cyclone V wrapper](../../../../src/fpga/de10_nano/n2m_clocking_cyclonev.sv)
+the Altera PLL IP. In both, the two PLLs take the same board reference;
 bootstrap state runs on that reference and cannot depend on a stopped PLL output. Vendor files are generated under the build attempt.
 The [portable test plan](../../../../src/dv/clocking/README.md) independently
 checks control behavior; it does not establish vendor PLL behavior. The shared

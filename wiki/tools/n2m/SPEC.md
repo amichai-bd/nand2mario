@@ -1905,6 +1905,8 @@ python3 tools/build.py fpga build builder-smoke --quartus-bin <directory> --tag 
 python3 tools/build.py fpga build builder-invalid --quartus-bin <directory> --tag fpga-invalid --json
 python3 tools/build.py fpga build nano-smoke --quartus-bin <directory> --tag nano-smoke --json
 python3 tools/build.py fpga build nano-invalid --quartus-bin <directory> --tag nano-invalid --json
+python3 tools/build.py fpga build nano-clocking --quartus-bin <directory> --tag nano-clocking --json
+python3 tools/build.py fpga build nano-clocking-invalid --quartus-bin <directory> --tag nano-clocking-invalid --json
 ```
 
 `--quartus-bin` names the directory holding `quartus_sh`, `quartus_map`,
@@ -1918,9 +1920,14 @@ The first command compiles, fits, assembles, and checks the owned MAX 10 fixture
 [flow proof](../../src/de10-nano-board.md#targets) fits a counter on that
 board's LEDs, and it places a drive strength and a slew rate on each LED pin
 because Cyclone V reports an output pin without both as an incomplete I/O
-assignment. It has no PLL; that replacement is separate work.
-The invalid target deliberately supplies a negative clock period and must FAIL
-with exit 1; it never becomes a passing build. No command programs the board,
+assignment. It has no PLL.
+`nano-clocking` and `nano-clocking-invalid` are the DE10-Nano's clocking pair:
+the [clocking proof](../../src/de10-nano-board.md#targets) fits the Cyclone V
+wrapper's two generated Altera PLL instances with the shared reset controller and
+timebase on virtual ports, and the invalid target names a MAX 10 ALTPLL clock as
+a checked endpoint that no Cyclone V netlist contains.
+Each invalid target must FAIL with exit 1, naming the missing or wrong endpoint;
+neither ever becomes a passing build. No command programs the board,
 opens UART, or proves physical operation. Design-specific PLL/frame/fit evidence
 belongs to the [clocking](../../src/rtl/clocking/MAS_clocking.md) and
 [VGA](../../src/rtl/vga/MAS_vga.md) owners, using the
@@ -2787,14 +2794,32 @@ its options, regression levels, wall-budget semantics and trace checks.
 
 ## Generated clocking inputs
 
-An FPGA target may declare the bounded `pll` definition for `n2m_pixel_pll`:
-input period 20000 ps and output multiplier/divisor 63/125. The generator owns
-50% duty, zero phase, normal operation and CLK0 compensation. These settings
-implement the [clock contract](../../src/clocks-resets-cdc.md), which owns the
-selected rates. The `system_divide: 2` field additionally generates
-`n2m_system_pll` from the same reference, divide-by-two with LOW bandwidth.
-Each instance has its own generated HDL and command log. Other ratios are
-rejected. Supported proof tops retain the exact `u_clocking` wrapper hierarchy;
+An FPGA target may declare the bounded `pll` definition: input period 20000 ps
+and output multiplier/divisor 63/125, with `system_divide: 2` adding a second
+instance that divides the same reference by two. These settings implement the
+[clock contract](../../src/clocks-resets-cdc.md), which owns the selected rates.
+Other ratios are rejected.
+
+Generation and every clocking check are per device family, because the vendor IP,
+its instance hierarchy, its fit-report shape and its netlist primitives all
+differ. [`fpga_clocking.py`](../../../tools/n2m/fpga_clocking.py) maps the board's
+declared `family` to the one module that owns them:
+[`fpga_pll.py`](../../../tools/n2m/fpga_pll.py) for MAX 10 ALTPLL and
+[`fpga_pll_cyclonev.py`](../../../tools/n2m/fpga_pll_cyclonev.py) for the
+Cyclone V Altera PLL. A target that declares generated clocks on a family with no
+implementation is refused when its definition resolves, before any tool launches;
+there is no path that builds such a target with the clocking checks skipped. Each
+implementation also declares the proof tops whose hierarchy its checks recognize,
+so a target cannot point a family's checks at a top they do not describe. The
+reset chain audit and its report inventory are the family-neutral part, because
+the chain register and pin names come from the shared `n2m_reset_control`.
+
+### MAX 10 ALTPLL
+
+The generator owns 50% duty, zero phase, normal operation and CLK0
+compensation. `system_divide: 2` generates `n2m_system_pll` divide-by-two with
+LOW bandwidth. Each instance has its own generated HDL and command log.
+Supported proof tops retain the exact `u_clocking` wrapper hierarchy;
 the v0.5 adapter scopes bridge path checks under `u_system`. Other hierarchies
 need an explicit checker extension.
 
@@ -2820,12 +2845,67 @@ retried attempt. A reported failure, a different exit code, a timeout or a
 sixth silent exit fails the request. A later explicit build
 request creates a separate attempt.
 
+### Cyclone V Altera PLL
+
+ALTPLL does not serve Cyclone V: `qmegawiz` refuses the family and names MAX 10
+as the only one it supports. The
+[Altera PLL IP](https://www.intel.com/content/www/us/en/docs/programmable/683359/current/pll-intel-fpga-ip-core.html)
+takes its place. `ip-generate` from the explicit Quartus directory produces one
+wrapper and one QIP per instance, named `n2m_pixel_pll_cyclonev` and
+`n2m_system_pll_cyclonev`, for the target's own device and family. The request
+states the contract's frequencies (50 MHz reference, 25 MHz system, 25.2 MHz
+pixel) with one output clock, `locked` enabled and `direct` operation; the IP
+solves the physical counters. Its executable, the IP's component/rules/callback
+Tcl, the `altera_pll` primitive and the Cyclone V atom and register models enter
+the request fingerprint. The generated HDL is checked against every requested
+parameter, including that all seventeen other output clocks are off and that the
+four ports are exactly `refclk`, `rst`, `outclk_0` and `locked`; the generation
+log must report an implementable PLL and exactly its two files. Generated QIP Tcl
+is retained but not evaluated, so the compensation mode, the auto-reset setting
+and the bandwidth preset are written into the project from the checker's own
+constants. Without the compensation mode the fitter warns that the PLL has no
+clock to compensate (177007) and compensates every output. There is no generator
+retry: the Windows ALTPLL crash signature does not apply.
+
+The fit report's PLL Usage Summary is bound to the two wrapper instances and
+checked value by value: PLL type, feedback clock type, bandwidth, reference
+frequency and source, VCO frequency, operation mode, enable, fractional
+division, self-reset, reference clock input, and the output counter's own owner,
+frequency, duty, phase and counter. The solved `M`, `N` and `C` counters are
+checked exactly, so a different solution fails rather than passing quietly; the
+fit summary must report both PLLs as physical resources. The analysed clock
+inventory is exactly five clocks: the reference, each PLL's VCO clock and each
+output counter clock, with their periods, ratios and masters. Both VCO clocks
+also need a minimum-pulse-width result at every corner.
+
+Cyclone V has no counterpart to the ALTPLL lock event latch, so `check_timing`
+must report no register without a clock at all. The evidence is the lock
+qualification itself, read from the checked functional netlist: both PLLs take
+the reference through its input buffer and their reset from the one bootstrap
+register that runs on that raw reference; one lock gate combines both raw locks
+with that reset, and all eight combinations must still propagate the reset and
+either lock loss; the gate reaches nothing but the two lock sampling registers'
+clears, and those registers run on the generated system clock. Supported LUT,
+clock-enable and register parameter sets are exact, every critical net must have
+one driver, and the sampling pipeline's constant or buffer feeder LUT is
+resolved. An unsupported primitive, an extra consumer or any no-clock row fails.
+The netlist's own inversions are resolved before each truth table is evaluated.
+The reset register holds the complement of the contract's `pll_areset`, because a
+Cyclone V register clears asynchronously to zero and the contract powers that
+reset up asserted. The port polarity convention of the vendor's PLL reset input
+is the vendor's; the checks bind the structure, and no hardware claim is made
+about this board.
+
+### Checked timing assignments
+
 Optional declarative `timing` assignments produce owned SDC with checked exact
 asynchronous-reset pins and output clock/port collections. Every collection must
 match its declared count. Reset exceptions terminate only at named `clrn` pins;
 they do not cut synchronized reset consumers or whole clock domains. Output
 delays explicitly include source latency. Arbitrary Tcl bodies and external
 constraint loads remain unsupported in source SDC.
+
+### MAX 10 lock event evidence
 
 The MAX 10 ALTPLL lock output contains the vendor's documented event latch when
 `areset` is enabled ([PLL control signals, section 2.3.6][lock-guide]). Its raw
@@ -2846,6 +2926,8 @@ The installed atom/register model hashes join the generator fingerprint.
 Unsupported primitive modes, structural statements, extra consumers, or any other no-clock
 row fail. Synthetic topology mutations prove these rejections.
 
+### Retained clocking evidence
+
 The raw row and vendor netlist remain evidence. All functional unconstrained-path
 counts must stay zero. The reference and both generated clocks require setup, hold, recovery, removal, and
 minimum-pulse results at every required corner. Exact adjacent reset-stage
@@ -2860,6 +2942,21 @@ whichever generated file it visits second; the order varies between targets
 and builds within one release. The classifier compares the pair and the file
 as sets, accepts at most one such line, and rejects any other pair, path or
 text. Bandwidth, routing and other timing diagnostics remain failures.
+
+A Cyclone V clocking target explains exactly two diagnostics, each against its
+own report. 12241 counts the generated wrapper's unconnected optional Altera PLL
+ports; it is accepted only after the synthesis report's two port connectivity
+tables are found to name exactly the two PLL instances and exactly those ports
+with those severities. 330000 is the cost of the checked endpoint collections:
+they name the generated PLL output clocks, which exist in the fitter and Timing
+Analyzer netlists but not in the pre-synthesis one, so Analysis & Synthesis
+cannot initialize a timing netlist and skips timing-driven synthesis. The fitter
+and the Timing Analyzer read the same constraints where those clocks do exist,
+and the four-corner slack is retained. Any other identity, count, owner or
+severity fails. Synthetic report mutations prove each rejection in
+[`test_fpga_cyclonev.py`](../../../tools/n2m/tests/test_fpga_cyclonev.py), which
+also covers the family refusal, the generated-HDL and generator-log checks, the
+fit and clock-inventory checks, and the netlist topology mutations.
 
 [lock-guide]: https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/pll-control-signals
 ## Software oracle

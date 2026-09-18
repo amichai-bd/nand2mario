@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree
+from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
@@ -141,8 +141,11 @@ def target_definition(root, name):
     if name == "v05-board":
         fpga_v05.validate_board(target)
     if "pll" in target:
-        fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof", "v05_controls_proof", "sdram_proof", "flash_proof") or "timing" not in target:
+        # The family's clocking implementation is selected before anything else
+        # reads the definition; a family without one refuses the build here.
+        clocking = fpga_clocking.implementation(board["family"])
+        clocking.validate(target["pll"])
+        if target["top"] not in clocking.SUPPORTED_TOPS or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -226,9 +229,10 @@ def prepare(root, folder, target, build_id=None):
         for name in target[field]:
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
     if "pll" in target:
-        lines.append('set_global_assignment -name VERILOG_FILE n2m_pixel_pll.v')
-        if target["pll"].get("system_divide") == 2:
-            lines.append('set_global_assignment -name VERILOG_FILE n2m_system_pll.v')
+        clocking = fpga_clocking.implementation(target["family"])
+        for name in clocking.generated_sources(target["pll"]):
+            lines.append(f'set_global_assignment -name VERILOG_FILE {name}')
+        lines.extend(clocking.assignments(target["pll"]))
     if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
         lines.extend(fpga_adc.assignments())
     if fpga_flash.flash_target(target):
@@ -262,7 +266,7 @@ def prepare(root, folder, target, build_id=None):
     (folder / "design.qpf").write_text('PROJECT_REVISION = "design"\n', encoding="utf-8")
     audit = AUDIT
     if "pll" in target:
-        audit = audit.replace("project_close", "report_metastability -file output/metastability.rpt\nreport_clock_transfers -file output/clock_transfers.rpt\n" + fpga_pll.chain_audit(tcl_word) + "project_close")
+        audit = audit.replace("project_close", "report_metastability -file output/metastability.rpt\nreport_clock_transfers -file output/clock_transfers.rpt\n" + fpga_clocking.chain_audit(tcl_word) + "project_close")
     if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         audit = audit.replace("project_close", fpga_vga.audit(tcl_word, lcd=target["top"] == "ppu_proof") + "project_close")
     if target.get("top") == "intel_memory_proof":
@@ -375,7 +379,8 @@ def execute(argv, folder, log, timeout, record, build):
     if log.name == "compile.log" and record.get("definition", {}).get("top") in ("adc_proof", "controls_proof", "v05_controls_proof"):
         explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"], record["definition"]["top"])
     if log.name == "compile.log" and "pll" in record.get("definition", {}):
-        explained = [*explained, *fpga_pll.explained_diagnostics(text, folder, record["definition"]["pll"])]
+        clocking = fpga_clocking.implementation(record["definition"]["family"])
+        explained = [*explained, *clocking.explained_diagnostics(text, folder, record["definition"]["pll"])]
     if log.name == "compile.log" and record.get("target") == "v05-board":
         explained = [*explained, *generated_design_diagnostics(text, folder)]
     if log.name == "compile.log" and sdram_target(record.get("definition", {})):
@@ -470,12 +475,13 @@ def tools(directory, folder, record, build, timeout):
 
 def timing_evidence(folder, target, *, build_id=None):
     parallel = target.get("pll", {}).get("system_divide") == 2
-    system_profile = {"system_clock": fpga_pll.SYSTEM_CLOCK, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}
+    clocking = fpga_clocking.implementation(target["family"]) if "pll" in target else None
+    system_profile = {"system_clock": clocking.SYSTEM_CLOCK, "system_net": clocking.SYSTEM_NET} if parallel else {}
     if "timing" in target:
         if (folder / "checked.sdc").read_text(encoding="utf-8") != checked_constraints(target):
             raise ValueError("checked timing assignments differ from target")
     if "pll" in target:
-        fpga_pll.verify(folder, target["pll"])
+        clocking.verify(folder, target["pll"])
     output = folder / "output"
     for name in required_reports(target):
         if not (output / name).is_file() or not (output / name).stat().st_size:
@@ -501,9 +507,13 @@ def timing_evidence(folder, target, *, build_id=None):
             if not any(name.startswith(f"{corner} Model {check} '") for name in slacks):
                 raise ValueError(f"missing timing corner/check: {corner} {check}")
             if "pll" in target:
-                for clock in (("clk_reference", fpga_pll.SYSTEM_CLOCK, fpga_pll.PIXEL_PLL + "|clk[0]") if parallel else ("clk_sys", fpga_pll.PIXEL_PLL + "|clk[0]")):
+                for clock in clocking.timed_clocks(target):
                     if f"{corner} Model {check} '{clock}'" not in slacks:
                         raise ValueError(f"missing clock timing: {clock} {corner} {check}")
+        if "pll" in target:
+            for name in clocking.corner_slacks(target, corner):
+                if name not in slacks:
+                    raise ValueError(f"missing clock timing: {name}")
     ucp = (output / "unconstrained.rpt").read_text(encoding="utf-8")
     rows = re.findall(r";\s*(Illegal Clocks|Unconstrained [^;]+?)\s*;\s*(\d+)\s*;\s*(\d+)\s*;", ucp)
     expected = {"Illegal Clocks", "Unconstrained Clocks", "Unconstrained Input Ports", "Unconstrained Input Port Paths", "Unconstrained Output Ports", "Unconstrained Output Port Paths"}
@@ -521,7 +531,7 @@ def timing_evidence(folder, target, *, build_id=None):
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     lock_event = None
-    expected_lock_events = (2 if target["top"] in ("controls_proof", "v05_controls_proof") else 1) + int(parallel)
+    expected_lock_events = clocking.lock_event_count(target) if "pll" in target else 0
     # The flash IP's sense-enable strobe and the atom register it clocks are
     # two more no-clock rows; both must be named exactly.
     flash_rows = fpga_flash.no_clock_rows(target["top"]) if fpga_flash.flash_target(target) else ()
@@ -531,8 +541,8 @@ def timing_evidence(folder, target, *, build_id=None):
     if "pll" in target:
         if dict(rows).get("no_clock") != str(expected_lock_events):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
-        lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"], parallel=parallel, extra_rows=flash_rows[1:])
-        fpga_pll.verify_fit(folder, target)
+        lock_event = clocking.verify_lock_event(folder, checks, target["top"], parallel=parallel, extra_rows=flash_rows[1:])
+        clocking.verify_fit(folder, target)
     adc_evidence = None
     if target["top"] in ("adc_proof", "controls_proof", "v05_controls_proof"):
         adc_evidence = fpga_adc.verify(folder, target["top"], **({"parallel": True, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}))
@@ -597,10 +607,9 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             return False
         required = [folder / "output" / name for name in required_reports(target)]
         if "pll" in target:
-            required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
-            if target["pll"].get("system_divide") == 2:
-                required += [folder / "n2m_system_pll.v", folder / "generate-system-pll.log"]
-            required += [folder / "output" / name for name in fpga_pll.required_reports()]
+            clocking = fpga_clocking.implementation(target["family"])
+            required += [folder / name for name in clocking.cache_files(target["pll"])]
+            required += [folder / "output" / name for name in fpga_clocking.required_reports()]
         if "src/rtl/input/n2m_adc_backend.sv" in target.get("sources", []):
             required += [folder / name for name in (*fpga_adc.CONTROL, "n2m_adc_pll.v", "generate-adc-pll.log")]
         if fpga_flash.flash_target(target):
@@ -663,7 +672,8 @@ def build_fpga(root, build, args, provenance=None, progress=None):
         with progress.stage("Discover Quartus tools", f"logs: {display_path(root, folder)}"):
             record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
             if "pll" in target:
-                record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
+                clocking = fpga_clocking.implementation(target["family"])
+                record["tools"][clocking.TOOLS_KEY] = clocking.identity(args.quartus_bin)
             if "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
                 record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
             if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
@@ -716,8 +726,10 @@ def build_fpga(root, build, args, provenance=None, progress=None):
                 with progress.stage("Generate ADC support", f"log: {display_path(root, folder / 'generate-adc-pll.log')}"):
                     fpga_adc.generate(folder, record["tools"]["adc"], generator_execute, args.timeout, record, build)
             if "pll" in target:
+                clocking = fpga_clocking.implementation(target["family"])
                 with progress.stage("Generate clock PLLs", f"logs: {display_path(root, folder)}"):
-                    fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], generator_execute, args.timeout, record, build)
+                    clocking.generate(folder, record["tools"][clocking.TOOLS_KEY], target["pll"],
+                                      generator_execute, args.timeout, record, build, device=target["device"])
             if "onchip_flash" in record["tools"]:
                 with progress.stage("Stage On-Chip Flash IP sources", f"folder: {display_path(root, folder)}"):
                     fpga_flash.stage(folder, record["tools"]["onchip_flash"])

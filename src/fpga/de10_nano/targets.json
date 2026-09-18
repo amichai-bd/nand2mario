@@ -13,6 +13,132 @@
     "specification": "wiki/src/de10-nano-board.md"
   },
   "targets": {
+    "nano-clocking": {
+      "device": "5CSEBA6U23I7",
+      "top": "nano_clocking_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_nano/n2m_clocking_cyclonev.sv",
+        "src/fpga/de10_nano/nano_clocking_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_nano/nano_clocking.sdc"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll_cyclonev",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125,
+        "system_divide": 2
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "u_clocking|u_system_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk",
+            "count": 10,
+            "ports": [
+              "ready",
+              "paused",
+              "sys_count[*]"
+            ]
+          },
+          {
+            "clock": "u_clocking|u_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk",
+            "count": 8,
+            "ports": [
+              "pix_count[*]"
+            ]
+          }
+        ],
+        "reference_ns": "20.000"
+      },
+      "pins": {
+        "clk_reference": "PIN_V11"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "sys_count[*]",
+        "pix_count[*]"
+      ]
+    },
+    "nano-clocking-invalid": {
+      "device": "5CSEBA6U23I7",
+      "top": "nano_clocking_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_nano/n2m_clocking_cyclonev.sv",
+        "src/fpga/de10_nano/nano_clocking_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_nano/nano_clocking.sdc"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll_cyclonev",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125,
+        "system_divide": 2
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "count": 10,
+            "ports": [
+              "ready",
+              "paused",
+              "sys_count[*]"
+            ]
+          },
+          {
+            "clock": "u_clocking|u_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk",
+            "count": 8,
+            "ports": [
+              "pix_count[*]"
+            ]
+          }
+        ],
+        "reference_ns": "20.000"
+      },
+      "pins": {
+        "clk_reference": "PIN_V11"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "sys_count[*]",
+        "pix_count[*]"
+      ]
+    },
     "nano-invalid": {
       "device": "5CSEBA6U23I7",
       "top": "nano_smoke",
