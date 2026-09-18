@@ -43,23 +43,22 @@ def own_weight(module: Module) -> int:
     return module.lines + WEIGHT_REGISTER * module.registers
 
 
-def build(modules: dict[str, Module], name: str, instance: str, drawn: set[str]) -> Tile:
+def build(modules: dict[str, Module], name: str, instance: str, earlier: set[str]) -> Tile:
     """The tile for one instance, with a child tile for every instance inside it.
 
-    A module already expanded in an earlier diagram is drawn once more as a
-    collapsed reference rather than repeated, so the same subtree is not drawn
-    twice; inside one diagram every instance is expanded.
+    Inside one diagram every instance is expanded, however often its module
+    appears. A module an earlier diagram already expanded is drawn once more as
+    a collapsed reference, so the same subtree is never drawn twice.
     """
     module = modules[name]
     own = own_weight(module)
     inside = [i for i in module.instances if i.view in ("both", "synthesis")]
     if not inside:
         return Tile(name, instance, "module", own)
-    if name in drawn:
+    if name in earlier:
         return Tile(name, instance, "reference", own)
-    drawn.add(name)
     children = [Tile(name, instance, "own", own)]
-    children += [build(modules, i.module, i.name, drawn) for i in inside]
+    children += [build(modules, i.module, i.name, earlier) for i in inside]
     return Tile(name, instance, "module", sum(c.weight for c in children), children)
 
 
@@ -160,15 +159,15 @@ def shortest(text: str, width: float) -> str | None:
     return trimmed if trimmed != text and fits(trimmed, width) else None
 
 
-def svg_tile(tile: Tile, rect, depth: int, module: Module) -> str:
+def svg_tile(tile: Tile, rect, module: Module) -> str:
     x, y, width, height = rect
     target = html_escape("#m-" + module.name)
     title = f"{tile.instance}: {module.name} — {counts(module)}"
-    parts = [f'<a href="{target}" class="{classes(tile, module)}" data-module="{module.name}">',
+    parts = [f'<a href="{target}" class="{classes(tile, module)}" '
+             f'data-module="{html_escape(module.name)}">',
              f'<title>{html_escape(title)}</title>',
              f'<rect x="{round(x, 1)}" y="{round(y, 1)}" width="{round(width, 1)}" '
              f'height="{round(height, 1)}" rx="4" />']
-    rows = label(tile, module)
     if tile.children:
         head = f"{tile.instance} : {module.name}" if tile.instance != module.name else module.name
         head = f"{head} · {module.lines} L · {module.registers} R"
@@ -177,7 +176,7 @@ def svg_tile(tile: Tile, rect, depth: int, module: Module) -> str:
             parts.append(f'<text class="h" x="{round(x + 7, 1)}" y="{round(y + 13.5, 1)}">'
                          f'{html_escape(head)}</text>')
     else:
-        shown = [(kind, shortest(text, width)) for kind, text in rows]
+        shown = [(kind, shortest(text, width)) for kind, text in label(tile, module)]
         shown = [(kind, text) for kind, text in shown if text]
         while shown and len(shown) * 13 + 6 > height:
             shown.pop()
@@ -199,7 +198,7 @@ def diagram(tiles: list[Tile], modules: dict[str, Module], width: int, label_tex
         placed = []
         for tile, rect in zip(tiles, squarify([t.weight for t in tiles], 0, 0, width, height)):
             placed += place(tile, *rect, 0)
-    body = "".join(svg_tile(tile, rect, depth, modules[tile.module]) for tile, rect, depth in placed)
+    body = "".join(svg_tile(tile, rect, modules[tile.module]) for tile, rect, _ in placed)
     drawn: list[str] = []
     for tile, _, _ in placed:
         if tile.module not in drawn:
@@ -342,8 +341,7 @@ def document(root: Path = ROOT) -> str:
         for instance in module.instances:
             parents.setdefault(instance.module, []).append((name, instance.name, instance.view))
 
-    drawn: set[str] = set()
-    board = build(modules, BOARD_TOP, BOARD_TOP, drawn)
+    board = build(modules, BOARD_TOP, BOARD_TOP, set())
     composed, shown = diagram([board], modules, 1100,
                               "The DE10-Lite composition: every module instance drawn inside "
                               "the module that instantiates it, sized by measured lines and registers")
@@ -351,7 +349,7 @@ def document(root: Path = ROOT) -> str:
     roots = [name for name in rest if not any(
         parent in rest and view in ("both", "synthesis")
         for parent, _, view in parents.get(name, []))]
-    others = [build(modules, name, name, drawn) for name in roots]
+    others = [build(modules, name, name, set(shown)) for name in roots]
     outside, drawn_again = diagram(others, modules, 900,
                             "Modules under src/rtl/ that the composed board design does not "
                             "instantiate: the physical-control top, and the simulation models")
