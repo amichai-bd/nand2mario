@@ -1,13 +1,13 @@
 # Python hardware tests
 
 Python targets run through the same [builder](../../../wiki/tools/n2m/SPEC.md#testbench-types)
-as SystemVerilog targets. Each target declares Verilator on WSL, Questa on
+as SystemVerilog targets. Each target declares Verilator on Linux, Questa on
 Windows, or both.
 The first target is the [independent joypad test](joypad/README.md).
 The [integration diagnostic](integration/README.md) independently reproduces
 the retained preloaded UART execution sequence with the real composed subsystem.
 Every Python target declares `simulators: ["verilator"]` and runs under
-Verilator 5.052 on WSL with cocotb 2.1.0, including the three
+Verilator 5.052 on Linux with cocotb 2.1.0, including the three
 [Mooneye targets](../mooneye/README.md) under the owner's bounded wall
 allowance: 127 Python rows, all `["verilator"]`, no Questa-only Python row.
 The 600-frame `python-v05-continuous` row is retired in the catalogue; the

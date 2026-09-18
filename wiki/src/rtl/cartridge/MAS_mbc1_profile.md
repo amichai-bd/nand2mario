@@ -165,7 +165,7 @@ In priority order:
 
 ## Verification
 
-Simulation runs under Verilator on WSL. [`tb_mbc1`](../../../../src/dv/cartridge/tb_mbc1.sv)
+Simulation runs under Verilator on Linux. [`tb_mbc1`](../../../../src/dv/cartridge/tb_mbc1.sv)
 composes the real memory owner and CPU port with a bus driver in place of the
 CPU and drives the ROM host port itself; expectations come from this page and
 an original image the fixture builds: every bank XORs an address-dependent

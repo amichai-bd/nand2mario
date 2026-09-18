@@ -64,10 +64,14 @@ def installed(root=None, *, version=None):
 
 
 def discovery_note(root=None):
-    """The hint a missing-Verilator failure carries; never a fallback of its own."""
+    """The hint a missing-Verilator failure carries; never a fallback of its own.
+
+    It states the whole remedy once, so a caller prefixes it rather than
+    repeating either half.
+    """
     del root
     return ("install the repository-pinned Verilator with "
-            "`python tools/build.py tools verilator` or select its tool directory explicitly")
+            "`python3 tools/build.py tools verilator` or select its tool directory explicitly")
 
 
 def build_environment(environ=None):
@@ -121,6 +125,13 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
     Every step keeps its transcript under `folder`. An existing installation
     whose banner matches the pin is reused; nothing is rebuilt or overwritten.
     """
+    # Validate before folding in a default: `--jobs 0` and `--timeout 0` are
+    # refused by name rather than silently becoming the host CPU count and
+    # STEP_TIMEOUT, which is what a guard placed after the fold would allow.
+    if jobs is not None and jobs < 1:
+        raise ValueError(f"--jobs must be at least 1, not {jobs}")
+    if timeout is not None and timeout < 1:
+        raise ValueError(f"--timeout must be at least 1 second, not {timeout}")
     version, tag, commit = item["version"], item["tag"], item["commit"]
     base, source = prefix(root, version), source_root(root, version)
     folder = Path(folder)
@@ -160,8 +171,6 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
         raise ValueError(f"pinned Verilator commit mismatch: {resolved} != {commit}")
     record["commit"] = resolved
     jobs = jobs or os.cpu_count() or 1
-    if jobs < 1:
-        raise ValueError("--jobs must be at least 1")
     record["jobs"] = jobs
     started = time.monotonic()
     step("autoconf", [tools["autoconf"]], source)
@@ -204,8 +213,11 @@ def command(root, build, args, provenance):
     report = {"status": "FAIL", **provenance,
               "scope": "pinned Verilator installation only; no simulation was run"}
     try:
+        # `or STEP_TIMEOUT` would turn `--timeout 0` into the default; the
+        # install guard is what refuses it, so pass the caller's value through.
+        timeout = STEP_TIMEOUT if args.timeout is None else args.timeout
         record = install(root, folder, item, jobs=args.jobs,
-                         timeout=args.timeout or STEP_TIMEOUT, offline=args.offline)
+                         timeout=timeout, offline=args.offline)
         report.update(status="PASS", **record)
         report["discovered"] = str(installed(root, version=item["version"]) or "")
     except Exception as error:

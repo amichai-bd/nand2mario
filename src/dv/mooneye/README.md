@@ -55,7 +55,7 @@ Use the [shared Python builder](../python/README.md) with targets
 `mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing` (the user's bounded
 1500-second allowance) and the ordinary 300-second `mooneye-rom-512kb` under
 the `mbc1` label; all declare
-`simulators: ["verilator"]` and run on WSL. Each builds the locked
+`simulators: ["verilator"]` and run on Linux. Each builds the locked
 tool and unmodified case before simulation. The declared Python inputs include
 the pins and notices; compiler files and CMake modules enter the stage identity.
 On Linux the locked Ubuntu host toolchain (`N2M_MOONEYE_BUILD_HOST=wsl`) is the

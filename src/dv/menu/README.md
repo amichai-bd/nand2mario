@@ -84,7 +84,7 @@ The select observer records the CPU commit into `$6000`-`$7FFF`.
 | `menu-delayed-worst` | `delayed-worst` | `PASS menu-delayed-worst checks=29 frames=26 selects=0 commands=6` |
 | `menu-frame-fault` | `frame` with `+pixel_fault` | nonzero exit with `MENU_PIXEL frame=0 x=0 y=0 expected=0 actual=2` |
 
-Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
+Run one with `python3 tools/build.py sim test <target> --tag <tag>` on Linux, or
 the boot frames with `python3 tools/build.py tests run --label menu --tag
 <tag>` and the selection paths with `--label menu-library` and the delayed draw with `--label menu-delayed`, which needs a label of its own because the three do not fit one 300-second aggregate; `menu-phase` and
 `menu-splash` carry `menu-animation`, `menu-select-mbc1` the `mbc1` and
