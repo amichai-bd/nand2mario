@@ -252,8 +252,9 @@ compiles and elaborates without a runtime license. Runtime acceptance, meaning
 [verification tiers](../../src/dv/integration/SPEC.md#verification-tiers), runs
 on Verilator on Linux; every registered target declares that backend. Questa
 runtime execution stays supported for the targets that declare it and for the
-Windows [doctor](#environment-doctor) smoke, which records a successful
-checkout when the caller's license environment provides one. No acceptance
+[doctor](#environment-doctor) smoke, which records a successful
+checkout when the caller's license environment provides one and otherwise names
+the missing [runtime license](#questa-runtime-license). No acceptance
 criterion requires a licensed Questa run.
 
 One build tool serves two operating systems. Linux owns Verilator execution and
@@ -302,6 +303,19 @@ for the fit and `missing vlib; select the Questa tool directory explicitly` for
 the gate and for a simulation. A tagged workspace is taken before that
 discovery, exactly as on the host that already owned the command.
 
+Every command header and simulation record carries `os` (`platform.system()`),
+and caches, fingerprints and compiled objects live under the running host's own
+`workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
+covers the Verilator refusal, the absence of a Questa one, the programming
+refusal, the permitted sides and the Linux fit with a mocked platform;
+[`test_questa.py`](../../../tools/n2m/tests/test_questa.py) covers the license
+probe, its argv and the missing-tool failure, and
+[`test_doctor.py`](../../../tools/n2m/tests/test_doctor.py) the doctor's
+license naming;
+[`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers the gate on both
+hosts and its missing-tool failure, and
+[`test_fpga.py`](../../../tools/n2m/tests/test_fpga.py) the fit's.
+
 ### Questa runtime license
 
 `vsim` is the only Questa executable a run launches that checks out a runtime
@@ -330,19 +344,6 @@ installation cannot run `sim test --sim questa`, because only the second needs
 the checkout. `doctor --sim questa` reports both: the `questa` smoke fails
 naming the license while `questa-lint` passes on the gate tools' availability.
 No acceptance criterion requires a licensed Questa run.
-
-Every command header and simulation record carries `os` (`platform.system()`),
-and caches, fingerprints and compiled objects live under the running host's own
-`workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
-covers the Verilator refusal, the absence of a Questa one, the programming
-refusal, the permitted sides and the Linux fit with a mocked platform;
-[`test_questa.py`](../../../tools/n2m/tests/test_questa.py) covers the license
-probe, its argv and the missing-tool failure, and
-[`test_doctor.py`](../../../tools/n2m/tests/test_doctor.py) the doctor's
-license naming;
-[`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers the gate on both
-hosts and its missing-tool failure, and
-[`test_fpga.py`](../../../tools/n2m/tests/test_fpga.py) the fit's.
 
 ## Test catalogue
 
