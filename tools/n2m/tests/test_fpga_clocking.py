@@ -150,7 +150,7 @@ STA_HEADER = ("; Clock Name ; Type ; Period ; Frequency ; Rise ; Fall ; Duty Cyc
 def fit_prologue():
     """The report preamble that carries the non-ASCII byte."""
     return ("+-------------------------------------+\n"
-            "; Fitter Summary                      ;\n"
+            "; Operating Settings and Conditions   ;\n"
             f"; Core Junction Temperature ; 85 {DEGREE}C ;\n"
             f"; Low Junction Temperature  ; 0 {DEGREE}C  ;\n")
 
@@ -289,9 +289,11 @@ class FitReportEncodingTests(unittest.TestCase):
 # and widening it again is the owner's decision, not this test's. Until that
 # decision lands the site is listed, not silently skipped, so the count is
 # exact and a seventh adopter cannot appear unnoticed.
-PENDING_HOST_LOCALE_READER = "fpga_adc.py"
-FIT_REPORT_READERS = {"fpga_pll.py": 2, "fpga_pll_cyclonev.py": 1, "fpga_vga.py": 1,
-                      "fpga_v05.py": 1, "fpga_intel_memory.py": 1, "fpga_memory_stores.py": 1}
+PENDING_HOST_LOCALE_READER = "n2m/fpga_adc.py"
+FIT_REPORT_READERS = {"n2m/fpga_pll.py": 2, "n2m/fpga_pll_cyclonev.py": 1, "n2m/fpga_vga.py": 1,
+                      "n2m/fpga_v05.py": 1, "n2m/fpga_intel_memory.py": 1,
+                      "n2m/fpga_memory_stores.py": 1}
+TOOLS = Path(__file__).resolve().parents[2]
 
 
 class FitReportReaderInventoryTests(unittest.TestCase):
@@ -300,12 +302,19 @@ class FitReportReaderInventoryTests(unittest.TestCase):
     `fpga_intel_memory.py` and `fpga_v05.py` have no folder-level fit fixture and
     no target that fits on a host whose Intel model differs from the reviewed
     one, so this inventory is their proof that they read through the constant.
+
+    Reach, stated exactly so it is not trusted further than it goes: every `.py`
+    file under `tools/`, and within those, reads whose own call names the report.
+    A read that reaches the file through a variable is invisible here.
+    `tools/fpga_netlist_compare.py` is one such reader: it takes the name from
+    `SECTIONS`, and it is host-independent already, so nothing is hidden by that
+    limit today. A new reader that names the file is caught wherever it lands.
     """
 
     def readers(self):
-        """Each `design.fit.rpt` read in `tools/n2m`, by file, with its encoding."""
+        """Each read that names `design.fit.rpt` under `tools/`, with its encoding."""
         found = {}
-        for path in sorted(Path(__file__).resolve().parents[1].glob("*.py")):
+        for path in sorted(TOOLS.rglob("*.py")):
             source = path.read_text(encoding="utf-8")
             tree = ast.parse(source, filename=path.name)
             for node in ast.walk(tree):
@@ -316,7 +325,8 @@ class FitReportReaderInventoryTests(unittest.TestCase):
                 if "design.fit.rpt" not in segment:
                     continue
                 encoding = [k.value for k in node.keywords if k.arg == "encoding"]
-                found.setdefault(path.name, []).append(encoding[0] if encoding else None)
+                name = path.relative_to(TOOLS).as_posix()
+                found.setdefault(name, []).append(encoding[0] if encoding else None)
         return found
 
     def test_every_fit_report_read_states_the_one_encoding(self):
