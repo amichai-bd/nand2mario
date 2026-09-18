@@ -248,7 +248,7 @@ One build tool serves two operating systems. Linux owns Verilator execution;
 Windows PowerShell owns Questa runtime execution and `fpga program`. `fpga build`
 and the compile gate follow their installed tools on either host.
 Caches and fingerprints stay per backend and OS under `workdir/`.
-[Command ownership](#command-ownership-by-operating-system) names the refusals.
+[Command ownership](#command-ownership) names the refusals.
 Where RTL instantiates
 an Intel primitive, the predefined `VERILATOR` macro selects a behavioral double
 and Quartus always sees the vendor instance; the
@@ -265,7 +265,7 @@ undeclared backend is a configuration failure. An area run (`tests run`,
 counting it as neither pass nor defect, and never falls back; see
 [execution](#execution-and-contention) and [regression subsets](#regression-subsets).
 
-### Command ownership by operating system
+### Command ownership
 
 One build tool serves two hosts. Only physical access and a source build are
 operating-system facts; everything else follows the installed toolchain.
