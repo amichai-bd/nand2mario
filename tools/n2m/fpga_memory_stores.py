@@ -1,7 +1,7 @@
 """Check the seven direct-profile stores in retained MAX 10 fit evidence."""
-import os
 import re
 
+from .fpga_clocking import FIT_ENCODING
 from .fpga_intel_memory import SYS_CLOCK
 from .fpga_vga import rows, node
 
@@ -68,7 +68,7 @@ def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False)
 
 
 def verify(folder):
-    fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    fit = (folder / "output/design.fit.rpt").read_text(encoding=FIT_ENCODING)
     evidence = verify_rows(fit)
     totals = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
     if len(totals) != 1 or not totals[0].startswith("657,784 /"):

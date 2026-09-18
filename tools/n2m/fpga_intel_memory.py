@@ -1,9 +1,9 @@
 """Bounded actual-fit checks for the four explicit Intel memory configurations."""
-import os
 from pathlib import Path
 import re
 
 from .records import file_hash
+from .fpga_clocking import FIT_ENCODING
 from .fpga_vga import rows, node
 from .intel_memory import MIXED_MODE_MODEL_HASH
 
@@ -117,7 +117,7 @@ def verify(folder, *, system_clock=SYS_CLOCK):
                         (("a_address", 15), ("a_wdata", 32), ("a_byte_enable", 4), ("b_address", 8)) for bit in range(size)]
     if sorted(inventory) != sorted(expected_inputs):
         raise ValueError("Intel memory input-domain inventory differs")
-    fit = (output / "design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    fit = (output / "design.fit.rpt").read_text(encoding=FIT_ENCODING)
     memories = [row for row in rows(fit) if len(row) >= 20 and row[1] == "M9K"]
     if len(memories) != 4:
         raise ValueError("missing or extra Intel memory blocks in fitter RAM summary")

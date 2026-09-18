@@ -1,4 +1,5 @@
 """Independent synthetic netlists challenge the narrow vendor-event classification."""
+import ast
 import unittest
 import json
 import tempfile
@@ -280,6 +281,67 @@ class FitReportEncodingTests(unittest.TestCase):
         for family in fpga_clocking.IMPLEMENTATIONS:
             with self.subTest(family=family):
                 self.assertIs(fpga_clocking.implementation(family).FIT_ENCODING, fpga_clocking.FIT_ENCODING)
+
+
+# `fpga_adc.py` reads the same report with a bare `read_text()`, which takes the
+# host's locale encoding instead of Quartus's. That is the same defect in a
+# different disguise and it is not fixed here: #838 names the six sites below,
+# and widening it again is the owner's decision, not this test's. Until that
+# decision lands the site is listed, not silently skipped, so the count is
+# exact and a seventh adopter cannot appear unnoticed.
+PENDING_HOST_LOCALE_READER = "fpga_adc.py"
+FIT_REPORT_READERS = {"fpga_pll.py": 2, "fpga_pll_cyclonev.py": 1, "fpga_vga.py": 1,
+                      "fpga_v05.py": 1, "fpga_intel_memory.py": 1, "fpga_memory_stores.py": 1}
+
+
+class FitReportReaderInventoryTests(unittest.TestCase):
+    """Every fit-report read states the one encoding, so none can drift back.
+
+    `fpga_intel_memory.py` and `fpga_v05.py` have no folder-level fit fixture and
+    no target that fits on a host whose Intel model differs from the reviewed
+    one, so this inventory is their proof that they read through the constant.
+    """
+
+    def readers(self):
+        """Each `design.fit.rpt` read in `tools/n2m`, by file, with its encoding."""
+        found = {}
+        for path in sorted(Path(__file__).resolve().parents[1].glob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=path.name)
+            for node in ast.walk(tree):
+                if (not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute)
+                        or node.func.attr != "read_text"):
+                    continue
+                segment = ast.get_source_segment(source, node) or ""
+                if "design.fit.rpt" not in segment:
+                    continue
+                encoding = [k.value for k in node.keywords if k.arg == "encoding"]
+                found.setdefault(path.name, []).append(encoding[0] if encoding else None)
+        return found
+
+    def test_every_fit_report_read_states_the_one_encoding(self):
+        found = self.readers()
+        self.assertEqual({name: len(v) for name, v in found.items()},
+                         {**FIT_REPORT_READERS, PENDING_HOST_LOCALE_READER: 1},
+                         "a fit-report read appeared or moved; state its encoding and update this inventory")
+        for name, count in FIT_REPORT_READERS.items():
+            for index, value in enumerate(found[name]):
+                with self.subTest(module=name, read=index):
+                    self.assertIsInstance(value, ast.Name, "the read must pass encoding=FIT_ENCODING")
+                    self.assertEqual(value.id, "FIT_ENCODING")
+
+    def test_no_fit_report_read_branches_on_the_host(self):
+        """The defect's shape, forbidden everywhere including the pending site."""
+        for name, values in self.readers().items():
+            for index, value in enumerate(values):
+                with self.subTest(module=name, read=index):
+                    source = "" if value is None else ast.unparse(value)
+                    self.assertNotIn("os.name", source)
+
+    def test_the_pending_site_is_still_the_only_host_locale_read(self):
+        """Fails the day it is fixed or a second one appears, so neither is lost."""
+        unstated = [name for name, values in self.readers().items() if any(v is None for v in values)]
+        self.assertEqual(unstated, [PENDING_HOST_LOCALE_READER])
 
 
 if __name__ == "__main__":
