@@ -125,7 +125,7 @@ three together take about 180 s, which the 300 s `storage` aggregate (with
 `library-peer` at 105 to 145 s) cannot absorb. Run them with
 `python3 tools/build.py tests run --label flash --tag <tag>`.
 
-Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
+Run one with `python3 tools/build.py sim test <target> --tag <tag>` on Linux, or
 all of them with `python3 tools/build.py tests run --label storage --tag <tag>`.
 `library-peer` carries the `python-tb` label: run it, and therefore the whole
 `storage` label, on the pinned

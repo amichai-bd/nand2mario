@@ -357,7 +357,7 @@ In priority order:
 
 ## Verification
 
-Simulation runs under Verilator on WSL with the original pin-level device model
+Simulation runs under Verilator on Linux with the original pin-level device model
 [`n2m_sim_sdram`](../../../../src/rtl/storage/n2m_sim_sdram.sv), written against
 the datasheet in the [references](#references), not against the controller's
 constants. It lives beside the controller, like the memory owner's simulation

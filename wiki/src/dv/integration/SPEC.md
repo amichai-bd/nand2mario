@@ -122,7 +122,7 @@ milestones use explicitly declared complementary simulation/physical matrices.
 
 Simulation evidence runs on the backend declared by the target under the
 builder's [simulator policy](../../../tools/n2m/SPEC.md#simulator-policy):
-Verilator on WSL or Questa on Windows. A required matrix names its backend and
+Verilator on Linux or Questa on Windows. A required matrix names its backend and
 may not substitute the other one. Intel primitives use repository behavioral
 doubles under `VERILATOR` and checked installed models under Questa per the
 [memory contract](../../rtl/common/MAS_memory_primitives.md). A single-target

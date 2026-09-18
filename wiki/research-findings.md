@@ -178,7 +178,7 @@ Recommended independent evidence:
 
 Use a UVM-lite structure first: interfaces, transactions, drivers, monitors,
 scoreboards, assertions, coverage, and reference models. The builder supports
-Verilator on WSL and Questa on Windows under the
+Verilator on Linux and Questa on Windows under the
 [simulator policy](tools/n2m/SPEC.md#simulator-policy); covergroups remain
 unsupported on the Verilator path.
 

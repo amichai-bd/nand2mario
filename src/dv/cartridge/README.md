@@ -80,7 +80,7 @@ and `LOADER_FILL_HOST_PORT` in the port arbiter, `LOADER_SWAP_PAUSED`,
 `LOADER_KEY1_THRESHOLD` in the KEY1 detector and `LOADER_ONE_CORE_CLIENT` in
 the core control owner. Every fixture runs with them armed.
 
-Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
+Run one with `python3 tools/build.py sim test <target> --tag <tag>` on Linux, or
 all of them with `python3 tools/build.py tests run --label cartridge --tag <tag>`.
 The MBC1 fixtures carry the `mbc1` label instead, so the `cartridge` aggregate
 stays inside the ordinary 300-second budget:

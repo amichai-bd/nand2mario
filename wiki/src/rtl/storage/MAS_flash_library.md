@@ -334,7 +334,7 @@ In priority order:
 
 ## Verification
 
-Simulation runs under Verilator on WSL with the double loaded from the same
+Simulation runs under Verilator on Linux with the double loaded from the same
 `library.hex` the build would use. Required fixtures, each within the
 [wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
 

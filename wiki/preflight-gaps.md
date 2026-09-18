@@ -110,11 +110,11 @@ confirmed. Dependency fetching requirements remain in GAP-013.
 The [build command](tools/n2m/SPEC.md) implements tagged doctor, builder
 checks and self-checking simulation. Under its
 [simulator policy](tools/n2m/SPEC.md#simulator-policy), Verilator runs natively
-on WSL and Questa runs natively on Windows. `doctor`, `sim test`, `regress` and
+on Linux and Questa runs natively on Windows. `doctor`, `sim test`, `regress` and
 `tests run` select the host-native default or an explicit supported backend. The
 [builder implementation](../tools/n2m/cli.py) dispatches scoped doctor, software,
 simulation, regression and FPGA stages with tagged evidence. Command ownership
-is per OS: WSL owns Verilator; Windows PowerShell owns Questa, `fpga build` and
+is per OS: Linux owns Verilator; Windows PowerShell owns Questa, `fpga build` and
 `fpga program`.
 
 **Risk**
@@ -138,7 +138,7 @@ Agents may invent different commands, directories, or tool invocations.
 **Current state**
 
 The [environment doctor](tools/n2m/SPEC.md#environment-doctor) implements
-checked simulator smoke runs: Verilator on WSL with no license consulted, and
+checked simulator smoke runs: Verilator on Linux with no license consulted, and
 Questa on Windows with a successful runtime checkout recorded. The environment
 profile adds Quartus edition reporting and read-only JTAG/UART enumeration. It
 reports selected UART health/identity, expected JTAG
@@ -159,7 +159,7 @@ Checking only executable names can report success while every simulation fails.
   GAP-008.
 - USB-Blaster reports the expected MAX 10 device.
 - UART is found by VID, PID, or serial identity with an explicit override.
-- WSL tools and optional dependencies are reported as pass, warning, or fail.
+- Linux tools and optional dependencies are reported as pass, warning, or fail.
 - The command performs no programming or UART transmission unless requested.
 - One automated test proves the doctor reports a broken elaboration as failure.
 

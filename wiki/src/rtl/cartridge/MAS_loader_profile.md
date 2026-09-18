@@ -411,7 +411,7 @@ In priority order:
 
 ## Verification
 
-Simulation runs under Verilator on WSL with the real memory owner, core
+Simulation runs under Verilator on Linux with the real memory owner, core
 control owner, [SDRAM controller and device model](../storage/MAS_sdram.md#verification),
 and a CPU bus driver or the real CPU. Fixtures, each within the
 [wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
