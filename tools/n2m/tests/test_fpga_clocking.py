@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
-from tools.n2m import fpga_lock, fpga_constraints, fpga, fpga_pll
+from tools.n2m import fpga_lock, fpga_constraints, fpga, fpga_clocking, fpga_pll
 from tools.n2m.records import file_hash
 
 
@@ -136,6 +136,150 @@ class ClockingEvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fpga_constraints.validate({"reference_ns": "20.000", "async_reset_pins": [endpoint],
                                            "output_delays": [{"clock": "clk", "ports": ["count[*]"], "count": 8}]})
+
+
+# Quartus prints junction temperatures with a degree sign, which is the byte
+# 0xb0 in the encoding it writes; utf-8 refuses it.
+DEGREE = "\N{DEGREE SIGN}"
+PARALLEL_PLL = {**SINGLE_PLL, "system_divide": 2}
+STA_HEADER = ("; Clock Name ; Type ; Period ; Frequency ; Rise ; Fall ; Duty Cycle ; Divide by ; Multiply by ;"
+              " Phase ; Offset ; Edge List ; Edge Shift ; Inverted ; Master ; Source ; Targets ;")
+
+
+def fit_prologue():
+    """The report preamble that carries the non-ASCII byte."""
+    return ("+-------------------------------------+\n"
+            "; Fitter Summary                      ;\n"
+            f"; Core Junction Temperature ; 85 {DEGREE}C ;\n"
+            f"; Low Junction Temperature  ; 0 {DEGREE}C  ;\n")
+
+
+def fit_row(fields):
+    return "; " + " ; ".join(fields) + " ;"
+
+
+def usage_row(source, clock, divide, multiply, frequency, counter):
+    """One fitted PLL output row, in the 15-column usage-summary shape."""
+    return fit_row([source + "|wire_pll1_clk[0]", "clock0", divide, multiply, frequency, "0 (0 ps)", "",
+                    "50/50", "C0", counter, "", "", "", "", clock])
+
+
+def single_fit():
+    """A single-PLL MAX 10 fit report in the shape verify_fit accepts."""
+    values = {"PLL mode": "Normal", "Compensate clock": "clock0", "Input frequency 0": "50.0 MHz",
+              "Nominal PFD frequency": "10.0 MHz", "Nominal VCO frequency": "630.0 MHz",
+              "M value": "63", "N value": "5", "Inclk0 signal type": "Dedicated Pin"}
+    lines = [fit_row([key, value]) for key, value in values.items()]
+    lines.append(usage_row("n2m_clocking:u_clocking|n2m_pixel_pll:u_pll", fpga_pll.PIXEL_CLOCK,
+                          "63", "125", "25.2 MHz", "25"))
+    return fit_prologue() + "\n".join(lines) + "\n"
+
+
+def parallel_fit():
+    """A system/pixel MAX 10 fit report in the shape verify_parallel_fit accepts."""
+    columns = (fpga_pll.SYSTEM_PLL, fpga_pll.PIXEL_PLL)
+    values = {"PLL mode": ("Normal", "Normal"), "Compensate clock": ("clock0", "clock0"),
+              "Input frequency 0": ("50.0 MHz", "50.0 MHz"),
+              "Nominal PFD frequency": ("6.3 MHz", "10.0 MHz"),
+              "Nominal VCO frequency": ("650.0 MHz", "630.0 MHz"),
+              "M value": ("104", "63"), "N value": ("8", "5"),
+              "Inclk0 signal type": ("Dedicated Pin", "Dedicated Pin")}
+    lines = [fit_row(("SDC pin name",) + columns)]
+    lines += [fit_row((key,) + pair) for key, pair in values.items()]
+    lines.append(usage_row("n2m_clocking:u_clocking|n2m_system_pll:u_system_pll", fpga_pll.SYSTEM_CLOCK,
+                           "1", "2", "25.0 MHz", "26"))
+    lines.append(usage_row("n2m_clocking:u_clocking|n2m_pixel_pll:u_pll", fpga_pll.PIXEL_CLOCK,
+                           "63", "125", "25.2 MHz", "25"))
+    return fit_prologue() + "\n".join(lines) + "\n"
+
+
+def sta_report(rows):
+    lines = [STA_HEADER]
+    for name, kind, period, ratio, master in rows:
+        duty, divide, multiply = ratio or ("", "", "")
+        lines.append(f"; {name} ; {kind} ; {period} ; ; ; ; {duty} ; {divide} ; {multiply} ; ; ; ; ; false ; {master} ; ; ;")
+    return "\n".join(lines) + "\n"
+
+
+def single_sta():
+    return sta_report([("clk_sys", "Base", "20.000", None, ""),
+                       (fpga_pll.PIXEL_CLOCK, "Generated", "39.683", ("50.00", "125", "63"), "clk_sys")])
+
+
+def parallel_sta():
+    return sta_report([("clk_reference", "Base", "20.000", None, ""),
+                       (fpga_pll.SYSTEM_CLOCK, "Generated", "40.000", ("50.00", "2", "1"), "clk_reference"),
+                       (fpga_pll.PIXEL_CLOCK, "Generated", "39.683", ("50.00", "125", "63"), "clk_reference")])
+
+
+class FitReportEncodingTests(unittest.TestCase):
+    """The fit report is decoded as Quartus writes it, not as the host guesses.
+
+    Both MAX 10 reader sites are covered, each with a report carrying the
+    degree sign. Before the fix these reads used utf-8 off Windows and every
+    DE10-Lite PLL target raised UnicodeDecodeError here.
+    """
+
+    def build(self, fit, sta, total):
+        scratch = Path(__file__).resolve().parents[3] / "workdir/fpga-clock-tests"
+        scratch.mkdir(parents=True, exist_ok=True)
+        folder = Path(self.enterContext(tempfile.TemporaryDirectory(dir=scratch)))
+        output = folder / "output"
+        output.mkdir()
+        (output / "design.fit.rpt").write_text(fit, encoding=fpga_pll.FIT_ENCODING)
+        (output / "design.sta.rpt").write_text(sta, encoding="utf-8")
+        (output / "design.fit.summary").write_text(f"Total PLLs : {total} / 4 ( 50 % )\n", encoding="utf-8")
+        for name in fpga_pll.required_reports():
+            path = output / name
+            if name.startswith("chain_"):
+                chain, check = name.removeprefix("chain_").removesuffix(".rpt").rsplit("_", 1)
+                path.write_text(f"Report Timing: Found 1 {check} paths (0 violated).  Worst case slack is 0.500\n"
+                                f"u_reset|{chain}[0] -> u_reset|{chain}[1]\n", encoding="utf-8")
+            else:
+                path.write_text("synthetic report\n", encoding="utf-8")
+        return folder
+
+    def case(self, parallel):
+        pll = PARALLEL_PLL if parallel else SINGLE_PLL
+        fit, sta, total = (parallel_fit(), parallel_sta(), 2) if parallel else (single_fit(), single_sta(), 1)
+        folder = self.build(fit, sta, total)
+        return folder, {"pll": pll, "timing": {"reference_ns": "20.000"}, "top": "clocking_proof"}
+
+    def test_both_reader_sites_accept_a_report_with_a_non_ascii_byte(self):
+        for parallel in (False, True):
+            with self.subTest(parallel=parallel):
+                folder, target = self.case(parallel)
+                raw = (folder / "output/design.fit.rpt").read_bytes()
+                self.assertIn(b"\xb0", raw)
+                fpga_pll.verify_fit(folder, target)
+
+    def test_the_host_chosen_utf8_read_is_what_used_to_fail(self):
+        """The defect, stated as a test: the same bytes are undecodable as utf-8."""
+        folder, _ = self.case(True)
+        path = folder / "output/design.fit.rpt"
+        with self.assertRaises(UnicodeDecodeError):
+            path.read_text(encoding="utf-8")
+
+    def test_the_encoding_is_the_one_windows_already_used(self):
+        """Criterion 4 at the decode boundary: same bytes, same text, so same evidence.
+
+        The pre-fix expression chose cp1252 on Windows and utf-8 elsewhere. The
+        constant is that cp1252, so a report decodes to the string Windows
+        already had and every downstream check sees identical input.
+        """
+        # The pre-fix reads took cp1252 when os.name was "nt"; the constant is
+        # that same Windows branch, now stated for every host.
+        windows_branch = "cp1252"
+        self.assertEqual(fpga_pll.FIT_ENCODING, windows_branch)
+        folder, _ = self.case(True)
+        path = folder / "output/design.fit.rpt"
+        self.assertEqual(path.read_text(encoding=fpga_pll.FIT_ENCODING),
+                         path.read_text(encoding=windows_branch))
+
+    def test_both_families_read_the_report_through_one_stated_fact(self):
+        for family in fpga_clocking.IMPLEMENTATIONS:
+            with self.subTest(family=family):
+                self.assertIs(fpga_clocking.implementation(family).FIT_ENCODING, fpga_clocking.FIT_ENCODING)
 
 
 if __name__ == "__main__":

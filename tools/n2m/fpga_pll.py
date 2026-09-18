@@ -12,6 +12,7 @@ from . import fpga_clocking, fpga_lock
 CHAINS = fpga_clocking.CHAINS
 chain_audit = fpga_clocking.chain_audit
 required_reports = fpga_clocking.required_reports
+FIT_ENCODING = fpga_clocking.FIT_ENCODING
 TOOLS_KEY = "altpll"
 FAMILY = "MAX 10"
 # The proof tops whose exact u_clocking hierarchy these checks recognize.
@@ -101,7 +102,7 @@ def explained_diagnostics(text, folder, definition):
 def verify_fit(folder, target):
     if target["pll"].get("system_divide") == 2:
         return verify_parallel_fit(folder, target)
-    fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    fit = (folder / "output/design.fit.rpt").read_text(encoding=FIT_ENCODING)
     combined = target.get("top") in ("controls_proof", "v05_controls_proof")
     adc_values = {"PLL mode": "No compensation", "Compensate clock": "--", "Input frequency 0": "10.0 MHz",
                   "Nominal PFD frequency": "10.0 MHz", "Nominal VCO frequency": "400.0 MHz",
@@ -184,7 +185,7 @@ def clock_inventory(target, reference, adc_pll=None):
 
 def verify_parallel_fit(folder, target):
     """Bind each fitted column and clock to its declared physical owner."""
-    fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    fit = (folder / "output/design.fit.rpt").read_text(encoding=FIT_ENCODING)
     rows = [[v.strip() for v in line.split(';')[1:-1]] for line in fit.splitlines()]
     adc_pll = ("u_controls|" if target["top"] == "v05_controls_proof" else "") + ADC_PLL
     expected = {
