@@ -124,6 +124,17 @@ def classes(tile: Tile, module: Module) -> str:
     return " ".join(names)
 
 
+def outsiders(modules: dict[str, Module], shown: list[str]) -> str:
+    """One sentence naming the instantiated modules this repository does not hold."""
+    names = sorted({instance.module for name in shown for instance in modules[name].vendor})
+    if not names:
+        return ""
+    return (f" {len(names)} instantiated module{'s are' if len(names) != 1 else ' is'} not in "
+            "this repository — " + ", ".join(names) + " — each a vendor primitive or a "
+            "Quartus-generated component. They are named on their parent blocks and none is "
+            "drawn, because there is nothing here to measure.")
+
+
 def counts(module: Module) -> str:
     registers = "no registers" if not module.registers else (
         f"{module.registers} register" + ("s" if module.registers != 1 else ""))
@@ -426,9 +437,8 @@ def document(root: Path = ROOT) -> str:
         '<div class="diagram-scroll" data-scroll-region tabindex="0" role="region" '
         'aria-label="The composed module tree; scroll horizontally on a narrow screen">'
         + composed + '</div>'
-        f'<p class="diagram-caption">{len(shown)} modules, drawn at every instance. Two Quartus-'
-        'generated PLLs and three Intel primitives are named on their parent blocks but not '
-        'drawn: they are not in this repository, so there is nothing here to measure.</p>'
+        f'<p class="diagram-caption">{len(shown)} modules, drawn at every instance.'
+        + outsiders(modules, shown) + '</p>'
         + panels(modules, shown, parents))
 
     remainder = (
@@ -439,7 +449,8 @@ def document(root: Path = ROOT) -> str:
         '<div class="diagram-scroll" data-scroll-region tabindex="0" role="region" '
         'aria-label="Modules outside the composed design; scroll horizontally on a narrow screen">'
         + outside + '</div>'
-        '<p class="diagram-caption">Drawn at the same scale as the composition above.</p>'
+        '<p class="diagram-caption">Drawn at the same scale as the composition above.'
+        + outsiders(modules, also) + '</p>'
         + panels(modules, also, parents)
         + '<h3>Packages are not blocks</h3>'
         f'<p>{numbers["packages"]} of the {numbers["files"]} files under <code>src/rtl/</code> are '
@@ -449,7 +460,7 @@ def document(root: Path = ROOT) -> str:
         + '<ul class="packages">' + "".join(
             f'<li><a href="{html_escape(relative(path))}" data-source="{html_escape(path)}" '
             f'data-line="1"><code>{html_escape(name)}</code></a> · {count} lines'
-            + (f' · {html_escape(text)}' if text else "") + "</li>"
+            + (f' · {html_escape(text.split(". ")[0].rstrip("."))}.' if text else "") + "</li>"
             for name, path, count, text in packages(root)) + "</ul>")
 
     limits = (

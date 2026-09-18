@@ -147,6 +147,20 @@ class PageTests(unittest.TestCase):
             for port in module.ports:
                 self.assertIn(f"</code> {port.name}</li>", panel, f"{name}.{port.name}")
 
+    def test_the_captions_name_every_module_outside_this_repository(self):
+        # Four vendor primitives and Quartus-generated components are
+        # instantiated but never drawn, because nothing here measures them.
+        outside = sorted({instance.module for module in self.modules.values()
+                          for instance in module.vendor})
+        self.assertEqual(outside, ["altera_modular_adc_control", "altera_onchip_flash",
+                                   "altsyncram", "n2m_adc_pll", "n2m_pixel_pll",
+                                   "n2m_system_pll"])
+        captions = re.findall(r'<p class="diagram-caption">(.*?)</p>', self.html, re.S)
+        self.assertEqual(len(captions), 2)
+        for name in outside:
+            self.assertIn(name, " ".join(captions), "a caption must name it")
+            self.assertNotIn(f'data-module="{name}"', self.html, "and must not draw it")
+
     def test_no_cell_alm_or_fitted_register_figure_is_shown(self):
         # A number beside one of these units would be a synthesis result, and
         # this repository holds none. Naming the units to refuse them is fine.
