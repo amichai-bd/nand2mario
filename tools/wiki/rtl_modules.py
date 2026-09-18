@@ -10,6 +10,8 @@ tools/wiki/rtl_explorer.py draws them; this file only measures.
 
 from __future__ import annotations
 
+import bisect
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 import re
@@ -109,8 +111,9 @@ def blanked(text: str) -> str:
             end, index = index + 1, index + 1
             while end < length and text[end] != '"':
                 end += 2 if text[end] == "\\" else 1
-            out.append(" " * (end - index + 2))
-            index = min(end + 1, length)
+            end = min(end + 1, length)
+            out.append("".join(c if c == "\n" else " " for c in text[index - 1:end]))
+            index = end
         else:
             out.append(char)
             index += 1
@@ -153,10 +156,9 @@ def synthesis_view(text: str) -> list[bool]:
     return active
 
 
-def line_of(text: str) -> "callable":
+def line_of(text: str) -> Callable[[int], int]:
     """A function from an index in `text` to its 1-based line number."""
     breaks = [match.start() for match in re.finditer("\n", text)]
-    import bisect
     return lambda index: bisect.bisect_right(breaks, index - 1) + 1
 
 
@@ -472,11 +474,6 @@ def packages(root: Path = ROOT) -> list[tuple[str, str, int, str]]:
         if not header:
             continue
         line = clean[:header.start()].count("\n") + 1
-        comment = []
-        for previous in reversed(text.splitlines()[:line - 1]):
-            stripped = previous.strip()
-            if not stripped.startswith("//"):
-                break
-            comment.insert(0, stripped[2:].strip())
-        found.append((header.group(1), path, len(text.splitlines()), " ".join(comment)))
+        lines = text.splitlines()
+        found.append((header.group(1), path, len(lines), summary_comment(lines, line)))
     return found
