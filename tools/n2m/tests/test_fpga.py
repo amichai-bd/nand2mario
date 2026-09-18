@@ -46,15 +46,22 @@ class FpgaTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="checkout with spaces ", dir=parent)
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.target = {"device": fpga.DEVICE, "top": "smoke", "sources": ["src/smoke.sv"],
-                       "constraints": ["src/smoke.sdc"], "pins": {"clk": "PIN_P11"}, "virtual_pins": ["count[*]"]}
+        self.board = {"name": "Fixture board", "device": "10M50DAF484C7G", "family": "MAX 10",
+                      "timing_corners": ["Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"],
+                      "specification": "wiki/fixture-board.md"}
+        # The resolved definition the builder works with: the registry target plus
+        # the board facts target_definition merges into it.
+        self.target = {"device": self.board["device"], "top": "smoke", "sources": ["src/smoke.sv"],
+                       "constraints": ["src/smoke.sdc"], "pins": {"clk": "PIN_P11"}, "virtual_pins": ["count[*]"],
+                       "family": self.board["family"], "timing_corners": self.board["timing_corners"]}
         for name in ("src/smoke.sv", "src/smoke.sdc", "tools/build.py", "tools/n2m/fpga.py"):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("owned input\n")
         (self.root / "src/smoke.sdc").write_text('create_clock -name clk -period 20 [get_ports clk]\n')
-        self.registry = self.root / fpga.REGISTRY
-        self.registry.parent.mkdir(parents=True, exist_ok=True)
+        (self.root / "wiki").mkdir(parents=True, exist_ok=True)
+        (self.root / self.board["specification"]).write_text("fixture board specification\n")
+        self.registry = self.root / fpga.REGISTRIES[0]
         self.save_target()
         self.build = self.root / "workdir/builds/test"
         self.build.mkdir(parents=True)
@@ -62,7 +69,13 @@ class FpgaTests(unittest.TestCase):
         self.info = {name: {"path": "explicit tools/" + name, "version": "fixture", "sha256": "tool hash"} for name in fpga.TOOLS}
 
     def save_target(self):
-        self.registry.write_text(json.dumps({"schema_version": 1, "targets": {"smoke": self.target}}))
+        """Write every board registry; only the first one owns the fixture target."""
+        stored = {k: v for k, v in self.target.items() if k not in ("family", "timing_corners")}
+        for index, name in enumerate(fpga.REGISTRIES):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"schema_version": 2, "board": self.board,
+                                        "targets": {"smoke": stored} if index == 0 else {}}))
 
     def execute(self, argv, folder, log, timeout, record, build):
         record["commands"].append({"argv": argv, "cwd": str(folder), "exit_code": 0})
@@ -708,6 +721,70 @@ class FpgaTests(unittest.TestCase):
             process.kill.assert_called_once()
             self.assertFalse(record['commands'][-1]['cleanup_complete'])
         self.assertTrue(log.exists())
+
+    def test_each_board_supplies_its_own_device_family_and_corners(self):
+        repository = Path(__file__).resolve().parents[3]
+        entries = fpga.board_registries(repository)
+        self.assertEqual(sorted(set(entries)), sorted(entries))
+        for name, (registry, board, target) in entries.items():
+            with self.subTest(target=name):
+                self.assertEqual(target["device"], board["device"])
+                self.assertEqual(fpga.target_registry(repository, name), registry)
+        expected = {"builder-smoke": ("10M50DAF484C7G", "MAX 10", 3),
+                    "nano-smoke": ("5CSEBA6U23I7", "Cyclone V", 4)}
+        for name, (device, family, corners) in expected.items():
+            with self.subTest(target=name):
+                definition = fpga.target_definition(repository, name)
+                self.assertEqual((definition["device"], definition["family"]), (device, family))
+                self.assertEqual(len(definition["timing_corners"]), corners)
+                folder = self.build / name
+                folder.mkdir(parents=True)
+                fpga.prepare(repository, folder, definition)
+                qsf = (folder / "design.qsf").read_text(encoding="utf-8")
+                self.assertIn(f'set_global_assignment -name FAMILY "{family}"', qsf)
+                self.assertIn(f"set_global_assignment -name DEVICE {device}", qsf)
+                other = next(d for d, _, _ in expected.values() if d != device)
+                self.assertNotIn(other, qsf)
+
+    def test_nano_flow_proof_completes_its_cyclone_v_output_assignments(self):
+        repository = Path(__file__).resolve().parents[3]
+        definition = fpga.target_definition(repository, "nano-smoke")
+        fpga.prepare(repository, self.build, definition)
+        qsf = (self.build / "design.qsf").read_text(encoding="utf-8")
+        for index in range(8):
+            port = f"leds\\[{index}\\]"
+            self.assertIn(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to "{port}"', qsf)
+            self.assertIn(f'set_instance_assignment -name SLEW_RATE 1 -to "{port}"', qsf)
+        self.assertEqual(qsf.count("SLEW_RATE"), 8)
+        self.assertEqual(qsf.count("CURRENT_STRENGTH_NEW"), 8)
+
+    def test_registry_schema_and_board_definition_are_checked(self):
+        self.assertEqual(sorted(fpga.board_registries(self.root)), ["smoke"])
+        broken = [{"schema_version": 1}, {"timing_corners": ["Slow 1200mV 85C", "Slow 1200mV 0C"]},
+                  {"timing_corners": ["Slow 1200mV 85C", "Slow 1200mV 0C", "warm"]},
+                  {"device": "10M50DAF484C7G;pgm"}, {"family": 'MAX 10" -name DEVICE bad'},
+                  {"specification": "wiki/absent.md"}, {"specification": "src/smoke.sv"}, {"name": ""}]
+        for change in broken:
+            with self.subTest(change=change):
+                registry = json.loads(self.registry.read_text())
+                registry.update({k: v for k, v in change.items() if k == "schema_version"})
+                registry["board"] = {**registry["board"], **{k: v for k, v in change.items() if k != "schema_version"}}
+                self.registry.write_text(json.dumps(registry))
+                with self.assertRaises(ValueError):
+                    fpga.target_definition(self.root, "smoke")
+        # A name two boards claim resolves to neither.
+        self.save_target()
+        second = self.root / fpga.REGISTRIES[1]
+        second.write_text(json.dumps({"schema_version": 2, "board": self.board,
+                                      "targets": {"smoke": json.loads(self.registry.read_text())["targets"]["smoke"]}}))
+        with self.assertRaisesRegex(ValueError, "used by two boards"):
+            fpga.target_definition(self.root, "smoke")
+
+    def test_a_target_may_not_name_a_device_its_board_does_not(self):
+        self.target["device"] = "5CSEBA6U23I7"
+        self.save_target()
+        with self.assertRaisesRegex(ValueError, "unknown FPGA target, fields, or device"):
+            fpga.target_definition(self.root, "smoke")
 
     def test_configuration_quotes_spaces_and_array_pins(self):
         fpga.prepare(self.root, self.build, self.target)

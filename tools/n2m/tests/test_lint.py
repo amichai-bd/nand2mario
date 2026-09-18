@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m import lint
+from n2m import fpga, lint
 from n2m.cli import main, parser
 from n2m.doctor import doctor, questa_lint
 from n2m.records import read_json
@@ -64,8 +64,11 @@ class LintPlanTests(unittest.TestCase):
         self.assertTrue(all(source.startswith(("src/rtl/", "src/fpga/", "src/dv/builder/")) for source in sources))
         self.assertIn(lint.STAND_INS, sources)
         self.assertNotIn(lint.FAULT, sources)
-        registry = json.loads((ROOT / "src/fpga/de10_lite/targets.json").read_text())["targets"]
+        registry = {}
+        for path in fpga.REGISTRIES:
+            registry.update(json.loads((ROOT / path).read_text())["targets"])
         self.assertEqual(set(selected["tops"]), {target["top"] for target in registry.values()})
+        self.assertIn("nano_smoke", selected["tops"])
         self.assertEqual(sorted(name for entry in selected["tops"].values() for name in entry["targets"]),
                          sorted(registry))
         for top, entry in selected["tops"].items():

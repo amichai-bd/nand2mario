@@ -1901,6 +1901,8 @@ targets retain their own scoped evidence.
 ```bash
 python3 tools/build.py fpga build builder-smoke --quartus-bin <directory> --tag fpga-smoke --json
 python3 tools/build.py fpga build builder-invalid --quartus-bin <directory> --tag fpga-invalid --json
+python3 tools/build.py fpga build nano-smoke --quartus-bin <directory> --tag nano-smoke --json
+python3 tools/build.py fpga build nano-invalid --quartus-bin <directory> --tag nano-invalid --json
 ```
 
 `--quartus-bin` names the directory holding `quartus_sh`, `quartus_map`,
@@ -1910,6 +1912,11 @@ the Quartus `bin/` launcher directory, whose scripts set the library path the
 one version, or the stage fails naming the first missing tool.
 
 The first command compiles, fits, assembles, and checks the owned MAX 10 fixture.
+`nano-smoke` and `nano-invalid` are the same pair for the DE10-Nano: the
+[flow proof](../../src/de10-nano-board.md#targets) fits a counter on that
+board's LEDs, and it places a drive strength and a slew rate on each LED pin
+because Cyclone V reports an output pin without both as an incomplete I/O
+assignment. It has no PLL; that replacement is separate work.
 The invalid target deliberately supplies a negative clock period and must FAIL
 with exit 1; it never becomes a passing build. No command programs the board,
 opens UART, or proves physical operation. Design-specific PLL/frame/fit evidence
@@ -1917,11 +1924,24 @@ belongs to the [clocking](../../src/rtl/clocking/MAS_clocking.md) and
 [VGA](../../src/rtl/vga/MAS_vga.md) owners, using the
 [timing contract](../../src/clocks-resets-cdc.md).
 
-The [target registry](../../../src/fpga/de10_lite/targets.json) has exactly
-`schema_version: 1` and a `targets` object. Each named target has exactly
-`device`, `top`, ordered nonempty `sources` and `constraints` lists, a `pins`
-port-to-package-pin object, and a `virtual_pins` port-pattern list. The device
-is `10M50DAF484C7G`; top names are identifiers. Inputs are unique existing
+One registry per supported board: the
+[DE10-Lite registry](../../../src/fpga/de10_lite/targets.json) and the
+[DE10-Nano registry](../../../src/fpga/de10_nano/targets.json). Each has exactly
+`schema_version: 2`, a `board` object and a `targets` object, and target names
+are unique across boards, so one name still selects one board. The `board`
+object has exactly `name`, `device`, `family`, `timing_corners` and
+`specification`: the device as it is written in the QSF, the Quartus family
+name, at least three distinct analysed timing corners of the form
+`<Slow|Fast> <n>mV <t>C`, and the repository-relative `wiki/` page that owns
+that board's pin and resource data
+([DE10-Lite](../../src/board-bring-up.md),
+[DE10-Nano](../../src/de10-nano-board.md)). A registry whose specification page
+is missing fails. Each named target has exactly `device`, `top`, ordered
+nonempty `sources` and `constraints` lists, a `pins` port-to-package-pin
+object, and a `virtual_pins` port-pattern list. A target's `device` must equal
+its board's; top names are identifiers. The resolved definition carries the
+board's `family` and `timing_corners`, and every device-dependent assignment
+and evidence check reads them from it, so no device is named in the build path. Inputs are unique existing
 repository-relative `.sv` and `.sdc` paths under `src/`, without traversal or
 symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
 names permit an optional numeric or wildcard array index. Physical assignments
@@ -1974,9 +1994,11 @@ changed tool, or failed forced rebuild prevents stale reuse.
 
 Required evidence includes map/fit/assembler/timing reports, a nonempty SOF,
 the successful exact-device fit summary with final timing models, and timing
-summary checks for setup, hold and minimum pulse width at Slow 1200mV 85C,
-Slow 1200mV 0C and Fast 1200mV 0C. Every reported slack must be finite and
-nonnegative with zero TNS. The audit requires zero illegal/unconstrained
+summary checks for setup, hold and minimum pulse width at every corner the
+target's board declares. The DE10-Lite declares Slow 1200mV 85C, Slow 1200mV 0C
+and Fast 1200mV 0C; the industrial Cyclone V of the DE10-Nano declares
+Slow 1100mV 100C, Slow 1100mV -40C, Fast 1100mV 100C and Fast 1100mV -40C.
+Every reported slack must be finite and nonnegative with zero TNS. The audit requires zero illegal/unconstrained
 clock/input/output setup and hold counts, no ignored SDC assignments, and no
 structural timing problems. Missing/malformed evidence fails rather than passing
 on the tool exit alone. Keep resource totals and all corner slack values.
