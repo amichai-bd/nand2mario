@@ -36,7 +36,7 @@ def expected_inputs(root, profile, target):
                                                                'tools/n2m/dependencies.json']
     else:
         definition = fpga.target_definition(root, target)
-        paths = [fpga.REGISTRY, *dependencies(root, definition['sources'], synthesis=True),
+        paths = [fpga.target_registry(root, target), *dependencies(root, definition['sources'], synthesis=True),
                  *definition['constraints']]
     paths += ['tools/build.py', *[p.relative_to(root).as_posix() for p in (root / 'tools/n2m').glob('*.py')]]
     return {p: file_hash(root / p) for p in paths}

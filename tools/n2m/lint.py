@@ -10,7 +10,7 @@ import re
 import time
 import uuid
 
-from .fpga import REGISTRY, target_definition
+from .fpga import board_registries, target_definition
 from .hdl import dependencies
 from .progress import Progress
 from .questa import diagnostic
@@ -39,10 +39,12 @@ def product_sources(root):
 
 
 def fpga_tops(root):
-    """Map each registered FPGA top to its registry targets and synthesis sources."""
-    registry = json.loads((root / REGISTRY).read_text(encoding="utf-8"))
+    """Map each registered FPGA top to its registry targets and synthesis sources.
+
+    Every board registry contributes, so the gate elaborates each board's tops.
+    """
     tops = {}
-    for name in sorted(registry.get("targets", {})):
+    for name in sorted(board_registries(root)):
         target = target_definition(root, name)
         entry = tops.setdefault(target["top"], {"targets": [], "sources": []})
         entry["targets"].append(name)
