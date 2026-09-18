@@ -5,14 +5,14 @@ import re
 import subprocess
 import unittest
 
-from tools.wiki import rtl_modules as rtl
+from tools.wiki import rtl_explorer as explorer, rtl_modules as rtl
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def page() -> str:
-    return (ROOT / rtl.PAGE).read_text(encoding="utf-8")
+    return (ROOT / explorer.PAGE).read_text(encoding="utf-8")
 
 
 class GeneratorTests(unittest.TestCase):
@@ -107,12 +107,12 @@ class GeneratorTests(unittest.TestCase):
             self.assertTrue((ROOT / target).is_file(), f"{name} -> {target}")
 
     def test_block_area_follows_the_measured_weight(self):
-        rects = rtl.squarify([100.0, 300.0, 100.0], 0, 0, 200, 100)
+        rects = explorer.squarify([100.0, 300.0, 100.0], 0, 0, 200, 100)
         areas = [width * height for _, _, width, height in rects]
         self.assertAlmostEqual(sum(areas), 200 * 100, places=3)
         self.assertAlmostEqual(areas[1] / areas[0], 3.0, places=3)
-        self.assertAlmostEqual(rtl.own_weight(self.modules["n2m_ppu_timing"]),
-                               200 + rtl.WEIGHT_REGISTER * 21)
+        self.assertAlmostEqual(explorer.own_weight(self.modules["n2m_ppu_timing"]),
+                               200 + explorer.WEIGHT_REGISTER * 21)
 
 
 class PageTests(unittest.TestCase):
@@ -125,9 +125,9 @@ class PageTests(unittest.TestCase):
 
     def test_the_committed_page_equals_the_generator_output(self):
         self.assertEqual(
-            self.html, rtl.document(ROOT),
-            f"{rtl.PAGE} is stale; regenerate it with "
-            "python -c \"from tools.wiki import rtl_modules; rtl_modules.write()\"")
+            self.html, explorer.document(ROOT),
+            f"{explorer.PAGE} is stale; regenerate it with "
+            "python -m tools.wiki.rtl_explorer")
 
     def test_every_block_names_a_real_module_and_opens_a_panel(self):
         blocks = set(re.findall(r'data-module="([^"]+)"', self.html))
@@ -175,11 +175,11 @@ class PageTests(unittest.TestCase):
                       "../../tools/wiki/assets/presentation.js",
                       "assets/rtl-explorer.css", "assets/rtl-explorer.js"):
             self.assertIn(asset, self.html)
-        for tracked in (rtl.STYLESHEET, rtl.SCRIPT):
+        for tracked in (explorer.STYLESHEET, explorer.SCRIPT):
             self.assertTrue((ROOT / tracked).is_file())
         listed = subprocess.check_output(["git", "ls-files", "-z", "wiki/presentations"],
                                          cwd=ROOT).decode().split("\0")
-        for tracked in (rtl.PAGE, rtl.STYLESHEET, rtl.SCRIPT):
+        for tracked in (explorer.PAGE, explorer.STYLESHEET, explorer.SCRIPT):
             self.assertIn(tracked, listed, "stage the page and its assets before checking")
 
 

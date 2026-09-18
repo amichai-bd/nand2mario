@@ -47,7 +47,8 @@ The [scaffold tour](scaffold-tour.html) introduces the wiki's source navigation.
 The [RTL module explorer](rtl-explorer.html) is generated rather than written: it draws
 every module instance nested inside the module that instantiates it, sized by measured
 lines and register macros, and opens each module's summary, ports and real source.
-[`tools/wiki/rtl_modules.py`](../../tools/wiki/rtl_modules.py) writes it, and a host test
+[`tools/wiki/rtl_modules.py`](../../tools/wiki/rtl_modules.py) measures the sources and
+[`tools/wiki/rtl_explorer.py`](../../tools/wiki/rtl_explorer.py) draws the page; a host test
 fails when the committed page no longer matches `src/rtl/`.
 
 ## Shared behavior

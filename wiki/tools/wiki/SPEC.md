@@ -274,6 +274,28 @@ and `gh` stubbed. The wiki browser suite checks the Stats tab and report at
 desktop/mobile sizes, including the snapshot notice, documentation navigation
 and keyboard-scrollable chart regions.
 
+## RTL explorer
+
+`tools/wiki/rtl_modules.py` measures every module under `src/rtl/` and the three
+named DE10-Lite board sources: file line count, register-macro invocations,
+ports with direction and width, and the instances each module contains. It reads
+instantiations as `<module> <instance> (`, because several sources give an
+instance no `u_` prefix, and it counts registers from the `DFF` macros in
+`src/rtl/common/macros.svh` with `SYNTHESIS` defined, because `always_ff` does
+not appear in a module that declares its flops through those macros. Registers
+and instances in a simulation-only branch are reported separately, never counted
+as hardware.
+
+`tools/wiki/rtl_explorer.py` draws those measurements as
+[`wiki/presentations/rtl-explorer.html`](../../presentations/rtl-explorer.html):
+nested blocks whose area follows `lines + 4 x register macros` and nothing else.
+No cell, ALM or fitted-register figure is shown or implied; the repository
+retains no fit report, and a whole-design fit cannot be attributed to one
+module. Run `python -m tools.wiki.rtl_explorer` to rewrite the page.
+`tools/wiki/test_rtl_modules.py` fails when the committed page differs from the
+generator's output, and the browser suite checks block selection, the source
+links and the narrow layout.
+
 ## README showcases
 
 The manual `tools/wiki/showcase.py` generator writes the animated SVGs under
