@@ -786,10 +786,14 @@ frame counter, so frame 16 cannot arrive sooner, `menu-delayed` displays 19
 because the path draws one row a frame, sixteen rows cannot arrive sooner and
 the split row costs a frame more, and `menu-exit` boots three
 images (menu, game, menu) because the returned menu only starts settled after
-a real select left the slot in `$A003`. What remains in those three is the
-testbench's fixed cost per boot rather than stimulus;
-[#811](https://github.com/amichai-bd/nand2mario/issues/811) tracks cutting
-it. Every target also measures each
+a real select left the slot in `$A003`. What remains in those three is the boot's own
+simulated time -- the menu's first frame body arrives 76.6 ms in -- and the
+retained FST wave, which costs more wall than the rest of the run together.
+Reading the fixture files is not that floor: `$readmemh` of the library and the
+frames takes 0.027 s, and the whole setup phase 0.20 s. The
+[Verilator fixed cost](../../../tools/n2m/SPEC.md#fixed-cost-of-a-verilator-run)
+records the measurements, why the trace stays and why a shared boot state
+cannot replace it. Every target also measures each
 menu frame body against the [frame budget](#frame-budget); the fixtures other
 than `menu-splash` hold A through the boot, which skips the splash and proves
 the press is consumed, because an A the list saw would select slot 0.
