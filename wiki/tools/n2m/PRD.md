@@ -41,7 +41,8 @@ simulator, retaining reproducible failure evidence under the
 [baseline contract](../../src/dv/baseline/SPEC.md), without claiming CPU
 or hardware coverage from this fixture.
 
-The builder supports host-native Verilator on Linux and Questa on Windows. The
+The builder supports host-native Verilator on Linux and Questa wherever its
+executables and a runtime license are present. The
 [simulator policy](SPEC.md#simulator-policy) owns selection, target capability,
 per-backend caches and command ownership. The Verilator path uses behavioral
 doubles for Intel primitives keyed on `VERILATOR`; Questa uses checked installed

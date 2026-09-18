@@ -14,6 +14,23 @@ from .verilator_install import discovery_note, installed as installed_verilator
 QUESTA_SIMULATION_TOOLS = ("vlib", "vmap", "vlog", "vsim")
 # The compile gate elaborates with vopt and never launches vsim.
 QUESTA_COMPILE_TOOLS = ("vlib", "vmap", "vlog", "vopt")
+# vsim is the only Questa tool a run launches that checks out a runtime license.
+# vlib, vmap, vlog and vopt consult none, which is why the compile gate needs no
+# license on any host. `vsim -version` prints its banner without a checkout too,
+# so identifying vsim proves nothing about running it: the checkout is its own
+# fact and this probe is the only way to learn it before a run depends on it.
+# The probe loads no design. `-c` starts the console kernel, which forces the
+# checkout; `quit -f` leaves at once; `-nolog` writes no transcript into the
+# caller's directory; `-lic_noqueue` refuses to wait behind a busy license
+# server instead of blocking the probe.
+QUESTA_LICENSE_PROBE = ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f")
+QUESTA_LICENSE_FAILURE = re.compile(
+    r"(?i)unable to (?:checkout|check out) a licen[cs]e|invalid licen[cs]e"
+    r"|unable to find the licen[cs]e|licen[cs]e (?:checkout|check out) failed")
+QUESTA_LICENSE = ("no Questa runtime license: vsim could not check one out. "
+                  "Point SALT_LICENSE_SERVER or LM_LICENSE_FILE at a license that grants "
+                  "vsim and retry; the Questa compile gate needs none because it never "
+                  "launches vsim")
 
 
 class ToolError(RuntimeError):
@@ -65,6 +82,27 @@ def questa_tools(directory, names, run=run_tool):
     return tools, info
 
 
+def questa_license(vsim, run=run_tool):
+    """Prove vsim can check out a runtime license, and name the license when it cannot.
+
+    Returns the probe record for the discovery log. A license failure is a
+    ToolError carrying the vendor's own words, so the refusal names the license
+    rather than a host. Any other nonzero exit is recorded and left alone: this
+    probe exists to name a missing license, not to second-guess a vsim whose
+    own run reports the detail.
+    """
+    argv = [vsim, *QUESTA_LICENSE_PROBE]
+    result = run(argv)
+    output = result.stdout or ""
+    record = {"argv": argv, "exit_code": result.returncode, "output": output,
+              "licensed": not QUESTA_LICENSE_FAILURE.search(output)}
+    if not record["licensed"]:
+        named = next((line.strip() for line in output.splitlines()
+                      if QUESTA_LICENSE_FAILURE.search(line)), "")
+        raise ToolError(f"{QUESTA_LICENSE}: {named}" if named else QUESTA_LICENSE, output)
+    return record
+
+
 def verilator_executable(directory, root=None, which=None):
     """Resolve verilator and say where it came from.
 
@@ -85,7 +123,8 @@ def verilator_executable(directory, root=None, which=None):
 
 
 class Simulator:
-    def __init__(self, backend, *, verilator_bin=None, questa_bin=None, root=None):
+    def __init__(self, backend, *, verilator_bin=None, questa_bin=None, root=None,
+                 require_license=True):
         if backend not in ("verilator", "questa"):
             raise ToolError(f"unsupported simulator: {backend}; expected verilator or questa")
         if backend == "verilator" and questa_bin is not None:
@@ -96,7 +135,7 @@ class Simulator:
         if backend == "verilator":
             self.discover_verilator(verilator_bin, root)
         else:
-            self.discover_questa(questa_bin)
+            self.discover_questa(questa_bin, require_license=require_license)
 
     def discover_verilator(self, directory, root=None):
         """Find verilator and the C++ compiler it drives; record both identities."""
@@ -132,9 +171,20 @@ class Simulator:
                                      "version": banner.stdout.strip().splitlines()[0]}
         self.compiler = self.runtime = self.tools["verilator"]
 
-    def discover_questa(self, directory):
-        """Find the native Questa tools and record each executable identity."""
+    def discover_questa(self, directory, *, require_license=True):
+        """Find the native Questa tools, record each identity, and prove the license.
+
+        A simulation launches vsim, so availability is the pair: the executables
+        are present and vsim can check out a runtime license. Discovery decides
+        both by asking the tools, on whichever host is running.
+
+        `require_license=False` skips only the probe, for `sim prepare`, whose
+        host preparation launches no vsim and so consults no license.
+        """
         self.tools, self.info = questa_tools(directory, QUESTA_SIMULATION_TOOLS, self.run)
+        self.info["license_required"] = require_license
+        if require_license:
+            self.info["discovery"].append(questa_license(self.tools["vsim"], self.run))
         self.compiler, self.runtime = self.tools["vlog"], self.tools["vsim"]
 
     def run(self, argv, cwd=None, timeout=60, env=None):

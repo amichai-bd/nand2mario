@@ -142,7 +142,8 @@ Agents may invent different commands, directories, or tool invocations.
 
 The [environment doctor](tools/n2m/SPEC.md#environment-doctor) implements
 checked simulator smoke runs: Verilator on Linux with no license consulted, and
-Questa on Windows with a successful runtime checkout recorded. The environment
+Questa wherever it is installed, reporting a successful runtime checkout or
+naming the missing license. The environment
 profile adds Quartus edition reporting and read-only JTAG/UART enumeration. It
 reports selected UART health/identity, expected JTAG
 identity and Quartus version independently. Each run must establish current

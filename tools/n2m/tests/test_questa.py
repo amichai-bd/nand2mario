@@ -11,7 +11,8 @@ from unittest.mock import patch
 import test_builder
 from n2m.cli import main
 from n2m.records import read_json
-from n2m.simulator import Simulator, ToolError
+from n2m.simulator import (QUESTA_LICENSE, QUESTA_LICENSE_PROBE, Simulator, ToolError,
+                          questa_license)
 
 
 class FakeQuesta(test_builder.FakeSimulator):
@@ -63,7 +64,10 @@ class QuestaTests(unittest.TestCase):
                     returncode=0, stdout="Questa 2025.2")) as run:
             simulator = Simulator("questa", questa_bin=str(directory))
             self.assertEqual(simulator.backend, "questa")
-            self.assertEqual(len(run.call_args_list), 3)
+            # Three -version banners (vlib has none) and the vsim license probe.
+            self.assertEqual(len(run.call_args_list), 4)
+            self.assertEqual(run.call_args_list[-1].args[0][1:], list(QUESTA_LICENSE_PROBE))
+            self.assertTrue(simulator.info["discovery"][-1]["licensed"])
             self.assertEqual(set(simulator.info["tools"]), {"vlib", "vmap", "vlog", "vsim"})
             first_hash = simulator.info["tools"]["vsim"]["sha256"]
             (directory / ("vsim" + suffix)).write_bytes(b"changed")
@@ -155,6 +159,93 @@ class QuestaTests(unittest.TestCase):
         mirror = self.root / "workdir/builds/questa-cli/sim/test/builder-smoke/result.json"
         self.assertEqual(read_json(current)["status"], "FAIL")
         self.assertEqual(read_json(mirror)["authoritative_result"], current.relative_to(self.root).as_posix())
+
+
+# The exact transcript this repository's Linux host produced from
+# `vsim -c -nolog -lic_noqueue -do "quit -f"` with no license configured.
+UNLICENSED_VSIM = (
+    "Unable to find the license file.  It appears that your license file environment "
+    "variable (SALT_LICENSE_SERVER) is not set correctly.\n"
+    "Unable to checkout a license.  Vsim is closing.\n"
+    "** Error: Invalid license environment. Application closing.\n")
+
+
+class QuestaLicenseTests(unittest.TestCase):
+    """vsim needs a runtime checkout; the banner and the compile tools do not."""
+
+    def test_an_unlicensed_vsim_is_refused_by_license_not_by_host(self):
+        calls = []
+
+        def run(argv):
+            calls.append(argv)
+            return SimpleNamespace(returncode=4, stdout=UNLICENSED_VSIM)
+
+        with self.assertRaises(ToolError) as raised:
+            questa_license("/tools/vsim", run)
+        message = str(raised.exception)
+        self.assertIn(QUESTA_LICENSE, message)
+        self.assertIn("Unable to find the license file", message)
+        self.assertIn("SALT_LICENSE_SERVER", message)
+        self.assertEqual(raised.exception.output, UNLICENSED_VSIM)
+        # The reason is the license, never an operating system.
+        for absent in ("Windows", "PowerShell", "Linux", "operating system"):
+            self.assertNotIn(absent, message)
+        self.assertEqual(calls, [["/tools/vsim", *QUESTA_LICENSE_PROBE]])
+
+    def test_the_probe_loads_no_design_and_writes_no_transcript(self):
+        """`-nolog` keeps the caller's directory clean and `-lic_noqueue` never
+        waits behind a busy server. No design or library is named."""
+        self.assertEqual(QUESTA_LICENSE_PROBE, ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f"))
+
+    def test_a_licensed_vsim_passes_and_records_the_probe(self):
+        record = questa_license("/tools/vsim", lambda argv: SimpleNamespace(
+            returncode=0, stdout="# quit\n"))
+        self.assertTrue(record["licensed"])
+        self.assertEqual((record["argv"], record["exit_code"]),
+                         (["/tools/vsim", *QUESTA_LICENSE_PROBE], 0))
+
+    def test_a_nonzero_exit_without_license_wording_is_recorded_not_refused(self):
+        """The probe names a missing license. It does not second-guess a vsim
+        whose own run reports the detail, so Windows keeps its existing behavior."""
+        record = questa_license("/tools/vsim", lambda argv: SimpleNamespace(
+            returncode=1, stdout="** Error: something else entirely\n"))
+        self.assertEqual((record["licensed"], record["exit_code"]), (True, 1))
+
+    def test_preparation_discovers_the_tools_without_consulting_the_license(self):
+        """`sim prepare` launches no vsim, so it must not need a checkout: the run
+        that adopts the attempt is what does."""
+        present = str(Path(__file__).resolve())
+
+        def run_tool(argv):
+            if "-version" in argv:
+                return SimpleNamespace(returncode=0, stdout="Questa 2025.2")
+            return SimpleNamespace(returncode=4, stdout=UNLICENSED_VSIM)
+
+        with patch("n2m.simulator.shutil.which", return_value=present), \
+                patch.object(Simulator, "run", side_effect=run_tool) as run:
+            simulator = Simulator("questa", require_license=False)
+            self.assertFalse(simulator.info["license_required"])
+            # Three -version banners and no probe.
+            self.assertEqual(len(run.call_args_list), 3)
+            for call in run.call_args_list:
+                self.assertNotIn("-lic_noqueue", call.args[0])
+            with self.assertRaises(ToolError):
+                Simulator("questa")
+
+    def test_a_host_without_questa_is_refused_by_the_missing_tool(self):
+        """No Questa at all names the executable, not the license and not the host."""
+        with patch("n2m.simulator.shutil.which", return_value=None):
+            with self.assertRaisesRegex(ToolError, r"missing vlib; select the Questa tool directory explicitly"):
+                Simulator("questa")
+        # A host holding only the compile tools still names the absent vsim, so a
+        # `lint questa` host is not mistaken for a simulation host.
+        present = str(Path(__file__).resolve())
+        with patch("n2m.simulator.shutil.which", side_effect=lambda candidate: (
+                None if Path(candidate).stem == "vsim" else present)), \
+                patch.object(Simulator, "run", return_value=SimpleNamespace(
+                    returncode=0, stdout="Questa 2025.2")):
+            with self.assertRaisesRegex(ToolError, r"missing vsim"):
+                Simulator("questa")
 
 
 if __name__ == "__main__":
