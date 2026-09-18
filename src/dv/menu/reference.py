@@ -501,7 +501,7 @@ def greyed(tile):
 
 
 def bank_tiles():
-    """The 100-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge, the stars, the footer cells."""
+    """The 102-tile bank: font, the font on the grey page, the grey cells, the pointer phases, the badge, the stars, the footer cells, the press-A phases."""
     font = font_tiles()
     bank = (font + [greyed(tile) for tile in font]
             + atlas_tiles(GREY_ART, GREY_ART_TILES) + atlas_tiles(POINTER_ART, POINTER_TILES)
