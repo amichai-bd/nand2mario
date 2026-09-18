@@ -111,9 +111,9 @@ need private host-control MMIO.
 The builder supports Verilator on Linux and native Questa on Windows under its
 [simulator policy](wiki/tools/n2m/SPEC.md#simulator-policy); omission selects
 the host-native backend. Quartus builds and the
-[Questa compile gate](wiki/tools/n2m/SPEC.md#questa-compile-gate) required for RTL
-and FPGA changes run wherever those tools are installed; programming the board
-runs from Windows. The repository also contains
+[Questa compile gate](wiki/tools/n2m/SPEC.md#questa-compile-gate) required for
+RTL and FPGA changes run wherever those tools are installed; programming the
+board runs from Windows. The repository also contains
 Quartus/MAX 10 FPGA build support, host-side loading and control tools, Python
 verification, cocotb integration, vendor-model simulation, deterministic build
 records, and checked output evidence.

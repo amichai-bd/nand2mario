@@ -95,6 +95,26 @@ class TuiTests(unittest.TestCase):
         self.assertTrue(tui.compatible_host(plan, system="Linux"))
         self.assertFalse(tui.compatible_host(plan, system="Windows"))
 
+    def test_the_fit_and_the_gate_are_current_host_plans(self):
+        """Both run wherever their tools are, so the menu must offer Run now on
+        either host instead of telling the operator to copy the command."""
+        gate = tui.make_plan(tui.Menu(ScriptedTerminal([])), ROOT, "lint")
+        self.assertEqual((gate.argv, gate.parser_path, gate.host),
+                         (["lint", "questa"], ("lint", "questa"), "Current host"))
+        tui.validate_plan(gate, ROOT)
+        with patch.object(tui, "_editable",
+                          lambda menu, steps, factory: factory({"target": "builder-smoke",
+                                                                "quartus": "tools"})), \
+                patch.object(tui.Menu, "choose", lambda self, title, choices: "build"):
+            fit = tui._fpga_plan(tui.Menu(ScriptedTerminal([])), ROOT)
+        self.assertEqual((fit.argv, fit.parser_path, fit.host),
+                         (["fpga", "build", "builder-smoke", "--quartus-bin", "tools"],
+                          ("fpga", "build"), "Current host"))
+        tui.validate_plan(fit, ROOT)
+        for plan in (gate, fit):
+            for system in ("Linux", "Windows"):
+                self.assertTrue(tui.compatible_host(plan, system=system), (plan.parser_path, system))
+
     def test_backend_target_choices_come_from_the_live_registry(self):
         with tempfile.TemporaryDirectory(prefix="tui registry ") as temporary:
             root = Path(temporary)
@@ -252,12 +272,12 @@ class TuiTests(unittest.TestCase):
                              [(relative, "v05-board", "ffeeddccbbaa99887766554433221100")])
 
     def test_powershell_review_quotes_paths_with_spaces(self):
-        plan = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin",
+        plan = tui.Plan(["fpga", "program", "--sof", "workdir/design.sof", "--quartus-bin",
                          r"C:\Program Files\Intel FPGA\bin64"],
-                        ("fpga", "build"), "Windows PowerShell", "build")
+                        ("fpga", "program"), "Windows PowerShell", "program")
         text = tui.command_text(plan, ROOT, "Windows", executable=r"C:\Program Files\Python\python.exe")
         self.assertIn("'C:\\Program Files\\Intel FPGA\\bin64'", text)
-        self.assertTrue(text.startswith("& 'C:\\Program Files\\Python\\python.exe' tools/build.py fpga build"))
+        self.assertTrue(text.startswith("& 'C:\\Program Files\\Python\\python.exe' tools/build.py fpga program"))
         local = tui.Plan(["sw", "build", "path with spaces"], ("sw", "build"), "Current host", "build")
         self.assertIn("'path with spaces'", tui.command_text(
             local, ROOT, "Windows", executable=r"C:\Python Folder\python.exe"))
@@ -622,8 +642,8 @@ class TuiTests(unittest.TestCase):
                 tui.command_text(refused, ROOT, "Windows", executable=r"C:\Python\python.exe")
 
     def test_foreign_host_commands_use_the_destination_python_launcher(self):
-        windows = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin", "tools"],
-                           ("fpga", "build"), "Windows PowerShell", "build")
+        windows = tui.Plan(["fpga", "program", "--sof", "checked.sof", "--quartus-bin", "tools"],
+                           ("fpga", "program"), "Windows PowerShell", "program")
         wsl = tui.Plan(["sim", "test", "builder-smoke", "--sim", "verilator"],
                        ("sim", "test"), "Linux", "simulate")
         with patch("n2m.tui.sys.executable", "/usr/bin/python3"):
@@ -747,13 +767,13 @@ class TuiTests(unittest.TestCase):
 
     def test_each_leaf_plan_is_complete_before_review(self):
         incomplete = tui.Plan(["fpga", "build", "v05-board"], ("fpga", "build"),
-                              "Windows PowerShell", "build")
+                              "Current host", "build")
         with self.assertRaisesRegex(ValueError, "quartus-bin"):
             tui.validate_plan(incomplete)
 
     def test_foreign_host_review_has_no_run_choice(self):
-        plan = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin", "tools"], ("fpga", "build"),
-                        "Windows PowerShell", "compile")
+        plan = tui.Plan(["fpga", "program", "--sof", "checked.sof", "--quartus-bin", "tools"],
+                        ("fpga", "program"), "Windows PowerShell", "program")
         terminal = ScriptedTerminal(["DOWN", "ENTER"])
         self.assertEqual(tui.choose_execution(tui.Menu(terminal), plan, ROOT, "Linux"), "cancel")
         review = "\n".join(terminal.frames[-1])

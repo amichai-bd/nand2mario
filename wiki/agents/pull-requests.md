@@ -111,7 +111,7 @@ wiki run. Then, by changed scope:
   `vopt` installed:
 
   ```text
-  python3 tools/build.py lint questa --tag <tag> --json
+  python tools/build.py lint questa --tag <tag> --json
   ```
 
   It must report `PASS`. The PR body records the result in the

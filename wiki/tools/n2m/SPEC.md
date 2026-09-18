@@ -134,8 +134,8 @@ it is exactly 32 hexadecimal digits and nonzero. They also hide
 `--endpoint-restarted`. The doctor asks
 for scope first: simulation scope then
 offers either backend, while the full hardware environment fixes Questa and
-Windows because Questa runtime execution and JTAG discovery are Windows-owned. `--json` is
-intentionally absent.
+Windows because Questa runtime execution and JTAG discovery are Windows-owned.
+`--json` is intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
 simulation, deletes a build, programs the FPGA, transmits over UART, or launches
@@ -179,7 +179,7 @@ evidence was reused; it never presents recorded work as a new execution.
 Simulation names the target and backend, tool discovery, each compile or
 elaboration command, execution, and the checked result. Its final summary gives
 the compile and simulation logs, authoritative `result.json`, retained waveform,
-and the Windows PowerShell command that starts the `v05-board` FPGA build.
+and the current-host command that starts the `v05-board` FPGA build.
 FPGA build names Quartus discovery, including target-specific IP identities,
 cache checking, generation when applicable,
 compile/fit/assembly/timing, the timing audit, optional netlist generation, and
@@ -192,7 +192,9 @@ never labels that file checked or offers it to the programmer.
 A comparison-only result produced with `--build-id` prints no programming
 handoff, matching the programmer's existing refusal of that image. A fit on a
 host that does not own programming writes a `<Quartus-bin>` placeholder in place
-of its own Quartus directory, which would not exist on the programming host.
+of its own Quartus directory, which would not exist on the programming host; the
+`.sof` keeps its repository-relative path, so that image must reach the
+programming host's own checkout before the printed command can run.
 
 Programming checks the attempt record before JTAG discovery. An early refusal
 writes `failure.log` in the program operation directory and names that retained
@@ -214,8 +216,9 @@ reports the record check and the written command only.
 These handoffs never execute their next command. Linux remains a Verilator host;
 Windows PowerShell remains the Questa simulation, JTAG and launcher host. The
 `fpga build` handoff names the current host, because an installed Quartus runs
-it on either one. No command silently crosses that boundary. The ordinary hardware safeguards
-still apply before a person runs the printed programming or launcher command.
+it on either one. No command silently crosses that boundary. The ordinary
+hardware safeguards still apply before a person runs the printed programming or
+launcher command.
 With `--json`, none of these human lines is written and stdout remains exactly
 one parseable result object for aggregate and child callers.
 
@@ -245,8 +248,8 @@ checkout when the caller's license environment provides one. No acceptance
 criterion requires a licensed Questa run.
 
 One build tool serves two operating systems. Linux owns Verilator execution;
-Windows PowerShell owns Questa runtime execution and `fpga program`. `fpga build`
-and the compile gate follow their installed tools on either host.
+Windows PowerShell owns Questa runtime execution and `fpga program`.
+`fpga build` and the compile gate follow their installed tools on either host.
 Caches and fingerprints stay per backend and OS under `workdir/`.
 [Command ownership](#command-ownership) names the refusals.
 Where RTL instantiates
@@ -270,14 +273,15 @@ counting it as neither pass nor defect, and never falls back; see
 One build tool serves two hosts. Only physical access and a source build are
 operating-system facts; everything else follows the installed toolchain.
 
-Linux owns Verilator simulation. Windows PowerShell owns Questa simulation. Each side refuses a foreign simulator before any workspace is
-taken: Windows reports `Verilator simulation runs on Linux`; non-Windows hosts
-report `Questa simulation runs on Windows PowerShell`. Non-Windows hosts refuse
+Linux owns Verilator simulation and Windows PowerShell owns Questa simulation.
+Each side refuses a foreign simulator before any workspace is taken: Windows
+reports `Verilator simulation runs on Linux`; non-Windows hosts report
+`Questa simulation runs on Windows PowerShell`. Non-Windows hosts refuse
 `fpga program` with
 `FPGA programming runs on Windows PowerShell; Linux JTAG access is unverified`,
-which is a verified-access boundary, not a claim about the tools. Windows refuses
-`tools` with `Pinned host tool installation runs on Linux`, because the pinned
-Verilator is an autoconf, `make` and `g++` source build.
+which is a verified-access boundary, not a claim about the tools. Windows
+refuses `tools` with `Pinned host tool installation runs on Linux`, because the
+pinned Verilator is an autoconf, `make` and `g++` source build.
 
 `fpga build` and `lint questa` carry no operating-system refusal. Each discovers
 its own executables and reports the real result, so an absent tool fails naming
