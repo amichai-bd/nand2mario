@@ -66,15 +66,20 @@ class GeneratorTests(unittest.TestCase):
         # uncounted with every check green. Matching on the macro body rather
         # than on a DFF prefix is what closes that: the guard covers every
         # `define in every tracked src/rtl/ source, not one naming convention.
-        # It does not reach a macro defined outside src/rtl/, or flops written
-        # as a bare always_ff, which Module.raw_processes reports instead.
+        # Four things it does not reach, named so nobody trusts it further:
+        # a macro defined outside src/rtl/; flops written as a bare always_ff,
+        # which Module.raw_processes reports in the panel instead; a macro whose
+        # body delegates to another flop macro rather than writing the process
+        # itself, which N2M_ASSERT_STABLE_WHEN does deliberately as a simulation
+        # check, so a transitive rule would have to exclude it by name; and a
+        # conditional generate, whose branches are all counted.
         creating = set()
         for path in subprocess.check_output(["git", "ls-files", "-z", "src/rtl"],
                                             cwd=ROOT).decode().split("\0"):
             if not path.endswith((".sv", ".svh")):
                 continue
             text = (ROOT / path).read_text(encoding="utf-8")
-            for match in re.finditer(r"^`define\s+(\w+)", text, re.M):
+            for match in re.finditer(r"^\s*`define\s+(\w+)", text, re.M):
                 body, index = [], text.index("\n", match.end()) if "\n" in text[match.end():] else len(text)
                 line = text[match.end():index]
                 body.append(line)
@@ -165,6 +170,25 @@ class PageTests(unittest.TestCase):
             self.assertIn(rtl.specification(module).rsplit("/", 1)[1], panel)
             for port in module.ports:
                 self.assertIn(f"</code> {port.name}</li>", panel, f"{name}.{port.name}")
+
+    def test_no_panel_calls_a_module_with_a_clocked_process_combinational(self):
+        # The three n2m_sim_* models declare their flops with a bare always
+        # block rather than a macro, so their register-macro count is zero while
+        # their state is not. Calling them combinational would be a statement
+        # their own source contradicts, which no count would catch.
+        clocked = {name for name, module in self.modules.items() if module.raw_processes}
+        self.assertEqual(clocked, {"n2m_sim_sdram", "n2m_sim_dual_port_ram",
+                                   "n2m_sim_onchip_flash", "n2m_sim_adc_control",
+                                   "n2m_sim_adc_pll", "n2m_uart_load"})
+        for name, module in self.modules.items():
+            body = self.html.split(f'<details id="m-{name}"', 1)[1].split("</details>", 1)[0]
+            says_combinational = "combinational: no registers and no submodules" in body
+            if module.raw_processes:
+                self.assertFalse(says_combinational, f"{name} holds a clocked process")
+                self.assertIn("outside the register macros", body, name)
+            self.assertEqual(says_combinational,
+                             not (module.instances or module.registers or module.vendor
+                                  or module.raw_processes), name)
 
     def test_the_captions_name_every_module_outside_this_repository(self):
         # Six vendor primitives and Quartus-generated components are

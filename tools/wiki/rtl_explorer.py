@@ -267,9 +267,9 @@ def panel(module: Module, parents: list[tuple[str, str, str]]) -> str:
     facts = [f'<code>{html_escape(module.path)}</code>', f"{module.lines} lines",
              registers, f"{len(module.ports)} ports"]
     if module.register_sites and module.register_sites != module.registers:
-        facts.append(f"written as {module.register_sites} source site"
+        facts.append(f"from {module.register_sites} source site"
                      + ("s" if module.register_sites != 1 else "")
-                     + " inside a generate loop with a literal bound")
+                     + ", replicated by a generate loop with a literal bound")
     if not module.registers_exact:
         facts.append("a generate bound here is not a literal, so this count is a floor "
                      "rather than a measurement")
@@ -280,9 +280,11 @@ def panel(module: Module, parents: list[tuple[str, str, str]]) -> str:
         facts.append(f"{module.simulation_registers} more register macros in a "
                      "simulation-only branch")
     if module.raw_processes:
-        facts.append(f"{module.raw_processes} behavioural <code>always</code> blocks "
-                     "outside the register macros")
-    if not module.instances and not module.registers and not module.vendor:
+        facts.append(f"{module.raw_processes} behavioural <code>always</code> block"
+                     + ("s" if module.raw_processes != 1 else "")
+                     + " outside the register macros, so its state is not counted above")
+    if (not module.instances and not module.registers and not module.vendor
+            and not module.raw_processes):
         facts.append("combinational: no registers and no submodules")
     told = (html_escape(module.summary) if module.summary else
             "This module carries no comment above its declaration; its subsystem contract is "

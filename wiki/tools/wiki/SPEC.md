@@ -299,7 +299,11 @@ the body. A register macro is a declaration site, not a flop count, because its
 `Q` may be a vector; the page names macros and never claims flops.
 `tools/wiki/test_rtl_modules.py` derives the flop-macro list from every
 `` `define `` in `src/rtl/` whose body creates a clocked process, so a new macro
-cannot stop being counted by being named something other than `DFF*`.
+cannot stop being counted by being named something other than `DFF*`. It does
+not reach a macro defined outside `src/rtl/`, a macro that delegates to another
+flop macro rather than writing the process itself, or flops written as a bare
+`always_ff`; the last of these is reported in the module's panel instead, and a
+module holding one is never called combinational.
 
 `tools/wiki/rtl_explorer.py` draws those measurements as
 [`wiki/presentations/rtl-explorer.html`](../../presentations/rtl-explorer.html):
