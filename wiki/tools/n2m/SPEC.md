@@ -625,6 +625,37 @@ the `%Fatal` line, then `%Error: <file>:<line>: Verilog $stop` and
 The raw exit must match `expected_exit`, the signature must appear, and the
 retained wave must exist; otherwise the attempt is `FAIL`.
 
+### Fixed cost of a Verilator run
+
+A composed-system run spends almost nothing on its prepared fixtures. Measured
+with Verilator 5.052 on the recorded development host, reading the menu
+fixtures: `$readmemh` of `menu-library.hex` (573,440 lines) takes 0.020 s,
+`menu-frames.hex` (207,360 lines) 0.007 s and `menu-splash.hex` (391,680 lines)
+0.013 s. The whole setup phase of `tb_menu_system` -- process start, both
+`$readmemh` calls, the 286,720-word SDRAM preload and device initialization --
+takes 0.20 s, measured by running the model to its fixture selection and no
+further. Packing those files denser therefore cannot pay for itself: the parse
+it shortens is under a tenth of a second of a run that lasts a minute or more.
+
+The fixed cost is simulated time and the trace. The menu's first frame body
+arrives 76.6 ms into simulated time, which is most of the wall each menu target
+spends before its first comparison, and the FST trace of the whole top costs
+more wall than everything else together. The same sources and fixtures, traced
+and untraced, with every signature unchanged: `menu-frame` 73.6 s and 31.4 s,
+`menu-phase` 112.4 s and 46.0 s, `menu-splash` 114.1 s and 45.5 s. Each traced
+menu attempt writes about 227 MB of FST.
+
+The trace stays mandatory: every attempt retains one and a missing wave is a
+`FAIL`, as above. Verilator has no runtime selection of individual signals, so
+the declared `python.waves` list cannot narrow it, and the alternatives that
+would (a shallow `trace` depth, or `tracing_off` on the design's modules) keep
+the file while dropping the internals the wave exists to show. The cost is
+recorded here so it is chosen knowingly rather than rediscovered.
+
+A boot receipt that saved one settled state and restored it into every menu
+target is not available: Verilator refuses `--savable` together with `--timing`
+(`V3Options.cpp`), and every SystemVerilog target here builds with `--timing`.
+
 ### Python testbenches under Verilator
 
 `testbench: "python"` targets keep the [testbench contract](#testbench-types):
@@ -1244,7 +1275,10 @@ Ordinary simulations have a maximum 300-second total wall budget. Target at most
 seconds per simulation and 300 seconds aggregate for ordinary pre-merge checks;
 declare broader milestone aggregates before execution. A target that demonstrably
 needs more may [declare an allowance](#declared-wall-allowance) above 300 and up to
-900 seconds; 300 remains the default for every target that declares nothing. The user's bounded
+900 seconds; 300 remains the default for every target that declares nothing. Before
+shortening a composed-system target to fit, read its
+[fixed cost](#fixed-cost-of-a-verilator-run): simulated boot and the mandatory
+trace, not fixture parsing, set the floor. The user's bounded
 Mooneye authorization permits exactly `mooneye-reg-f`, `mooneye-corrupt` and
 `mooneye-missing` up to 1500 seconds (25 minutes) total each. The three-case
 aggregate is at most 75 minutes. This exception changes wall time only; selected
