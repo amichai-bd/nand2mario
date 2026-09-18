@@ -270,8 +270,7 @@ counting it as neither pass nor defect, and never falls back; see
 One build tool serves two hosts. Only physical access and a source build are
 operating-system facts; everything else follows the installed toolchain.
 
-Linux owns Verilator simulation, natively or under WSL. Windows PowerShell owns
-Questa simulation. Each side refuses a foreign simulator before any workspace is
+Linux owns Verilator simulation. Windows PowerShell owns Questa simulation. Each side refuses a foreign simulator before any workspace is
 taken: Windows reports `Verilator simulation runs on Linux`; non-Windows hosts
 report `Questa simulation runs on Windows PowerShell`. Non-Windows hosts refuse
 `fpga program` with

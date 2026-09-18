@@ -114,8 +114,11 @@ on Linux and Questa runs natively on Windows. `doctor`, `sim test`, `regress` an
 `tests run` select the host-native default or an explicit supported backend. The
 [builder implementation](../tools/n2m/cli.py) dispatches scoped doctor, software,
 simulation, regression and FPGA stages with tagged evidence. Command ownership
-is per OS: Linux owns Verilator; Windows PowerShell owns Questa, `fpga build` and
-`fpga program`.
+follows the installed tools wherever it can: `fpga build` and the Questa compile
+gate run from a discovered Quartus or Questa on any host, and name a missing tool
+rather than an operating system. Linux owns Verilator, Windows PowerShell owns
+Questa simulation and `fpga program`, and
+[command ownership](tools/n2m/SPEC.md#command-ownership) names each refusal.
 
 **Risk**
 
