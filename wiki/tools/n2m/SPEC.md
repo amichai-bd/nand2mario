@@ -452,8 +452,15 @@ its own cache; that is the one command in a selection which does. The result
 is recorded as `preparation.wiki-environment` with `PRESENT`, `BUILT` and its
 wall, or `UNAVAILABLE` and the reason the build could not complete, and the text
 summary names it. Only `UNAVAILABLE` leaves the unit skipped with reason
-`wiki-environment`. Installing an interpreter is preparation, not test work, so
-its wall is reported beside the aggregate rather than inside the budget. The
+`wiki-environment`; a failure inside a built environment is a unit failure, never a
+skip. `UNAVAILABLE` covers both a host that cannot reach the network and a checkout
+whose lock file is missing or unreadable. The second stays loud only because
+[`test_check.py`](../../../tools/wiki/test_check.py) is itself a level-0 `wiki` unit
+that reads the same files and fails on the same input. Anything that relabels, moves
+or narrows that unit removes the only failure a broken checkout produces in a
+selection narrowed to `needs-wiki-env`, which would then pass with a named skip.
+Installing an interpreter is preparation, not test work, so its wall is reported
+beside the aggregate rather than inside the budget. The
 environment's location and build rules both live in
 [`check.py`](../../../tools/wiki/check.py) and are read from there, never
 repeated. A skip is not a defect, and

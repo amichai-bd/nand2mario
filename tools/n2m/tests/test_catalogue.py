@@ -634,6 +634,22 @@ def build(root=ROOT, *, browser=False, capture=False):
 '''
 
 
+# A check.py double whose environment is already BUILT: `installed` names a real
+# interpreter, so preparation reports PRESENT and `build` must not be reached.
+BUILT_CHECK = """\
+import sys
+from pathlib import Path
+
+
+def installed(root=None):
+    return Path(sys.executable)
+
+
+def build(root=None, *, browser=False, capture=False):
+    raise AssertionError('a built environment must not be rebuilt')
+"""
+
+
 class WikiEnvironmentPreparation(unittest.TestCase):
     """The pinned wiki interpreter is built before the clock, never skipped past."""
 
@@ -707,6 +723,42 @@ class WikiEnvironmentPreparation(unittest.TestCase):
         path.write_text("raise RuntimeError('broken check')\n", encoding="utf-8")
         self.assertIn("broken check", module.prepare_wiki_environment(self.root)["error"])
         self.assertIsNone(module.wiki_python(self.root))
+
+    def test_a_broken_dependency_in_a_built_environment_fails_and_never_skips(self):
+        """The property level 0 turns on: once the environment exists, a genuine
+        import failure inside it is a FAIL. Were it a skip, the selection could go
+        green while `test_site.py` never ran, which is the whole point of building
+        the environment rather than labelling the unit past it."""
+        (self.root / "tools/wiki").mkdir(parents=True, exist_ok=True)
+        (self.root / "tools/wiki/check.py").write_text(BUILT_CHECK, encoding="utf-8")
+        suite = self.root / "suite"
+        suite.mkdir()
+        # Stands in for `site.py` importing the pinned Python-Markdown.
+        (suite / "test_one.py").write_text(
+            "import unittest\nimport n2m_absent_pinned_package\n", encoding="utf-8")
+        self.assertEqual(module.prepare_wiki_environment(self.root)["status"], "PRESENT")
+        entry = {"kind": "unit", "level": 0, "labels": ["needs-wiki-env"],
+                 "duration_seconds": None}
+        outcome = module.run_unit(self.root, "suite/test_one.py", entry)
+        self.assertEqual(outcome["status"], "FAIL")
+        self.assertNotIn("reason", outcome)          # a FAIL is never dressed as a skip
+        self.assertIn("n2m_absent_pinned_package", outcome["output"])
+        self.assertEqual(outcome["command"][0], sys.executable)
+        # And the selection carrying it fails rather than passing with a skip.
+        catalogue_path = self.root / module.CATALOGUE
+        catalogue_path.parent.mkdir(parents=True, exist_ok=True)
+        selection = {"version": 1,
+                     "labels": {"needs-wiki-env": "Imports the pinned Python-Markdown."},
+                     "units": {"suite/test_one.py": entry}, "not_runnable": {}}
+        catalogue_path.write_text(module.format_document(selection), encoding="utf-8")
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
+                                 "questa_bin": None, "intel_sim_lib": None,
+                                 "sim": "verilator", "level": 0, "label": [],
+                                 "broader": False})()
+        record = module.run_selection(self.root, selection, catalogue_path, "tag", args, 300, {})
+        self.assertEqual(record["status"], "FAIL")
+        self.assertEqual((record["failed"], record["skipped"]), (["suite/test_one.py"], []))
+        self.assertEqual(record["preparation"]["wiki-environment"]["status"], "PRESENT")
 
     def test_a_selection_prepares_the_environment_only_when_a_unit_needs_it(self):
         args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
