@@ -69,26 +69,56 @@ firmware is volatile: every replug returns the cable to `6810`.
 
 Every assignment below was taken from public Quartus settings files that carry
 device `5CSEBA6U23I7`, parsed for `set_location_assignment PIN_<pin> -to
-<signal>`, and compared across sources. The nine sources agree on all 145
-board signals below with no conflict. `Sources` counts the independent
-repositories that state that assignment; a signal a source does not use is
-simply absent from it.
+<signal>`, and compared across sources. They agree on all 145 board signals
+below with no conflict. `Sources` counts how many of them state that
+assignment; a signal a source does not use is simply absent from it.
 
-| Source | File | Commit | License |
-|---|---|---|---|
-| basics-graphics-music | [`boards/de10_nano/board_specific.qsf`](https://github.com/yuri-panchul/basics-graphics-music/blob/e8eccbdf4cd6f520f064e4b49772f1e28c6a2870/boards/de10_nano/board_specific.qsf) | `e8eccbd` | none stated |
-| schoolMIPS | [`board/de10_nano/de10_nano.qsf`](https://github.com/MIPSfpga/schoolMIPS/blob/38a31d404ca6459061a2c9bfd39d85c49ea50a71/board/de10_nano/de10_nano.qsf) | `38a31d4` | none stated |
-| c5soc_opencl | [`de10_nano_sharedonly_hdmi/top.qsf`](https://github.com/thinkoco/c5soc_opencl/blob/31374626ba7edba76bdd1bf848c8af18e6d45628/de10_nano_sharedonly_hdmi/top.qsf) | `3137462` | Apache-2.0 |
-| riscV | [`HDL/de10-nano/build/top.qsf`](https://github.com/wyvernSemi/riscV/blob/27afe6c1a58eef8324fe9bc215c585216f8c748e/HDL/de10-nano/build/top.qsf) | `27afe6c` | GPL-3.0 |
-| de10nano_vgaHdmi_chip | [`quartus/vgaHdmi.qsf`](https://github.com/nhasbun/de10nano_vgaHdmi_chip/blob/5894d5ba35c1b5f741066c6d0c7384aaa72d495f/quartus/vgaHdmi.qsf) | `5894d5b` | MIT |
-| de10-nano-examples | [`counter/counter.qsf`](https://github.com/nullobject/de10-nano-examples/blob/82b4370d79c36a2f8da7d52770a0ecfe2c9ab79a/counter/counter.qsf) | `82b4370` | none stated |
-| patmos | [`hardware/quartus/de10-nano/patmos.qsf`](https://github.com/t-crest/patmos/blob/a16f0c87b7c85c6a19deeb1251c1f86301473302/hardware/quartus/de10-nano/patmos.qsf) | `a16f0c8` | BSD-2-Clause |
-| superrt | [`SRT/SRT.qsf`](https://github.com/ShironekoBen/superrt/blob/2a75f12ad9644191ec6b3aa49adb546a80007d57/SRT/SRT.qsf) | `2a75f12` | none stated |
-| Matmul | [`de10nano/de10nano.qsf`](https://github.com/voldemoriarty/Matmul/blob/67fd7dc8f8bf1b34e96962606276b2e52ae37bbe/de10nano/de10nano.qsf) | `67fd7dc` | MIT |
+**What this establishes, and what it does not.** None of these projects measured
+the board. Every one of them transcribes Terasic's published pin table, so
+agreement between them is strong evidence against a transcription error and no
+evidence at all of independent measurement. The pins are unverified against
+hardware until something is programmed onto a DE10-Nano and observed. Read a
+source count as "this many projects transcribed it the same way and built
+successfully against it", not as "this many measurements agree".
+
+`Rows` is how many of the 145 assignments below that source states. Three
+sources state none of them: they name only their own design ports, and they
+support the no-conflict statement without attesting any board signal.
+
+| Source | File | Commit | License | Rows |
+|---|---|---|---|---|
+| basics-graphics-music | [`boards/de10_nano/board_specific.qsf`](https://github.com/yuri-panchul/basics-graphics-music/blob/e8eccbdf4cd6f520f064e4b49772f1e28c6a2870/boards/de10_nano/board_specific.qsf) | `e8eccbd` | none stated | 122 |
+| schoolMIPS | [`board/de10_nano/de10_nano.qsf`](https://github.com/MIPSfpga/schoolMIPS/blob/38a31d404ca6459061a2c9bfd39d85c49ea50a71/board/de10_nano/de10_nano.qsf) | `38a31d4` | none stated | 145 |
+| c5soc_opencl | [`de10_nano_sharedonly_hdmi/top.qsf`](https://github.com/thinkoco/c5soc_opencl/blob/31374626ba7edba76bdd1bf848c8af18e6d45628/de10_nano_sharedonly_hdmi/top.qsf) | `3137462` | Apache-2.0 | 49 |
+| riscV | [`HDL/de10-nano/build/top.qsf`](https://github.com/wyvernSemi/riscV/blob/27afe6c1a58eef8324fe9bc215c585216f8c748e/HDL/de10-nano/build/top.qsf) | `27afe6c` | GPL-3.0 | 145 |
+| de10nano_vgaHdmi_chip | [`quartus/vgaHdmi.qsf`](https://github.com/nhasbun/de10nano_vgaHdmi_chip/blob/5894d5ba35c1b5f741066c6d0c7384aaa72d495f/quartus/vgaHdmi.qsf) | `5894d5b` | MIT | 34 |
+| de10-nano-examples | [`counter/counter.qsf`](https://github.com/nullobject/de10-nano-examples/blob/82b4370d79c36a2f8da7d52770a0ecfe2c9ab79a/counter/counter.qsf) | `82b4370` | none stated | 0 |
+| patmos | [`hardware/quartus/de10-nano/patmos.qsf`](https://github.com/t-crest/patmos/blob/a16f0c87b7c85c6a19deeb1251c1f86301473302/hardware/quartus/de10-nano/patmos.qsf) | `a16f0c8` | BSD-2-Clause | 0 |
+| superrt | [`SRT/SRT.qsf`](https://github.com/ShironekoBen/superrt/blob/2a75f12ad9644191ec6b3aa49adb546a80007d57/SRT/SRT.qsf) | `2a75f12` | none stated | 34 |
+| Matmul | [`de10nano/de10nano.qsf`](https://github.com/voldemoriarty/Matmul/blob/67fd7dc8f8bf1b34e96962606276b2e52ae37bbe/de10nano/de10nano.qsf) | `67fd7dc` | MIT | 0 |
 
 Only the pin numbers are taken, and a package pin number is a fact about the
 board, not an expression any of these projects owns. No source file is copied
 into this repository.
+
+How many sources reach each group, which is the number that matters when
+choosing pins for a target:
+
+| Group | Signals | Sources |
+|---|---|---|
+| Clocks | 3 | 3 |
+| `KEY`, `LED`, `SW` | 14 | 4 |
+| ADV7513 HDMI | 35 | 6 |
+| `GPIO_0` (JP1) | 36 | 3 |
+| `GPIO_1` (JP7) | 36 | 3 |
+| Arduino header | 17 | 2 |
+| LTC2308 ADC | 4 | 2 |
+
+schoolMIPS and riscV state all 145 rows, so they alone carry the two-source
+groups. Three sources place the same 49-signal HDMI, `KEY`, `LED` and `SW` block
+in identical relative order; Quartus rewrites assignments in that canonical
+order itself, so the shared order is not evidence of copying, and those sources
+differ in order across the full table.
 
 Three signal names disagree across sources, and all three are design port names
 rather than board signal names: `reset_n` is `KEY[0]`'s pin in
@@ -96,10 +126,19 @@ de10nano_vgaHdmi_chip and `SW[3]`'s pin in superrt, and `i2c_scl`/`i2c_sda`
 name different header pins in patmos and c5soc_opencl. No canonical board signal
 conflicts.
 
-Signals a MiSTer I/O add-on board defines, such as `SDRAM_*`, `VGA_*`,
-`USER_IO`, `BTN_*` and `AUDIO_*`, are not on this table. They are add-on
-signals routed over the `GPIO_1` header, not DE10-Nano resources, and naming
-them as board pins would misrepresent the board.
+Signals a MiSTer I/O add-on board defines are not on this table. They are add-on
+signals carried over this board's expansion headers, not DE10-Nano resources,
+and naming them as board pins would misrepresent the board. Every one of them
+resolves to a pin already named above, across three different headers:
+
+| MiSTer group | Header it uses |
+|---|---|
+| `SDRAM_A`, `SDRAM_BA`, `SDRAM_CLK`, `SDRAM_DQ`, `SDRAM_nCAS/nCS/nRAS/nWE` | `GPIO_0` (JP1) |
+| `SDRAM_CKE`, `SDRAM_DQMH`, `SDRAM_DQML`, `USER_IO`, `SD_SPI_*`, `SDCD_SPDIF`, `IO_SCL`, `IO_SDA` | Arduino header |
+| `VGA_*`, `AUDIO_*`, `BTN_OSD/RESET/USER`, `LED_POWER/HDD/USER`, `SDIO_*` | `GPIO_1` (JP7) |
+
+For example MiSTer's `SDRAM_A[0]` is `PIN_Y11`, which is `GPIO_0[32]` above, and
+its `USER_IO[6]` is `PIN_AF17`, which is `ARDUINO_IO[8]`.
 
 All pins are single-ended and use the `3.3-V LVTTL` I/O standard, the same
 standard and voltage as the DE10-Lite pins in
@@ -305,7 +344,7 @@ timing corners and this page; the
 `nano-smoke` is the flow proof: the counter in
 [`nano_smoke.sv`](../../src/fpga/de10_nano/nano_smoke.sv) driving `LED[7:0]`
 from `FPGA_CLK1_50`, with `KEY[0]` synchronized through two flops into an
-active-high reset. It uses ten pins, each attested by three or more sources:
+active-high reset. It uses ten pins, each stated by three or more sources:
 `FPGA_CLK1_50`, `KEY[0]` and `LED[7:0]`. `nano-invalid` shares that source and
 deliberately declares a negative clock period, so it must fail. The registry
 states those ten pin numbers because the builder needs them as machine-readable

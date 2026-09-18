@@ -1219,10 +1219,12 @@ and never falls back between the two. The compile set is fixed by the tree:
 
 1. every `.sv` file under `src/rtl`, packages first, each package after the
    packages it names with `::`; a package cycle fails before any tool runs;
-2. every source of every target in the
-   [FPGA registry](../../../src/fpga/de10_lite/targets.json), validated by the
+2. every source of every target in every board registry, the
+   [DE10-Lite](../../../src/fpga/de10_lite/targets.json) and the
+   [DE10-Nano](../../../src/fpga/de10_nano/targets.json), validated by the
    same [target definition](#fpga-build) and synthesis
-   [dependency resolver](#hdl-includes) as `fpga build`;
+   [dependency resolver](#hdl-includes) as `fpga build`. Every registered top
+   is elaborated once, whichever board registers it;
 3. the elaboration stand-ins
    [`questa_lint_vendor.sv`](../../../src/dv/builder/questa_lint_vendor.sv):
    port- and parameter-compatible empty modules for exactly `n2m_system_pll`,
@@ -1941,9 +1943,9 @@ nonempty `sources` and `constraints` lists, a `pins` port-to-package-pin
 object, and a `virtual_pins` port-pattern list. A target's `device` must equal
 its board's; top names are identifiers. The resolved definition carries the
 board's `family` and `timing_corners`, and every device-dependent assignment
-and evidence check reads them from it, so no device is named in the build path. Inputs are unique existing
-repository-relative `.sv` and `.sdc` paths under `src/`, without traversal or
-symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
+and evidence check reads them from it, so no device is named in the build path.
+Inputs are unique existing repository-relative `.sv` and `.sdc` paths under
+`src/`, without traversal or symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
 names permit an optional numeric or wildcard array index. Physical assignments
 use 3.3-V LVTTL. HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
 loads are rejected. SDC permits one literal clock,
@@ -1998,9 +2000,9 @@ summary checks for setup, hold and minimum pulse width at every corner the
 target's board declares. The DE10-Lite declares Slow 1200mV 85C, Slow 1200mV 0C
 and Fast 1200mV 0C; the industrial Cyclone V of the DE10-Nano declares
 Slow 1100mV 100C, Slow 1100mV -40C, Fast 1100mV 100C and Fast 1100mV -40C.
-Every reported slack must be finite and nonnegative with zero TNS. The audit requires zero illegal/unconstrained
-clock/input/output setup and hold counts, no ignored SDC assignments, and no
-structural timing problems. Missing/malformed evidence fails rather than passing
+Every reported slack must be finite and nonnegative with zero TNS. The audit
+requires zero illegal/unconstrained clock/input/output setup and hold counts, no
+ignored SDC assignments, and no structural timing problems. Missing/malformed evidence fails rather than passing
 on the tool exit alone. Keep resource totals and all corner slack values.
 
 ### Hold path audit

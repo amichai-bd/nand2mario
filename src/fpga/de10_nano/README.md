@@ -7,8 +7,10 @@ evidence; generated project files and databases stay under the build tag.
 
 `nano-smoke` fits the counter in [`nano_smoke.sv`](nano_smoke.sv) on the board
 LEDs, clocked by `FPGA_CLK1_50` and reset by a synchronized `KEY[0]`. It uses
-only pins three or more independent sources attest, so the flow proof depends on
-no contested assignment. It proves the Cyclone V build path, not board
+only pins three or more of the transcribed pin sources state, so the flow proof
+depends on no contested assignment. What that provenance does and does not
+establish is on the [board specification](../../../wiki/src/de10-nano-board.md#pin-data);
+none of it is verified against hardware. It proves the Cyclone V build path, not board
 operation: nothing here has been programmed onto a DE10-Nano.
 `nano-invalid` deliberately uses a negative clock period and must fail, so a
 passing `nano-smoke` fit is evidence rather than an absent check.
