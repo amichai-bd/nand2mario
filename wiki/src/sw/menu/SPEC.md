@@ -749,9 +749,9 @@ per-simulation target rather than under it, and their frame counts say why:
 `menu-phase` cannot see the phase boundary before frame 16, `menu-splash`
 displays the whole splash schedule, and `menu-delayed` draws sixteen rows one
 to the frame with one of them split in two. None of the three can be shortened
-without dropping what it proves. `menu-delayed` measured 123.60 seconds with
-the model already built and 171.97 as the last run of its own label, which
-rebuilt it; `menu-delayed-worst` measured 182.91, seven frames longer again and
+without dropping what it proves. `menu-delayed` measured 119.14 seconds with
+the model already built and 170.20 under a host loaded with foreign
+simulations; `menu-delayed-worst` measured 156.77, seven frames longer again and
 a declared wall allowance rather than a target of the ordinary budget. The
 [catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
 each target's last run, so a run that rebuilt the model after an image change
