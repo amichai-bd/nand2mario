@@ -700,6 +700,7 @@ units:
   tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.51, inputs: [README.md, src/sw/springtrail/assets, tools/n2m/dependencies.json, tools/wiki/assets, tools/wiki/board_frames, wiki]}
   tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.15, inputs: []}
   tools/wiki/test_repository_stats.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.20, inputs: []}
+  tools/wiki/test_rtl_modules.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.00, inputs: [src/fpga/de10_lite, src/rtl, wiki/presentations, wiki/src]}
   tools/wiki/test_site.py: {kind: unit, level: 0, labels: [needs-wiki-env, wiki], duration_seconds: 0.28, inputs: [tools/wiki/assets, tools/wiki/site.py, wiki/tools/n2m/host/assets/live-viewer-phone.jpg]}
   uart-endpoint: {kind: sim, level: 2, labels: [uart], duration_seconds: 52.80}
   uart-endpoint-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 3.57}
