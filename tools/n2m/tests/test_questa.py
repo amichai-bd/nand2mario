@@ -192,9 +192,10 @@ class QuestaLicenseTests(unittest.TestCase):
             self.assertNotIn(absent, message)
         self.assertEqual(calls, [["/tools/vsim", *QUESTA_LICENSE_PROBE]])
 
-    def test_the_probe_loads_no_design_and_writes_no_transcript(self):
-        """`-nolog` keeps the caller's directory clean and `-lic_noqueue` never
-        waits behind a busy server. No design or library is named."""
+    def test_the_probe_argv_stays_the_documented_one(self):
+        """Pinned because each option carries a contract: `-c` forces the checkout,
+        `quit -f` loads no design, `-nolog` writes no transcript into the caller's
+        directory and `-lic_noqueue` never waits behind a busy server."""
         self.assertEqual(QUESTA_LICENSE_PROBE, ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f"))
 
     def test_a_licensed_vsim_passes_and_records_the_probe(self):
