@@ -60,8 +60,8 @@ def pack(pixels):
 class FakeMenu:
     """The menu image's frame rules on a host-paused core, one VBlank per RUN_DOTS frame."""
 
-    def __init__(self, *, build_id='expected', index=reference.NO_INDEX, boot_frames=3, offset=0):
-        self.build_id, self.boot, self.offset = build_id, boot_frames, offset
+    def __init__(self, *, build_id='expected', index=reference.NO_INDEX, boot_frames=3, offset=0, lead=0):
+        self.build_id, self.boot, self.offset, self.lead = build_id, boot_frames, offset, lead
         self.epoch, self.dot, self.state, self.profile = 1, 0, abi.STATE_PAUSED, abi.PROFILE_LOADER_ID
         self.buttons = self.sampled = 0
         self.index, self.result = index, reference.RESULT_NONE
@@ -72,6 +72,9 @@ class FakeMenu:
     def reboot(self):
         self.seq, self.published = 0, None
         self.boot_left = self.boot
+        # The board's observer publishes `lead` complete frames ending at the
+        # VBlank of the first loop iteration, before displayed frame 0.
+        self.lead_left = self.lead
         self.splash = 0 if self.index == reference.NO_INDEX else None
         self.frame_number, self.cursor, self.footer = 0, 0, None
         self.scy = reference.SETTLED_SCY
@@ -160,6 +163,10 @@ class FakeMenu:
         if self.boot_left:
             self.boot_left -= 1
             return False
+        if self.lead_left and self.splash is not None:
+            self.lead_left -= 1
+            self.publish(self.draw())
+            return False
         self.publish(self.draw())
         edges = self.buttons & ~self.sampled
         self.sampled = self.buttons
@@ -211,7 +218,7 @@ class BoardMenuTests(unittest.TestCase):
                          'scroll-1', 'scroll-4', 'back-1', 'cursor-14', 'cursor-11', 'refused', 'footer-10-11',
                          'cursor-10', 'game', 'menu-after-return'):
                 self.assertIn(name, names)
-            self.assertEqual(result['splash'], dict(boot_frames=4, first=0, frames=17))
+            self.assertEqual(result['splash'], dict(boot_frames=4, first=0, lead=0, frames=17))
             self.assertEqual(result['idle']['phases'], [0, 1, 0])
             self.assertEqual(result['refused']['result'], 'INVALID_SLOT')
             self.assertEqual(result['select']['library_status']['a003'], 2)
@@ -237,6 +244,27 @@ class BoardMenuTests(unittest.TestCase):
             result, log = run(endpoint, folder)
         self.assertEqual(result['status'], 'PASS')
         self.assertTrue(any(entry['kind'] == 'wait' for entry in log))
+
+    def test_the_boards_leading_blank_frame_is_accepted_once(self):
+        # Session 10 first attempt: seq 0, 1 and 2 were all the BGP $00 frame
+        # before the fade advanced, one frame more than the schedule's hold.
+        endpoint = FakeMenu(lead=1)
+        with tempfile.TemporaryDirectory() as folder:
+            result, log = run(endpoint, folder, steps=('splash', 'idle'))
+            names = [capture['name'] for capture in result['captures']]
+            seqs = [capture['seq'] for capture in result['captures'][:18]]
+        self.assertEqual(result['status'], 'PASS')
+        self.assertEqual(result['splash'], dict(boot_frames=4, first=0, lead=1, frames=17))
+        self.assertEqual(names[:4], ['splash-first', 'splash-1', 'splash-2', 'splash-2'])
+        self.assertEqual(seqs, list(range(1, 19)))
+        self.assertIn(dict(kind='splash-lead', seq=3), log)
+        self.assertEqual(result['idle']['phases'], [0, 1, 0])
+
+    def test_two_leading_blank_frames_fail_the_order_check(self):
+        endpoint = FakeMenu(lead=2)
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(AssertionError, r'MENU_BOARD_SPLASH_ORDER after 1: \[0, 1\]'):
+                run(endpoint, folder, steps=('splash',))
 
     def test_build_id_mismatch_stops_before_the_board_moves(self):
         endpoint = FakeMenu(build_id='other')

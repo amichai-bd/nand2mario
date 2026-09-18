@@ -155,7 +155,12 @@ class Proof:
         seq = record['metadata']['seq']
         self.log(dict(kind='splash', boot_frames=boot_frames, first=first))
         # Frames inside one fade hold are identical, so the first frame may be
-        # 0 or 1; the next step tells which, and every step is one frame.
+        # 0 or 1; the next step tells which, and every step is one frame. The
+        # snapshot observer also publishes the frame that ends at the VBlank
+        # in which the menu's first loop iteration runs, one blank frame
+        # before displayed frame 0, so one extra leading frame of the first
+        # hold is accepted; the fade must then advance.
+        lead = 0
         while current < reference.SETTLED_FRAME:
             self.step()
             record, _ = self.snapshot(f'splash-{current + 1}', 'splash')
@@ -164,12 +169,15 @@ class Proof:
                 current += 1
             elif current + 2 in numbers:
                 current += 2
+            elif numbers == {0, 1} and current == 1 and not lead:
+                lead = 1
+                self.log(dict(kind='splash-lead', seq=record['metadata']['seq']))
             else:
                 raise AssertionError(f'MENU_BOARD_SPLASH_ORDER after {current}: {sorted(numbers)}')
             assert record['metadata']['seq'] == seq + 1, 'MENU_BOARD_SPLASH_SEQ'
             seq = record['metadata']['seq']
         self.last = ('menu', self.result, self.index)
-        return dict(boot_frames=boot_frames, first=first, frames=current - first + 1)
+        return dict(boot_frames=boot_frames, first=first, lead=lead, frames=current - first + 1)
 
     def idle(self):
         """Sixteen frames flip bit 4 of the frame counter, so the phase alternates from wherever it is."""
