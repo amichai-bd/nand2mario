@@ -286,6 +286,21 @@ not appear in a module that declares its flops through those macros. Registers
 and instances in a simulation-only branch are reported separately, never counted
 as hardware.
 
+A `generate for` loop, and an instance array, write one source site and
+elaborate several copies of it. A literal bound is expanded, so both the
+instance count and the register-macro count are per elaborated copy: the
+three-bank frame store is three instances and the ten-slot object file is thirty
+register macros. A bound that is a parameter or an expression is not evaluated
+and not guessed; that site counts once, the figure is marked a floor, and the
+module's panel says which of its numbers are exact. Shapes the parser cannot
+measure fail loudly rather than publishing a wrong answer: a file declaring more
+than one module, and a non-ANSI port header whose direction and width live in
+the body. A register macro is a declaration site, not a flop count, because its
+`Q` may be a vector; the page names macros and never claims flops.
+`tools/wiki/test_rtl_modules.py` derives the flop-macro list from every
+`` `define `` in `src/rtl/` whose body creates a clocked process, so a new macro
+cannot stop being counted by being named something other than `DFF*`.
+
 `tools/wiki/rtl_explorer.py` draws those measurements as
 [`wiki/presentations/rtl-explorer.html`](../../presentations/rtl-explorer.html):
 nested blocks whose area follows `lines + 4 x register macros` and nothing else.

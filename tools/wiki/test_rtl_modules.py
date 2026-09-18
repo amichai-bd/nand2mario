@@ -61,13 +61,32 @@ class GeneratorTests(unittest.TestCase):
             for instance in module.instances:
                 self.assertIn(instance.module, self.modules, f"{name} instantiates it")
 
-    def test_register_macros_match_the_macro_file(self):
-        # Adding a flop macro to macros.svh without adding it here would leave
-        # its registers uncounted, so the page would quietly understate a module.
-        defined = set(re.findall(r"^`define\s+(DFF\w*)",
-                                 (ROOT / "src/rtl/common/macros.svh").read_text(encoding="utf-8"),
-                                 re.M))
-        self.assertEqual(defined, set(rtl.REGISTER_MACROS))
+    def test_every_macro_that_creates_a_clocked_process_is_counted(self):
+        # A flop macro added under any name would otherwise leave its registers
+        # uncounted with every check green. Matching on the macro body rather
+        # than on a DFF prefix is what closes that: the guard covers every
+        # `define in every tracked src/rtl/ source, not one naming convention.
+        # It does not reach a macro defined outside src/rtl/, or flops written
+        # as a bare always_ff, which Module.raw_processes reports instead.
+        creating = set()
+        for path in subprocess.check_output(["git", "ls-files", "-z", "src/rtl"],
+                                            cwd=ROOT).decode().split("\0"):
+            if not path.endswith((".sv", ".svh")):
+                continue
+            text = (ROOT / path).read_text(encoding="utf-8")
+            for match in re.finditer(r"^`define\s+(\w+)", text, re.M):
+                body, index = [], text.index("\n", match.end()) if "\n" in text[match.end():] else len(text)
+                line = text[match.end():index]
+                body.append(line)
+                while line.rstrip().endswith("\\"):
+                    following = text.index("\n", index + 1) if "\n" in text[index + 1:] else len(text)
+                    line = text[index + 1:following]
+                    body.append(line)
+                    index = following
+                joined = "".join(body)
+                if "always_ff" in joined or re.search(r"always\s*@\s*\(\s*posedge", joined):
+                    creating.add(match.group(1))
+        self.assertEqual(creating, set(rtl.REGISTER_MACROS))
 
     def test_registers_are_counted_where_always_ff_finds_nothing(self):
         structural = self.modules["n2m_uart"]
@@ -195,6 +214,128 @@ class PageTests(unittest.TestCase):
                                          cwd=ROOT).decode().split("\0")
         for tracked in (explorer.PAGE, explorer.STYLESHEET, explorer.SCRIPT):
             self.assertIn(tracked, listed, "stage the page and its assets before checking")
+
+
+class ReplicationTests(unittest.TestCase):
+    """A generate loop writes one site and elaborates several copies of it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.modules = rtl.composition(ROOT)
+
+    def test_every_generate_loop_in_the_sources_is_found_with_a_literal_bound(self):
+        loops = {(path, copies, exact) for path, _, copies, exact in rtl.loop_sites(ROOT)}
+        self.assertEqual(loops, {
+            ("src/rtl/input/n2m_button_filter.sv", 4, True),
+            ("src/rtl/ppu/n2m_ppu_objects.sv", 10, True),
+            ("src/rtl/snapshot/n2m_frame_snapshot.sv", 2, True),
+            ("src/rtl/uart/n2m_uart_exchange_store.sv", 3, True),
+            ("src/rtl/vga/n2m_frame_bridge.sv", 3, True),
+        })
+
+    def test_a_replicated_instance_counts_once_per_elaborated_copy(self):
+        expected = {
+            "n2m_frame_bridge": {("n2m_frame_ram", "u_ram"): 3, ("n2m_vga_scan", "u_scan"): 1},
+            "n2m_frame_snapshot": {("n2m_intel_ram", "u_source"): 2,
+                                   ("n2m_intel_ram", "u_host"): 2},
+            "n2m_uart_exchange_store": {("n2m_intel_ram", "memory"): 3},
+        }
+        for name, sites in expected.items():
+            found = {(instance.module, instance.name): instance.copies
+                     for instance in self.modules[name].instances}
+            self.assertEqual(found, sites, name)
+            self.assertTrue(all(i.exact for i in self.modules[name].instances), name)
+
+    def test_a_replicated_register_macro_counts_once_per_elaborated_copy(self):
+        # Ten retained object slots hold three macros each, plus seven outside
+        # the loop: 40, not the 13 sites the file writes.
+        objects = self.modules["n2m_ppu_objects"]
+        self.assertEqual((objects.registers, objects.register_sites), (40, 13))
+        self.assertEqual(objects.register_macros, {"DFF_RST": 1, "DFF_RST_EN": 39})
+        buttons = self.modules["n2m_button_filter"]
+        self.assertEqual((buttons.registers, buttons.register_sites), (10, 4))
+        self.assertTrue(objects.registers_exact and buttons.registers_exact)
+
+    def test_an_unreplicated_module_is_unchanged(self):
+        timing = self.modules["n2m_ppu_timing"]
+        self.assertEqual((timing.registers, timing.register_sites), (21, 21))
+
+    def test_the_diagram_draws_one_block_per_elaborated_copy(self):
+        board = explorer.build(self.modules, rtl.BOARD_TOP, rtl.BOARD_TOP, set())
+        drawn = {}
+        for tile, _, _ in explorer.place(board, 0, 0, 1000, 1000, 0):
+            if tile.kind == "module":
+                drawn[tile.module] = drawn.get(tile.module, 0) + 1
+        self.assertEqual(drawn["n2m_frame_ram"], 3, "three banks, three blocks")
+        # The sources write 14 n2m_intel_ram instance sites; three of them sit
+        # in a generate loop, so 18 copies elaborate at their own parents. The
+        # tree draws 20, because n2m_frame_ram is itself one of three banks and
+        # carries its store with it. Replication compounds down the hierarchy.
+        sites = [instance for module in self.modules.values()
+                 for instance in module.instances if instance.module == "n2m_intel_ram"]
+        self.assertEqual((len(sites), sum(s.copies for s in sites)), (14, 18))
+        self.assertEqual(drawn["n2m_intel_ram"], 20)
+        names = [tile.instance for tile, _, _ in explorer.place(board, 0, 0, 1000, 1000, 0)
+                 if tile.module == "n2m_frame_ram" and tile.kind == "module"]
+        self.assertEqual(sorted(names), ["banks[0].u_ram", "banks[1].u_ram", "banks[2].u_ram"])
+
+    def test_a_bound_that_is_not_literal_is_a_floor_rather_than_a_guess(self):
+        source = ("module t (input var logic clk);\n"
+                  "  genvar i;\n"
+                  "  generate for (i = 0; i < WIDTH; i = i + 1) begin : g\n"
+                  "    n2m_child u_kid (.clk);\n"
+                  "    `DFF(q[i], d[i], clk)\n"
+                  "  end endgenerate\n"
+                  "endmodule\n")
+        module = rtl.parse_module("src/rtl/t.sv", source)
+        self.assertEqual((module.registers, module.register_sites), (1, 1))
+        self.assertFalse(module.registers_exact)
+        clean = rtl.blanked(source)
+        body, offset = rtl.body_of("t", clean)
+        repo, _ = rtl.parse_instances(body, offset, rtl.synthesis_view(source), {"n2m_child"})
+        self.assertEqual([(i.module, i.copies, i.exact) for i in repo], [("n2m_child", 1, False)])
+
+    def test_an_instance_array_with_a_literal_range_is_expanded(self):
+        source = "module t ();\n  n2m_child u_kids [3:0] (.clk(clk));\nendmodule\n"
+        clean = rtl.blanked(source)
+        body, offset = rtl.body_of("t", clean)
+        repo, _ = rtl.parse_instances(body, offset, rtl.synthesis_view(source), {"n2m_child"})
+        self.assertEqual([(i.module, i.copies, i.exact) for i in repo], [("n2m_child", 4, True)])
+        widened = source.replace("[3:0]", "[N-1:0]")
+        clean = rtl.blanked(widened)
+        body, offset = rtl.body_of("t", clean)
+        repo, _ = rtl.parse_instances(body, offset, rtl.synthesis_view(widened), {"n2m_child"})
+        self.assertEqual([(i.module, i.copies, i.exact) for i in repo], [("n2m_child", 1, False)])
+
+    def test_a_procedural_for_loop_replicates_nothing(self):
+        source = ("module t (input var logic clk);\n"
+                  "  always_comb begin\n"
+                  "    for (int i = 0; i < 8; i = i + 1) sum = sum + i;\n"
+                  "  end\n"
+                  "  `DFF(q, sum, clk)\n"
+                  "endmodule\n")
+        module = rtl.parse_module("src/rtl/t.sv", source)
+        self.assertEqual((module.registers, module.register_sites), (1, 1))
+        self.assertTrue(module.registers_exact)
+
+
+class ParserGuardTests(unittest.TestCase):
+    """Shapes the parser cannot measure must fail loudly, never quietly."""
+
+    def test_a_second_module_in_one_file_is_refused(self):
+        source = "module a ();\nendmodule\nmodule b ();\nendmodule\n"
+        with self.assertRaises(ValueError) as raised:
+            rtl.parse_module("src/rtl/two.sv", source)
+        self.assertIn("more than one module", str(raised.exception))
+
+    def test_a_non_ansi_port_header_is_refused(self):
+        source = ("module t (a, b);\n  input logic [7:0] a;\n  output logic b;\nendmodule\n")
+        with self.assertRaises(ValueError) as raised:
+            rtl.parse_module("src/rtl/legacy.sv", source)
+        self.assertIn("non-ANSI port header", str(raised.exception))
+
+    def test_a_module_with_no_ports_is_not_mistaken_for_one(self):
+        self.assertEqual(rtl.parse_module("src/rtl/t.sv", "module t ();\nendmodule\n").ports, [])
 
 
 if __name__ == "__main__":

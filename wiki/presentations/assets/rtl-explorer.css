@@ -1,6 +1,6 @@
 /* RTL explorer layout. Navigation and controls stay in the shared engine;
    this file only styles the generated treemap and its module panels.
-   The page is written by tools/wiki/rtl_modules.py; every class it emits is
+   The page is written by tools/wiki/rtl_explorer.py; every class it emits is
    defined here. */
 .rtl .deck { max-width: 1280px; }
 .rtl h3 { color: var(--accent); font-size: 1.15rem; margin: 30px 0 8px; }

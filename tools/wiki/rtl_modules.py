@@ -65,7 +65,10 @@ class Instance:
     module: str
     name: str
     line: int
-    view: str  # "both", "synthesis" or "simulation"
+    view: str          # "both", "synthesis" or "simulation"
+    copies: int = 1    # elaborated copies of this one source site
+    exact: bool = True # False when a bound is not a literal, so copies is a floor
+    label: str = ""    # the generate block this site sits in, when it has one
 
 
 @dataclass
@@ -77,7 +80,9 @@ class Module:
     summary: str       # the authored comment block above the module keyword
     ports: list[Port] = field(default_factory=list)
     parameters: list[str] = field(default_factory=list)
-    registers: int = 0
+    registers: int = 0                 # macro invocations after replication
+    register_sites: int = 0            # macro invocations written in the source
+    registers_exact: bool = True       # False when a generate bound is not a literal
     register_macros: dict[str, int] = field(default_factory=dict)
     simulation_registers: int = 0
     raw_processes: int = 0
@@ -218,10 +223,124 @@ def parse_ports(text: str) -> list[Port]:
     return ports
 
 
+# --- Generate replication ---------------------------------------------------
+# A `generate for` loop writes one source site and elaborates several copies of
+# it. Counting the site once would draw a three-bank frame store as one bank and
+# report a ten-slot register file as three flops, so a loop with literal bounds
+# is expanded. A bound that is a parameter or an expression is not guessed: the
+# site counts once and the module is marked inexact, so its panel can say that
+# its counts are a floor rather than a measurement.
+LOOP_HEADER = re.compile(
+    rf"(?:genvar\s+)?({IDENT})\s*=\s*(\d+)\s*;\s*\1\s*(<=?)\s*(\d+)\s*;\s*"
+    rf"\1\s*(?:\+\+|=\s*\1\s*\+\s*(\d+))\s*$")
+
+
+@dataclass
+class Loop:
+    start: int              # first index of the loop body inside the module body
+    end: int                # one past its last index
+    copies: int             # elaborated copies, or 1 when the bound is not literal
+    exact: bool             # False when the bound is not literal
+    label: str              # the generate block's name, when it has one
+
+
+def trip_count(header: str) -> int | None:
+    """Elaborated copies of a `for` header, or None when a bound is not literal."""
+    found = LOOP_HEADER.fullmatch(" ".join(header.split()))
+    if not found:
+        return None
+    start, relation, bound = int(found.group(2)), found.group(3), int(found.group(4))
+    step = int(found.group(5)) if found.group(5) else 1
+    if step <= 0:
+        return None
+    span = bound - start + (1 if relation == "<=" else 0)
+    return max(0, -(-span // step))
+
+
+def statement_end(text: str, index: int) -> int:
+    """One past the `begin`/`end` block or single statement starting at `index`."""
+    while index < len(text) and text[index] in " \t\r\n":
+        index += 1
+    if text.startswith("begin", index):
+        depth, cursor = 0, index
+        for match in re.finditer(r"\b(begin|end)\b", text[index:]):
+            depth += 1 if match.group(1) == "begin" else -1
+            cursor = index + match.end()
+            if depth == 0:
+                return cursor
+        return len(text)
+    depth = 0
+    while index < len(text):
+        if text[index] in "([{":
+            depth += 1
+        elif text[index] in ")]}":
+            depth -= 1
+        elif text[index] == ";" and depth == 0:
+            return index + 1
+        index += 1
+    return len(text)
+
+
+def generate_regions(body: str) -> list[tuple[int, int]]:
+    """Index ranges covered by `generate ... endgenerate`."""
+    regions, opens = [], []
+    for match in re.finditer(r"\b(generate|endgenerate)\b", body):
+        if match.group(1) == "generate":
+            opens.append(match.end())
+        elif opens:
+            regions.append((opens.pop(), match.start()))
+    return regions
+
+
+def generate_loops(body: str) -> list[Loop]:
+    """Every generate-for in the module body, with its elaborated copy count.
+
+    A `for` counts as a generate loop when it declares a genvar or sits inside a
+    `generate` region. A procedural `for` inside an `always` block or a function
+    can hold neither an instance nor a register macro, so it cannot reach here.
+    """
+    regions = generate_regions(body)
+    loops = []
+    for match in re.finditer(r"\bfor\s*\(", body):
+        opening = match.end() - 1
+        closing = balanced(body, opening)
+        header = body[opening + 1:closing - 1]
+        inside = any(start <= match.start() < end for start, end in regions)
+        if not inside and "genvar" not in header:
+            continue
+        copies = trip_count(header)
+        end = statement_end(body, closing)
+        named = re.match(r"\s*begin\s*:\s*(" + IDENT + ")", body[closing:])
+        loops.append(Loop(closing, end, copies if copies is not None else 1,
+                          copies is not None, named.group(1) if named else ""))
+    return loops
+
+
+def replication(index: int, loops: list[Loop]) -> tuple[int, bool, str]:
+    """(copies, exact, innermost label) for a site at this index in the body."""
+    copies, exact, label = 1, True, ""
+    for loop in loops:
+        if loop.start <= index < loop.end:
+            copies *= loop.copies
+            exact = exact and loop.exact
+            label = loop.label or label
+    return copies, exact, label
+
+
+def array_copies(text: str) -> tuple[int, bool]:
+    """Elaborated copies of an instance array range such as `[3:0]`."""
+    found = re.fullmatch(r"\[\s*(\d+)\s*:\s*(\d+)\s*\]", " ".join(text.split()))
+    if not found:
+        return 1, False
+    high, low = int(found.group(1)), int(found.group(2))
+    return abs(high - low) + 1, True
+
+
 def parse_instances(body: str, offset: int, active: list[bool], known: set[str]) -> tuple[list[Instance], list[Instance]]:
     """Every `<type> [#(...)] <name> [[...]] (` site, by the line it starts on."""
     repo, vendor = [], []
     line_at = line_of(body)
+    loops = generate_loops(body)
     for match in re.finditer(rf"\b({IDENT})\b", body):
         head = match.group(1)
         if head in NOT_INSTANCES or head.endswith("_pkg"):
@@ -252,16 +371,21 @@ def parse_instances(body: str, offset: int, active: list[bool], known: set[str])
         index += name.end()
         while index < len(body) and body[index] in " \t\r\n":
             index += 1
+        array, array_exact = 1, True
         if index < len(body) and body[index] == "[":
-            index = balanced(body, index)
+            closing = balanced(body, index)
+            array, array_exact = array_copies(body[index:closing])
+            index = closing
             while index < len(body) and body[index] in " \t\r\n":
                 index += 1
         if index >= len(body) or body[index] != "(":
             continue
         line = offset + line_at(match.start()) - 1
         view = "synthesis" if active[line - 1] else "simulation"
+        copies, exact, label = replication(match.start(), loops)
         target = repo if head in known else vendor
-        target.append(Instance(head, name.group(1), line, view))
+        target.append(Instance(head, name.group(1), line, view, copies * array,
+                               exact and array_exact, label))
     return repo, vendor
 
 
@@ -301,9 +425,14 @@ def parse_module(path: str, text: str) -> Module | None:
     """The single module a source file declares, or None for a package."""
     clean = blanked(text)
     active = synthesis_view(text)
-    header = re.search(rf"^[ \t]*module\s+({IDENT})", clean, re.M)
-    if not header:
+    declarations = re.findall(rf"^[ \t]*module\s+({IDENT})", clean, re.M)
+    if not declarations:
         return None
+    if len(declarations) > 1:
+        # One module per file is what the explorer indexes, and a second one
+        # would be measured nowhere. Refuse rather than drop it silently.
+        raise ValueError(f"{path} declares more than one module: {', '.join(declarations)}")
+    header = re.search(rf"^[ \t]*module\s+({IDENT})", clean, re.M)
     name = header.group(1)
     line = clean[:header.start()].count("\n") + 1
     comment = summary_comment(text.splitlines(), line)
@@ -326,23 +455,32 @@ def parse_module(path: str, text: str) -> Module | None:
     ports: list[Port] = []
     if index < len(clean) and clean[index] == "(":
         end = balanced(clean, index)
-        ports = parse_ports(clean[index + 1:end - 1])
+        declared = clean[index + 1:end - 1]
+        if declared.strip() and not re.search(r"\b(input|output|inout|ref)\b", declared):
+            # A non-ANSI header names its ports here and declares their direction
+            # and width in the body. Reporting them all as `input logic` would be
+            # a wrong answer to a question the page promises to answer.
+            raise ValueError(f"{path} uses a non-ANSI port header; the explorer reads direction "
+                             "and width from the header, so teach parse_ports that form "
+                             "rather than publishing a wrong one")
+        ports = parse_ports(declared)
         index = end
-    body_start = clean.find(";", index) + 1
-    body_end = clean.find("endmodule", body_start)
-    body = clean[body_start:body_end]
-    offset = clean[:body_start].count("\n") + 1
+    body, offset = body_of(name, clean)
     module = Module(name=name, path=path, line=line, lines=len(text.splitlines()),
                     summary=comment, ports=ports, parameters=parameters)
     line_at = line_of(body)
+    loops = generate_loops(body)
     for macro in REGISTER_MACROS:
         for match in re.finditer(rf"`{macro}\b(?!_)", body):
             at = offset + line_at(match.start()) - 1
-            if active[at - 1]:
-                module.registers += 1
-                module.register_macros[macro] = module.register_macros.get(macro, 0) + 1
-            else:
-                module.simulation_registers += 1
+            copies, exact, _ = replication(match.start(), loops)
+            if not active[at - 1]:
+                module.simulation_registers += copies
+                continue
+            module.registers += copies
+            module.register_sites += 1
+            module.registers_exact = module.registers_exact and exact
+            module.register_macros[macro] = module.register_macros.get(macro, 0) + copies
     module.raw_processes = len(re.findall(r"\balways(_ff|_latch)?\s*@", body))
     return module
 
@@ -462,6 +600,20 @@ def stub(module: Module) -> bool:
 def simulation_model(name: str) -> bool:
     """An n2m_sim_* stand-in for a vendor primitive: never synthesized."""
     return name.startswith("n2m_sim_")
+
+
+def loop_sites(root: Path = ROOT) -> list[tuple[str, int, int, bool]]:
+    """(path, line, copies, exact) for every generate-for under src/rtl/."""
+    found = []
+    for path in tracked(root, RTL):
+        clean = blanked((root / path).read_text(encoding="utf-8"))
+        header = re.search(rf"^[ \t]*module\s+({IDENT})", clean, re.M)
+        if not header:
+            continue
+        body, offset = body_of(header.group(1), clean)
+        for loop in generate_loops(body):
+            found.append((path, offset + body[:loop.start].count("\n"), loop.copies, loop.exact))
+    return found
 
 
 def packages(root: Path = ROOT) -> list[tuple[str, str, int, str]]:

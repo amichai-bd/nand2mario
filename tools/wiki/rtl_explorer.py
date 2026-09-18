@@ -15,8 +15,8 @@ from pathlib import Path
 import posixpath
 
 from tools.wiki.rtl_modules import (
-    BOARD_TOP, Module, ROOT, RTL, composition, packages, simulation_model,
-    specification, stub, tracked)
+    BOARD_TOP, Module, ROOT, RTL, composition, loop_sites, packages,
+    simulation_model, specification, stub, tracked)
 
 
 # Two measured quantities set a block's area: the module's own line count and
@@ -58,8 +58,17 @@ def build(modules: dict[str, Module], name: str, instance: str, earlier: set[str
     if name in earlier:
         return Tile(name, instance, "reference", own)
     children = [Tile(name, instance, "own", own)]
-    children += [build(modules, i.module, i.name, earlier) for i in inside]
+    for site in inside:
+        for copy in range(site.copies):
+            children.append(build(modules, site.module, copy_name(site, copy), earlier))
     return Tile(name, instance, "module", sum(c.weight for c in children), children)
+
+
+def copy_name(site, copy: int) -> str:
+    """The hierarchical name of one elaborated copy of an instance site."""
+    if site.copies == 1:
+        return site.name
+    return f"{site.label}[{copy}].{site.name}" if site.label else f"{site.name}[{copy}]"
 
 
 def squarify(values: list[float], x: float, y: float, width: float, height: float):
@@ -136,23 +145,28 @@ def outsiders(modules: dict[str, Module], shown: list[str]) -> str:
 
 
 def counts(module: Module) -> str:
-    registers = "no registers" if not module.registers else (
-        f"{module.registers} register" + ("s" if module.registers != 1 else ""))
-    return f"{module.lines} lines · {registers}"
+    if not module.registers:
+        macros = "no register macros"
+    else:
+        macros = (("at least " if not module.registers_exact else "")
+                  + f"{module.registers} register macro"
+                  + ("s" if module.registers != 1 else ""))
+    return f"{module.lines} lines · {macros}"
 
 
 def label(tile: Tile, module: Module) -> list[tuple[str, str]]:
     """(css class, text) per label line, longest first, before any fit test."""
+    floor = "" if module.registers_exact else "≥"
     if tile.kind == "own":
         return [("n", "own logic"),
-                ("f", f"{module.lines} L · {module.registers} R" if module.registers
+                ("f", f"{module.lines} L · {floor}{module.registers} R" if module.registers
                  else f"{module.lines} L · structural")]
     lines = [("n", tile.instance)] if tile.instance != module.name else []
     lines.append(("m", module.name))
     if tile.kind == "reference":
         lines.append(("f", "expanded above"))
     else:
-        lines.append(("f", f"{module.lines} L · {module.registers} R"))
+        lines.append(("f", f"{module.lines} L · {floor}{module.registers} R"))
     if module.vendor:
         lines.append(("v", "+ " + ", ".join(sorted({v.module for v in module.vendor}))))
     return lines
@@ -174,6 +188,7 @@ def svg_tile(tile: Tile, rect, module: Module) -> str:
     x, y, width, height = rect
     target = html_escape("#m-" + module.name)
     title = f"{tile.instance}: {module.name} — {counts(module)}"
+    floor = "" if module.registers_exact else "≥"
     parts = [f'<a href="{target}" class="{classes(tile, module)}" '
              f'data-module="{html_escape(module.name)}">',
              f'<title>{html_escape(title)}</title>',
@@ -181,7 +196,7 @@ def svg_tile(tile: Tile, rect, module: Module) -> str:
              f'height="{round(height, 1)}" rx="4" />']
     if tile.children:
         head = f"{tile.instance} : {module.name}" if tile.instance != module.name else module.name
-        head = f"{head} · {module.lines} L · {module.registers} R"
+        head = f"{head} · {module.lines} L · {floor}{module.registers} R"
         head = shortest(head, width) or shortest(module.name, width)
         if head:
             parts.append(f'<text class="h" x="{round(x + 7, 1)}" y="{round(y + 13.5, 1)}">'
@@ -246,16 +261,24 @@ def ports_html(module: Module) -> str:
 
 
 def panel(module: Module, parents: list[tuple[str, str, str]]) -> str:
-    facts = [f'<code>{html_escape(module.path)}</code>',
-             f"{module.lines} lines",
-             (f"{module.registers} register macro" + ("s" if module.registers != 1 else ""))
-             if module.registers else "no registers of its own",
-             f"{len(module.ports)} ports"]
+    registers = ("no registers of its own" if not module.registers else
+                 ("at least " if not module.registers_exact else "")
+                 + f"{module.registers} register macro" + ("s" if module.registers != 1 else ""))
+    facts = [f'<code>{html_escape(module.path)}</code>', f"{module.lines} lines",
+             registers, f"{len(module.ports)} ports"]
+    if module.register_sites and module.register_sites != module.registers:
+        facts.append(f"written as {module.register_sites} source site"
+                     + ("s" if module.register_sites != 1 else "")
+                     + " inside a generate loop with a literal bound")
+    if not module.registers_exact:
+        facts.append("a generate bound here is not a literal, so this count is a floor "
+                     "rather than a measurement")
     if module.register_macros:
         facts.append(", ".join(f"<code>{name}</code>&nbsp;×{count}" for name, count
                                in sorted(module.register_macros.items())))
     if module.simulation_registers:
-        facts.append(f"{module.simulation_registers} more registers in a simulation-only branch")
+        facts.append(f"{module.simulation_registers} more register macros in a "
+                     "simulation-only branch")
     if module.raw_processes:
         facts.append(f"{module.raw_processes} behavioural <code>always</code> blocks "
                      "outside the register macros")
@@ -269,6 +292,11 @@ def panel(module: Module, parents: list[tuple[str, str, str]]) -> str:
     inside = []
     for instance in module.instances:
         note = "" if instance.view in ("both", "synthesis") else " (simulation branch only)"
+        if instance.copies > 1:
+            note += (f" ({instance.copies} copies of one generate site)" if instance.exact
+                     else f" (at least {instance.copies} copies; a bound here is not a literal)")
+        elif not instance.exact:
+            note += " (a bound here is not a literal, so one copy is a floor)"
         inside.append(f'{html_escape(instance.name)} : <a href="#m-{html_escape(instance.module)}">'
                       f'{html_escape(instance.module)}</a>{note}')
     for instance in module.vendor:
@@ -340,6 +368,7 @@ def facts(modules: dict[str, Module], root: Path = ROOT) -> dict[str, int]:
             "packages": len(sources) - len(library),
             "package_lines": sum(lines.values()) - declared,
             "registers": sum(module.registers for module in library.values()),
+            "loops": len(loop_sites(root)),
             "ports": sum(len(module.ports) for module in library.values()),
             "owners": len(modules["n2m_v05_system"].instances)}
 
@@ -371,12 +400,14 @@ def document(root: Path = ROOT) -> str:
 
     intro = (
         '<p class="lead">This page draws the composed DE10-Lite design as nested blocks. '
-        'One block is one module instance; a block inside another block is instantiated there. '
+        'One block is one module instance — plus, inside each parent, one tile for that parent\'s '
+        'own logic. A block inside another block is instantiated there. '
         'Select any block to read what that module owns, its ports, and its real source.</p>'
         '<div class="comparison">'
         '<div><strong>Measured</strong><p>Lines per file, register-macro invocations, ports with '
         'direction and width, and the instance tree — all read from the SystemVerilog by '
-        '<code>tools/wiki/rtl_modules.py</code>.</p></div>'
+        '<code>tools/wiki/rtl_modules.py</code>. A <code>generate for</code> with a literal bound '
+        'is expanded, so a three-bank store is three blocks.</p></div>'
         '<div><strong>Sets a block\'s size</strong><p>Its area follows '
         '<code>lines + 4 × register macros</code>, and nothing else. The coefficient is a drawing '
         'choice; the two counts are measurements.</p></div>'
@@ -386,16 +417,23 @@ def document(root: Path = ROOT) -> str:
         '</div>'
         f'<p><code>src/rtl/</code> holds {numbers["files"]} tracked SystemVerilog files and '
         f'{numbers["lines"]:,} lines: {numbers["modules"]} modules ({numbers["module_lines"]:,} '
-        f'lines, {numbers["registers"]} register macros, {numbers["ports"]:,} ports) and '
+        f'lines, {numbers["registers"]} register macros after replication, '
+        f'{numbers["ports"]:,} ports) and '
         f'{numbers["packages"]} packages ({numbers["package_lines"]:,} lines). '
         f'<code>n2m_v05_system</code> instantiates {numbers["owners"]} owners; several are '
         'themselves structural, so the shape below is a tree rather than a row.</p>'
+        f'<p>{numbers["loops"]} <code>generate for</code> loops in these sources replicate an '
+        'instance or a register macro, and every one of their bounds is a literal, so every count '
+        'here is exact. Where a bound is not a literal the generator does not guess: that site '
+        'counts once, the figure is marked a floor with a <code>≥</code>, and the panel says so.</p>'
         '<details><summary>Explore the reasoning</summary><p>Searching for <code>always_ff</code> '
         'would report zero registers for most of these modules. Every flop here is declared '
         'through a macro in <code>src/rtl/common/macros.svh</code>, so the macro invocations are '
         'the measurement. They are counted in the synthesis view, with <code>SYNTHESIS</code> '
         'defined, so a simulation-only branch is reported separately instead of being counted as '
-        'hardware.</p></details>'
+        'hardware. A register macro is a declaration site, not a flop count: its <code>Q</code> '
+        'may be a vector, so a module with 21 macros can hold more than 21 flops. The page counts '
+        'and names macros, never flops.</p></details>'
         '<p class="sources">'
         + source_link(modules["n2m_v05_system"], "Source: n2m_v05_system.sv")
         + ' · <a href="../src/rtl/system/MAS_system.md">Source: the system composition contract</a>'
@@ -404,7 +442,7 @@ def document(root: Path = ROOT) -> str:
 
     reading = (
         f'<p class="lead">A parent block holds its children plus one <em>own logic</em> tile. That '
-        'tile is the parent\'s own lines and registers — the wiring and arbitration it does '
+        'tile is the parent\'s own lines and register macros — the wiring and arbitration it does '
         'itself — so a structural module reads as a thin frame around its children instead of '
         'an empty box.</p>'
         + legend() +
@@ -416,15 +454,17 @@ def document(root: Path = ROOT) -> str:
         '<p>Areas are exact within one parent. Each parent also spends a label band and a small '
         'inset on its frame, so a deeply nested block is drawn a little smaller than a block of '
         'the same weight near the top. Compare siblings confidently; compare across depths '
-        'loosely. A name that will not fit its block loses its <code>n2m_</code> prefix, and '
+        'loosely. <em>L</em> is the module\'s line count and <em>R</em> its register-macro count '
+        'after generate replication; a <code>≥</code> before it marks a floor. A name that will '
+        'not fit its block loses its <code>n2m_</code> prefix, and '
         'then the block carries no label at all; its panel and its hover text always carry the '
         'full name.</p>'
         '<details><summary>Explore the reasoning</summary><p>A worked size: '
         f'<code>n2m_ppu_timing</code> is {modules["n2m_ppu_timing"].lines} lines with '
         f'{modules["n2m_ppu_timing"].registers} register macros, so its weight is '
         f'{own_weight(modules["n2m_ppu_timing"])}. <code>n2m_cpu_execute</code> is '
-        f'{modules["n2m_cpu_execute"].lines} lines with {modules["n2m_cpu_execute"].registers} '
-        f'registers, so its weight is {own_weight(modules["n2m_cpu_execute"])}. The longer file '
+        f'{modules["n2m_cpu_execute"].lines} lines with no register macros, so its weight is '
+        f'{own_weight(modules["n2m_cpu_execute"])}. The longer file '
         'draws larger even though it holds no state, which is the honest reading of the two '
         'measurements: one is a wide combinational decode, the other a dense sequencer.</p>'
         '</details>'
