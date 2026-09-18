@@ -60,6 +60,10 @@ class Proof:
         # The sample the last compared frame matched, with the status bytes it
         # was read under, for the one-frame alignment slack.
         self.last = None
+        # The snapshot sequence of menu frame 0 (the settled splash frame), so
+        # a later frame's number, and its nudge-phase boundary, follow from
+        # its sequence; None until the splash step has run.
+        self.seq0 = None
 
     def step(self, frames=1, exact=True):
         for _ in range(frames):
@@ -83,7 +87,11 @@ class Proof:
         out = self.folder / f'{len(self.captures):02d}-{name}'
         out.mkdir(parents=True, exist_ok=True)
         (out / 'frame.2bpp').write_bytes(packed)
-        record = self.compare(packed, sample, phases)
+        if isinstance(sample, list):
+            record = board_compare.compare(packed, self.entries, sample)
+            sample = [label for label, _ in sample]
+        else:
+            record = self.compare(packed, sample, phases)
         record.update(name=name, sample=sample, metadata=metadata, sha256=hashlib.sha256(packed).hexdigest(),
                       result=self.result, index=self.index,
                       rendered=board_compare.render(packed, self.entries, record, out))
@@ -94,7 +102,7 @@ class Proof:
         self.log(dict(kind='capture', **brief))
         if require:
             assert record['matches'], f'MENU_BOARD_PIXEL {name} {sample}'
-        if record['matches']:
+        if record['matches'] and not isinstance(sample, list):
             self.last = (sample, self.result, self.index)
         return record, packed
 
@@ -118,10 +126,66 @@ class Proof:
         raise AssertionError(f'MENU_BOARD_PIXEL {name} {sample}')
 
     def move(self, mask, slot, before):
-        """One cursor move: the staged footer frame, then the settled one."""
+        """One cursor move, frame by frame: the footer's upper row, then its lower row, with the ramp riding along.
+
+        The footer settles over two frames, upper row then lower row, but a
+        frame that draws the star twinkle draws neither, so each row may
+        arrive one frame late; the pointer and the scroll ramp move on time.
+        Every frame after the press is compared until the footer has settled
+        and the ramp has reached the cursor's view.
+        """
         self.press(mask)
-        self.expect(f'footer-{slot}-{before}', f'footer-{slot}-{before}')
-        self.expect(f'cursor-{slot}', f'cursor-{slot}')
+        ramp = reference.scroll_ramp(reference.scroll_target(before), slot)
+        target = reference.scroll_target(slot)
+        footers = [(before, before), (slot, before), (slot, slot)]
+        stage, deferred, frame = 1, 0, 0
+        while stage < len(footers) or frame < len(ramp):
+            scy = ramp[frame] if frame < len(ramp) else target
+            shown = min(stage, len(footers) - 1)
+            want = [(f'footer-{footers[shown][0]}-{footers[shown][1]}/scy-{scy}',
+                     dict(cursor=slot, footer=footers[shown], scy=scy))]
+            if stage < len(footers) and not deferred:
+                want.append((f'footer-{footers[stage - 1][0]}-{footers[stage - 1][1]}/scy-{scy}/twinkle',
+                             dict(cursor=slot, footer=footers[stage - 1], scy=scy)))
+            record = self.expect_state(f'move-{slot}-from-{before}-f{frame}', want)
+            twinkle = [name for name in record['matches'] if '/twinkle/' in name]
+            # A deferral is accepted only on the documented boundary: the
+            # frame whose VBlank changed the nudge phase, bit 4 of the frame
+            # counter. Two slots with the same profile and size draw the same
+            # upper row, so both readings can match one frame; the boundary
+            # decides which one it was.
+            number = None if self.seq0 is None else record['metadata']['seq'] - self.seq0
+            boundary = number is not None and number % reference.PHASE_HOLD == 0
+            if twinkle and (boundary or len(twinkle) == len(record['matches'])):
+                if not boundary:
+                    raise AssertionError(f"MENU_BOARD_PIXEL {record['name']} footer deferred off the twinkle "
+                                         f'frame (menu frame {number})')
+                deferred += 1
+                self.log(dict(kind='footer-deferred', slot=slot, frame=frame, number=number))
+            else:
+                if stage < len(footers):
+                    stage += 1
+                deferred = 0
+            frame += 1
+        self.last = (f'cursor-{slot}', self.result, self.index)
+
+    def expect_state(self, name, want):
+        """Step one frame and require it to match one of the explicit `want` states, alignment slack included."""
+        phases = (0, 1)
+        for attempt in range(WAIT_FRAMES + 1):
+            self.step()
+            candidates = [(f'{label}/phase-{phase}', dict(state, phase=phase, result=self.result, index=self.index))
+                          for label, state in want for phase in phases]
+            record, packed = self.snapshot(name, candidates, require=False)
+            if record['matches']:
+                return record
+            if attempt < WAIT_FRAMES and self.last is not None:
+                still, result, index = self.last
+                if self.compare(packed, still, phases, result, index)['matches']:
+                    self.log(dict(kind='wait', name=name, still=still))
+                    continue
+            raise AssertionError(f'MENU_BOARD_PIXEL {name} {[label for label, _ in want]}')
+        raise AssertionError(f'MENU_BOARD_PIXEL {name} {[label for label, _ in want]}')
 
     def library_status(self):
         return library.decode_library_status(self.client.read_host(abi.HOST_REG_LIBRARY_STATUS))
@@ -176,6 +240,7 @@ class Proof:
                 raise AssertionError(f'MENU_BOARD_SPLASH_ORDER after {current}: {sorted(numbers)}')
             assert record['metadata']['seq'] == seq + 1, 'MENU_BOARD_SPLASH_SEQ'
             seq = record['metadata']['seq']
+        self.seq0 = seq
         self.last = ('menu', self.result, self.index)
         return dict(boot_frames=boot_frames, first=first, lead=lead, frames=current - first + 1)
 
@@ -200,13 +265,8 @@ class Proof:
     def ramp(self):
         for slot in range(TAGLINE_SLOT + 1, OFF + 1):
             self.move(abi.BUTTON_DOWN, slot, slot - 1)
-        self.press(abi.BUTTON_DOWN)
-        for step in range(1, reference.SCROLL_FRAMES + 1):
-            self.expect(f'scroll-{step}', f'scroll-{step}')
-        self.press(abi.BUTTON_UP)
-        for step in range(1, reference.SCROLL_FRAMES):
-            self.expect(f'back-{step}', f'back-{step}')
-        self.expect(f'cursor-{OFF}', f'cursor-{OFF}')
+        self.move(abi.BUTTON_DOWN, LAST, OFF)
+        self.move(abi.BUTTON_UP, OFF, LAST)
         return True
 
     def empty(self):

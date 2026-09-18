@@ -60,8 +60,10 @@ def pack(pixels):
 class FakeMenu:
     """The menu image's frame rules on a host-paused core, one VBlank per RUN_DOTS frame."""
 
-    def __init__(self, *, build_id='expected', index=reference.NO_INDEX, boot_frames=3, offset=0, lead=0):
+    def __init__(self, *, build_id='expected', index=reference.NO_INDEX, boot_frames=3, offset=0, lead=0,
+                 defer_off_boundary=False):
         self.build_id, self.boot, self.offset, self.lead = build_id, boot_frames, offset, lead
+        self.defer_off_boundary = defer_off_boundary
         self.epoch, self.dot, self.state, self.profile = 1, 0, abi.STATE_PAUSED, abi.PROFILE_LOADER_ID
         self.buttons = self.sampled = 0
         self.index, self.result = index, reference.RESULT_NONE
@@ -76,7 +78,7 @@ class FakeMenu:
         # VBlank of the first loop iteration, before displayed frame 0.
         self.lead_left = self.lead
         self.splash = 0 if self.index == reference.NO_INDEX else None
-        self.frame_number, self.cursor, self.footer = 0, 0, None
+        self.frame_number, self.cursor, self.footer = 0, 0, (0, 0)
         self.scy = reference.SETTLED_SCY
         # `offset` pending frames model a pause point after the VBlank: the
         # first completed frame after a change still shows the state before it.
@@ -189,10 +191,21 @@ class FakeMenu:
                 stopped = True
             else:
                 self.result = reference.RESULT_INVALID_SLOT
-        if self.cursor != before:
-            self.footer = (self.cursor, before)
-        elif self.footer is not None:
-            self.footer = None
+        # The footer settles one row a frame, upper row first, and a frame
+        # whose VBlank twinkles the stars (the next frame changes phase)
+        # draws neither row; the ramp steps regardless.
+        twinkle = reference.phase_of_frame(self.frame_number + 1) != reference.phase_of_frame(self.frame_number)
+        if self.defer_off_boundary:
+            # A wrong menu that skips the footer row on a frame that is not
+            # the twinkle frame; the driver must not accept it.
+            twinkle = (self.frame_number + 1) % reference.PHASE_HOLD == 5
+        upper, lower = self.footer
+        if not twinkle:
+            if upper != self.cursor:
+                upper = self.cursor
+            elif lower != upper:
+                lower = upper
+        self.footer = (upper, lower)
         target = reference.scroll_target(self.cursor)
         if self.scy != target:
             self.scy += reference.SCROLL_STEP if target > self.scy else -reference.SCROLL_STEP
@@ -214,10 +227,18 @@ class BoardMenuTests(unittest.TestCase):
                               game_frame_sha256=hashlib.sha256(pack(GAME_FRAME)).hexdigest())
             self.assertEqual(result['status'], 'PASS')
             names = [capture['name'] for capture in result['captures']]
-            for name in ('splash-first', 'splash-16', 'idle-phase-1', 'idle-phase-0', 'footer-1-0', 'cursor-2',
-                         'scroll-1', 'scroll-4', 'back-1', 'cursor-14', 'cursor-11', 'refused', 'footer-10-11',
-                         'cursor-10', 'game', 'menu-after-return'):
+            for name in ('splash-first', 'splash-16', 'idle-phase-1', 'idle-phase-0', 'move-1-from-0-f0',
+                         'move-2-from-1-f1', 'move-15-from-14-f3', 'move-14-from-15-f3', 'move-11-from-12-f1',
+                         'refused', 'move-10-from-11-f1', 'move-2-from-3-f1', 'game', 'menu-after-return'):
                 self.assertIn(name, names)
+            matched = {capture['name']: capture['matches'][0] for capture in result['captures'] if capture['matches']}
+            self.assertTrue(matched['move-15-from-14-f0'].startswith('footer-15-14/scy-146/phase-'))
+            self.assertTrue(matched['move-15-from-14-f3'].startswith('footer-15-15/scy-152/phase-'))
+            self.assertTrue(matched['move-14-from-15-f0'].startswith('footer-14-15/scy-150/phase-'))
+            self.assertTrue(matched['move-14-from-15-f3'].startswith('footer-14-14/scy-144/'))
+            deferred = [entry for entry in log if entry['kind'] == 'footer-deferred']
+            self.assertTrue(deferred)
+            self.assertTrue(all(entry['number'] % reference.PHASE_HOLD == 0 for entry in deferred))
             self.assertEqual(result['splash'], dict(boot_frames=4, first=0, lead=0, frames=17))
             self.assertEqual(result['idle']['phases'], [0, 1, 0])
             self.assertEqual(result['refused']['result'], 'INVALID_SLOT')
@@ -265,6 +286,74 @@ class BoardMenuTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(AssertionError, r'MENU_BOARD_SPLASH_ORDER after 1: \[0, 1\]'):
                 run(endpoint, folder, steps=('splash',))
+
+    def settled_menu(self, **options):
+        """A menu that has been running, halted with its frame origin known to the proof."""
+        endpoint = FakeMenu(index=2, **options)
+        endpoint.state = abi.STATE_RUNNING
+        for _ in range(5):
+            endpoint.frame()
+        endpoint.control('HALT')
+        return endpoint
+
+    def moving_proof(self, endpoint, folder, log):
+        proof = board_menu.Proof(endpoint, folder, log.append, ENTRIES)
+        proof.seq0 = endpoint.seq - endpoint.frame_number + 1  # frame m was published as sequence m + 1
+        proof.last = ('menu', proof.result, proof.index)
+        return proof
+
+    def test_a_move_on_the_twinkle_frame_defers_the_footer_row_as_the_board_showed(self):
+        # Session 10 second attempt: the Down onto slot 11 landed on menu frame
+        # 64, a phase boundary, and the frame showed the pointer on slot 11
+        # with both footer rows still describing slot 10.
+        endpoint = self.settled_menu()
+        while (endpoint.frame_number + 1) % reference.PHASE_HOLD:
+            endpoint.frame()
+        with tempfile.TemporaryDirectory() as folder:
+            log = []
+            proof = self.moving_proof(endpoint, folder, log)
+            proof.move(abi.BUTTON_DOWN, 1, 0)
+            matched = [capture['matches'] for capture in proof.captures]
+        # Slots 0 and 1 draw the same upper row, so the deferred frame also
+        # reads as the staged one; the boundary decides, as the log shows.
+        self.assertIn('footer-0-0/scy-144/twinkle/phase-1', matched[0])
+        self.assertEqual(matched[1:], [['footer-1-0/scy-144/phase-1'], ['footer-1-1/scy-144/phase-1']])
+        self.assertIn(dict(kind='footer-deferred', slot=1, frame=0, number=16), log)
+
+    def test_a_deferred_settled_row_is_accepted_on_the_boundary_only(self):
+        endpoint = self.settled_menu()
+        while (endpoint.frame_number + 2) % reference.PHASE_HOLD:
+            endpoint.frame()
+        with tempfile.TemporaryDirectory() as folder:
+            log = []
+            proof = self.moving_proof(endpoint, folder, log)
+            proof.move(abi.BUTTON_DOWN, 1, 0)
+            matched = [capture['matches'][0] for capture in proof.captures]
+        self.assertEqual(matched, ['footer-1-0/scy-144/phase-0', 'footer-1-0/scy-144/twinkle/phase-1',
+                                   'footer-1-1/scy-144/phase-1'])
+        self.assertIn(dict(kind='footer-deferred', slot=1, frame=1, number=16), log)
+
+    def test_a_footer_deferred_off_the_twinkle_frame_fails(self):
+        for lag in (1, 2):
+            endpoint = self.settled_menu(defer_off_boundary=True)
+            while (endpoint.frame_number + lag) % reference.PHASE_HOLD != 5:
+                endpoint.frame()
+            with tempfile.TemporaryDirectory() as folder:
+                log = []
+                proof = self.moving_proof(endpoint, folder, log)
+                with self.assertRaisesRegex(AssertionError, 'MENU_BOARD_PIXEL move-1-from-0-f. footer deferred off'):
+                    proof.move(abi.BUTTON_DOWN, 1, 0)
+            self.assertFalse([entry for entry in log if entry['kind'] == 'footer-deferred'])
+
+    def test_a_deferral_with_no_frame_origin_fails(self):
+        endpoint = self.settled_menu()
+        while (endpoint.frame_number + 1) % reference.PHASE_HOLD:
+            endpoint.frame()
+        with tempfile.TemporaryDirectory() as folder:
+            proof = self.moving_proof(endpoint, folder, [])
+            proof.seq0 = None
+            with self.assertRaisesRegex(AssertionError, 'menu frame None'):
+                proof.move(abi.BUTTON_DOWN, 1, 0)
 
     def test_build_id_mismatch_stops_before_the_board_moves(self):
         endpoint = FakeMenu(build_id='other')
