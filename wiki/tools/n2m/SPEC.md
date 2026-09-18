@@ -1,7 +1,7 @@
 # Build system
 
 Status: host-native Verilator on Linux and Questa on Windows support `doctor`,
-`sim test`, `tests run` and `regress`. `check`, the Windows
+`sim test`, `tests run` and `regress`. `check`, the
 [Questa compile gate](#questa-compile-gate) `lint questa`, MAX 10 `fpga build`,
 [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md),
 the [test catalogue](#test-catalogue), [declared regression subsets](#regression-subsets)
@@ -48,12 +48,14 @@ python3 tools/build.py tools verilator --tag pinned-verilator --json
 python3 tools/build.py clean --tag deliberate-aggregate --json
 ```
 
-FPGA commands run on Windows PowerShell; see [FPGA build](#fpga-build). So does
-the [Questa compile gate](#questa-compile-gate):
+`fpga build` and the [Questa compile gate](#questa-compile-gate) run wherever
+Quartus and Questa are installed, on Linux or on Windows PowerShell; see
+[FPGA build](#fpga-build). `fpga program` still runs on Windows PowerShell,
+because only that JTAG path is verified:
 
-```powershell
-python tools/build.py lint questa --tag questa-gate --json
-python tools/build.py lint questa --inject-fault --tag questa-gate-fault --json
+```bash
+python3 tools/build.py lint questa --tag questa-gate --json
+python3 tools/build.py lint questa --inject-fault --tag questa-gate-fault --json
 ```
 
 The second identical simulation reports `CACHED`. The deliberate-failure target
@@ -132,8 +134,8 @@ it is exactly 32 hexadecimal digits and nonzero. They also hide
 `--endpoint-restarted`. The doctor asks
 for scope first: simulation scope then
 offers either backend, while the full hardware environment fixes Questa and
-Windows because Quartus and JTAG discovery are Windows-owned. `--json` is
-intentionally absent.
+Windows because Questa runtime execution and JTAG discovery are Windows-owned.
+`--json` is intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
 simulation, deletes a build, programs the FPGA, transmits over UART, or launches
@@ -177,7 +179,7 @@ evidence was reused; it never presents recorded work as a new execution.
 Simulation names the target and backend, tool discovery, each compile or
 elaboration command, execution, and the checked result. Its final summary gives
 the compile and simulation logs, authoritative `result.json`, retained waveform,
-and the Windows PowerShell command that starts the `v05-board` FPGA build.
+and the current-host command that starts the `v05-board` FPGA build.
 FPGA build names Quartus discovery, including target-specific IP identities,
 cache checking, generation when applicable,
 compile/fit/assembly/timing, the timing audit, optional netlist generation, and
@@ -188,7 +190,11 @@ single-quoted, with embedded quotes escaped.
 A failed build may name a produced `.sof` only as an unverified artifact; it
 never labels that file checked or offers it to the programmer.
 A comparison-only result produced with `--build-id` prints no programming
-handoff, matching the programmer's existing refusal of that image.
+handoff, matching the programmer's existing refusal of that image. A fit on a
+host that does not own programming writes a `<Quartus-bin>` placeholder in place
+of its own Quartus directory, which would not exist on the programming host; the
+`.sof` keeps its repository-relative path, so that image must reach the
+programming host's own checkout before the printed command can run.
 
 Programming checks the attempt record before JTAG discovery. An early refusal
 writes `failure.log` in the program operation directory and names that retained
@@ -208,9 +214,11 @@ the measured time, the `.pof` hash and the power-cycle step; its dry run
 reports the record check and the written command only.
 
 These handoffs never execute their next command. Linux remains a Verilator host;
-Windows PowerShell remains the Questa, Quartus, JTAG and launcher host.
-No command silently crosses that boundary. The ordinary hardware safeguards
-still apply before a person runs the printed programming or launcher command.
+Windows PowerShell remains the Questa simulation, JTAG and launcher host. The
+`fpga build` handoff names the current host, because an installed Quartus runs
+it on either one. No command silently crosses that boundary. The ordinary
+hardware safeguards still apply before a person runs the printed programming or
+launcher command.
 With `--json`, none of these human lines is written and stdout remains exactly
 one parseable result object for aggregate and child callers.
 
@@ -240,9 +248,10 @@ checkout when the caller's license environment provides one. No acceptance
 criterion requires a licensed Questa run.
 
 One build tool serves two operating systems. Linux owns Verilator execution;
-Windows PowerShell owns Questa execution, `fpga build` and `fpga program`.
+Windows PowerShell owns Questa runtime execution and `fpga program`.
+`fpga build` and the compile gate follow their installed tools on either host.
 Caches and fingerprints stay per backend and OS under `workdir/`.
-[Command ownership](#command-ownership-by-operating-system) names the refusals.
+[Command ownership](#command-ownership) names the refusals.
 Where RTL instantiates
 an Intel primitive, the predefined `VERILATOR` macro selects a behavioral double
 and Quartus always sees the vendor instance; the
@@ -259,23 +268,36 @@ undeclared backend is a configuration failure. An area run (`tests run`,
 counting it as neither pass nor defect, and never falls back; see
 [execution](#execution-and-contention) and [regression subsets](#regression-subsets).
 
-### Command ownership by operating system
+### Command ownership
 
-One build tool serves two hosts. Linux owns Verilator simulation, natively or
-under WSL. Windows
-PowerShell owns Questa simulation, the [Questa compile gate](#questa-compile-gate),
-`fpga build` and `fpga program`. Each side
-refuses a foreign simulator before any workspace is taken: Windows reports
-`Verilator simulation runs on Linux`; non-Windows hosts report `Questa
-simulation runs on Windows PowerShell`. Linux still refuses `fpga` commands
-with `FPGA build and programming run on Windows PowerShell` and `lint questa`
-with `Questa compile gate runs on Windows PowerShell`. Windows refuses `tools`
-with `Pinned host tool installation runs on Linux`, because the pinned Verilator
-is an autoconf, `make` and `g++` source build. Every command
-header and simulation record carries `os`
-(`platform.system()`), and caches, fingerprints and compiled objects live under
-the running host's own `workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
-covers both refusals and both permitted sides with a mocked platform.
+One build tool serves two hosts. Only physical access and a source build are
+operating-system facts; everything else follows the installed toolchain.
+
+Linux owns Verilator simulation and Windows PowerShell owns Questa simulation.
+Each side refuses a foreign simulator before any workspace is taken: Windows
+reports `Verilator simulation runs on Linux`; non-Windows hosts report
+`Questa simulation runs on Windows PowerShell`. Non-Windows hosts refuse
+`fpga program` with
+`FPGA programming runs on Windows PowerShell; Linux JTAG access is unverified`,
+which is a verified-access boundary, not a claim about the tools. Windows
+refuses `tools` with `Pinned host tool installation runs on Linux`, because the
+pinned Verilator is an autoconf, `make` and `g++` source build.
+
+`fpga build` and `lint questa` carry no operating-system refusal. Each discovers
+its own executables and reports the real result, so an absent tool fails naming
+that tool: `missing explicit Quartus tool: quartus_sh` for the fit and
+`missing vlib; select the Questa tool directory explicitly` for the gate. A
+tagged workspace is taken before that discovery, exactly as on the host that
+already owned the command.
+
+Every command header and simulation record carries `os` (`platform.system()`),
+and caches, fingerprints and compiled objects live under the running host's own
+`workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
+covers the simulator refusals, the programming refusal, the permitted sides and
+the Linux fit with a mocked platform;
+[`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers the gate on both
+hosts and its missing-tool failure, and
+[`test_fpga.py`](../../../tools/n2m/tests/test_fpga.py) the fit's.
 
 ## Test catalogue
 
@@ -1174,10 +1196,10 @@ their full diagnostic and reject additional errors.
 
 ### Questa compile gate
 
-```powershell
-python tools/build.py lint questa --tag <tag> --json
-python tools/build.py lint questa --questa-bin <directory> --tag <tag> --json
-python tools/build.py lint questa --inject-fault --tag <tag> --json
+```bash
+python3 tools/build.py lint questa --tag <tag> --json
+python3 tools/build.py lint questa --questa-bin <directory> --tag <tag> --json
+python3 tools/build.py lint questa --inject-fault --tag <tag> --json
 ```
 
 `lint questa` proves that a second front end accepts the product RTL that
@@ -1187,8 +1209,9 @@ check for every PR touching `src/rtl` or `src/fpga` under the
 [PR policy](../../agents/pull-requests.md#hosted-and-local-checks).
 [`lint.py`](../../../tools/n2m/lint.py) owns the command;
 [`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers its contracts
-with tool doubles. Windows PowerShell owns execution; other hosts refuse with
-`Questa compile gate runs on Windows PowerShell` before any workspace is taken.
+with tool doubles. Any host with the four executables runs it; no operating
+system is refused. A host without them fails naming the missing tool, such as
+`missing vlib; select the Questa tool directory explicitly`.
 
 Discovery resolves `vlib`, `vmap`, `vlog` and `vopt` on PATH or in
 `--questa-bin <directory>`, records each path, SHA-256 and `-version` banner,
@@ -1875,10 +1898,16 @@ initialization, read shape and bit partitions; the outer inventory rejects
 missing or extra atoms and inconsistent fitted capacity. Diagnostic placement
 targets retain their own scoped evidence.
 
-```powershell
-python tools/build.py fpga build builder-smoke --quartus-bin <directory> --tag fpga-smoke --json
-python tools/build.py fpga build builder-invalid --quartus-bin <directory> --tag fpga-invalid --json
+```bash
+python3 tools/build.py fpga build builder-smoke --quartus-bin <directory> --tag fpga-smoke --json
+python3 tools/build.py fpga build builder-invalid --quartus-bin <directory> --tag fpga-invalid --json
 ```
+
+`--quartus-bin` names the directory holding `quartus_sh`, `quartus_map`,
+`quartus_fit`, `quartus_asm`, `quartus_sta` and `quartus_eda`; on Linux that is
+the Quartus `bin/` launcher directory, whose scripts set the library path the
+`linux64/` executables need. All six must be present, be recognizable and report
+one version, or the stage fails naming the first missing tool.
 
 The first command compiles, fits, assembles, and checks the owned MAX 10 fixture.
 The invalid target deliberately supplies a negative clock period and must FAIL

@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import test_builder
 from n2m import doctor, verilator, verilator_install
-from n2m.cli import FPGA_HOST, QUESTA_HOST, TOOLS_HOST, VERILATOR_HOST, main
+from n2m.cli import FPGA_PROGRAM_HOST, QUESTA_HOST, TOOLS_HOST, VERILATOR_HOST, main
 from n2m.records import read_json
 from n2m.simulation import load_target
 from n2m.simulator import Simulator, ToolError, verilator_executable
@@ -823,13 +823,20 @@ class HostOwnershipTests(unittest.TestCase):
                     self.assertEqual((report["status"], report["error"], report["os"]),
                                      ("FAIL", reason, system))
 
-    def test_linux_refuses_fpga_commands(self):
-        for argv in (["fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "l1"],
-                     ["fpga", "program", "--sof", "x.sof", "--quartus-bin", "tools", "--tag", "l2"]):
-            with self.subTest(argv=argv):
-                code, report = self.run_cli("Linux", *argv)
-                self.assertEqual(code, 1)
-                self.assertEqual((report["status"], report["error"], report["os"]), ("FAIL", FPGA_HOST, "Linux"))
+    def test_linux_refuses_only_fpga_programming(self):
+        """Programming is a physical-access fact; the fit is a tool fact."""
+        code, report = self.run_cli("Linux", "fpga", "program", "--sof", "x.sof",
+                                   "--quartus-bin", "tools", "--tag", "l2")
+        self.assertEqual(code, 1)
+        self.assertEqual((report["status"], report["error"], report["os"]),
+                         ("FAIL", FPGA_PROGRAM_HOST, "Linux"))
+
+    def test_linux_reaches_the_fpga_build_stage(self):
+        """No refusal stands between Linux and Quartus: the stage itself runs."""
+        code, report = self.run_cli("Linux", "fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "l1")
+        self.assertEqual(code, 1)
+        # run_cli patches build_fpga to raise; reaching it proves the OS gate is gone.
+        self.assertEqual((report["status"], report["error"], report["os"]), ("FAIL", "built", "Linux"))
 
     def test_windows_refuses_the_pinned_tool_installation(self):
         """The pin is an autoconf/make/g++ build; Windows gets a refusal, not a

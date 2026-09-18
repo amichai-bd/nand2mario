@@ -196,6 +196,16 @@ class FpgaTests(unittest.TestCase):
         self.save_target()
         self.assertEqual(self.run_build()["status"], "FAIL")
 
+    def test_missing_quartus_tool_names_the_tool_not_an_operating_system(self):
+        """Availability is a tool fact: an empty directory names quartus_sh."""
+        empty = self.root / "empty tools"
+        empty.mkdir()
+        with self.assertRaises(ValueError) as error:
+            fpga.tools(empty, self.build, {"commands": []}, self.build, 10)
+        self.assertEqual(str(error.exception), "missing explicit Quartus tool: quartus_sh")
+        for system in ("Windows", "Linux", "PowerShell"):
+            self.assertNotIn(system, str(error.exception))
+
     def test_truncated_cache_manifest_cannot_hide_missing_image(self):
         result = self.run_build()
         current = self.build / "fpga/smoke/result.json"
@@ -583,6 +593,22 @@ class FpgaTests(unittest.TestCase):
         self.assertNotIn("Worst hold", text)
         self.assertNotIn("Checked bitstream:", text)
         self.assertNotIn("Next (Windows PowerShell):", text)
+
+    def test_a_non_windows_fit_offers_programming_without_this_host_quartus_path(self):
+        """Programming stays on Windows, so the fit cannot hand it a Linux directory."""
+        def fake(root, build, args, provenance=None, progress=None):
+            return {"status": "PASS", "cache": "BUILT", "attempt_result": "result.json",
+                    "artifacts": {"workdir/builds/linux/fpga/smoke/attempts/a1/output/design.sof": "hash"}}
+
+        with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
+                patch("n2m.cli.platform.system", return_value="Linux"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["fpga", "build", "smoke", "--quartus-bin", "/opt/quartus/bin",
+                                   "--tag", "linux"], self.root), 0)
+        text = output.getvalue()
+        self.assertIn("Next (Windows PowerShell):", text)
+        self.assertIn("--quartus-bin '<Quartus-bin>'", text)
+        self.assertNotIn("/opt/quartus/bin", text)
 
     def test_cli_text_prints_the_flash_lines_only_with_onchip_flash_evidence(self):
         """Quartus writes a .pof for every image; only onchip_flash evidence earns the summary lines."""

@@ -328,7 +328,7 @@ def _fpga_plan(menu, root):
                 ("quartus", lambda _: _quartus(menu, root))]
             plan = _editable(menu, steps, lambda answers: Plan(
                 ["fpga", "build", answers["target"], "--quartus-bin", answers["quartus"]],
-                ("fpga", "build"), "Windows PowerShell",
+                ("fpga", "build"), "Current host",
                 "Compile and check an FPGA image; no programming"))
         else:
             sofs = [Choice(path, f"{target or 'unknown target'} — {path}",
@@ -491,7 +491,7 @@ def make_plan(menu, root, intent):
     if intent == "fpga":
         return _fpga_plan(menu, root)
     if intent == "lint":
-        return Plan(["lint", "questa"], ("lint", "questa"), "Windows PowerShell",
+        return Plan(["lint", "questa"], ("lint", "questa"), "Current host",
                     "Compile src/rtl and elaborate every FPGA top under Questa; no vsim, no license")
     if intent == "sw":
         return _sw_plan(menu, root)

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import platform
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -451,6 +452,17 @@ def affected_lines(report):
     return lines
 
 
+def current_host_command(argv):
+    """Render a follow-up command for the host that just ran this one.
+
+    The interpreter is the repository's portable spelling, and the arguments are
+    quoted for the shell that host uses.
+    """
+    windows = platform.system() == "Windows"
+    argv = ["python" if windows else "python3", *argv]
+    return powershell_command(argv) if windows else shlex.join(argv)
+
+
 def _human_result(args, report, progress):
     """Render the compact handoff after live stages have finished."""
     status = report.get("status", "FAIL")
@@ -474,8 +486,8 @@ def _human_result(args, report, progress):
         if isinstance(waves, dict) and waves.get("path"):
             progress.line(f"Waveform ({waves.get('format', 'unknown').upper()}): {waves['path']}")
         if status == "PASS":
-            progress.line("Next (Windows PowerShell): " + powershell_command([
-                "python", "tools/build.py", "fpga", "build", "v05-board",
+            progress.line("Next: " + current_host_command([
+                "tools/build.py", "fpga", "build", "v05-board",
                 "--quartus-bin", "<Quartus-bin>", "--tag", "fpga-v05"]))
         return
 
@@ -498,9 +510,12 @@ def _human_result(args, report, progress):
             progress.line(f"Flash image (.pof, library in the user range): {flash_images[-1]}")
             progress.line(f"CFM0 used {pof.get('cfm0_used_bytes')} of {pof.get('cfm0_bytes')} bytes; spare {pof.get('cfm0_spare_bytes')}")
         if status == "PASS" and bitstreams and not report.get("build_id_override"):
+            # Programming stays on Windows, so a fit on another host cannot
+            # offer this host's Quartus directory; the placeholder says so.
+            quartus = args.quartus_bin if platform.system() == "Windows" else "<Quartus-bin>"
             progress.line("Next (Windows PowerShell): " + powershell_command([
                 "python", "tools/build.py", "fpga", "program", "--sof", bitstreams[-1],
-                "--quartus-bin", args.quartus_bin]))
+                "--quartus-bin", quartus]))
         return
 
     if args.command == "fpga" and args.action == "program":
@@ -538,12 +553,15 @@ def _human_result(args, report, progress):
     progress.line(f"{report.get('cache', status)}: {args.command} tag={report.get('tag', '-')}")
 
 
-# One build tool, two native simulator hosts and one FPGA host. No command
-# launches the other operating system or translates one backend into another.
+# One build tool and two native simulator hosts. No command launches the other
+# operating system or translates one backend into another. Only physical access
+# and a source build are host facts; `fpga build` and `lint questa` decide by
+# tool discovery inside their stages, so a missing tool names itself.
 VERILATOR_HOST = "Verilator simulation runs on Linux"
 QUESTA_HOST = "Questa simulation runs on Windows PowerShell"
-FPGA_HOST = "FPGA build and programming run on Windows PowerShell"
-LINT_HOST = "Questa compile gate runs on Windows PowerShell"
+# Programming needs a working USB-Blaster driver and JTAG daemon. Only the
+# Windows path has been verified; Linux JTAG access stays out of reach until it is.
+FPGA_PROGRAM_HOST = "FPGA programming runs on Windows PowerShell; Linux JTAG access is unverified"
 # The pinned Verilator is an autoconf/make/g++ source build, so its
 # installation belongs to the same host that runs it.
 TOOLS_HOST = "Pinned host tool installation runs on Linux"
@@ -570,16 +588,18 @@ def resolve_simulator(args, system=None):
 
 
 def foreign_host(args):
-    """The refusal message when this OS does not own the requested command."""
+    """The refusal message when this OS does not own the requested command.
+
+    `fpga build` and `lint questa` are absent: an installed Quartus or Questa
+    runs them on any host, and their own discovery names a missing tool.
+    """
     system = platform.system()
     if simulator_command(args) and args.sim == "verilator" and system == "Windows":
         return VERILATOR_HOST
     if simulator_command(args) and args.sim == "questa" and system != "Windows":
         return QUESTA_HOST
-    if args.command == "fpga" and system != "Windows":
-        return FPGA_HOST
-    if args.command == "lint" and system != "Windows":
-        return LINT_HOST
+    if args.command == "fpga" and args.action == "program" and system != "Windows":
+        return FPGA_PROGRAM_HOST
     if args.command == "tools" and system == "Windows":
         return TOOLS_HOST
     return None

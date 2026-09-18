@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.cli import main
+from n2m.cli import current_host_command, main
 from n2m.records import atomic_json, read_json, valid_tag, workspace
 from n2m.progress import Progress, powershell_command
 from n2m.simulation import prepare, simulate
@@ -382,9 +382,11 @@ class BuilderTests(unittest.TestCase):
                    "[....] Run simulation", "[done] Run simulation",
                    "[....] Check simulation result", "[PASS] Check simulation result",
                    "Result: PASS (BUILT)", "Compile log:", "Simulation log:",
-                   "Result record:", "Waveform (FST):", "Next (Windows PowerShell):"]
+                   "Result record:", "Waveform (FST):", "Next:"]
         positions = [text.index(fragment) for fragment in ordered]
         self.assertEqual(positions, sorted(positions), text)
+        # The fit runs wherever Quartus is installed, so the handoff names this host.
+        self.assertIn("Next: python3 tools/build.py fpga build v05-board", text)
         self.assertIn("--quartus-bin '<Quartus-bin>'", text)
         self.assertIn("--tag fpga-v05", text)
 
@@ -393,6 +395,7 @@ class BuilderTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(main(command, self.root), 0)
         self.assertIn("[CACHED] Compile and elaborate — reused checked result", output.getvalue())
+
 
         self.sim.fail = True
         with patch("n2m.cli.Simulator", return_value=self.sim), \
@@ -404,6 +407,24 @@ class BuilderTests(unittest.TestCase):
         self.assertIn("Result: FAIL (BUILT)", text)
         self.assertIn("Diagnostic: ", text)
         self.assertNotIn("Next (Windows PowerShell):", text)
+
+    def test_the_fpga_build_handoff_spells_the_interpreter_of_the_host_that_runs_it(self):
+        """An installed Quartus runs the fit on either host, so both arms must render.
+
+        The handoff above only ever renders one of them, so the other is pinned here.
+        """
+        with patch("n2m.cli.platform.system", return_value="Windows"):
+            self.assertEqual(
+                current_host_command(["tools/build.py", "fpga", "build", "v05-board",
+                                      "--quartus-bin", r"C:\Program Files\Intel FPGA\bin64"]),
+                "python tools/build.py fpga build v05-board "
+                "--quartus-bin 'C:\\Program Files\\Intel FPGA\\bin64'")
+        with patch("n2m.cli.platform.system", return_value="Linux"):
+            self.assertEqual(
+                current_host_command(["tools/build.py", "fpga", "build", "v05-board",
+                                      "--quartus-bin", "/opt/intel quartus/bin"]),
+                "python3 tools/build.py fpga build v05-board "
+                "--quartus-bin '/opt/intel quartus/bin'")
 
     def test_python_evidence_failure_precedes_result_stage_failure(self):
         requirements = self.root / "src/dv/python"
