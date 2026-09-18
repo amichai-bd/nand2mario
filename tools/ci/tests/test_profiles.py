@@ -228,10 +228,17 @@ class ProfileTests(unittest.TestCase):
 
     def fpga_record(self, invalid=False):
         self.target = 'clocking-invalid' if invalid else 'clocking-nominal'
-        definition = json.loads((REPO / fpga.REGISTRY).read_text(encoding='utf-8'))['targets'][self.target]
+        registry_path = fpga.target_registry(REPO, self.target)
+        registry = json.loads((REPO / registry_path).read_text(encoding='utf-8'))
+        # The synthetic record carries the resolved definition, board facts included.
+        definition = fpga.target_definition(REPO, self.target)
+        stored = registry['targets'][self.target]
         for name in dependencies(REPO, definition['sources'], synthesis=True) + definition['constraints']:
             self.write(self.root / name, (REPO / name).read_text(encoding='utf-8'))
-        self.write(self.root / fpga.REGISTRY, json.dumps({'schema_version': 1, 'targets': {self.target: definition}}))
+        self.write(self.root / registry['board']['specification'], 'fixture board specification\n')
+        for name in fpga.REGISTRIES:
+            self.write(self.root / name, json.dumps({'schema_version': 2, 'board': registry['board'],
+                                                     'targets': {self.target: stored} if name == registry_path else {}}))
         self.write(self.root / 'tools/build.py', '# synthetic source\n')
         self.write(self.root / 'tools/n2m/fixture.py', '# synthetic source\n')
         self.write(self.root / '.gitignore', 'workdir/\n')

@@ -1,4 +1,4 @@
-"""Explicit MAX 10 builds with retained fit/timing evidence and checked reuse."""
+"""Explicit per-board builds with retained fit/timing evidence and checked reuse."""
 from collections import Counter
 from datetime import datetime, timezone
 import json
@@ -14,8 +14,10 @@ from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
 from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree
 
-DEVICE = "10M50DAF484C7G"
-REGISTRY = "src/fpga/de10_lite/targets.json"
+# One registry per supported board. Each owns its device, family and analysed
+# timing corners; no device is named in the build path itself.
+REGISTRIES = ("src/fpga/de10_lite/targets.json", "src/fpga/de10_nano/targets.json")
+BOARD_FIELDS = {"name", "device", "family", "timing_corners", "specification"}
 TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta", "quartus_eda")
 BUILD_ID_OVERRIDE_NOTICE = ("BUILD_ID pinned by --build-id for netlist comparison only; "
                             "this result is not a board image and programming refuses it")
@@ -83,17 +85,58 @@ def self_contained_sdc(text):
             raise ValueError("unsupported dynamic or nested SDC expression")
 
 
+def board_registries(root):
+    """Every board registry, keyed by target name: (registry path, board, raw target).
+
+    Target names are unique across boards, so one name still selects one board.
+    """
+    entries = {}
+    for path in REGISTRIES:
+        registry = json.loads((root / path).read_text(encoding="utf-8"))
+        if (not isinstance(registry, dict) or set(registry) != {"schema_version", "board", "targets"}
+                or type(registry["schema_version"]) is not int or registry["schema_version"] != 2
+                or not isinstance(registry["targets"], dict)):
+            raise ValueError("unsupported FPGA registry schema")
+        board = registry["board"]
+        if (not isinstance(board, dict) or set(board) != BOARD_FIELDS
+                or any(not isinstance(board[field], str) or not board[field]
+                       for field in ("name", "device", "family", "specification"))
+                or not re.fullmatch(r"[A-Za-z0-9]+", board["device"])
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ]*", board["family"])
+                or not isinstance(board["timing_corners"], list) or len(board["timing_corners"]) < 3
+                or len(set(board["timing_corners"])) != len(board["timing_corners"])
+                or any(not isinstance(corner, str) or not re.fullmatch(r"(?:Slow|Fast) \d+mV -?\d+C", corner)
+                       for corner in board["timing_corners"])):
+            raise ValueError("unsupported FPGA board definition")
+        # The board specification owns the pin and resource data; the registry links it.
+        specification = root / board["specification"]
+        if (not board["specification"].startswith("wiki/") or ".." in Path(board["specification"]).parts
+                or not specification.is_file() or specification.is_symlink()):
+            raise ValueError("missing FPGA board specification")
+        for name, target in registry["targets"].items():
+            if name in entries:
+                raise ValueError(f"FPGA target name used by two boards: {name}")
+            entries[name] = (path, board, target)
+    return entries
+
+
+def target_registry(root, name):
+    """The registry path that defines this target; it is one of the build inputs."""
+    entry = board_registries(root).get(name)
+    if entry is None:
+        raise ValueError("unknown FPGA target")
+    return entry[0]
+
+
 def target_definition(root, name):
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name):
         raise ValueError("invalid FPGA target name")
-    registry = json.loads((root / REGISTRY).read_text(encoding="utf-8"))
-    if (not isinstance(registry, dict) or set(registry) != {"schema_version", "targets"}
-            or type(registry["schema_version"]) is not int or registry["schema_version"] != 1
-            or not isinstance(registry["targets"], dict)):
-        raise ValueError("unsupported FPGA registry schema")
-    target = registry["targets"].get(name)
+    entry = board_registries(root).get(name)
+    if entry is None:
+        raise ValueError("unknown FPGA target, fields, or device")
+    _, board, target = entry
     fields = {"device", "top", "sources", "constraints", "pins", "virtual_pins"}
-    if not isinstance(target, dict) or not fields.issubset(target) or set(target) - fields - {"pll", "timing"} or target["device"] != DEVICE:
+    if not isinstance(target, dict) or not fields.issubset(target) or set(target) - fields - {"pll", "timing"} or target["device"] != board["device"]:
         raise ValueError("unknown FPGA target, fields, or device")
     if name == "v05-board":
         fpga_v05.validate_board(target)
@@ -128,7 +171,9 @@ def target_definition(root, name):
     if len(set(target["pins"].values())) != len(target["pins"]):
         raise ValueError("duplicate FPGA pin")
     dependencies(root, target["sources"], synthesis=True)
-    return target
+    # The board's device-dependent facts travel with the target, so every later
+    # stage reads them from the definition rather than from a constant.
+    return {**target, "family": board["family"], "timing_corners": board["timing_corners"]}
 
 
 def identity_target(target):
@@ -140,6 +185,8 @@ def identity_target(target):
 # one build identity macro and the same checked UART synchronizer chain as the
 # other board images.
 SDRAM_TOP = "sdram_proof"
+# The DE10-Nano flow proof: a counter on the board LEDs, no PLL and no vendor IP.
+NANO_TOP = "nano_smoke"
 # The flash reader proof image: the On-Chip Flash IP walked over the user
 # range, physical reset and LED pins, no identity macro.
 FLASH_TOP = "flash_proof"
@@ -153,8 +200,8 @@ def sdram_target(target):
 
 def prepare(root, folder, target, build_id=None):
     # Configurations are data; quote every value rather than evaluating user Tcl.
-    lines = ['set_global_assignment -name FAMILY "MAX 10"',
-             f'set_global_assignment -name DEVICE {DEVICE}',
+    lines = [f'set_global_assignment -name FAMILY {tcl_word(target["family"])}',
+             f'set_global_assignment -name DEVICE {target["device"]}',
              f'set_global_assignment -name TOP_LEVEL_ENTITY {tcl_word(target["top"])}',
              'set_global_assignment -name NUM_PARALLEL_PROCESSORS 2',
              'set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"',
@@ -196,6 +243,11 @@ def prepare(root, folder, target, build_id=None):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         if (target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+        # Cyclone V calls an output pin without a drive strength and slew rate an
+        # incomplete I/O assignment (Quartus 15714), so the flow proof states both.
+        if target["top"] == NANO_TOP and re.fullmatch(r"leds\[[0-9]\]", port):
+            lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+            lines.append(f'set_instance_assignment -name SLEW_RATE 1 -to {tcl_word(port)}')
         # SDRAM command, address, clock and data pins: 3.3-V LVTTL at 8 mA.
         if sdram_target(target) and port.startswith("DRAM_"):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
@@ -441,7 +493,7 @@ def timing_evidence(folder, target, *, build_id=None):
         if not math.isfinite(slack) or not math.isfinite(tns) or slack < 0 or tns != 0:
             raise ValueError(f"timing failure: {name}, slack={slack}, TNS={tns}")
         slacks[name] = slack
-    for corner in ("Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"):
+    for corner in target["timing_corners"]:
         adc_prefix = "u_controls|" if fpga_v05.control_target(target) else ""
         if target["top"] in ("controls_proof", "v05_controls_proof") and f"{corner} Model Minimum Pulse Width '{adc_prefix}u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]'" not in slacks:
             raise ValueError("missing ADC PLL pulse-width timing")
@@ -591,7 +643,7 @@ def build_fpga(root, build, args, provenance=None, progress=None):
     old = read_json(current)
     folder = stage / "attempts" / uuid.uuid4().hex[:12]
     folder.mkdir(parents=True)
-    record = {"status": "RUNNING", "cache": "BUILT", "target": args.target, "device": DEVICE,
+    record = {"status": "RUNNING", "cache": "BUILT", "target": args.target, "device": None, "family": None,
               "commands": [], "artifacts": {}, "classified_diagnostics": [], "provenance": provenance or {},
               "environment": dict(ALLOCATOR_OVERRIDE), "notices": [ALLOCATOR_OVERRIDE_NOTICE],
               "started": datetime.now(timezone.utc).isoformat()}
@@ -601,7 +653,9 @@ def build_fpga(root, build, args, provenance=None, progress=None):
         if not 1 <= args.timeout <= 3600:
             raise ValueError("FPGA stage timeout must be between 1 and 3600 seconds")
         target = target_definition(root, args.target)
-        inputs = [REGISTRY, "tools/build.py", *dependencies(root, target["sources"], synthesis=True), *target["constraints"]]
+        record.update(device=target["device"], family=target["family"])
+        inputs = [target_registry(root, args.target), "tools/build.py",
+                  *dependencies(root, target["sources"], synthesis=True), *target["constraints"]]
         if fpga_flash.flash_target(target):
             inputs.append(flash_library.REGISTRY)
         inputs += [p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")]

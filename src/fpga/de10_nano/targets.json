@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "board": {
+    "name": "DE10-Nano",
+    "device": "5CSEBA6U23I7",
+    "family": "Cyclone V",
+    "timing_corners": [
+      "Slow 1100mV 100C",
+      "Slow 1100mV -40C",
+      "Fast 1100mV 100C",
+      "Fast 1100mV -40C"
+    ],
+    "specification": "wiki/src/de10-nano-board.md"
+  },
+  "targets": {
+    "nano-invalid": {
+      "device": "5CSEBA6U23I7",
+      "top": "nano_smoke",
+      "sources": [
+        "src/fpga/de10_nano/nano_smoke.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_nano/nano_invalid.sdc"
+      ],
+      "pins": {
+        "clk_reference": "PIN_V11",
+        "key0_n": "PIN_AH17",
+        "leds[0]": "PIN_W15",
+        "leds[1]": "PIN_AA24",
+        "leds[2]": "PIN_V16",
+        "leds[3]": "PIN_V15",
+        "leds[4]": "PIN_AF26",
+        "leds[5]": "PIN_AE26",
+        "leds[6]": "PIN_Y16",
+        "leds[7]": "PIN_AA23"
+      },
+      "virtual_pins": []
+    },
+    "nano-smoke": {
+      "device": "5CSEBA6U23I7",
+      "top": "nano_smoke",
+      "sources": [
+        "src/fpga/de10_nano/nano_smoke.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_nano/nano_smoke.sdc"
+      ],
+      "pins": {
+        "clk_reference": "PIN_V11",
+        "key0_n": "PIN_AH17",
+        "leds[0]": "PIN_W15",
+        "leds[1]": "PIN_AA24",
+        "leds[2]": "PIN_V16",
+        "leds[3]": "PIN_V15",
+        "leds[4]": "PIN_AF26",
+        "leds[5]": "PIN_AE26",
+        "leds[6]": "PIN_Y16",
+        "leds[7]": "PIN_AA23"
+      },
+      "virtual_pins": []
+    }
+  }
+}

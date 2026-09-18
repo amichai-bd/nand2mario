@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import tempfile
 
 from . import catalogue
+from .fpga import REGISTRIES as FPGA_REGISTRIES
 from .fpga_program import checked_attempt
 from .host.package import read_package
 from .records import read_json, valid_tag
@@ -41,10 +42,14 @@ def simulation_targets(root, backend, *, preflight=False):
 
 
 def fpga_targets(root):
-    rows = read_object(root / "src/fpga/de10_lite/targets.json").get("targets")
-    if not isinstance(rows, dict):
-        raise ValueError("FPGA target registry has no targets object")
-    return sorted(rows)
+    """Every registered target across the board registries, in name order."""
+    names = []
+    for registry in FPGA_REGISTRIES:
+        rows = read_object(root / registry).get("targets")
+        if not isinstance(rows, dict):
+            raise ValueError("FPGA target registry has no targets object")
+        names.extend(rows)
+    return sorted(names)
 
 
 def software_targets(root, action):

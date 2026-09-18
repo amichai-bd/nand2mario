@@ -126,7 +126,7 @@ def parser():
     remove.add_argument("--tag", required=True)
     remove.add_argument("--json", action="store_true")
     fpga = commands.add_parser("fpga").add_subparsers(dest="action", required=True)
-    build = fpga.add_parser("build", help="fit and check an explicit MAX 10 target; no programming")
+    build = fpga.add_parser("build", help="fit and check an explicit registered board target; no programming")
     build.add_argument("target")
     build.add_argument("--quartus-bin", required=True, help="explicit directory containing Quartus executables")
     build.add_argument("--timeout", type=int, default=600, help="per-tool timeout in seconds, 1..3600")

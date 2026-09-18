@@ -1,5 +1,16 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "board": {
+    "name": "DE10-Lite",
+    "device": "10M50DAF484C7G",
+    "family": "MAX 10",
+    "timing_corners": [
+      "Slow 1200mV 85C",
+      "Slow 1200mV 0C",
+      "Fast 1200mV 0C"
+    ],
+    "specification": "wiki/src/board-bring-up.md"
+  },
   "targets": {
     "builder-invalid": {
       "device": "10M50DAF484C7G",
