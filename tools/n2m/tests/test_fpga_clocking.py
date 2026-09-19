@@ -283,10 +283,10 @@ class FitReportEncodingTests(unittest.TestCase):
                 self.assertIs(fpga_clocking.implementation(family).FIT_ENCODING, fpga_clocking.FIT_ENCODING)
 
 
-# Every module that reads the report, with the number of reads it owns. There is
-# no pending site: `fpga_adc.py` was the last reader to decode by host locale
-# and it now states the encoding like the rest, so the inventory is complete and
-# an eighth adopter cannot appear unnoticed.
+# Every module that reads the report, with the number of reads it owns: eight
+# reads across seven modules. There is no pending site. `fpga_adc.py` was the
+# last reader to decode by host locale and it now states the encoding like the
+# rest, so the inventory is exact and a new adopter cannot appear unnoticed.
 FIT_REPORT_READERS = {"n2m/fpga_pll.py": 2, "n2m/fpga_pll_cyclonev.py": 1, "n2m/fpga_vga.py": 1,
                       "n2m/fpga_v05.py": 1, "n2m/fpga_intel_memory.py": 1,
                       "n2m/fpga_memory_stores.py": 1, "n2m/fpga_adc.py": 1}
