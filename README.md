@@ -108,7 +108,8 @@ memory, graphics, timer, interrupt, DMA, and JOYP interfaces. UART and physical
 controls converge through the same Game Boy input boundary, so software does not
 need private host-control MMIO.
 
-The builder supports Verilator on Linux and native Questa on Windows under its
+The builder supports Verilator on Linux and native Questa wherever its
+executables and a runtime license are present, under its
 [simulator policy](wiki/tools/n2m/SPEC.md#simulator-policy); omission selects
 the host-native backend. Quartus builds and the
 [Questa compile gate](wiki/tools/n2m/SPEC.md#questa-compile-gate) required for

@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import test_builder
 from n2m import doctor, verilator, verilator_install
-from n2m.cli import FPGA_PROGRAM_HOST, QUESTA_HOST, TOOLS_HOST, VERILATOR_HOST, main
+from n2m.cli import FPGA_PROGRAM_HOST, TOOLS_HOST, VERILATOR_HOST, main
 from n2m.records import read_json
 from n2m.simulation import load_target
 from n2m.simulator import Simulator, ToolError, verilator_executable
@@ -811,17 +811,39 @@ class HostOwnershipTests(unittest.TestCase):
             code = main([*argv, "--json"], self.root)
         return code, json.loads(output.getvalue())
 
-    def test_each_simulator_is_refused_on_the_foreign_host(self):
-        for system, backend, reason in (("Windows", "verilator", VERILATOR_HOST),
-                                        ("Linux", "questa", QUESTA_HOST)):
-            for argv in (["sim", "test", "builder-smoke", "--tag", "h1"],
-                         ["tests", "run", "--level", "0", "--tag", "h2"],
-                         ["regress", "pre-merge", "--tag", "h3"]):
-                with self.subTest(system=system, backend=backend, argv=argv):
-                    code, report = self.run_cli(system, *argv, "--sim", backend)
+    def test_verilator_is_refused_on_windows(self):
+        """The pin is an autoconf/make/g++ source build, so no Windows Verilator
+        exists for discovery to find. That refusal is a tool fact and stays."""
+        for argv in (["sim", "test", "builder-smoke", "--tag", "h1"],
+                     ["tests", "run", "--level", "0", "--tag", "h2"],
+                     ["regress", "pre-merge", "--tag", "h3"]):
+            with self.subTest(argv=argv):
+                code, report = self.run_cli("Windows", *argv, "--sim", "verilator")
+                self.assertEqual(code, 1)
+                self.assertEqual((report["status"], report["error"], report["os"]),
+                                 ("FAIL", VERILATOR_HOST, "Windows"))
+
+    def test_questa_carries_no_operating_system_refusal(self):
+        """Questa follows its install and its license, not the host OS.
+
+        `sim test --sim questa` reaches discovery on every host, exactly as it
+        does on Windows; run_cli patches Simulator to raise on arrival. No
+        simulator command answers with an operating-system refusal.
+        """
+        for system in ("Linux", "Darwin", "Windows"):
+            with self.subTest(system=system):
+                code, report = self.run_cli(system, "sim", "test", "builder-smoke",
+                                            "--tag", "q1-" + system.lower(), "--sim", "questa")
+                self.assertEqual(code, 1)
+                self.assertEqual((report["status"], report["error"]), ("FAIL", "discovered"))
+        for argv in (["tests", "run", "--level", "0"], ["regress", "pre-merge"]):
+            for system in ("Linux", "Darwin", "Windows"):
+                with self.subTest(argv=argv, system=system):
+                    tag = argv[0] + "-" + system.lower()
+                    code, report = self.run_cli(system, *argv, "--tag", tag, "--sim", "questa")
                     self.assertEqual(code, 1)
-                    self.assertEqual((report["status"], report["error"], report["os"]),
-                                     ("FAIL", reason, system))
+                    for absent in ("runs on Windows", "PowerShell", "operating system"):
+                        self.assertNotIn(absent, report["error"])
 
     def test_linux_refuses_only_fpga_programming(self):
         """Programming is a physical-access fact; the fit is a tool fact."""

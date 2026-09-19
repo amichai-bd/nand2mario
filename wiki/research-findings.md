@@ -178,8 +178,8 @@ Recommended independent evidence:
 
 Use a UVM-lite structure first: interfaces, transactions, drivers, monitors,
 scoreboards, assertions, coverage, and reference models. The builder supports
-Verilator on Linux and Questa on Windows under the
-[simulator policy](tools/n2m/SPEC.md#simulator-policy); covergroups remain
+Verilator on Linux and Questa wherever its executables and a runtime license are
+present, under the [simulator policy](tools/n2m/SPEC.md#simulator-policy); covergroups remain
 unsupported on the Verilator path.
 
 A model generated from the same opcode table as the RTL is not an independent

@@ -12,7 +12,8 @@ import uuid
 from .fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from .records import file_hash
 from .questa import diagnostic as questa_diagnostic, write_macro
-from .simulator import QUESTA_COMPILE_TOOLS, ToolError, questa_tools, verilator_executable
+from .simulator import (QUESTA_COMPILE_TOOLS, ToolError, questa_license, questa_tools,
+                        run_tool, verilator_executable)
 from .verilator_install import discovery_note
 
 SMOKE = "src/dv/builder/builder_smoke.sv"
@@ -108,6 +109,10 @@ def questa(root, folder, directory):
     version = execute([names["vsim"], "-version"], folder, "version.log")
     if "Questa" not in version or questa_diagnostic(version):
         raise RuntimeError("unrecognized Questa version or diagnostic; see version.log")
+    # The banner costs no license, so it cannot answer whether the smoke can run.
+    # Probe the checkout here: an absent license is then named as a license,
+    # rather than surfacing as a bare nonzero exit from the first vsim of the smoke.
+    probe = questa_license(names["vsim"], _license_probe(folder))
     execute([names["vmap"], "-c"], folder, "ini.log")
     library = execute([names["vlib"], "work"], folder, "library.log")
     if questa_diagnostic(library):
@@ -130,7 +135,19 @@ def questa(root, folder, directory):
         raise RuntimeError("injected fault was not reported; see fault.log")
     return {"version": version.strip(), "tools": names,
             "license": "runtime checkout succeeded for this smoke invocation",
+            "license_probe": {"argv": probe["argv"], "exit_code": probe["exit_code"]},
             "fault": {"expected": SMOKE_FAULT, "detected": True}}
+
+
+def _license_probe(folder):
+    """A runner for the license probe: a nonzero exit is its answer, not an error."""
+    def run(argv):
+        with (folder / "commands.log").open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(argv) + "\n")
+        result = run_tool(argv)
+        (folder / "license.log").write_text(result.stdout, encoding="utf-8")
+        return result
+    return run
 
 
 def questa_lint(folder, directory):
@@ -143,7 +160,7 @@ def questa_lint(folder, directory):
     return {"tools": tools, "versions": {name: detail.get("version") for name, detail in info["tools"].items()
                                           if "version" in detail},
             "command": "python tools/build.py lint questa --tag <tag> --json",
-            "license": "none required; vlog and vopt only",
+            "license": "none required; vlib, vmap, vlog and vopt check out none",
             "scope": "tool availability only; run the command for compile evidence"}
 
 

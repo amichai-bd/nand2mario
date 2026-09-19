@@ -1,8 +1,8 @@
 # Python hardware tests
 
 Python targets run through the same [builder](../../../wiki/tools/n2m/SPEC.md#testbench-types)
-as SystemVerilog targets. Each target declares Verilator on Linux, Questa on
-Windows, or both.
+as SystemVerilog targets. Each target declares Verilator, Questa, or both; a
+backend follows its own tools, not an operating system.
 The first target is the [independent joypad test](joypad/README.md).
 The [integration diagnostic](integration/README.md) independently reproduces
 the retained preloaded UART execution sequence with the real composed subsystem.
@@ -12,9 +12,10 @@ Verilator 5.052 on Linux with cocotb 2.1.0, including the three
 allowance: 127 Python rows, all `["verilator"]`, no Questa-only Python row.
 The 600-frame `python-v05-continuous` row is retired in the catalogue; the
 [continuity schedule](v05/README.md#continuity-schedule) covers its input
-transitions under a declared 900-second wall allowance. Questa
-remains the native Windows backend for the targets that declare it; no Python
-target claims a Questa capability this host cannot prove.
+transitions under a declared 900-second wall allowance. Questa remains available
+to the targets that declare it, wherever its executables and a
+[runtime license](../../../wiki/tools/n2m/SPEC.md#questa-runtime-license) are
+present; no Python target claims a Questa capability this host cannot prove.
 Composed wrappers build with only their top module public and `-O2`; the
 builder generates that access configuration, and the wrappers keep their own
 clocks under `--timing`. A background monitor cancelled at the end of a test

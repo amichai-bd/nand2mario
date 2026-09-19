@@ -120,7 +120,7 @@
     {
       "name": "Quartus and Questa",
       "record": "sim/THIRD_PARTY.md",
-      "purpose": "User-installed proprietary FPGA build tool and supported native Windows simulator",
+      "purpose": "User-installed proprietary FPGA build tool and supported native simulator on any host holding its executables",
       "local_changes": "none",
       "storage": "User installation only; no redistribution"
     },

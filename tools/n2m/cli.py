@@ -378,6 +378,11 @@ def tagged(root, args, header, publish, progress=None):
                 log.write_text(failure_text, encoding="utf-8")
                 failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
                 report["artifacts"] = failure_artifacts
+                # A probe that refused carries its own record. Keep it beside the
+                # failure so the argv and exit behind the refusal stay auditable,
+                # exactly as a passing discovery records them.
+                if error.record is not None:
+                    report["discovery"] = [error.record]
                 atomic_json(folder / "result.json", report)
             if operation_folder is not None:
                 # The retained program.log decides what the failure means for the
@@ -411,7 +416,10 @@ def prepare_command(root, args, header, progress):
     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
     progress.line(f"Preparation: target {args.target}; backend {args.sim}; tag lock not taken")
     with progress.stage(f"Discover {args.sim.capitalize()} tools"):
-        simulator = Simulator(args.sim, verilator_bin=args.verilator_bin, questa_bin=args.questa_bin, root=root)
+        # Preparation launches no vsim, so it consults no license: the run that
+        # adopts the attempt is what needs the checkout.
+        simulator = Simulator(args.sim, verilator_bin=args.verilator_bin, questa_bin=args.questa_bin,
+                              root=root, require_license=False)
     with progress.stage("Prepare attempt"):
         record = prepare(root, build, args, simulator, provenance)
     # The receipt keeps PREPARED so adoption can tell it from a run result;
@@ -553,12 +561,15 @@ def _human_result(args, report, progress):
     progress.line(f"{report.get('cache', status)}: {args.command} tag={report.get('tag', '-')}")
 
 
-# One build tool and two native simulator hosts. No command launches the other
-# operating system or translates one backend into another. Only physical access
-# and a source build are host facts; `fpga build` and `lint questa` decide by
-# tool discovery inside their stages, so a missing tool names itself.
+# One build tool, one refused backend and two verified-access boundaries. No
+# command launches the other operating system or translates one backend into
+# another. Only physical access and a source build are host facts; `fpga build`,
+# `lint questa` and `--sim questa` decide by tool discovery inside their stages,
+# so a missing tool or license names itself.
+# The pinned Verilator is an autoconf, make and g++ source build, so there is no
+# supported Windows Verilator for discovery to find; that refusal is a fact about
+# the tool, not a policy.
 VERILATOR_HOST = "Verilator simulation runs on Linux"
-QUESTA_HOST = "Questa simulation runs on Windows PowerShell"
 # Programming needs a working USB-Blaster driver and JTAG daemon. Only the
 # Windows path has been verified; Linux JTAG access stays out of reach until it is.
 FPGA_PROGRAM_HOST = "FPGA programming runs on Windows PowerShell; Linux JTAG access is unverified"
@@ -590,14 +601,13 @@ def resolve_simulator(args, system=None):
 def foreign_host(args):
     """The refusal message when this OS does not own the requested command.
 
-    `fpga build` and `lint questa` are absent: an installed Quartus or Questa
-    runs them on any host, and their own discovery names a missing tool.
+    `fpga build`, `lint questa` and `--sim questa` are absent: an installed
+    Quartus or Questa runs them on any host, and their own discovery names the
+    missing tool or the missing Questa runtime license.
     """
     system = platform.system()
     if simulator_command(args) and args.sim == "verilator" and system == "Windows":
         return VERILATOR_HOST
-    if simulator_command(args) and args.sim == "questa" and system != "Windows":
-        return QUESTA_HOST
     if args.command == "fpga" and args.action == "program" and system != "Windows":
         return FPGA_PROGRAM_HOST
     if args.command == "tools" and system == "Windows":

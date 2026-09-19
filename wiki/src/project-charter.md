@@ -253,9 +253,9 @@ The [current authorization](../agents/bootstrap-plan.md#verification-and-hardwar
 owns permission and prerequisites for simulation and physical execution, including
 the board approval required above. Simulation uses the target's supported
 backend under the builder's
-[simulator policy](../tools/n2m/SPEC.md#simulator-policy): Verilator on Linux or
-native Questa on Windows. License failure is a simulation failure, never a
-skip; Quartus builds and programming run from Windows.
+[simulator policy](../tools/n2m/SPEC.md#simulator-policy): Verilator on Linux, or
+native Questa on a host holding its executables and a runtime license. License
+failure is a simulation failure, never a skip; Quartus builds and programming run from Windows.
 Simulation cannot satisfy physical acceptance.
 Shared baseline evidence is recorded in
 [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).

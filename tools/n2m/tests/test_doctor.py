@@ -15,11 +15,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.doctor import (LICENSE_VARIABLES, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, doctor, execute,
                         linux_ports, node_state, parse_jtag, quartus, questa, select_uart, uart,
                         verilator, warning)
+from n2m.simulator import QUESTA_LICENSE, QUESTA_LICENSE_PROBE
 from n2m.fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from n2m.cli import main, parser
 import serial_fixture
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+# Measured on this host from `vsim -c -nolog -lic_noqueue -do "quit -f"` with no
+# license variable set. The classifier's own cases live in test_questa.py.
+UNSET_VSIM = (
+    "Unable to find the license file.  It appears that your license file environment "
+    "variable (SALT_LICENSE_SERVER) is not set correctly.\n"
+    "Unable to checkout a license.  Vsim is closing.\n"
+    "** Error: Invalid license environment. Application closing.\n")
 
 
 class DoctorTests(unittest.TestCase):
@@ -108,6 +118,8 @@ class DoctorTests(unittest.TestCase):
             calls.append((argv, kwargs))
             if "-version" in argv:
                 return SimpleNamespace(returncode=0, stdout="Questa 2025.2\n")
+            if argv[0].endswith("vsim") and "-lic_noqueue" in argv:
+                return SimpleNamespace(returncode=0, stdout="# quit -f\n")
             if argv[0].endswith("vsim") and "+inject_failure" in argv:
                 return SimpleNamespace(
                     returncode=1,
@@ -123,11 +135,37 @@ class DoctorTests(unittest.TestCase):
             result = questa(ROOT, self.folder, str(self.folder))
         self.assertTrue(result["fault"]["detected"])
         self.assertIn("checkout succeeded", result["license"])
+        self.assertEqual(result["license_probe"]["argv"][1:], list(QUESTA_LICENSE_PROBE))
         simulations = [argv for argv, _ in calls if argv[0].endswith("vsim")]
-        self.assertEqual(len(simulations), 3)  # version, positive, injected fault
-        self.assertNotIn("+inject_failure", simulations[1])
-        self.assertIn("+inject_failure", simulations[2])
+        # version, license probe, positive, injected fault. The probe comes before
+        # the smoke, so an absent license is named before a run depends on it.
+        self.assertEqual(len(simulations), 4)
+        self.assertEqual(simulations[1][1:], list(QUESTA_LICENSE_PROBE))
+        self.assertNotIn("+inject_failure", simulations[2])
+        self.assertIn("+inject_failure", simulations[3])
         self.assertTrue((self.folder / "waves/smoke.wlf").parent.is_dir())
+
+    def test_an_unlicensed_questa_fails_the_doctor_by_license_not_by_host(self):
+        """vsim is the only smoke tool that checks out a license. The doctor says
+        so on any host, and the compile-gate tools still report present."""
+        def run(argv, **kwargs):
+            if "-version" in argv:
+                return SimpleNamespace(returncode=0, stdout="Questa 2025.2\n")
+            if argv[0].endswith("vsim"):
+                return SimpleNamespace(returncode=4, stdout=UNSET_VSIM)
+            return SimpleNamespace(returncode=0, stdout="Errors: 0, Warnings: 0\n")
+
+        with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
+                patch("n2m.doctor.subprocess.run", side_effect=run):
+            with self.assertRaises(Exception) as raised:
+                questa(ROOT, self.folder, str(self.folder))
+        message = str(raised.exception)
+        self.assertIn(QUESTA_LICENSE, message)
+        self.assertIn("SALT_LICENSE_SERVER", message)
+        for absent in ("Windows", "PowerShell", "Linux"):
+            self.assertNotIn(absent, message)
+        # The vendor's own words are kept beside the named reason.
+        self.assertIn("Unable to find the license file", (self.folder / "license.log").read_text())
 
     def test_missing_tool_timeout_and_partial_logs(self):
         for error in (FileNotFoundError("absent"), subprocess.TimeoutExpired("vsim", 60, output=b"partial runtime")):

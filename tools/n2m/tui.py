@@ -92,7 +92,7 @@ def _manual_value(menu, title, retained=(), *, allow_default=False, validator=No
 
 def _backend(menu, title="Select simulator"):
     choices = [Choice("verilator", "Verilator", "Runs natively on Linux; no license"),
-               Choice("questa", "Questa", "Runs natively on Windows PowerShell; license required")]
+               Choice("questa", "Questa", "Follows the installed Questa; needs a vsim runtime license")]
     return menu.choose(title, choices, hint="Use arrows and Enter. Escape goes back.")
 
 
@@ -206,12 +206,15 @@ def _doctor_plan(menu, root):
         ("sim", lambda answers: menu.choose(
             "Select simulator" if answers["profile"] == "simulation" else "Full environment simulator",
             [Choice("verilator", "Verilator", "Runs natively on Linux; no license"),
-             Choice("questa", "Questa", "Runs natively on Windows PowerShell; license required")]
+             Choice("questa", "Questa", "Follows the installed Questa; needs a vsim runtime license")]
             if answers["profile"] == "simulation" else
             [Choice("questa", "Questa", "The full hardware environment is Windows-owned")]))]
     return _editable(menu, steps, lambda answers: _simulator_default(Plan(
                 ["doctor", "--profile", answers["profile"], "--sim", answers["sim"]],
-                ("doctor",), _sim_host(answers["sim"]),
+                ("doctor",),
+                # The environment profile reads the JTAG chain, which stays Windows-owned;
+                # the simulation profile follows its own backend.
+                "Windows PowerShell" if answers["profile"] == "environment" else _sim_host(answers["sim"]),
                 "Run simulator smoke" + (" and read-only device discovery" if answers["profile"] == "environment" else "")), root))
 
 
@@ -460,7 +463,12 @@ def _launcher_plan(menu, root):
 
 
 def _sim_host(backend):
-    return "Linux" if backend == "verilator" else "Windows PowerShell"
+    """Where a backend runs. Verilator is a Linux source build; Questa follows its install.
+
+    Questa names no operating system: a host with the executables and a vsim
+    runtime license runs it, and discovery refuses the host that lacks either.
+    """
+    return "Linux" if backend == "verilator" else "Current host"
 
 
 def _simulator_default(plan, root):

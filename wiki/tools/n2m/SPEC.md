@@ -1,6 +1,7 @@
 # Build system
 
-Status: host-native Verilator on Linux and Questa on Windows support `doctor`,
+Status: host-native Verilator on Linux and Questa wherever it is installed and
+[licensed](#questa-runtime-license), in practice Windows, support `doctor`,
 `sim test`, `tests run` and `regress`. `check`, the
 [Questa compile gate](#questa-compile-gate) `lint questa`, MAX 10 `fpga build`,
 [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md),
@@ -22,8 +23,10 @@ under `tools/n2m/`.
 
 ## Available commands
 
-Simulation commands run on Linux with Verilator, native or under WSL, or on
-Windows PowerShell with Questa. Omit `--sim` for the host-native default:
+Simulation commands run on Linux with Verilator, native or under WSL, or with
+Questa wherever its executables and a
+[runtime license](#questa-runtime-license) are present. Omit `--sim` for the
+host-native default, which is Verilator off Windows and Questa on it:
 
 ```bash
 python3 tools/build.py doctor --json
@@ -50,7 +53,9 @@ python3 tools/build.py clean --tag deliberate-aggregate --json
 
 `fpga build` and the [Questa compile gate](#questa-compile-gate) run wherever
 Quartus and Questa are installed, on Linux or on Windows PowerShell; see
-[FPGA build](#fpga-build). `fpga program` still runs on Windows PowerShell,
+[FPGA build](#fpga-build). `--sim questa` additionally needs a `vsim`
+[runtime license](#questa-runtime-license), which the gate does not.
+`fpga program` still runs on Windows PowerShell,
 because only that JTAG path is verified:
 
 ```bash
@@ -134,7 +139,10 @@ it is exactly 32 hexadecimal digits and nonzero. They also hide
 `--endpoint-restarted`. The doctor asks
 for scope first: simulation scope then
 offers either backend, while the full hardware environment fixes Questa and
-Windows because Questa runtime execution and JTAG discovery are Windows-owned.
+Windows because its JTAG discovery is Windows-owned. A simulation-scope Questa
+plan names the current host: its
+[runtime license](#questa-runtime-license), not an operating system, decides
+whether the run proceeds.
 `--json` is intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
@@ -214,9 +222,11 @@ the measured time, the `.pof` hash and the power-cycle step; its dry run
 reports the record check and the written command only.
 
 These handoffs never execute their next command. Linux remains a Verilator host;
-Windows PowerShell remains the Questa simulation, JTAG and launcher host. The
-`fpga build` handoff names the current host, because an installed Quartus runs
-it on either one. No command silently crosses that boundary. The ordinary
+Windows PowerShell remains the JTAG and launcher host. The `fpga build` handoff
+names the current host, because an installed Quartus runs it on either one, and
+so does a Questa simulation handoff, because Questa follows its executables and
+its [runtime license](#questa-runtime-license). No command silently crosses a
+host boundary. The ordinary
 hardware safeguards still apply before a person runs the printed programming or
 launcher command.
 With `--json`, none of these human lines is written and stdout remains exactly
@@ -225,13 +235,19 @@ one parseable result object for aggregate and child callers.
 ## Simulator policy
 
 The supported backends are Verilator v5.052 on Linux, native or under WSL, and
-native Questa on Windows PowerShell. `doctor`, `sim test`, `regress` and `tests run` accept
+native Questa on any host that has the executables and a `vsim` runtime license.
+`doctor`, `sim test`, `regress` and `tests run` accept
 `--sim verilator|questa`; omission selects Verilator on non-Windows hosts and
 Questa on Windows. `--verilator-bin` belongs only to Verilator.
 `--questa-bin` and `--intel-sim-lib` belong only to Questa. Supplying an option
 for the other backend fails before discovery. `auto`, Icarus and WSL proxy
 backends remain unsupported. Missing tools and license failures are FAIL, never
 SKIPPED, and no command falls back to the other simulator.
+
+`--sim questa` requires a `vsim` [runtime license](#questa-runtime-license); it
+names no operating system. Discovery decides both halves of availability, so a
+host with no Questa fails naming the missing executable and a host with Questa
+and no license fails naming the license.
 
 Questa evidence has two parts. The [Questa compile gate](#questa-compile-gate)
 is the standing Questa evidence for the product RTL: every PR that changes
@@ -243,12 +259,14 @@ compiles and elaborates without a runtime license. Runtime acceptance, meaning
 [verification tiers](../../src/dv/integration/SPEC.md#verification-tiers), runs
 on Verilator on Linux; every registered target declares that backend. Questa
 runtime execution stays supported for the targets that declare it and for the
-Windows [doctor](#environment-doctor) smoke, which records a successful
-checkout when the caller's license environment provides one. No acceptance
+[doctor](#environment-doctor) smoke, which records a successful
+checkout when the caller's license environment provides one and otherwise names
+the missing [runtime license](#questa-runtime-license). No acceptance
 criterion requires a licensed Questa run.
 
-One build tool serves two operating systems. Linux owns Verilator execution;
-Windows PowerShell owns Questa runtime execution and `fpga program`.
+One build tool serves two operating systems. Linux owns Verilator execution and
+Windows PowerShell owns `fpga program`. Questa runtime execution follows its
+install and its license; in practice the licensed host is Windows.
 `fpga build` and the compile gate follow their installed tools on either host.
 Caches and fingerprints stay per backend and OS under `workdir/`.
 [Command ownership](#command-ownership) names the refusals.
@@ -273,31 +291,119 @@ counting it as neither pass nor defect, and never falls back; see
 One build tool serves two hosts. Only physical access and a source build are
 operating-system facts; everything else follows the installed toolchain.
 
-Linux owns Verilator simulation and Windows PowerShell owns Questa simulation.
-Each side refuses a foreign simulator before any workspace is taken: Windows
-reports `Verilator simulation runs on Linux`; non-Windows hosts report
-`Questa simulation runs on Windows PowerShell`. Non-Windows hosts refuse
+Linux owns Verilator simulation. Windows refuses it before any workspace is
+taken, reporting `Verilator simulation runs on Linux`, because the
+[pinned Verilator](#pinned-verilator-installation) is an autoconf, `make` and
+`g++` source build: there is no supported Windows Verilator for discovery to
+find. Questa simulation carries no operating-system refusal; see the
+[runtime license](#questa-runtime-license). Non-Windows hosts refuse
 `fpga program` with
 `FPGA programming runs on Windows PowerShell; Linux JTAG access is unverified`,
 which is a verified-access boundary, not a claim about the tools. Windows
 refuses `tools` with `Pinned host tool installation runs on Linux`, because the
 pinned Verilator is an autoconf, `make` and `g++` source build.
 
-`fpga build` and `lint questa` carry no operating-system refusal. Each discovers
-its own executables and reports the real result, so an absent tool fails naming
-that tool: `missing explicit Quartus tool: quartus_sh` for the fit and
-`missing vlib; select the Questa tool directory explicitly` for the gate. A
-tagged workspace is taken before that discovery, exactly as on the host that
-already owned the command.
+`fpga build`, `lint questa` and `--sim questa` carry no operating-system
+refusal. Each discovers its own executables and reports the real result, so an
+absent tool fails naming that tool: `missing explicit Quartus tool: quartus_sh`
+for the fit and `missing vlib; select the Questa tool directory explicitly` for
+the gate and for a simulation. A tagged workspace is taken before that
+discovery, exactly as on the host that already owned the command.
 
 Every command header and simulation record carries `os` (`platform.system()`),
 and caches, fingerprints and compiled objects live under the running host's own
 `workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
-covers the simulator refusals, the programming refusal, the permitted sides and
-the Linux fit with a mocked platform;
+covers the Verilator refusal, the absence of a Questa one, the programming
+refusal, the permitted sides and the Linux fit with a mocked platform;
+[`test_questa.py`](../../../tools/n2m/tests/test_questa.py) covers the license
+probe, its argv and the missing-tool failure, and
+[`test_doctor.py`](../../../tools/n2m/tests/test_doctor.py) the doctor's
+license naming;
 [`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers the gate on both
 hosts and its missing-tool failure, and
 [`test_fpga.py`](../../../tools/n2m/tests/test_fpga.py) the fit's.
+
+### Questa runtime license
+
+`vsim` is the only Questa executable a run launches that checks out a runtime
+license. `vlib`, `vmap`, `vlog` and `vopt` check out none, which is why the
+[compile gate](#questa-compile-gate) needs no license on any host: it never
+launches `vsim`. `vsim -version` prints its banner without a checkout as well,
+so identifying `vsim` proves only that it is installed, never that it can run.
+
+`--sim questa` therefore probes the checkout during discovery, after the four
+banners and before any workspace work depends on it. The probe is
+`vsim -c -nolog -lic_noqueue -do "quit -f"`: it loads no design, writes no
+transcript into the caller's directory, and refuses to wait behind a busy
+license server. Its argv, exit code and output join the discovery record on a
+pass, and travel on the refusal to the failure `result.json` under
+`discovery/`, whose `failure.log` keeps the same output.
+
+Refusal needs both halves: a nonzero probe exit and one of three wordings. Each
+means exactly what the vendor prints, no more:
+
+1. `Unable to find the license file` — neither license variable is set. `vsim`
+   reads only `SALT_LICENSE_SERVER` and `QUESTA_LICENSE_PROXY`; with
+   `LM_LICENSE_FILE` or `MGLS_LICENSE_FILE` set instead it prints this same line,
+   so the refusal names only the two that work.
+2. The `run 'lmutil lmdiag'` wording — a variable **is** set and the checkout
+   failed. It carries no cause beyond that: an unreachable server, a nonexistent
+   path, a garbage file and a syntactically valid file with a bogus signature all
+   produce byte-identical output. It is matched deliberately, so a configured but
+   unusable license is named during discovery instead of part-way into a run.
+   `vsim` wraps it across two lines, which is why both the match and the quote
+   read the whole output.
+3. `Couldn't connect to proxy` — the exchange with the proxy named by
+   `QUESTA_LICENSE_PROXY` failed. It does not say the proxy is unreachable: an
+   unresolvable name, a refused connection, a listener that accepts and closes at
+   once and one that accepts and sends garbage all print it identically. Without
+   this wording such a host, holding no license at all, reached the run before
+   failing there.
+
+The quoted cause is every line before the closing pair, stripped and rejoined
+with single spaces, never a single matched line that would start mid-sentence.
+Spacing inside a line stays as `vsim` wrote it, double spaces included.
+The command then fails naming the license and quoting that cause, never an
+operating system:
+`no Questa runtime license: vsim could not validate one. Set
+SALT_LICENSE_SERVER, or QUESTA_LICENSE_PROXY, to a license that grants vsim and
+retry; vsim reads no other license variable. The Questa compile gate needs none
+because it never launches vsim`.
+
+The closing lines are never matched. `Unable to checkout a license.  Vsim is
+closing.` and `Invalid license environment. Application closing.` follow every
+failed startup checkout whatever the cause, so classifying on them would refuse
+any contention at all.
+
+Everything else passes through and is recorded, not refused: a `vsim` broken for
+another reason reports its own detail, and a zero exit is a working license
+whatever its output mentions. This repository's own contention passes through
+too. Its license is one node-locked seat, and a held seat is refused with exit 12
+and `an instance of QuestaSim is already running`. That phrase and that exit are
+what the record holds, and neither matches any wording above, so such a refusal
+reaches the run.
+
+This is why the two Questa paths differ on the same host. The Quartus-bundled
+Questa on a Linux host compiles and elaborates the gate to PASS, and the same
+installation cannot run `sim test --sim questa`, because only the second needs
+the checkout. `doctor --sim questa` reports both: the `questa` smoke fails
+naming the license while `questa-lint` passes on the gate tools' availability.
+No acceptance criterion requires a licensed Questa run.
+
+#### Known limit: a floating license with every seat taken
+
+On a floating license with no free seat, `-lic_noqueue` turns the queue wait into
+the same validation failure a broken license produces, so wording 2 matches and
+such a host is refused and told to configure a license it already has. A license
+proxy at capacity that declines connections reaches wording 3 the same way, since
+accept-then-close prints it. The vendor puts no distinction in either output, so
+the probe cannot draw one.
+
+Both halves of this limit are derived from the checkout path and from a socket
+standing in for a proxy, not observed: no seats-exhausted license and no Questa
+license proxy were available here, and none was sought. The limit is not reachable
+on this repository's node-locked license, whose contention is the exit-12 case
+above.
 
 ## Test catalogue
 
@@ -920,8 +1026,9 @@ evidence.
 
 ## Questa simulation
 
-Native Questa on Windows executes each target whose `simulators` includes
-`questa`. Command construction, macro handling and Intel model bindings live in
+Native Questa executes each target whose `simulators` includes `questa`, on any
+host holding the executables and a [runtime license](#questa-runtime-license).
+Command construction, macro handling and Intel model bindings live in
 [`questa.py`](../../../tools/n2m/questa.py),
 [`intel_memory.py`](../../../tools/n2m/intel_memory.py) and
 [`intel_adc.py`](../../../tools/n2m/intel_adc.py). Unselected backend options
@@ -1171,8 +1278,8 @@ composition evidence in the [memory contract](../../src/rtl/memory/MAS_memory.md
 
 ### Registered target execution
 
-Run a Questa-capable target on Windows with the host-native default or explicit
-selection:
+Run a Questa-capable target with the host-native default or explicit selection.
+Windows is the licensed host in practice, so its default needs no `--sim`:
 
 ```powershell
 python tools/build.py sim test builder-smoke --sim questa --tag questa-smoke --json
@@ -1204,7 +1311,9 @@ python3 tools/build.py lint questa --inject-fault --tag <tag> --json
 
 `lint questa` proves that a second front end accepts the product RTL that
 Verilator simulates and Quartus synthesizes. It compiles and elaborates; it
-never launches `vsim`, so it needs no runtime license. It is a required local
+never launches `vsim`, so it needs no runtime license. That is the whole reason
+the gate passes on a host where `sim test --sim questa` cannot run; see the
+[runtime license](#questa-runtime-license). It is a required local
 check for every PR touching `src/rtl` or `src/fpga` under the
 [PR policy](../../agents/pull-requests.md#hosted-and-local-checks).
 [`lint.py`](../../../tools/n2m/lint.py) owns the command;
@@ -1279,7 +1388,7 @@ and the `log`. PASS exits 0 and updates `workdir/latest.txt`; FAIL exits 1
 and names the failing step and the offending file or unit in `error`. The
 gate is never cached: every invocation compiles again.
 
-The Windows [doctor](#environment-doctor) with `--sim questa` adds the
+The [doctor](#environment-doctor) with `--sim questa`, on any host, adds the
 `questa-lint` check: it discovers the four executables, records their banners
 and the exact command, and reports PASS without running the gate. The
 simulation smoke's runtime license status does not affect that check.
@@ -1606,15 +1715,18 @@ adds the remaining tools:
   directory holding `verilator`; otherwise it is resolved on PATH, and then in
   the [pinned installation](#pinned-verilator-installation). The compile
   step has a 300-second bound; the runs keep the 60-second default.
-- Questa (Windows only): discover and record `vlib`, `vmap`, `vlog` and `vsim`,
+- Questa (any host with the tools and a license): discover and record `vlib`,
+  `vmap`, `vlog` and `vsim`, probe the
+  [runtime license](#questa-runtime-license) and record the probe argv and exit,
   create isolated mappings and a work library, compile the same smoke, and run
   the positive and `+inject_failure` cases through the retained `run.do` macro.
   The positive run requires the exact PASS signature and zero diagnostics. The
   fault run requires nonzero exit, the exact mismatch and one expected error.
   A PASS records that the runtime license checkout succeeded. A missing tool,
-  license failure, unexpected diagnostic, wrong exit or missing signature fails.
+  license failure, unexpected diagnostic, wrong exit or missing signature fails;
+  an absent license fails naming the license, not the host.
   `--questa-bin <directory>` selects the four native executables.
-- Questa compile gate (Windows only, with `--sim questa`): the `questa-lint`
+- Questa compile gate (any host, with `--sim questa`): the `questa-lint`
   check discovers `vlib`, `vmap`, `vlog` and `vopt`, records their banners
   and the `lint questa` command, and PASSes on availability alone; see the
   [compile gate](#questa-compile-gate). A missing executable fails it.
