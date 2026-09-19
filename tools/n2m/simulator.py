@@ -37,16 +37,22 @@ QUESTA_LICENSE_PROBE = ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f")
 #    signature all produce byte-identical output. It is matched deliberately, so
 #    an operator whose licence is configured but unusable is told so during
 #    discovery rather than part-way into a run.
-# 3. `Couldn't connect to proxy` is a proxy that cannot be reached. Without it a
-#    wholly unlicensed host reached the run before failing there.
+# 3. `Couldn't connect to proxy` means the proxy exchange failed, not that the
+#    proxy is unreachable: an unresolvable name, a refused connection, a listener
+#    that accepts and closes at once and one that accepts and sends garbage all
+#    print it identically. Without it a wholly unlicensed host reached the run
+#    before failing there.
 #
 # Known limit, from 2: on a FLOATING licence with every seat taken, `-lic_noqueue`
 # turns the queue wait into exactly that validation failure, so such a host would
 # be refused and told to configure a licence it already has. This is not reachable
 # on this repository's licence, which is one node-locked seat whose recorded busy
-# refusal is exit 12 with `an instance of QuestaSim is already running` — neither
-# wording, so it reaches the run. The vendor does not put the distinction in the
-# output, so the classifier cannot draw it; the limit is stated rather than guessed.
+# refusal is exit 12 with `an instance of QuestaSim is already running` — no
+# wording above, so it reaches the run. The vendor does not put the distinction in
+# the output, so the classifier cannot draw it; the limit is stated rather than
+# guessed. It is derived from the checkout path, not observed: no seats-exhausted
+# licence was available here. The same shape reaches wording 3 if a licence proxy
+# at capacity declines connections, since accept-then-close prints it.
 #
 # The closing lines are never matched: `Unable to checkout a license.  Vsim is
 # closing.` and `Invalid license environment. Application closing.` follow EVERY
@@ -55,7 +61,7 @@ QUESTA_LICENSE_PROBE = ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f")
 QUESTA_LICENSE_UNUSABLE = re.compile(
     r"(?is)unable to find the licen[cs]e file"      # neither variable set
     r"|run\s+'lmutil\s+lmdiag'"                    # a variable is set, checkout failed
-    r"|couldn't connect to proxy")                 # QUESTA_LICENSE_PROXY unreachable
+    r"|couldn't connect to proxy")                 # the proxy exchange failed
 # Searched against the whole output because vsim wraps the second wording across
 # two lines, putting `lmutil lmdiag` on the second one.
 #

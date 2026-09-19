@@ -353,12 +353,16 @@ means exactly what the vendor prints, no more:
    unusable license is named during discovery instead of part-way into a run.
    `vsim` wraps it across two lines, which is why both the match and the quote
    read the whole output.
-3. `Couldn't connect to proxy` — `QUESTA_LICENSE_PROXY` names a proxy that cannot
-   be reached. Without this wording such a host, holding no license at all,
-   reached the run before failing there.
+3. `Couldn't connect to proxy` — the exchange with the proxy named by
+   `QUESTA_LICENSE_PROXY` failed. It does not say the proxy is unreachable: an
+   unresolvable name, a refused connection, a listener that accepts and closes at
+   once and one that accepts and sends garbage all print it identically. Without
+   this wording such a host, holding no license at all, reached the run before
+   failing there.
 
-The quoted cause is every line before the closing pair, rejoined and
-whitespace-collapsed, never a single matched line that would start mid-sentence.
+The quoted cause is every line before the closing pair, stripped and rejoined
+with single spaces, never a single matched line that would start mid-sentence.
+Spacing inside a line stays as `vsim` wrote it, double spaces included.
 The command then fails naming the license and quoting that cause, never an
 operating system:
 `no Questa runtime license: vsim could not validate one. Set
@@ -375,7 +379,9 @@ Everything else passes through and is recorded, not refused: a `vsim` broken for
 another reason reports its own detail, and a zero exit is a working license
 whatever its output mentions. This repository's own contention passes through
 too. Its license is one node-locked seat, and a held seat is refused with exit 12
-and `an instance of QuestaSim is already running`, which matches no wording above.
+and `an instance of QuestaSim is already running`. That phrase and that exit are
+what the record holds, and neither matches any wording above, so such a refusal
+reaches the run.
 
 This is why the two Questa paths differ on the same host. The Quartus-bundled
 Questa on a Linux host compiles and elaborates the gate to PASS, and the same
@@ -388,10 +394,16 @@ No acceptance criterion requires a licensed Questa run.
 
 On a floating license with no free seat, `-lic_noqueue` turns the queue wait into
 the same validation failure a broken license produces, so wording 2 matches and
-such a host is refused and told to configure a license it already has. The vendor
-puts no distinction in that output, so the probe cannot draw one; the limit is
-recorded rather than guessed at. It is not reachable on this repository's
-node-locked license, whose contention is the exit-12 case above.
+such a host is refused and told to configure a license it already has. A license
+proxy at capacity that declines connections reaches wording 3 the same way, since
+accept-then-close prints it. The vendor puts no distinction in either output, so
+the probe cannot draw one.
+
+Both halves of this limit are derived from the checkout path and from a socket
+standing in for a proxy, not observed: no seats-exhausted license and no Questa
+license proxy were available here, and none was sought. The limit is not reachable
+on this repository's node-locked license, whose contention is the exit-12 case
+above.
 
 ## Test catalogue
 
