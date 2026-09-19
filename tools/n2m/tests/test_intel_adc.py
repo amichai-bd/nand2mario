@@ -7,9 +7,14 @@ import unittest
 from unittest.mock import patch
 
 import test_builder
-from n2m import intel_adc, intel_memory, fpga_adc
-from n2m.records import file_hash
+import vendor_support
+from n2m import intel_adc, intel_memory, fpga_adc, vendor_sources
+from n2m.records import file_hash, read_json
 from n2m.questa import diagnostic
+
+ATOMS = "quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v"
+FIFO = "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v"
+SOURCE = "quartus/eda/sim_lib/host-only.txt"
 
 
 class IntelAdcTests(unittest.TestCase):
@@ -17,21 +22,26 @@ class IntelAdcTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="ADC host space ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.installation = self.root / "installation"
+        self.installation = vendor_support.installation(self.root / "installation", platform="windows")
         self.folder = self.installation / "quartus/eda/sim_lib"
         self.folder.mkdir(parents=True)
         self.source = self.folder / "host-only.txt"
         self.source.write_text("Original host-test bytes, not an ADC model.")
+        self.ledger = vendor_support.ledger(self, self.root / "ledger.json", platform="windows",
+                                            sources={SOURCE: file_hash(self.source)})
         (self.root / "tools/n2m").mkdir(parents=True)
         (self.root / "tools/n2m/dependencies.json").write_text(json.dumps({"intel_adc": {
-            "version": "host-test", "sources": {"quartus/eda/sim_lib/host-only.txt": file_hash(self.source)}}}))
+            "version": "host-test", "sources": {SOURCE: file_hash(self.source)}}}))
         self.sim = SimpleNamespace(tools={name: name for name in ("vlib", "vmap", "vlog", "vsim")})
         self.sim.tools["vsim"] = str(self.installation / "questa_fse/win64/vsim.exe")
         self.generation = {"generator": {"path": str(self.installation / "quartus/bin64/qmegawiz.exe"), "sha256": "host-only"}}
 
     def resolve(self, directory=None):
-        with patch.object(fpga_adc, "identity", return_value=self.generation):
-            return intel_memory.resolve(self.root, self.sim, {"vendor_model": "intel-adc"}, directory)
+        with patch.object(fpga_adc, "identity", return_value=self.generation) as identity:
+            descriptor = intel_memory.resolve(self.root, self.sim, {"vendor_model": "intel-adc"}, directory)
+        # The executables directory comes from this installation's own layout.
+        self.assertEqual(identity.call_args.args[0], self.installation / "quartus/bin64")
+        return descriptor
 
     def test_selected_installation_explicit_path_and_exact_binding(self):
         descriptor = self.resolve()
@@ -58,7 +68,9 @@ class IntelAdcTests(unittest.TestCase):
         self.assertNotIn(str(self.source), commands[6][0])
 
     def test_exact_lexical_warning_visible_and_all_variants_rejected(self):
-        descriptor = {"sources": [{"name": intel_adc.TOP_SOURCE, "path": "C:/vendor/top.v", "sha256": intel_adc.TOP_HASH}]}
+        descriptor = {"sources": [{"name": intel_adc.TOP_SOURCE,
+                                   **vendor_support.accepted("C:/vendor/top.v", "b" * 64, intel_adc.TOP_SOURCE,
+                                                             platform="windows")}]}
         warning = "** Warning: (vlog-2083) C:/vendor/top.v(24): Carriage return (0x0D) is not followed by a newline (0x0A)."
         raw = warning + "\nErrors: 0, Warnings: 1\n"
         checked, evidence = intel_adc.classify_compile_diagnostics(raw, descriptor, "intel-adc-control-compile.log")
@@ -75,17 +87,26 @@ class IntelAdcTests(unittest.TestCase):
         for stage in ("sim.log", "intel-adc-atoms-compile.log", "compile.log"):
             with self.assertRaisesRegex(ValueError, "control compilation stage"):
                 intel_adc.classify_compile_diagnostics(raw, descriptor, stage)
-        descriptor["sources"][0]["sha256"] = "changed"
-        with self.assertRaisesRegex(ValueError, "supported wrapper hash"):
+        self.assertEqual(evidence[0]["source_sha256"], "b" * 64)
+        del descriptor["sources"][0]["accepted"]
+        with self.assertRaisesRegex(ValueError, "not an accepted ledger record"):
             intel_adc.classify_compile_diagnostics(raw, descriptor, "intel-adc-control-compile.log")
 
     def test_changed_or_missing_dependency_rejected_before_commands(self):
-        self.resolve()
+        accepted = file_hash(self.source)
+        self.assertEqual(self.resolve()["sources"][0]["accepted"], "unchanged")
         self.source.write_text("changed")
-        with self.assertRaisesRegex(ValueError, "unsupported installed Intel ADC source"):
+        with self.assertRaisesRegex(ValueError, "changed since it was accepted"):
             self.resolve()
+        # The refusal leaves the accepted record alone; accepting the reviewed
+        # change is a separate, recorded step.
+        self.assertEqual(read_json(self.ledger)["installations"]["windows"]["sources"][SOURCE], accepted)
+        record = vendor_sources.accept(self.installation / "quartus/bin64", [SOURCE],
+                                       "Reviewed original host-test bytes for this test.")
+        self.assertEqual(record["changed"][SOURCE]["from"], accepted)
+        self.assertEqual(self.resolve()["sources"][0]["accepted"], "unchanged")
         self.source.unlink()
-        with self.assertRaisesRegex(ValueError, "unsupported installed Intel ADC source"):
+        with self.assertRaisesRegex(ValueError, "missing installed Intel ADC source"):
             self.resolve()
 
     def test_repository_shadow_rejected(self):
@@ -142,10 +163,8 @@ class IntelAdcTests(unittest.TestCase):
     def test_simulation_profile_preserves_raw_and_rejects_drift(self):
         import copy
         descriptor = {"sources": [
-            {"name": "quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v", "path": "C:/vendor/atoms.v",
-             "sha256": "0600312e1d288b3354172dded919479e50752da5aa80d12dfdd82c1ee5d77c7b"},
-            {"name": "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v", "path": "C:/vendor/fifo.v",
-             "sha256": "e4570567d633185546949acf6d6f9d875ee6567a6adc44e27d22c296361accf8"}]}
+            {"name": ATOMS, **vendor_support.accepted("C:/vendor/atoms.v", "c" * 64, ATOMS, platform="windows")},
+            {"name": FIFO, **vendor_support.accepted("C:/vendor/fifo.v", "d" * 64, FIFO, platform="windows")}]}
         width = "# ** Warning: C:/vendor/atoms.v(38): (vopt-2241) Connection width does not match width of port '<protected>'.<protected>"
         rewind = "# ** Warning: C:/vendor/atoms.v(38): (vopt-PLI-3691) Expected a system task, not a system function '$rewind'."
         warnings = [width] * 7 + [
@@ -179,9 +198,10 @@ class IntelAdcTests(unittest.TestCase):
                     raw.replace("# Errors: 0,", "# Errors: 2,"), raw + "\n# ** Warning: DUT warning"):
             with self.assertRaisesRegex(ValueError, "profile differs"):
                 intel_adc.classify_sim_diagnostics(bad, descriptor)
+        self.assertEqual(evidence[0]["sources"], {ATOMS: "c" * 64, FIFO: "d" * 64})
         bad_source = copy.deepcopy(descriptor)
-        bad_source["sources"][0]["sha256"] = "changed"
-        with self.assertRaisesRegex(ValueError, "reviewed vendor source"):
+        del bad_source["sources"][0]["accepted"]
+        with self.assertRaisesRegex(ValueError, "not an accepted ledger record"):
             intel_adc.classify_sim_diagnostics(raw, bad_source)
 
 

@@ -15,7 +15,7 @@ from .verilator import commands as verilator_commands, diagnostic as verilator_d
 from .questa import commands as questa_commands, diagnostic as questa_diagnostic, prepare_attempt as questa_prepare
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json, release_held_lock, take_lock
 from .progress import Progress, display_path
-from . import intel_adc, intel_memory, python_tb
+from . import intel_adc, intel_memory, python_tb, vendor_sources
 from .simulation_peer import Peer
 
 # Every registry target names each backend whose observable checks it preserves.
@@ -189,8 +189,12 @@ def plan(root, args, simulator):
         fixture_tools = tool_identity(root, installation)
         options["fixture_tools"] = fixture_tools
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
+    # A vendor source this installation had never recorded is named in the record
+    # and printed, exactly as `fpga build` reports it, so a first sighting on the
+    # Questa path is visible rather than passing as if it had been checked.
     return {"target": target, "driver": driver, "python_runtime": python_runtime, "peer_config": peer_config,
             "vendor_model": vendor_model, "hashes": hashes, "options": options,
+            "notices": vendor_sources.notices(vendor_model),
             "fixture_tools": fixture_tools, "fingerprint": fingerprint}
 
 
@@ -232,6 +236,7 @@ def prepare(root, build, args, simulator, provenance=None):
     record = {"status": "PREPARING", "prepared": attempt_id, "target": args.target, "simulator": backend,
               "seed": args.seed, "os": platform.system(), "fingerprint": planned["fingerprint"],
               "inputs": planned["hashes"], "tools": simulator.info, "options": planned["options"],
+              "notices": list(planned["notices"]),
               "pid": os.getpid(), "started": datetime.now(timezone.utc).isoformat(),
               "prepared_record": (attempt / PREPARED_RECORD).relative_to(root).as_posix(),
               "provenance": provenance or {}}
@@ -324,6 +329,7 @@ def simulate(root, build, args, simulator, provenance=None, progress=None, locke
         path.mkdir(parents=True, exist_ok=True)
     from .test_budget import target_selection
     record = {"status": "RUNNING", "cache": "BUILT", "fingerprint": fingerprint,
+              "notices": list(planned["notices"]),
               "inputs": hashes, "tools": simulator.info, "seed": args.seed,
               "simulator": backend, "os": platform.system(),
               "waves": {"format": "fst" if backend == "verilator" else "wlf",

@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree
+from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree, vendor_sources
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
@@ -776,6 +776,10 @@ def build_fpga(root, build, args, provenance=None, progress=None):
                 record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
             if fpga_flash.flash_target(target):
                 record["tools"]["onchip_flash"] = fpga_flash.identity(args.quartus_bin)
+            # A vendor source this installation had never recorded is named in the
+            # result and printed, so a first sighting is visible rather than
+            # passing as if it had been checked.
+            record["notices"].extend(vendor_sources.notices(record["tools"]))
         record["definition"] = target
         fingerprint_inputs = {"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout}
         if fpga_flash.flash_target(target):

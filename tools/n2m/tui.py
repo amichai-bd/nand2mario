@@ -57,6 +57,7 @@ INTENTS = {
     "sw": ("Build software", "Assemble, link, package or check original software"),
     "host": ("Use UART controls", "Open the selected UART and transmit a host operation"),
     "tools": ("Install a pinned host tool", "Build the repository's own pinned Verilator; no simulation"),
+    "vendor": ("Accept an installed vendor source", "Record reviewed Quartus bytes as accepted; edits a tracked file"),
 }
 
 
@@ -454,6 +455,22 @@ def _clean_plan(menu, root):
             f"DELETE workdir/builds/{answers['tag']}"))
 
 
+def _vendor_plan(menu, root):
+    """Accept named installed vendor sources, with the reason typed in full.
+
+    The reason is the record, so the menu asks for it instead of offering a
+    default, and it writes exactly the command the specification names.
+    """
+    steps = [("quartus", lambda _: _quartus(menu, root)),
+             ("source", lambda _: menu.text("Installation-relative vendor source to accept")),
+             ("reason", lambda _: menu.text("Why these vendor bytes are accepted; recorded in the ledger"))]
+    return _editable(menu, steps, lambda answers: Plan(
+        ["vendor", "accept", "--quartus-bin", answers["quartus"],
+         "--source", answers["source"], "--reason", answers["reason"]],
+        ("vendor", "accept"), "Current host",
+        "RECORD a changed installed vendor source as accepted in tools/n2m/accepted_vendor_sources.json"))
+
+
 def _launcher_plan(menu, root):
     return _editable(menu, [("build", lambda _: _launcher_build_id(menu, root)),
                             ("uart", lambda _: _uart(menu, root))], lambda answers: Plan(
@@ -510,6 +527,8 @@ def make_plan(menu, root, intent):
         # Linux simulation host, never Windows.
         return Plan(["tools", "verilator"], ("tools", "verilator"), "Linux",
                     "Build and install the pinned Verilator under workdir/tools; no simulation")
+    if intent == "vendor":
+        return _vendor_plan(menu, root)
     raise ValueError(f"unsupported builder family: {intent}")
 
 

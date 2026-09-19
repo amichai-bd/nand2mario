@@ -4,8 +4,7 @@ import os
 import math
 import re
 
-from .records import file_hash
-from . import fpga_clocking, fpga_lock
+from . import fpga_clocking, fpga_lock, vendor_sources
 
 # The reset chain audit and its report inventory are family-neutral; the
 # clocking registry owns them and both families keep the same names.
@@ -275,7 +274,7 @@ def identity(directory):
              "wizard": directory.parent / "libraries/megafunctions/xml_info/altpll_wiz_map.xml"}
     if any(not path.is_file() for path in paths.values()):
         raise ValueError("missing explicit Quartus ALTPLL generation dependency")
-    return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
+    return vendor_sources.check(directory, paths)
 
 
 def _command(identity, module, input_ps, multiply, divide, bandwidth=None):

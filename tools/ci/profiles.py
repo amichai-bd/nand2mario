@@ -193,7 +193,14 @@ def validate_commands(root, profile, record, attempt, build, target, selected_to
         info = record['tools']; directory = selected_tools['quartus']
         require(set(info) == {*fpga.TOOLS, 'altpll'}, 'complete Quartus identity')
         paths = {name: executable(info[name], directory, name) for name in fpga.TOOLS}
-        require(info['altpll'] == fpga_pll.identity(directory), 'complete ALTPLL dependency identity')
+        # `accepted` says whether each vendor source had been recorded before this
+        # build ran, so it is a fact about the ledger at that moment rather than
+        # part of the tool identity this comparison checks.
+        def dependency(entry):
+            return {key: value for key, value in entry.items() if key != 'accepted'}
+        require({name: dependency(entry) for name, entry in info['altpll'].items()}
+                == {name: dependency(entry) for name, entry in fpga_pll.identity(directory).items()},
+                'complete ALTPLL dependency identity')
         for name in fpga.TOOLS:
             text = (attempt / f'{name}-version.log').read_text(encoding='utf-8')
             version = re.search(r'(?m)^Version (.+)$', text)

@@ -6,7 +6,12 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m import fpga, fpga_flash, fpga_lock, flash_library
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vendor_support
+from n2m import fpga, fpga_flash, fpga_lock, flash_library, vendor_sources
+from n2m.records import read_json
+
+IP = "ip/altera/altera_onchip_flash/"
 
 TARGET = {"top": "flash_proof", "sources": [fpga_flash.READER]}
 STROBE = fpga_flash.strobe_node("flash_proof")
@@ -21,10 +26,11 @@ class FlashIpTests(unittest.TestCase):
         self.ip = self.root / "ip/altera/altera_onchip_flash"
         self.attempt = self.root / "attempt"
         self.attempt.mkdir()
-        (self.quartus / "bin64").mkdir(parents=True)
+        vendor_support.installation(self.root, platform="windows")
+        self.ledger = vendor_support.ledger(self, self.root / "ledger.json", platform="windows")
         (self.quartus / "eda/sim_lib").mkdir(parents=True)
         (self.quartus / "eda/sim_lib/fiftyfivenm_atoms.v").write_text("atoms\n")
-        for name, (folder, _) in fpga_flash.SOURCES.items():
+        for name, folder in fpga_flash.SOURCES.items():
             path = self.ip / folder / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"// {name}\n")
@@ -32,18 +38,32 @@ class FlashIpTests(unittest.TestCase):
             (self.ip / "altera_onchip_flash" / name).write_text(f"# {name}\n")
 
     def sources(self):
-        """An identity record whose hashes match the pins, as identity() would return for the real files."""
-        return {name: {"path": str(self.ip / folder / name), "sha256": sha}
-                for name, (folder, sha) in fpga_flash.SOURCES.items()}
+        """A record naming digests the installed files do not carry, so staging refuses."""
+        return {name: vendor_support.accepted(self.ip / folder / name, hashlib.sha256(name.encode()).hexdigest(),
+                                              IP + folder + "/" + name, platform="windows")
+                for name, folder in fpga_flash.SOURCES.items()}
 
-    def test_identity_refuses_an_unpinned_vendor_file(self):
-        with self.assertRaisesRegex(ValueError, "unsupported Intel On-Chip Flash IP source"):
+    def test_identity_records_then_refuses_a_changed_vendor_file(self):
+        block = "altera_onchip_flash_block.v"
+        first = fpga_flash.identity(self.quartus / "bin64")
+        self.assertEqual(first[block]["accepted"], "recorded")
+        self.assertEqual(set(read_json(self.ledger)["installations"]["windows"]["sources"]),
+                         {IP + folder + "/" + name for name, folder in fpga_flash.SOURCES.items()}
+                         | {IP + "altera_onchip_flash/" + name for name in fpga_flash.DEFINITIONS}
+                         | {"quartus/eda/sim_lib/fiftyfivenm_atoms.v"})
+        self.assertEqual(fpga_flash.identity(self.quartus / "bin64")[block]["accepted"], "unchanged")
+        (self.ip / "rtl" / block).write_text("// different original test bytes\n")
+        with self.assertRaisesRegex(ValueError, "changed since it was accepted"):
             fpga_flash.identity(self.quartus / "bin64")
-        (self.ip / "rtl/altera_onchip_flash_block.v").unlink()
+        # Accepting the reviewed change lets the same tree build again.
+        vendor_sources.accept(self.quartus / "bin64", [IP + "rtl/" + block],
+                             "Reviewed original host-test bytes for this test.")
+        self.assertEqual(fpga_flash.identity(self.quartus / "bin64")[block]["accepted"], "unchanged")
+        (self.ip / "rtl" / block).unlink()
         with self.assertRaisesRegex(ValueError, "missing installed Intel On-Chip Flash IP"):
             fpga_flash.identity(self.quartus / "bin64")
 
-    def test_stage_copies_only_unchanged_pinned_files(self):
+    def test_stage_copies_only_unchanged_recorded_files(self):
         sources = self.sources()
         with self.assertRaisesRegex(ValueError, "changed before staging"):
             fpga_flash.stage(self.attempt, sources)
@@ -142,20 +162,20 @@ class FlashIpTests(unittest.TestCase):
         return "Info: fitting\n" + "\n".join(lines) + "\n"
 
     def staged_sources(self):
-        sources = {}
-        for name, (_, sha) in fpga_flash.SOURCES.items():
-            sources[name] = {"path": str(self.attempt / name), "sha256": sha}
-        return sources
+        return {name: vendor_support.accepted(self.attempt / name, hashlib.sha256(name.encode()).hexdigest(),
+                                              IP + folder + "/" + name, platform="windows")
+                for name, folder in fpga_flash.SOURCES.items()}
 
-    def test_explained_diagnostics_are_exact_and_pinned(self):
+    def test_explained_diagnostics_are_exact_and_match_the_accepted_source(self):
         sources = self.staged_sources()
         for name in fpga_flash.SOURCES:
             (self.attempt / name).write_text("copy\n")
         text = self.compile_log()
-        # The staged copy must carry the pinned hash before any line is explained.
-        with self.assertRaisesRegex(ValueError, "unsupported Intel On-Chip Flash IP source"):
+        # The staged copy must carry the accepted digest before any line is explained.
+        with self.assertRaisesRegex(ValueError, "staged Intel On-Chip Flash IP source"):
             fpga_flash.explained_diagnostics(text, self.attempt, sources, "flash_proof", "compile.log")
-        with unittest.mock.patch.object(fpga_flash, "file_hash", side_effect=lambda p: fpga_flash.SOURCES[Path(p).name][1]):
+        with unittest.mock.patch.object(fpga_flash, "file_hash",
+                                        side_effect=lambda p: sources[Path(p).name]["sha256"]):
             explained = fpga_flash.explained_diagnostics(text, self.attempt, sources, "flash_proof", "compile.log")
             self.assertEqual([item["code"] for item in explained], ["10036"] * 20 + ["332060"])
             self.assertEqual([item["code"] for item in fpga.diagnostics(text, explained)], ["10036"] * 20 + ["332060"] * 4)

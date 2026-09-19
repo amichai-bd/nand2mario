@@ -18,11 +18,11 @@ build.
 """
 from collections import namedtuple
 from fractions import Fraction
+import os
 from pathlib import Path
 import re
 
-from .records import file_hash
-from . import fpga_clocking, fpga_lock_cyclonev
+from . import fpga_clocking, fpga_lock_cyclonev, vendor_sources
 
 TOOLS_KEY = "altera_pll"
 FAMILY = "Cyclone V"
@@ -167,12 +167,30 @@ def cache_files(definition):
             for name in (module + ".v", module + ".qip", "generate-" + module + ".log")]
 
 
+def generator(quartus):
+    """The Altera PLL generator in an explicit Quartus installation.
+
+    Quartus ships `ip-generate` as a shell script under `sopc_builder/bin` on
+    Linux. The Windows spelling has never been observed from this repository, so
+    Windows accepts either name and the refusal names every candidate it looked
+    for instead of asserting a filename nobody here can confirm. Every caller
+    takes the generator from here, so no second copy of the fact can drift.
+    """
+    folder = Path(quartus) / "sopc_builder/bin"
+    names = ("ip-generate.exe", "ip-generate") if os.name == "nt" else ("ip-generate",)
+    for name in names:
+        if (folder / name).is_file():
+            return folder / name
+    raise ValueError("missing Quartus Altera PLL generator; looked for "
+                     + ", ".join((folder / name).as_posix() for name in names))
+
+
 def identity(directory):
     """Hash the explicit Cyclone V PLL generation dependencies into the request."""
     directory = Path(directory).resolve()
     quartus = directory.parent
     component = quartus.parent / "ip/altera/altera_pll/source/top"
-    paths = {"generator": quartus / "sopc_builder/bin/ip-generate",
+    paths = {"generator": generator(quartus),
              "definition": component / "pll_hw.tcl",
              "primitive": quartus / "libraries/megafunctions/altera_pll.v",
              "atom_model": quartus / "eda/sim_lib/cyclonev_atoms.v",
@@ -181,7 +199,7 @@ def identity(directory):
              "wizard": component / "pll_rbc.tcl"}
     if any(not path.is_file() for path in paths.values()):
         raise ValueError("missing explicit Quartus Altera PLL generation dependency")
-    return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
+    return vendor_sources.check(directory, paths)
 
 
 def generation_command(identity, definition, module, device):

@@ -11,7 +11,7 @@ from unittest.mock import patch
 from tools.n2m.hdl import dependencies
 import unittest
 from tools.ci import profiles, storage
-from tools.n2m import fpga, fpga_pll, simulation, verilator
+from tools.n2m import fpga, fpga_pll, simulation, vendor_sources, verilator
 from tools.n2m.test_budget import target_selection
 from tools.n2m.records import atomic_json, digest, git_state
 
@@ -52,7 +52,19 @@ class ProfileTests(unittest.TestCase):
         base = REPO / 'workdir/.tmp'; base.mkdir(parents=True, exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir=base)
         self.base = Path(self.temp.name); self.root = self.base / 'repo'; self.root.mkdir()
-        self.bin = self.base / 'installed/bin'; self.bin.mkdir(parents=True)
+        # A Quartus-shaped installation: the accepted vendor source record reads the
+        # platform from the layout, so the fixture carries this host's one.
+        self.platform = 'windows' if os.name == 'nt' else 'linux'
+        installed = self.base / 'installed'
+        (installed / vendor_sources.LAYOUTS[self.platform]).mkdir(parents=True, exist_ok=True)
+        self.bin = installed / vendor_sources.EXECUTABLES[self.platform]
+        self.bin.mkdir(parents=True, exist_ok=True)
+        self.ledger = self.base / 'accepted-vendor-sources.json'
+        self.ledger.write_text(json.dumps(
+            {'schema_version': 1, 'purpose': 'Host fixture ledger.', 'acceptance': 'Host fixture ledger.',
+             'installations': {}}), encoding='utf-8')
+        ledger = patch.object(vendor_sources, 'ledger_path', lambda: self.ledger)
+        ledger.start(); self.addCleanup(ledger.stop)
         self.tools = {'verilator': str(self.bin), 'quartus': str(self.bin)}
     def tearDown(self): self.temp.cleanup()
 

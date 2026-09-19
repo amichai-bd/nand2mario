@@ -1,16 +1,15 @@
-"""Pinned installed Intel ADC/PLL model for the physical-controls proof."""
+"""Installed Intel ADC/PLL model for the physical-controls proof."""
 import hashlib
 import json
 from pathlib import Path
 import re
 
-from . import fpga_adc
+from . import fpga_adc, vendor_sources
 from .records import file_hash
 
 LIBRARY = "n2m_intel_adc"
 ATOMS_LIBRARY = "n2m_intel_adc_atoms"
 TOP_SOURCE = "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_top_wrapper.v"
-TOP_HASH = "763f8c0fd1c25affc2614dd8d162dea9218b7acc0db2d0ee45921e9cfeb30247"
 
 
 def resolve(root, simulator, directory=None):
@@ -21,13 +20,16 @@ def resolve(root, simulator, directory=None):
         folder = Path(directory).resolve()
         installation = folder.parents[2]
     pin = json.loads((root / "tools/n2m/dependencies.json").read_text())["intel_adc"]
-    sources = []
-    for name, expected in pin["sources"].items():
+    for name in pin["sources"]:
         path = installation / name
-        if not path.is_file() or path.is_symlink() or file_hash(path) != expected:
-            raise ValueError("missing or unsupported installed Intel ADC source: " + name)
-        sources.append({"name": name, "path": str(path), "sha256": expected})
-    generation = fpga_adc.identity(installation / "quartus/bin64")
+        if not path.is_file() or path.is_symlink():
+            raise ValueError("missing installed Intel ADC source: " + name)
+    provenance = vendor_sources.check(installation, {name: installation / name for name in pin["sources"]})
+    sources = [{"name": name, **provenance[name]} for name in pin["sources"]]
+    # The executables directory is quartus/bin64 on Windows and quartus/bin on
+    # Linux, so the installation names its own layout instead of this line
+    # encoding one platform's.
+    generation = fpga_adc.identity(vendor_sources.executables(installation))
     return {"selection": "intel-adc", "library": LIBRARY, "version": pin["version"],
             "sources": sources, "generation_inputs": generation,
             "generation_command": fpga_adc.generation_command(generation),
@@ -110,10 +112,9 @@ def classify_compile_diagnostics(output, descriptor, stage):
     """Explain only the unchanged wrapper's extra CR around its timescale."""
     if stage != "intel-adc-control-compile.log":
         raise ValueError("ADC lexical diagnostic is only valid in the control compilation stage")
-    sources = [source for source in descriptor["sources"] if source["name"] == TOP_SOURCE]
-    if len(sources) != 1 or sources[0]["sha256"] != TOP_HASH:
-        raise ValueError("ADC lexical diagnostic requires the supported wrapper hash")
-    expected = ("** Warning: (vlog-2083) " + sources[0]["path"] +
+    records = {source["name"]: source for source in descriptor["sources"]}
+    wrapper = vendor_sources.require_accepted(records, TOP_SOURCE)[TOP_SOURCE]
+    expected = ("** Warning: (vlog-2083) " + records[TOP_SOURCE]["path"] +
                 "(24): Carriage return (0x0D) is not followed by a newline (0x0A).")
     lines = output.splitlines()
     warnings = [line for line in lines if re.search(r"\bWarning:", line)]
@@ -126,8 +127,8 @@ def classify_compile_diagnostics(output, descriptor, stage):
                         for line in lines if line != expected)
     return checked, [{"id": "intel-adc-wrapper-lone-cr", "raw": expected,
                       "raw_summary": summaries[0], "warning_count": 1,
-                      "source_sha256": TOP_HASH,
-                      "reason": "Pinned wrapper bytes1380/1403 contain CR-CR-LF around the timescale; no HDL tokens change."}]
+                      "source_sha256": wrapper,
+                      "reason": "Accepted wrapper bytes1380/1403 contain CR-CR-LF around the timescale; no HDL tokens change."}]
 
 
 def verify_generated(folder):
@@ -137,7 +138,7 @@ def verify_generated(folder):
 
 
 def classify_sim_diagnostics(output, descriptor, *, python_access=False):
-    """Keep the exact pinned ADC model's elaboration diagnostics visible.
+    """Keep the exact accepted ADC model's elaboration diagnostics visible.
 
     The same profile occurs with 50 MHz and 25 MHz control clocks. The FIFO
     leaves its unused ECC output open. The encrypted vendor model also emits
@@ -146,19 +147,11 @@ def classify_sim_diagnostics(output, descriptor, *, python_access=False):
     inspected. Actual sample/channel/lock tests and fitted boundary checks
     remain required. Any changed message, source, count or extra warning fails.
     """
-    pins = {
-        "quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v":
-            "0600312e1d288b3354172dded919479e50752da5aa80d12dfdd82c1ee5d77c7b",
-        "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v":
-            "e4570567d633185546949acf6d6f9d875ee6567a6adc44e27d22c296361accf8",
-    }
-    paths = []
-    for name, expected_hash in pins.items():
-        matches = [source for source in descriptor["sources"] if source["name"] == name]
-        if len(matches) != 1 or matches[0]["sha256"] != expected_hash:
-            raise ValueError("ADC simulation diagnostic requires the reviewed vendor source")
-        paths.append(matches[0]["path"])
-    atom, fifo = paths
+    names = ("quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v",
+             "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v")
+    records = {source["name"]: source for source in descriptor["sources"]}
+    pins = vendor_sources.require_accepted(records, *names)
+    atom, fifo = (records[name]["path"] for name in names)
     expected = [f"# ** Warning: {atom}(38): (vopt-2241) Connection width does not match width of port '<protected>'.<protected>"] * 7
     expected += [f"# ** Warning: {fifo}(79): (vopt-2685) [TFMPC] - Too few port connections for 'scfifo_component'.  Expected 13, found 12.",
                  f"# ** Warning: {fifo}(79): (vopt-2718) [TFMPC] - Missing connection for port 'eccstatus'."]

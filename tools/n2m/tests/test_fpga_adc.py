@@ -1,4 +1,5 @@
 """Sensitivity of the exact explained vendor-warning boundary, and the ADC host facts."""
+import hashlib
 from pathlib import Path
 import re
 import tempfile
@@ -7,6 +8,9 @@ import unittest
 from unittest.mock import patch
 
 from tools.n2m import fpga, fpga_adc, fpga_pll
+from tools.n2m.tests import vendor_support
+
+CONTROL = "ip/altera/altera_modular_adc/control/"
 
 
 class AdcDiagnosticsTests(unittest.TestCase):
@@ -14,8 +18,10 @@ class AdcDiagnosticsTests(unittest.TestCase):
         self.folder = Path.cwd() / "workdir/adc-classifier-fixture"
         text = (Path(__file__).parent / "data/adc-unused-features.txt").read_text()
         self.text = text.replace("{folder}", self.folder.as_posix())
-        self.sources = {n: {"sha256": h} for n, h in fpga_adc.SUPPORTED_CONTROL.items()}
-        self.hashes = patch.object(fpga_adc, "file_hash", side_effect=lambda p: fpga_adc.SUPPORTED_CONTROL[p.name])
+        self.digests = {name: hashlib.sha256(name.encode()).hexdigest() for name in fpga_adc.DIAGNOSTIC_CONTROL}
+        self.sources = {name: vendor_support.accepted("/vendor/" + name, digest, CONTROL + name)
+                        for name, digest in self.digests.items()}
+        self.hashes = patch.object(fpga_adc, "file_hash", side_effect=lambda p: self.digests[p.name])
         self.hashes.start()
         self.addCleanup(self.hashes.stop)
 
@@ -39,11 +45,13 @@ class AdcDiagnosticsTests(unittest.TestCase):
             with self.subTest(text=text[-80:]), self.assertRaises(ValueError):
                 self.classify(text)
 
-    def test_other_warning_and_missing_source_pin_rejected(self):
+    def test_other_warning_and_an_unrecorded_source_rejected(self):
         with self.assertRaisesRegex(ValueError, "unexplained"):
             self.classify(self.text + 'Warning (15058): wrong clock mode\n')
-        self.sources['altera_modular_adc_control_fsm.v']['sha256'] = 'changed'
-        with self.assertRaisesRegex(ValueError, "unsupported ADC source"):
+        # The classifier explains these exact bytes, so a record that never
+        # reached the accepted ledger cannot carry the explanation.
+        del self.sources['altera_modular_adc_control_fsm.v']['accepted']
+        with self.assertRaisesRegex(ValueError, "not an accepted ledger record"):
             self.classify()
 
     def test_changed_copied_vendor_source_rejected(self):
@@ -124,6 +132,10 @@ class AdcGeneratorDiscoveryTests(unittest.TestCase):
         that each path is a file and hashes it, nothing more.
         """
         root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        # A Linux-shaped tree: the ledger reads the platform from the layout, and
+        # this test is about the generator filename, not the platform.
+        vendor_support.installation(root)
+        vendor_support.ledger(self, root / "ledger.json")
         quartus, control = root / "quartus", root / "ip/altera/altera_modular_adc/control"
         megafunctions = quartus / "libraries/megafunctions"
         paths = [control / name for name in fpga_adc.CONTROL]
