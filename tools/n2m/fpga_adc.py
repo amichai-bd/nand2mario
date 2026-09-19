@@ -5,6 +5,7 @@ import re
 
 from .records import file_hash
 from . import fpga_pll
+from .fpga_clocking import FIT_ENCODING
 from .fpga_lock import parse_netlist, OUTPUTS
 
 PLL = "u_adc|u_pll|altpll_component|auto_generated|"
@@ -214,7 +215,7 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
 def verify(folder, top="adc_proof", *, parallel=False, system_net=SYS):
     result = verify_netlist((folder / "simulation/questa/design.vo").read_text(),
                             (folder / "output/check_timing.rpt").read_text(), top, parallel=parallel, system_net=system_net)
-    fit = (folder / "output/design.fit.rpt").read_text()
+    fit = (folder / "output/design.fit.rpt").read_text(encoding=FIT_ENCODING)
     summary = (folder / "output/design.fit.summary").read_text()
     expected_resources = (("Total PLLs", 3 if parallel else 2), ("ADC blocks", 1)) if top in ("controls_proof", "v05_controls_proof") else (
         ("Total PLLs", 1), ("ADC blocks", 1), ("Total memory bits", 0))
@@ -295,7 +296,7 @@ def identity(directory):
     paths["control_definition"] = ip / "altera_modular_adc/control/altera_modular_adc_control_hw.tcl"
     paths["core_definition"] = ip / "altera_modular_adc/top/altera_modular_adc_hw.tcl"
     paths["atom_model"] = quartus / "eda/sim_lib/fiftyfivenm_atoms.v"
-    paths["generator"] = Path(directory) / "qmegawiz.exe"
+    paths["generator"] = fpga_pll.generator(directory)
     paths["pll_definition"] = quartus / "libraries/megafunctions/altpll.tdf"
     if any(not p.is_file() for p in paths.values()):
         raise ValueError("missing installed Intel ADC/PLL dependency")
