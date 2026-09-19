@@ -2110,36 +2110,47 @@ One registry per supported board: the
 [DE10-Lite registry](../../../src/fpga/de10_lite/targets.json), the
 [DE10-Nano registry](../../../src/fpga/de10_nano/targets.json) and the
 [DE2-115 registry](../../../src/fpga/de2_115/targets.json). Each has exactly
-`schema_version: 2`, a `board` object and a `targets` object, and target names
+`schema_version: 3`, a `board` object and a `targets` object, and target names
 are unique across boards, so one name still selects one board. The `board`
-object has exactly `name`, `device`, `family`, `timing_corners` and
-`specification`: the device as it is written in the QSF, the Quartus family
+object has exactly `name`, `device`, `family`, `timing_corners`, `io_standards`
+and `specification`: the device as it is written in the QSF, the Quartus family
 name, at least three distinct analysed timing corners of the form
-`<Slow|Fast> <n>mV <t>C`, and the repository-relative `wiki/` page that owns
-that board's pin and resource data
+`<Slow|Fast> <n>mV <t>C`, the I/O standard this board supplies on each package
+pin it uses, and the repository-relative `wiki/` page that owns that board's pin
+and resource data
 ([DE10-Lite](../../src/board-bring-up.md),
 [DE10-Nano](../../src/de10-nano-board.md),
 [DE2-115](../../src/de2-115-board.md)). A registry whose specification page
-is missing fails. Each named target has exactly `device`, `top`, ordered
+is missing fails. `io_standards` maps a standard to the nonempty list of
+`PIN_<letters><digits>` names the board supplies it on; a registry that names a
+standard outside the builder's table, or one pin under two standards, fails.
+Each named target has exactly `device`, `top`, ordered
 nonempty `sources` and `constraints` lists, a `pins` port-to-package-pin
 object, and a `virtual_pins` port-pattern list. A target's `device` must equal
 its board's; top names are identifiers. The resolved definition carries the
-board's `family` and `timing_corners`, and every device-dependent assignment
-and evidence check reads them from it, so no device is named in the build path.
+board's `family`, `timing_corners` and the standard each of its pins is
+recorded under, and every device-dependent assignment and evidence check reads
+them from it, so no device is named in the build path.
 Inputs are unique existing repository-relative `.sv` and `.sdc` paths under
 `src/`, without traversal or symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
-names permit an optional numeric or wildcard array index. Physical assignments
-use 3.3-V LVTTL. An output pin also states whatever its device family's fitter
-needs before it stops calling the pin an incomplete I/O assignment (Quartus
-15714): Cyclone V a drive strength and a slew rate, Cyclone IV E a drive
-strength, MAX 10 neither. That table is per family, not per board, and a family
-absent from it states nothing extra. On the DE2-115 the vendor table puts most
-pins on banks the board does not power at 3.3 V, which is why its fit is a
-build-path result and
-[not a programmable image](../../src/de2-115-board.md#io-voltage-and-what-the-flow-proof-declares)
-until [#862](https://github.com/amichai-bd/nand2mario/issues/862) settles the
-per-pin standard. HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
-loads are rejected. SDC permits one literal clock,
+names permit an optional numeric or wildcard array index. Each physical
+assignment declares the standard its own board records for that pin, and a pin
+the board does not record fails naming the port and the pin rather than
+defaulting to a voltage the board may not supply. A port on the board's
+Schmitt-trigger key input restates its recorded standard as that voltage's
+Schmitt input, so the refinement cannot rename the voltage; a recorded standard
+with no Schmitt input fails naming the port. An output pin also states whatever
+the fitter needs before it stops calling the pin an incomplete I/O assignment
+(Quartus 15714): on 3.3-V LVTTL, Cyclone V a drive strength and a slew rate and
+Cyclone IV E only the drive strength; on 2.5 V, Cyclone IV E the slew rate as
+well; MAX 10 neither. That table is per family and declared standard, not per
+board, and a pair absent from it states nothing extra. The DE2-115 is the board
+that exercises the per-pin standard: it declares 2.5 V on the nine pins its
+[vendor table](../../src/de2-115-board.md#io-voltage-and-what-the-flow-proof-declares)
+puts on banks the board does not power at 3.3 V. Declaring the board's
+documented voltage is not authorization to program it. HDL uses the bounded
+[include contract](#hdl-includes); HDL file reads that are not proven
+simulation-only and external/dynamic SDC loads are rejected. SDC permits one literal clock,
 delay, exception or uncertainty assignment per line, using the bounded command
 set in the [validator](../../../tools/n2m/fpga.py). Collection getters may select
 ports, clocks, pins, cells, registers, nets, inputs or outputs; nested bracket

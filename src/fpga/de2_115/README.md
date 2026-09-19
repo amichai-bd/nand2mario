@@ -11,9 +11,11 @@ pins three or more independent transcriptions state, so the flow proof depends o
 no contested assignment. What that provenance does and does not establish is on
 the [board specification](../../../wiki/src/de2-115-board.md#pin-data); none of
 it is verified against hardware. It proves the Cyclone IV E build path, not board
-operation: nothing here has been programmed onto a DE2-115, and the
-[declared I/O voltage](../../../wiki/src/de2-115-board.md#io-voltage-and-what-the-flow-proof-declares)
-is why it must not be.
+operation: nothing here has been programmed onto a DE2-115. Each pin declares the
+standard the board's
+[I/O voltage record](../../../wiki/src/de2-115-board.md#io-voltage-and-what-the-flow-proof-declares)
+supplies for it, and that record also names what a programming authorization
+still has to confirm physically.
 `de2-invalid` deliberately uses a negative clock period and must fail, so a
 passing `de2-smoke` fit is evidence rather than an absent check.
 

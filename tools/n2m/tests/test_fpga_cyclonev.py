@@ -44,11 +44,13 @@ class FamilyRefusalTests(unittest.TestCase):
 
     def test_pll_target_on_an_unimplemented_family_refuses_the_build(self):
         """The refusal happens in target_definition, before any tool is launched."""
+        nano = json.loads((ROOT / "src/fpga/de10_nano/targets.json").read_text(encoding="utf-8"))
         board = {"name": "Probe", "device": "5AGXFB3H4F35C4", "family": "Arria V",
                  "timing_corners": ["Slow 900mV 85C", "Slow 900mV 0C", "Fast 900mV 0C"],
+                 "io_standards": nano["board"]["io_standards"],
                  "specification": "wiki/src/de10-nano-board.md"}
         target = json.loads(json.dumps(fpga.target_definition(ROOT, "nano-clocking")))
-        for key in ("family", "timing_corners"):
+        for key in ("family", "timing_corners", "io_standards"):
             target.pop(key)
         target["device"] = board["device"]
         entry = {"probe-clocking": ("src/fpga/de10_nano/targets.json", board, target)}

@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "board": {
     "name": "DE2-115",
     "device": "EP4CE115F29C7",
@@ -9,6 +9,22 @@
       "Slow 1200mV 0C",
       "Fast 1200mV 0C"
     ],
+    "io_standards": {
+      "3.3-V LVTTL": [
+        "PIN_Y2"
+      ],
+      "2.5 V": [
+        "PIN_E18",
+        "PIN_E19",
+        "PIN_F18",
+        "PIN_F19",
+        "PIN_F21",
+        "PIN_G19",
+        "PIN_H19",
+        "PIN_J19",
+        "PIN_M23"
+      ]
+    },
     "specification": "wiki/src/de2-115-board.md"
   },
   "targets": {
