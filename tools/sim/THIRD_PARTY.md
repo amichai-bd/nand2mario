@@ -6,6 +6,7 @@
 | Verilator | [Pinned tag, commit and LGPL-3.0-only OR Artistic-2.0 license](../n2m/dependencies.json); built from source by `tools verilator` into ignored `workdir/tools/verilator/v<version>`, which records its own `installation.json`, or into any operator prefix | Supported Linux simulator; no license consulted; no source or binary is committed |
 | Questa | User-installed proprietary Siemens tool; executable versions and hashes recorded per run | Supported native simulator on any host holding its executables; a `vsim` runtime checkout is required, probed and recorded under the [simulator policy](../../wiki/tools/n2m/SPEC.md#questa-runtime-license) |
 | Quartus | User-installed proprietary Intel/Altera tool; version and hashes recorded per build | FPGA synthesis, fit and timing checks |
+| openFPGALoader | User-installed Apache-2.0 tool, not pinned or vendored here; the release is recorded per operation from its own `--Version` banner. Apache-2.0 established from the `SPDX-License-Identifier` header of every v1.1.1 source consulted, the `LICENSE` file at that tag and the installed package's own metadata | Volatile JTAG configuration where Quartus's `jtagd` cannot read the cable, under the [programming backends](../../wiki/tools/n2m/SPEC.md#programming-backends); it contributes no bytes to any artifact |
 
 No proprietary installer or license file is redistributed. Tools are selected
 from an explicit installation directory, then PATH, then the repository's own

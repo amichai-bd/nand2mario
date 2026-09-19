@@ -2626,7 +2626,20 @@ debug access port, and the matched position is what addresses the write.
 operation directory by `quartus_cpf -c <sof> <rbf>`, whose own success line is
 required, and the result records the raw image and its hash. This backend is
 therefore not a Quartus-free path: it needs `quartus_cpf` for that conversion and
-refuses without it, naming the tool. Before that, the
+refuses without it, naming the tool.
+
+openFPGALoader is user-installed rather than pinned or vendored, under its
+[tool provenance](../../../tools/sim/THIRD_PARTY.md) and the
+[dependency ledger](../../../tools/provenance.json): Apache-2.0, contributing no
+bytes to any artifact. The argv semantics above were read from release **v1.1.1**,
+including `--index-chain` addressing the same chain vector `--detect` prints, and
+the result records the banner of the release that performed each write so a later
+one can be re-checked against it. Those semantics are not all guarded equally: a
+changed success wording fails closed because both `Load SRAM` and `Done` are
+required, and a changed device name is caught by the registry match, but a
+changed `--index-chain` meaning would not be detected and would address the wrong
+chain position. Re-read that relationship, and the MAX 10 routing above, before
+accepting a different release. Before that, the
 programmer identifies itself: `openFPGALoader --Version` must print a
 recognisable `openFPGALoader v<release>` banner, recorded as `backend_version`
 and `backend_banner`. The repository does not ship this tool, so a record that
