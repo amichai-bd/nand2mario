@@ -62,7 +62,11 @@ def load():
     path = ledger_path()
     if not path.is_file():
         raise ValueError(f"missing accepted vendor source ledger: {path.as_posix()}; see {SPEC}")
-    ledger = json.loads(path.read_text(encoding="utf-8"))
+    return validate(json.loads(path.read_text(encoding="utf-8")))
+
+
+def validate(ledger):
+    """The one schema check, run on every read and before every write."""
     if (not isinstance(ledger, dict) or set(ledger) != {"schema_version", "purpose", "acceptance", "installations"}
             or ledger["schema_version"] != 1 or not isinstance(ledger["installations"], dict)
             or any(not isinstance(ledger[field], str) or not ledger[field] for field in ("purpose", "acceptance"))):
@@ -91,10 +95,11 @@ def _relative_name(value):
 
 
 def save(ledger):
-    """Write the ledger back after checking it round-trips the schema."""
-    path = ledger_path()
-    atomic_json(path, ledger)
-    load()
+    """Write the ledger back, refusing content the schema would not accept.
+
+    The check runs before the write, so a rejected change never reaches the file.
+    """
+    atomic_json(ledger_path(), validate(ledger))
 
 
 def installation(directory):
