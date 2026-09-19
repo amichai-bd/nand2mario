@@ -29,8 +29,8 @@ SUCCESS = "Info: Quartus Prime Programmer was successful. 0 errors, 0 warnings\n
 FAILED = "Info: Quartus Prime Programmer failed. 1 error\n"
 # The measured jtagconfig failure on the Linux host: both cables answer, neither
 # chain is read, and the two cables fail differently.
-UNREADABLE_CHAIN = ("1) DE-SoC [1-3.2]      Unable to read device chain - Hardware not attached\n"
-                    "2) USB-Blaster [1-2]   Unable to read device chain - JTAG chain broken\n")
+UNREADABLE_CHAIN = ("1) DE-SoC [1-3.2]\n  Unable to read device chain - Hardware not attached\n"
+                    "2) USB-Blaster [1-2]\n  Unable to read device chain - JTAG chain broken\n")
 # `openFPGALoader --detect` on the DE10-Nano: the ARM debug access port of the
 # Cyclone V SoC sits at chain position 0 and the FPGA at position 1.
 NANO_DETECT = ("index 0:\n\tidcode   0x4ba00477\n\ttype     Cortex A9\n\tirlength 4\n"
@@ -705,6 +705,20 @@ class DeviceIdentityTests(unittest.TestCase):
         self.assertEqual(len(unknown[0]["devices"]), 2)
         self.assertEqual(unknown[0]["devices"][0], {"idcode": "", "name": ""})
 
+    def test_a_refusal_quotes_the_read_s_own_diagnostic(self):
+        """Measured tool output: the quoted line explains the failure, not the chain."""
+        # The wedged probe announces its firmware before the error that explains it.
+        wedged = "empty\nUSB-Blaster II firmware version: 1.42\nFX2 write error: LIBUSB_ERROR_TIMEOUT\n" + WEDGED_DETECT
+        for output, expected in (
+                (wedged, "FX2 write error: LIBUSB_ERROR_TIMEOUT"),
+                (ABSENT_CABLE, "unable to open ftdi device: -3 (device not found)"),
+                (UNREADABLE_CHAIN, "Unable to read device chain - Hardware not attached"),
+                ("empty\nmissing FX2 firmware\nuse --probe-firmware with something\n", "missing FX2 firmware"),
+                (NANO_DETECT, ""),
+                (VALID_CHAIN, "")):
+            with self.subTest(expected=expected):
+                self.assertEqual(fpga_jtag.complaint(output), expected)
+
     def test_an_unreadable_jtagconfig_chain_is_parsed_and_holds_no_device(self):
         chains = fpga_jtag.parse_jtagconfig(UNREADABLE_CHAIN)
         self.assertEqual([chain["devices"] for chain in chains], [[], []])
@@ -875,6 +889,46 @@ class ProgrammerBackendTests(FpgaProgramTests):
                          "a named openFPGALoader cable never enumerates through Quartus")
         self.assertEqual(result["cable"], "usb-blasterII")
 
+    def test_two_cables_reporting_the_board_are_refused_on_either_backend(self):
+        """`exactly one cable` means the same on both backends, so read order never decides."""
+        sof = self.nano_attempt()
+        calls = []
+
+        def both(argv, cwd, log, timeout=60):
+            calls.append(argv)
+            # Two DE10-Nanos, one on each probe type: every cable holds the board.
+            output = NANO_DETECT if "--detect" in argv else UNREADABLE_CHAIN
+            (Path(cwd) / log).write_text(output)
+            return output
+
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=both):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+        message = str(caught.exception)
+        self.assertIn("found 2", message)
+        for cable in fpga_jtag.CABLES:
+            self.assertIn(cable, message, "the refusal names both matching cables")
+        detects = [call for call in calls if "--detect" in call]
+        self.assertEqual(len(detects), 2, "every cable is read before anything is selected")
+        self.assertTrue(all("--detect" in call or "jtagconfig" in call[0] for call in calls),
+                        "nothing was identified, converted or written")
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+        # The same ambiguity through jtagconfig, which prints both cables at once.
+        chain = VALID_CHAIN + VALID_CHAIN.replace("1)", "2)")
+
+        def ambiguous(argv, cwd, log, timeout=60):
+            (Path(cwd) / log).write_text(chain)
+            return chain
+
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=ambiguous):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, self.sof, quartus_bin="tools")
+        self.assertIn("found 2: 1, 2", str(caught.exception))
+
     def test_a_pinned_backend_and_the_other_one_s_cable_is_refused(self):
         for programmer, cable, fragment in (("quartus", "usb-blasterII", "jtagconfig chain index"),
                                             ("openfpgaloader", "1", "not an openFPGALoader cable")):
@@ -914,6 +968,20 @@ class ProgrammerBackendTests(FpgaProgramTests):
                     run.assert_not_called()
                 self.assertIn(fragment, str(caught.exception))
 
+    def test_the_flash_image_is_not_a_backend_choice(self):
+        """`--pof` names quartus_pgm's documented operation letters, not a programmer to pick."""
+        attempt = self.folder / "flash"
+        attempt.mkdir()
+        pof = FlashProgramTests.write_attempt(self, attempt, root=self.folder)
+        with patch("n2m.fpga_program.execute") as run, \
+                patch("n2m.cli.platform.system", return_value="Windows"):
+            code = main(["fpga", "program", "--pof", str(pof), "--programmer", "openfpgaloader",
+                         "--quartus-bin", "tools", "--tag", "flash-backend", "--json"], self.folder)
+            run.assert_not_called()
+        self.assertEqual(code, 1)
+        report = json.loads((self.folder / "workdir/builds/flash-backend/manifest.json").read_text())
+        self.assertIn("does not apply to --pof", report["error"])
+
     def test_a_failed_conversion_refuses_before_the_load(self):
         sof = self.nano_attempt()
         calls = []
@@ -935,7 +1003,10 @@ class ProgrammerBackendTests(FpgaProgramTests):
 
         def run(argv, cwd, log, timeout=60):
             calls.append(argv)
-            output = "some other tool 9.9\n" if "--Version" in argv else NANO_DETECT
+            if "--Version" in argv:
+                output = "some other tool 9.9\n"
+            else:
+                output = NANO_DETECT if argv[argv.index("-c") + 1] == "usb-blasterII" else ABSENT_CABLE
             (Path(cwd) / log).write_text(output)
             return output
 

@@ -312,6 +312,11 @@ def tagged(root, args, header, publish, progress=None):
                     folder.mkdir(parents=True)
                     operation_folder = folder
                     if args.pof:
+                        # The flash image is not a backend choice: only quartus_pgm
+                        # has the documented operation letters and timing for it.
+                        if args.programmer != "auto" and args.programmer != fpga_jtag.QUARTUS:
+                            raise ValueError(f"--programmer {args.programmer} does not apply to --pof; "
+                                             "the flash image is written by quartus_pgm")
                         progress.line(f"FPGA flash program{' (dry run)' if args.dry_run else ''}: {args.pof}")
                         result = program_flash(root, folder, Path(args.pof), quartus_bin=args.quartus_bin,
                                                cable=args.jtag_cable, timeout=args.timeout or FLASH_TIMEOUT,

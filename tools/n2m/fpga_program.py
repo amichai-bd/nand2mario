@@ -230,7 +230,7 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=
         progress.finish(label, started)
     with progress.stage("Discover JTAG chain", f"log: {result['chain_log']}"):
         chain = fpga_jtag.enumerate_chain(
-            root, folder, enumeration_runner(folder, fpga_jtag.DETECT_TIMEOUT, execute),
+            root, folder, enumeration_runner(folder, execute),
             programmer=programmer, quartus_bin=quartus_bin, openfpgaloader_bin=openfpgaloader_bin, cable=cable,
             probe_firmware=probe_firmware or fpga_jtag.firmware_path(quartus_bin), expected=expected)
     backend = chain["backend"]
@@ -240,9 +240,11 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=
     extra = {}
     if backend == fpga_jtag.OPENFPGALOADER:
         if expected["family"] in fpga_jtag.FLASH_ONLY_FAMILIES:
-            # Not a limit of this repository: openFPGALoader sends every MAX 10
+            # Not a limit of this repository: openFPGALoader routes every MAX 10
             # to its internal-flash path before it looks at the file or the
-            # requested mode, so there is no volatile configuration to ask for.
+            # requested mode, so there is no volatile configuration to ask for,
+            # and the `.rbf` this backend builds would erase and rewrite
+            # UFM1+UFM0 on a part its table knows. See FLASH_ONLY_FAMILIES.
             raise RuntimeError(f"openFPGALoader has no volatile configuration for the {expected['family']} "
                                f"{expected['device']}; its only path for that family writes the internal "
                                "flash. Program this board with quartus_pgm.")
@@ -328,7 +330,7 @@ def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_T
                 "scope": "record checks and command construction only; no JTAG access, flash unchanged"}
     with progress.stage("Discover JTAG chain", f"log: {logs['chain_log']}"):
         chain = fpga_jtag.enumerate_chain(
-            root, folder, enumeration_runner(folder, fpga_jtag.DETECT_TIMEOUT, execute), programmer=fpga_jtag.QUARTUS,
+            root, folder, enumeration_runner(folder, execute), programmer=fpga_jtag.QUARTUS,
             quartus_bin=quartus_bin, cable=cable, expected=expected)
     index = chain["index"]
     device_names = [device["name"] for device in chain["devices"] if device["name"]]

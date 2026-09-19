@@ -2587,12 +2587,22 @@ selects that backend. A pinned backend together with the other one's cable name
 is refused rather than resolved, because ignoring either half would use a
 programmer or a cable the operator did not choose. Omitted, every cable of every
 candidate backend is enumerated read-only and the one reporting the expected
-board is used. Each
-attempt keeps its own `chain-<backend>[-<cable>].log`; the attempt the programmer
-acted on becomes `chain.log`. An enumeration is bounded at 30 seconds
-independently of the programming timeout, and its exit status decides nothing:
+board is used. `--programmer` does not apply to `--pof`, which is refused rather
+than silently ignored: the flash image is written by `quartus_pgm`.
+
+Every cable a backend can reach is read before anything is selected, so
+`exactly one cable` means the same on either backend: `jtagconfig` prints them
+all in one command, and the openFPGALoader backend enumerates each cable and
+selects across the results rather than taking the first that answers. Each read
+keeps its own `chain-<backend>[-<cable>].log`; the read the programmer acted on
+becomes `chain.log`, and a refusal for two matching cables names both. An
+enumeration is bounded independently of the programming timeout, and its exit
+status decides nothing:
 `openFPGALoader --detect` returns success whatever it read, including an empty
-chain and a garbled one. A `jtagconfig` chain is a candidate only on a supported
+chain and a garbled one. `jtagconfig` keeps the 60-second bound it has always
+had, because the slow case is a cold Windows `jtagd`; `openFPGALoader --detect`
+talks to the cable itself and gets 30. A `jtagconfig` chain is a candidate only
+on a supported
 board's programming cable, which that tool names `USB-Blaster` for the FTDI cable
 and `DE-SoC` for the USB-Blaster II the SoC boards build in; a chain on other
 hardware is never selected, however its device reads.
@@ -2607,14 +2617,16 @@ package family letters, and an alternative matches when it is a prefix of the
 ordering code, because the ordering code continues with the package, speed and
 temperature grade no IDCODE carries. `10M50DA(.|ES)/10M50DC` and `10M50D` are the
 DE10-Lite's `10M50DAF484C7G`, `5CSEBA6(.|ES)/5CSEMA6` and `5CSE*A6/5CSX*6` the
-DE10-Nano's `5CSEBA6U23I7`, and `EP4CE115` and `EP3C120/EP4CE115/10CL120` a
+DE10-Nano's `5CSEBA6U23I7`, and `EP4CE115` and `EP3C120/EP4CE115/10CL120` an
 `EP4CE115F29C7`. Exactly one cable must hold exactly one matching device; other
 devices keep their place, because a Cyclone V SoC chain also carries its ARM
 debug access port, and the matched position is what addresses the write.
 
 `openFPGALoader` has no `.sof` reader, so the checked image is converted in the
 operation directory by `quartus_cpf -c <sof> <rbf>`, whose own success line is
-required, and the result records the raw image and its hash. Before that, the
+required, and the result records the raw image and its hash. This backend is
+therefore not a Quartus-free path: it needs `quartus_cpf` for that conversion and
+refuses without it, naming the tool. Before that, the
 programmer identifies itself: `openFPGALoader --Version` must print a
 recognisable `openFPGALoader v<release>` banner, recorded as `backend_version`
 and `backend_banner`. The repository does not ship this tool, so a record that
@@ -2711,9 +2723,10 @@ covers each [backend](#programming-backends): the fall-through from an
 unreadable Quartus chain to a converted volatile load, Quartus keeping the
 operation whenever its own chain reads, the MAX 10 refusal, a successful
 `openFPGALoader --detect` exit on a garbled chain refused before any write, a
-DE10-Lite image refused against a Cyclone V and the reverse, a failed
-conversion, a load without `Done`, and the device string of every registered
-board against what each tool prints for it. A board added to the registry
+DE10-Lite image refused against a Cyclone V and the reverse, two cables that both
+report the board refused on either backend with both named, `--programmer`
+refused with `--pof`, a failed conversion, a load without `Done`, and the device
+string of every registered board against what each tool prints for it. A board added to the registry
 without its own case fails that test rather than a board session. Every
 programmer is a fake and no test touches hardware. The board session that programs the flash and observes the
 menu at power-up is separate work under the

@@ -57,17 +57,18 @@ def executable(directory, name):
     return found
 
 
-def enumeration_runner(folder, timeout=60, runner=None):
+def enumeration_runner(folder, runner=None):
     """Run one read-only JTAG enumeration and return its output, successful or not.
 
     An enumeration writes nothing to a device, `openFPGALoader --detect`
     returns success whatever it read, and a probe that could not start has
     already written its own reason into its log. So the exit code decides
-    nothing here and the parsed identity decides everything. `runner` lets a
-    caller supply its own `execute`, so the command belongs to the module that
-    owns the operation.
+    nothing here and the parsed identity decides everything. Each enumeration
+    carries its own bound, because the tools differ in what a slow read means.
+    `runner` lets a caller supply its own `execute`, so the command belongs to
+    the module that owns the operation.
     """
-    def run(argv, log):
+    def run(argv, log, timeout):
         try:
             return (runner or execute)(argv, folder, log, timeout)
         except RuntimeError:
@@ -220,8 +221,7 @@ def jtag(root, folder, args):
     read.
     """
     chain = fpga_jtag.enumerate_chain(
-        root, folder, enumeration_runner(folder, fpga_jtag.DETECT_TIMEOUT),
-        programmer=getattr(args, "programmer", "auto"),
+        root, folder, enumeration_runner(folder), programmer=getattr(args, "programmer", "auto"),
         quartus_bin=args.quartus_bin, openfpgaloader_bin=getattr(args, "openfpgaloader_bin", None),
         cable=args.jtag_cable,
         probe_firmware=getattr(args, "probe_firmware", None) or fpga_jtag.firmware_path(args.quartus_bin))

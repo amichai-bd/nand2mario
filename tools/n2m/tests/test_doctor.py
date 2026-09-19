@@ -211,17 +211,24 @@ class DoctorTests(unittest.TestCase):
 
     def test_jtag_check_falls_through_to_openfpgaloader_and_names_it(self):
         """With the Quartus daemon unable to read a chain, the check uses openFPGALoader and says so."""
-        unreadable = ("1) DE-SoC [1-3.2]      Unable to read device chain - Hardware not attached\n"
-                      "2) USB-Blaster [1-2]   Unable to read device chain - JTAG chain broken\n")
+        unreadable = ("1) DE-SoC [1-3.2]\n  Unable to read device chain - Hardware not attached\n"
+                      "2) USB-Blaster [1-2]\n  Unable to read device chain - JTAG chain broken\n")
         detect = ("index 0:\n\tidcode   0x4ba00477\n\ttype     Cortex A9\n\tirlength 4\n"
                   "index 1:\n\tidcode 0x2d020dd\n\tmanufacturer altera\n\tfamily cyclone V Soc\n"
                   "\tmodel  5CSE*A6/5CSX*6\n\tirlength 10\n")
         args = SimpleNamespace(quartus_bin=None, jtag_cable=None, programmer="auto",
                               openfpgaloader_bin=None, probe_firmware="firmware.hex")
 
+        absent = "unable to open ftdi device: -3 (device not found)\nempty\n"
+
         def run(argv, cwd, log, timeout=60, env=None, expect_failure=False):
-            (Path(cwd) / log).write_text(unreadable if "jtagconfig" in argv[0] else detect)
-            return unreadable if "jtagconfig" in argv[0] else detect
+            if "jtagconfig" in argv[0]:
+                output = unreadable
+            else:
+                # Only the USB-Blaster II has a board on it, as on this host.
+                output = detect if argv[argv.index("-c") + 1] == "usb-blasterII" else absent
+            (Path(cwd) / log).write_text(output)
+            return output
 
         with patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
                 patch("n2m.doctor.execute", side_effect=run):
