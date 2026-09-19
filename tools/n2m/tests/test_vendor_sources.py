@@ -4,6 +4,8 @@ Every installation here is an original host-test tree and every digest is of
 original bytes; no vendor source is read or copied. The tracked ledger is only
 read, never written, because every test points `ledger_path` at its own file.
 """
+from contextlib import redirect_stdout
+import io
 import json
 from pathlib import Path
 import sys
@@ -177,6 +179,44 @@ class AcceptTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing installed vendor source"):
             vendor_sources.accept(self.bin, ["quartus/absent.v"], self.reason)
         self.assertEqual(len(read_json(self.ledger)["installations"]["linux"]["history"]), 1)
+
+
+class AcceptCommandTests(unittest.TestCase):
+    """`vendor accept` through the public command, with no build tag and no workspace."""
+
+    def test_the_command_records_the_change_and_reports_it(self):
+        temp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="vendor command ")))
+        root = vendor_support.installation(temp / "installation")
+        model = root / MODEL
+        model.parent.mkdir(parents=True)
+        model.write_text("// Original host-test bytes, not a vendor model.\n")
+        ledger = vendor_support.ledger(self, temp / "ledger.json", sources={MODEL: "0" * 64})
+        from n2m.cli import main
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            self.assertEqual(main(["vendor", "accept", "--quartus-bin", str(root / "quartus/bin"),
+                                   "--source", MODEL, "--reason",
+                                   "Reviewed against the vendor release notes for this test.",
+                                   "--json"], ROOT), 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(report["status"], "PASS")
+        self.assertEqual(report["platform"], "linux")
+        self.assertEqual(report["changed"], {MODEL: {"from": "0" * 64, "to": file_hash(model)}})
+        self.assertEqual(read_json(ledger)["installations"]["linux"]["sources"][MODEL], file_hash(model))
+
+    def test_the_command_reports_a_refusal_without_writing(self):
+        temp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="vendor command ")))
+        root = vendor_support.installation(temp / "installation")
+        ledger = vendor_support.ledger(self, temp / "ledger.json", sources={MODEL: "0" * 64})
+        from n2m.cli import main
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            self.assertEqual(main(["vendor", "accept", "--quartus-bin", str(root / "quartus/bin"),
+                                   "--source", MODEL, "--reason", "too short", "--json"], ROOT), 1)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn("needs a reason", report["error"])
+        self.assertEqual(read_json(ledger)["installations"]["linux"]["sources"], {MODEL: "0" * 64})
 
 
 class RequireAcceptedTests(unittest.TestCase):
