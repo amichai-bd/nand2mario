@@ -150,10 +150,12 @@ section records the decisions they implement.
   [provenance index](../tools/provenance.md#external-inputs); the
   [SDRAM contract](rtl/storage/MAS_sdram.md#operating-point) owns the
   operating point.
-- Workflow: all simulation under Verilator on Linux; a Questa compile-only gate
-  on Windows for `src/rtl` and `src/fpga` before every merge that touches them;
-  Quartus builds and loads from Windows; board programming and physical
-  sessions are authorized per slice on request within the
+- Workflow: all simulation under Verilator on Linux; a
+  [Questa compile-only gate](../tools/n2m/SPEC.md#questa-compile-gate) for
+  `src/rtl` and `src/fpga` before every merge that touches them. That gate and
+  Quartus builds follow their installed tools rather than a host operating
+  system, and programming runs from Windows PowerShell. Board programming and
+  physical sessions are authorized per slice on request within the
   [hardware authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization).
 - Order: contracts, Questa gate, SDRAM bring-up (simulation, fit, board memory
   test), slot loader over UART, loader mapper and KEY1 return, menu software,
@@ -255,7 +257,10 @@ the board approval required above. Simulation uses the target's supported
 backend under the builder's
 [simulator policy](../tools/n2m/SPEC.md#simulator-policy): Verilator on Linux, or
 native Questa on a host holding its executables and a runtime license. License
-failure is a simulation failure, never a skip; Quartus builds and programming run from Windows.
+failure is a simulation failure, never a skip. Quartus builds follow their
+installed tools; `fpga program` runs from Windows PowerShell because Linux JTAG
+access is unverified, under the builder's
+[command ownership](../tools/n2m/SPEC.md#command-ownership).
 Simulation cannot satisfy physical acceptance.
 Shared baseline evidence is recorded in
 [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).
