@@ -98,12 +98,20 @@ ADC_FIT_SUMMARY = ("Total memory bits : 0 / 1,677,312 ( 0 % )\n"
 class AdcGeneratorDiscoveryTests(unittest.TestCase):
     """The ADC path discovers the generator the way the PLL path already does.
 
-    The `.exe` suffix is a platform fact, so both hosts are exercised here. Only
-    the module's own `os` reference is replaced: patching the real `os.name` also
-    switches `pathlib` to `WindowsPath`, which this host cannot instantiate.
-    Windows cannot be run here; this is what stands in for it, and it is exact,
-    because the expression that served `fpga_pll.identity()` on Windows is the
-    one the ADC path now calls.
+    The `.exe` suffix is a platform fact, so both hosts are exercised here, and
+    only the module's own `os` reference is replaced. The reason is narrower than
+    "pathlib breaks under a patched host". Linux `pathlib` installs a
+    `WindowsPath.__new__` that raises, chosen once when `pathlib` was imported,
+    so no later patch lifts it. Patching the real `os.name` to "nt" does hand
+    back a `WindowsPath`, because `Path()` bypasses that guard, and `.name` and
+    `.is_file()` on the result still work. Re-instantiation is what raises: `/`,
+    `.parent` and `.resolve()` each call `WindowsPath(...)` again and fail with
+    `UnsupportedOperation`. `generator()` joins with `/`, so a broad patch would
+    raise there instead of measuring the fact.
+
+    Windows cannot be run here; this stands in for it, and it is exact because
+    the expression that served `fpga_pll.identity()` on Windows is the one the
+    ADC path now calls.
     """
 
     def host(self, name):
