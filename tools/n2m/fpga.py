@@ -18,18 +18,30 @@ from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_me
 # timing corners; no device is named in the build path itself.
 REGISTRIES = ("src/fpga/de10_lite/targets.json", "src/fpga/de10_nano/targets.json",
               "src/fpga/de2_115/targets.json")
-BOARD_FIELDS = {"name", "device", "family", "timing_corners", "specification"}
+BOARD_FIELDS = {"name", "device", "family", "timing_corners", "io_standards", "specification"}
+PIN_NAME = r"PIN_[A-Z]+[0-9]+"
+# The I/O standards a board registry may record, each with the Schmitt-trigger
+# input buffer of the same voltage where the vendor offers one. A recorded
+# standard reaches the QSF verbatim, so only these names are accepted, and a
+# port that wants a Schmitt input on a standard without one refuses the build.
+# What a board supplies on a pin is a board fact, so the value itself lives in
+# that board's registry against its specification page, never in this table.
+IO_STANDARDS = {"3.3-V LVTTL": "3.3 V SCHMITT TRIGGER", "2.5 V": None}
 # The one family whose vendor primitives and netlist atoms differ from the MAX 10
 # defaults; the family itself comes from the registry.
 CYCLONEV_FAMILY = "Cyclone V"
-# Which output-pin settings a family's fitter needs before it stops calling the
-# pin an incomplete I/O assignment (Quartus 15714). This is a family fact, not a
-# board one: the Cyclone V fitter names a missing drive strength and slew rate,
-# the Cyclone IV E fitter names a missing drive strength, and the MAX 10 fitter
-# names neither. A family absent here states nothing extra, which is how MAX 10
-# keeps the assignments it always had.
-OUTPUT_IO_COMPLETION = {"Cyclone V": ("CURRENT_STRENGTH_NEW \"8MA\"", "SLEW_RATE 1"),
-                        "Cyclone IV E": ("CURRENT_STRENGTH_NEW \"8MA\"",)}
+# Which output-pin settings a fitter needs before it stops calling the pin an
+# incomplete I/O assignment (Quartus 15714). The requirement follows the device
+# family and the declared standard together, not the board: on 3.3-V LVTTL the
+# Cyclone V fitter names a missing drive strength and slew rate and the
+# Cyclone IV E fitter names only the drive strength, but on 2.5 V the
+# Cyclone IV E fitter names the slew rate too, and the MAX 10 fitter names
+# neither. A pair absent here states nothing extra, which is how MAX 10 keeps the
+# assignments it always had; understating a pair is loud rather than silent,
+# because the fitter then reports 15714 and the build fails.
+OUTPUT_IO_COMPLETION = {("Cyclone V", "3.3-V LVTTL"): ("CURRENT_STRENGTH_NEW \"8MA\"", "SLEW_RATE 1"),
+                        ("Cyclone IV E", "3.3-V LVTTL"): ("CURRENT_STRENGTH_NEW \"8MA\"",),
+                        ("Cyclone IV E", "2.5 V"): ("CURRENT_STRENGTH_NEW \"8MA\"", "SLEW_RATE 1")}
 TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta", "quartus_eda")
 BUILD_ID_OVERRIDE_NOTICE = ("BUILD_ID pinned by --build-id for netlist comparison only; "
                             "this result is not a board image and programming refuses it")
@@ -110,7 +122,7 @@ def board_registries(root):
     for path in REGISTRIES:
         registry = json.loads((root / path).read_text(encoding="utf-8"))
         if (not isinstance(registry, dict) or set(registry) != {"schema_version", "board", "targets"}
-                or type(registry["schema_version"]) is not int or registry["schema_version"] != 2
+                or type(registry["schema_version"]) is not int or registry["schema_version"] != 3
                 or not isinstance(registry["targets"], dict)):
             raise ValueError("unsupported FPGA registry schema")
         board = registry["board"]
@@ -124,6 +136,18 @@ def board_registries(root):
                 or any(not isinstance(corner, str) or not re.fullmatch(r"(?:Slow|Fast) \d+mV -?\d+C", corner)
                        for corner in board["timing_corners"])):
             raise ValueError("unsupported FPGA board definition")
+        # What voltage this board supplies on each package pin it uses, grouped by
+        # the standard. The board specification cites the vendor provenance; the
+        # registry carries the value so the builder never assumes one.
+        standards = board["io_standards"]
+        if (not isinstance(standards, dict) or not standards or set(standards) - set(IO_STANDARDS)
+                or any(not isinstance(pins, list) or not pins
+                       or any(not isinstance(pin, str) or not re.fullmatch(PIN_NAME, pin) for pin in pins)
+                       for pins in standards.values())):
+            raise ValueError("unsupported FPGA board I/O standards")
+        recorded = [pin for pins in standards.values() for pin in pins]
+        if len(set(recorded)) != len(recorded):
+            raise ValueError("FPGA pin recorded with two I/O standards")
         # The board specification owns the pin and resource data; the registry links it.
         specification = root / board["specification"]
         if (not board["specification"].startswith("wiki/") or ".." in Path(board["specification"]).parts
@@ -185,14 +209,22 @@ def target_definition(root, name):
     for port in [*target["pins"], *target["virtual_pins"]]:
         if not isinstance(port, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[(?:\d+|\*)\])?", port):
             raise ValueError("invalid FPGA port")
-    if any(not isinstance(pin, str) or not re.fullmatch(r"PIN_[A-Z]+[0-9]+", pin) for pin in target["pins"].values()):
+    if any(not isinstance(pin, str) or not re.fullmatch(PIN_NAME, pin) for pin in target["pins"].values()):
         raise ValueError("invalid FPGA pin")
     if len(set(target["pins"].values())) != len(target["pins"]):
         raise ValueError("duplicate FPGA pin")
+    # Each pin declares what its own board supplies for that bank. A pin the board
+    # specification does not record refuses the build and names itself, because a
+    # default here would declare a voltage the board may not provide.
+    supplied = {pin: standard for standard, pins in board["io_standards"].items() for pin in pins}
+    unrecorded = sorted(f"{port} on {pin}" for port, pin in target["pins"].items() if pin not in supplied)
+    if unrecorded:
+        raise ValueError("no recorded I/O standard for FPGA pin: " + ", ".join(unrecorded))
     dependencies(root, target["sources"], synthesis=True)
     # The board's device-dependent facts travel with the target, so every later
     # stage reads them from the definition rather than from a constant.
-    return {**target, "family": board["family"], "timing_corners": board["timing_corners"]}
+    return {**target, "family": board["family"], "timing_corners": board["timing_corners"],
+            "io_standards": {port: supplied[pin] for port, pin in target["pins"].items()}}
 
 
 def identity_target(target):
@@ -219,6 +251,20 @@ SDRAM_CHAINS = (("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_seri
 def sdram_target(target):
     """An image that drives the DE10-Lite SDRAM: the bring-up top or any top pinned to DRAM_CLK."""
     return target.get("top") == SDRAM_TOP or "DRAM_CLK" in target.get("pins", {})
+
+
+def schmitt_trigger(target, port):
+    """The Schmitt-trigger input buffer for this port's recorded board standard.
+
+    The board record owns the pin's voltage; this selects the Schmitt input of
+    that same voltage, so the refined assignment cannot state a voltage the
+    board does not supply. A recorded standard without a Schmitt input refuses.
+    """
+    supplied = target["io_standards"][port]
+    variant = IO_STANDARDS[supplied]
+    if variant is None:
+        raise ValueError(f"no Schmitt-trigger input for {supplied} on FPGA port: {port}")
+    return variant
 
 
 def prepare(root, folder, target, build_id=None):
@@ -273,25 +319,30 @@ def prepare(root, folder, target, build_id=None):
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
     for port, pin in target["pins"].items():
+        # The standard is what this board supplies on this pin, from its registry.
         lines.extend([f'set_location_assignment {pin} -to {tcl_word(port)}',
-                      f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
+                      f'set_instance_assignment -name IO_STANDARD "{target["io_standards"][port]}" -to {tcl_word(port)}'])
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof", "v05_controls_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         if (target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-        # A family whose fitter needs more on an output pin states it here, so the
-        # requirement follows the device family rather than one board's target.
+        # A fitter that needs more on an output pin states it here, so the
+        # requirement follows the family and the declared standard rather than
+        # one board's target.
         if port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port):
-            for setting in OUTPUT_IO_COMPLETION.get(target["family"], ()):
+            for setting in OUTPUT_IO_COMPLETION.get((target["family"], target["io_standards"][port]), ()):
                 lines.append(f'set_instance_assignment -name {setting} -to {tcl_word(port)}')
         # SDRAM command, address, clock and data pins: 3.3-V LVTTL at 8 mA.
         if sdram_target(target) and port.startswith("DRAM_"):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+    # These two ports use the board's onboard Schmitt-trigger key input, so they
+    # restate their own recorded standard as its Schmitt variant after the bank
+    # assignment above. The voltage still comes from the board record.
     if target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target):
-        lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
+        lines.append(f'set_instance_assignment -name IO_STANDARD "{schmitt_trigger(target, "board_reset_n")}" -to board_reset_n')
     # KEY1 is the loader profile's return button, the same pin data as KEY0.
     if "key1_n" in target["pins"]:
-        lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to key1_n')
+        lines.append(f'set_instance_assignment -name IO_STANDARD "{schmitt_trigger(target, "key1_n")}" -to key1_n')
     for port in target["virtual_pins"]:
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
     (folder / "design.qsf").write_text('\n'.join(lines) + '\n', encoding="utf-8")

@@ -1,4 +1,5 @@
 """Independent report fixtures and stage failure/cache checks; no Quartus needed."""
+from collections import Counter
 import contextlib
 import io
 import json
@@ -48,12 +49,14 @@ class FpgaTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.board = {"name": "Fixture board", "device": "10M50DAF484C7G", "family": "MAX 10",
                       "timing_corners": ["Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"],
+                      "io_standards": {"3.3-V LVTTL": ["PIN_P11"]},
                       "specification": "wiki/fixture-board.md"}
         # The resolved definition the builder works with: the registry target plus
         # the board facts target_definition merges into it.
         self.target = {"device": self.board["device"], "top": "smoke", "sources": ["src/smoke.sv"],
                        "constraints": ["src/smoke.sdc"], "pins": {"clk": "PIN_P11"}, "virtual_pins": ["count[*]"],
-                       "family": self.board["family"], "timing_corners": self.board["timing_corners"]}
+                       "family": self.board["family"], "timing_corners": self.board["timing_corners"],
+                       "io_standards": {"clk": "3.3-V LVTTL"}}
         for name in ("src/smoke.sv", "src/smoke.sdc", "tools/build.py", "tools/n2m/fpga.py"):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,11 +73,11 @@ class FpgaTests(unittest.TestCase):
 
     def save_target(self):
         """Write every board registry; only the first one owns the fixture target."""
-        stored = {k: v for k, v in self.target.items() if k not in ("family", "timing_corners")}
+        stored = {k: v for k, v in self.target.items() if k not in ("family", "timing_corners", "io_standards")}
         for index, name in enumerate(fpga.REGISTRIES):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps({"schema_version": 2, "board": self.board,
+            path.write_text(json.dumps({"schema_version": 3, "board": self.board,
                                         "targets": {"smoke": stored} if index == 0 else {}}))
 
     def execute(self, argv, folder, log, timeout, record, build):
@@ -760,11 +763,13 @@ class FpgaTests(unittest.TestCase):
         self.assertEqual(qsf.count("SLEW_RATE"), 8)
         self.assertEqual(qsf.count("CURRENT_STRENGTH_NEW"), 8)
 
-    def test_each_family_states_only_the_output_settings_its_fitter_needs(self):
-        """Quartus 15714 is per family: the table drives it, not a board name."""
+    def test_each_family_and_standard_states_only_the_output_settings_its_fitter_needs(self):
+        """Quartus 15714 follows the family and the declared standard, not a board name."""
         repository = Path(__file__).resolve().parents[3]
+        # de2-smoke's LEDs are 2.5 V, which this family's fitter wants a slew rate on
+        # as well; the same family's 3.3-V LVTTL pins want only the drive strength.
         expected = {"nano-smoke": ("CURRENT_STRENGTH_NEW", "SLEW_RATE"),
-                    "de2-smoke": ("CURRENT_STRENGTH_NEW",),
+                    "de2-smoke": ("CURRENT_STRENGTH_NEW", "SLEW_RATE"),
                     "builder-smoke": ()}
         for name, settings in expected.items():
             with self.subTest(target=name):
@@ -782,12 +787,72 @@ class FpgaTests(unittest.TestCase):
                         value = '"8MA"' if setting == "CURRENT_STRENGTH_NEW" else "1"
                         self.assertIn(f'set_instance_assignment -name {setting} {value} -to "{port}"', qsf)
 
+    def test_each_pin_declares_the_standard_its_own_board_supplies(self):
+        """The QSF states the board's recorded voltage per pin, not one constant."""
+        repository = Path(__file__).resolve().parents[3]
+        expected = {"builder-smoke": {"clk": "3.3-V LVTTL"},
+                    "nano-smoke": {f"leds[{index}]": "3.3-V LVTTL" for index in range(8)},
+                    # Only CLOCK_50 is a 3.3 V pin on the DE2-115; KEY[0] follows JP7
+                    # and LEDR[7:0] sit in bank 7, both 2.5 V.
+                    "de2-smoke": {"clk_reference": "3.3-V LVTTL", "key0_n": "2.5 V",
+                                  **{f"leds[{index}]": "2.5 V" for index in range(8)}}}
+        for name, standards in expected.items():
+            with self.subTest(target=name):
+                definition = fpga.target_definition(repository, name)
+                self.assertEqual({port: definition["io_standards"][port] for port in standards}, standards)
+                folder = self.build / ("standard-" + name)
+                folder.mkdir(parents=True)
+                fpga.prepare(repository, folder, definition)
+                qsf = (folder / "design.qsf").read_text(encoding="utf-8")
+                for port, standard in definition["io_standards"].items():
+                    quoted = fpga.tcl_word(port)
+                    self.assertIn(f'set_instance_assignment -name IO_STANDARD "{standard}" -to {quoted}', qsf)
+                    self.assertEqual(qsf.count(f'-name IO_STANDARD "{standard}" -to {quoted}'), 1)
+                # Every pin states one standard, and no pin states a standard its board does not record.
+                stated = [line.split('"')[1] for line in qsf.splitlines() if "-name IO_STANDARD" in line]
+                self.assertEqual(sorted(stated), sorted(definition["io_standards"].values()))
+        de2 = fpga.target_definition(repository, "de2-smoke")
+        self.assertEqual(sorted(Counter(de2["io_standards"].values()).items()), [("2.5 V", 9), ("3.3-V LVTTL", 1)])
+
+    def test_a_pin_with_no_recorded_standard_refuses_the_build_and_names_it(self):
+        """A silent default would declare a voltage the board may not supply."""
+        self.target["pins"] = {"clk": "PIN_P11", "count_out": "PIN_A7"}
+        self.save_target()
+        with self.assertRaises(ValueError) as error:
+            fpga.target_definition(self.root, "smoke")
+        self.assertEqual(str(error.exception), "no recorded I/O standard for FPGA pin: count_out on PIN_A7")
+        self.board["io_standards"] = {"3.3-V LVTTL": ["PIN_P11"], "2.5 V": ["PIN_A7"]}
+        self.save_target()
+        self.assertEqual(fpga.target_definition(self.root, "smoke")["io_standards"],
+                         {"clk": "3.3-V LVTTL", "count_out": "2.5 V"})
+
+    def test_a_schmitt_input_takes_the_voltage_its_board_records(self):
+        """The Schmitt assignment refines the recorded standard; it never renames the voltage."""
+        repository = Path(__file__).resolve().parents[3]
+        definition = fpga.target_definition(repository, "sdram-proof")
+        self.assertEqual(definition["io_standards"]["board_reset_n"], "3.3-V LVTTL")
+        self.assertEqual(fpga.schmitt_trigger(definition, "board_reset_n"), "3.3 V SCHMITT TRIGGER")
+        fpga.prepare(repository, self.build, definition, build_id="ab" * 16)
+        qsf = (self.build / "design.qsf").read_text(encoding="utf-8")
+        self.assertIn('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n', qsf)
+        # A board that supplies 2.5 V on that pin has no Schmitt input to select,
+        # so the build refuses rather than declaring a 3.3 V buffer.
+        moved = {**definition, "io_standards": {**definition["io_standards"], "board_reset_n": "2.5 V"}}
+        with self.assertRaisesRegex(ValueError, "no Schmitt-trigger input for 2.5 V on FPGA port: board_reset_n"):
+            fpga.prepare(repository, self.build, moved, build_id="ab" * 16)
+
     def test_registry_schema_and_board_definition_are_checked(self):
         self.assertEqual(sorted(fpga.board_registries(self.root)), ["smoke"])
-        broken = [{"schema_version": 1}, {"timing_corners": ["Slow 1200mV 85C", "Slow 1200mV 0C"]},
+        broken = [{"schema_version": 1}, {"schema_version": 2},
+                  {"timing_corners": ["Slow 1200mV 85C", "Slow 1200mV 0C"]},
                   {"timing_corners": ["Slow 1200mV 85C", "Slow 1200mV 0C", "warm"]},
                   {"device": "10M50DAF484C7G;pgm"}, {"family": 'MAX 10" -name DEVICE bad'},
-                  {"specification": "wiki/absent.md"}, {"specification": "src/smoke.sv"}, {"name": ""}]
+                  {"specification": "wiki/absent.md"}, {"specification": "src/smoke.sv"}, {"name": ""},
+                  {"io_standards": {}}, {"io_standards": {"1.8 V": ["PIN_P11"]}},
+                  {"io_standards": {'3.3-V LVTTL" -to bad -name X': ["PIN_P11"]}},
+                  {"io_standards": {"3.3-V LVTTL": []}}, {"io_standards": {"3.3-V LVTTL": ["P11"]}},
+                  {"io_standards": {"3.3-V LVTTL": "PIN_P11"}},
+                  {"io_standards": {"3.3-V LVTTL": ["PIN_P11"], "2.5 V": ["PIN_P11"]}}]
         for change in broken:
             with self.subTest(change=change):
                 registry = json.loads(self.registry.read_text())
@@ -799,7 +864,7 @@ class FpgaTests(unittest.TestCase):
         # A name two boards claim resolves to neither.
         self.save_target()
         second = self.root / fpga.REGISTRIES[1]
-        second.write_text(json.dumps({"schema_version": 2, "board": self.board,
+        second.write_text(json.dumps({"schema_version": 3, "board": self.board,
                                       "targets": {"smoke": json.loads(self.registry.read_text())["targets"]["smoke"]}}))
         with self.assertRaisesRegex(ValueError, "used by two boards"):
             fpga.target_definition(self.root, "smoke")

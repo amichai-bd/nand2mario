@@ -53,6 +53,16 @@ own TX/RX labeling and by a successful `PING` round trip (below); a swapped
 pair produces silence, not a false pass, because `PING` requires a matching
 response sequence and CRC.
 
+The 3.3 V above is a per-pin record, not an assumption. The
+[DE10-Lite registry](../../src/fpga/de10_lite/targets.json) records
+`3.3-V LVTTL` against every package pin this repository places on this board, and
+[`fpga.py`](../../tools/n2m/fpga.py) takes each assignment from there; a pin the
+registry does not record refuses the build instead of defaulting to a voltage.
+`board_reset_n` and `key1_n` restate that same recorded voltage as its
+Schmitt-trigger input, which is the board's onboard KEY buffer. This is the one
+board where the declared standard has been exercised physically: every image in
+the [run record](#run-record) below was programmed with it and answered.
+
 Record measured supply, ground continuity, and connector identity in each
 physical run's evidence, per the [electrical boundary](fpga-controls.md#electrical-boundary)
 precedent for the separate ADC/button header. No unidentified module, 5 V

@@ -166,7 +166,22 @@ its `USER_IO[6]` is `PIN_AF17`, which is `ARDUINO_IO[8]`.
 
 All pins are single-ended and use the `3.3-V LVTTL` I/O standard, the same
 standard and voltage as the DE10-Lite pins in
-[board bring-up](board-bring-up.md#wiring-voltage-ground-and-reset-polarity).
+[board bring-up](board-bring-up.md#wiring-voltage-ground-and-reset-polarity). The
+[DE10-Nano registry](../../src/fpga/de10_nano/targets.json) records that standard
+against every package pin this repository places here, and
+[`fpga.py`](../../tools/n2m/fpga.py) takes each assignment from there; a pin the
+registry does not record refuses the build instead of defaulting to a voltage.
+Nothing on this board has been programmed, so the standard is declared and not
+observed.
+
+Six of the nine files above state an `IO_STANDARD` for at least one of the twelve
+package pins this repository places, and every one of those statements is 3.3 V:
+`3.3-V LVTTL` from schoolMIPS, riscV, de10-nano-examples and superrt, and
+`3.3-V LVCMOS` — the same supply voltage, a different input buffer — on four pins
+from c5soc_opencl and two from Matmul. Each of the twelve carries two to five such
+statements, and none names another voltage. That is the grading behind the
+recorded value: unanimous on the voltage, with the buffer standard varying between
+two 3.3 V standards this device offers.
 
 ### Vendor pin table
 

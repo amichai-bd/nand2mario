@@ -237,7 +237,7 @@ class ProfileTests(unittest.TestCase):
             self.write(self.root / name, (REPO / name).read_text(encoding='utf-8'))
         self.write(self.root / registry['board']['specification'], 'fixture board specification\n')
         for name in fpga.REGISTRIES:
-            self.write(self.root / name, json.dumps({'schema_version': 2, 'board': registry['board'],
+            self.write(self.root / name, json.dumps({'schema_version': 3, 'board': registry['board'],
                                                      'targets': {self.target: stored} if name == registry_path else {}}))
         self.write(self.root / 'tools/build.py', '# synthetic source\n')
         self.write(self.root / 'tools/n2m/fixture.py', '# synthetic source\n')

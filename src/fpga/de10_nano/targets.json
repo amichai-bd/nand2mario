@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "board": {
     "name": "DE10-Nano",
     "device": "5CSEBA6U23I7",
@@ -10,6 +10,22 @@
       "Fast 1100mV 100C",
       "Fast 1100mV -40C"
     ],
+    "io_standards": {
+      "3.3-V LVTTL": [
+        "PIN_V11",
+        "PIN_V15",
+        "PIN_V16",
+        "PIN_W14",
+        "PIN_W15",
+        "PIN_Y16",
+        "PIN_Y17",
+        "PIN_AA23",
+        "PIN_AA24",
+        "PIN_AE26",
+        "PIN_AF26",
+        "PIN_AH17"
+      ]
+    },
     "specification": "wiki/src/de10-nano-board.md"
   },
   "targets": {

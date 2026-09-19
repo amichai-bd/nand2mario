@@ -189,11 +189,11 @@ its digest. Its appendix states version V1.02 and a 2010 copyright.
 ### I/O voltage, and what the flow proof declares
 
 This is the one place the DE2-115 differs materially from both existing boards,
-and it bounds what a DE2-115 fit is evidence of.
+and it is why each pin's I/O standard is a per-board record rather than a
+constant.
 
-The DE10-Lite and DE10-Nano put every pin this repository uses on 3.3 V, and
-[`fpga.py`](../../tools/n2m/fpga.py) writes `IO_STANDARD "3.3-V LVTTL"` on every
-assigned pin of every board. On the DE2-115 the vendor table does not agree:
+The DE10-Lite and DE10-Nano put every pin this repository uses on 3.3 V. The
+DE2-115 does not, and the vendor table states it per signal:
 
 | Group | Vendor I/O standard | FPGA bank |
 |---|---|---|
@@ -203,19 +203,29 @@ assigned pin of every board. On the DE2-115 the vendor table does not agree:
 | `GPIO` expansion header, `CLOCK3_50`, `SMA_CLKOUT` | set by header JP6, default 3.3 V | 4 |
 | RS-232, VGA, SDRAM, SRAM, flash, audio, I2C, PS/2, SD card, USB, `EX_IO` | 3.3 V | various |
 
-JP7 supplies VCCIO5 and VCCIO6 and defaults to 2.5 V; JP6 supplies VCCIO4 and
-defaults to 3.3 V. So of `de2-smoke`'s ten pins, only `CLOCK_50` is a 3.3 V pin
-on the board: `KEY[0]` sits in a bank the board powers at 2.5 V by default, and
-`LEDR[7:0]` sit in a bank the vendor table fixes at 2.5 V.
+JP7 supplies VCCIO5 and VCCIO6 and its default position is 2.5 V; JP6 supplies
+VCCIO4 and its default position is 3.3 V. Both are jumper positions read from the
+user manual, not readings of this board. So of `de2-smoke`'s ten pins, only
+`CLOCK_50` is a 3.3 V pin: `KEY[0]` sits in a bank JP7 powers at 2.5 V in that
+default position, and `LEDR[7:0]` sit in a bank the vendor table fixes at 2.5 V.
 
-The fit therefore declares a VCCIO the board does not supply on nine of its ten
-pins. The fitter reports bank 7 at 3.3 V because the assignment asked for it, and
-that is a statement about the project, not about the board. It does not weaken
-the flow proof, which is a Cyclone IV E build-path result and explicitly not a
-board image, and it is exactly why no DE2-115 image may be programmed on the
-strength of this fit. A per-pin I/O standard for this board is
-[#862](https://github.com/amichai-bd/nand2mario/issues/862), which must be
-settled before any DE2-115 image is programmed.
+[`src/fpga/de2_115/targets.json`](../../src/fpga/de2_115/targets.json) records
+exactly that, grouping this board's package pins by the standard it supplies, and
+[`fpga.py`](../../tools/n2m/fpga.py) takes each assignment from that record, so
+`de2-smoke` declares `2.5 V` on those nine pins and `3.3-V LVTTL` only on
+`CLOCK_50`. A pin no board record names refuses the build and names itself;
+nothing defaults.
+
+The [fit](#targets) reports those banks accordingly: `I/O Bank Usage` gives bank
+2 at 3.3 V for `CLOCK_50`, bank 6 at 2.5 V for `KEY[0]` and bank 7 at 2.5 V for
+`LEDR[7:0]`, and its per-pin tables give `2.5 V` on all nine.
+
+**What that settles, and what it does not.** The project file now states the
+board's documented voltage instead of one the board does not supply. It remains a
+Cyclone IV E build-path result and not a board image. The 2.5 V on `KEY[0]` is
+JP7's documented default position, so reading JP7 on this board belongs to the
+programming authorization along with the rest of physical verification. Nothing
+has been programmed onto a DE2-115.
 
 ## Pin groups
 
@@ -289,8 +299,9 @@ why the flow proof drives `LEDR[7:0]` and not the green bank.
 
 [`src/fpga/de2_115/targets.json`](../../src/fpga/de2_115/targets.json) registers
 this board. The registry names the device, the family, the analysed timing
-corners and this page; the
-[builder contract](../tools/n2m/SPEC.md#fpga-build) owns that schema.
+corners, the [I/O standard each package pin is supplied at](#io-voltage-and-what-the-flow-proof-declares)
+and this page; the [builder contract](../tools/n2m/SPEC.md#fpga-build) owns that
+schema.
 
 `de2-smoke` is the flow proof: the counter in
 [`de2_smoke.sv`](../../src/fpga/de2_115/de2_smoke.sv) driving `LEDR[7:0]` from
@@ -304,18 +315,18 @@ stated only in the tables above.
 
 Quartus analyses this commercial device at three corners, `Slow 1200mV 85C`,
 `Slow 1200mV 0C` and `Fast 1200mV 0C`, and the builder requires setup, hold and
-minimum-pulse-width slack at each. It also requires a drive strength on every
-output pin of a Cyclone IV E target, because this family reports an output pin
-without one as an incomplete I/O assignment; Cyclone V wants a slew rate as well
-and MAX 10 wants neither, so the
-[builder contract](../tools/n2m/SPEC.md#fpga-build) holds that per family rather
-than per board.
+minimum-pulse-width slack at each. It also requires a drive strength and a slew
+rate on each of this target's 2.5 V LED pins, because the Cyclone IV E fitter
+reports a 2.5 V output pin without both as an incomplete I/O assignment, where
+the same fitter wants only the drive strength on 3.3-V LVTTL. That requirement
+follows the family and the declared standard together, not the board, so the
+[builder contract](../tools/n2m/SPEC.md#fpga-build) holds it there.
 
 The fit places 34 logic elements, 42 registers and ten pins, with positive slack
 at all three corners, no unconstrained path, no ignored constraint and no
 structural timing problem. Two diagnostics are classified rather than hidden: the
-fitter's AN 447 caution that two pins — the two 3.3-V LVTTL inputs `clk_reference`
-and `key0_n` — must meet the 3.3/3.0/2.5-V interface requirements, and the
+fitter's AN 447 caution that one pin — `clk_reference`, the only 3.3-V LVTTL pin
+this target places — must meet the 3.3/3.0/2.5-V interface requirements, and the
 LogicLock subscription notice every board's fit carries. The DE10-Lite fit
 carries the same AN 447 caution with `MAX 10` in the application note's title.
 
@@ -331,8 +342,9 @@ image must not be.
   from it.
 - [`tools/n2m/tests/test_fpga.py`](../../tools/n2m/tests/test_fpga.py) covers the
   registry schema, the per-board device and family in the generated project
-  files, and that each family states only the output settings its own fitter
-  needs.
+  files, the I/O standard each pin declares against its board's record, the
+  refusal of a pin with no recorded standard, and that each family and standard
+  states only the output settings its own fitter needs.
 - `python3 tools/build.py fpga build de2-smoke` must PASS with its fit, timing and
   assembly reports retained; `de2-invalid` must FAIL. Both are recorded in the
   [builder contract](../tools/n2m/SPEC.md#fpga-build).
