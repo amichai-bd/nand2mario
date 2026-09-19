@@ -2019,7 +2019,7 @@ vendor bytes produced it and whether that installation had recorded them before.
 The `windows` entry was seeded from the digests this repository already recorded
 for the installation it was developed on, so no check that installation passed
 before is weaker now. Every vendor file a stage records goes through the ledger
-except two named cases: the seven Quartus executables tool discovery probes,
+except two named cases: the six Quartus executables tool discovery probes,
 whose control is the matching `--version` banner it records for each of them,
 and the simulation model on a
 [family exempt from it](#de10-nano-uart-endpoint-image). The megafunction and IP
