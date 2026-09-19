@@ -101,17 +101,15 @@ def verify_memory(folder):
     return {"stores": len(seen), "blocks": TOTAL_BLOCKS, "bits": TOTAL_BITS}
 
 
-def _live_input(ports, values):
-    """The one net a LUT reads that is not a vendor constant, with its polarity."""
-    live = set()
-    for port in LUT_INPUTS:
-        value = ports.get(port, "")
-        net = value.removeprefix("!")
-        if net in ("gnd", "vcc", ""):
-            continue
-        if net not in values:
-            raise ValueError("control LUT has unrelated inputs")
-        live.add(net)
+def _live_input(ports):
+    """The one net a LUT reads besides the vendor constants.
+
+    Every input must be stated, so an unexpected instance shape fails here
+    instead of being read as a grounded input.
+    """
+    if any(port not in ports for port in LUT_INPUTS):
+        raise ValueError("control LUT does not state every input")
+    live = {ports[port].removeprefix("!") for port in LUT_INPUTS} - {"gnd", "vcc"}
     if len(live) != 1:
         raise ValueError("control LUT does not read exactly one net")
     return live.pop()
@@ -133,14 +131,14 @@ def _unary_lut(cells, params, cell, output):
             or any(ports.get(port) != "" for port in ("sumout", "cout", "shareout"))
             or ports.get("combout") != output or ports.get("datag", "gnd") != "gnd"):
         raise ValueError("control unary LUT mode differs")
-    source = _live_input(ports, {ports.get(p, "").removeprefix("!") for p in LUT_INPUTS})
+    source = _live_input(ports)
     mask = int(mask[4:], 16)
     results = []
     for bit in (0, 1):
-        values = {source: bit, "gnd": 0, "vcc": 1, "": 0}
+        values = {source: bit, "gnd": 0, "vcc": 1}
         index = 0
         for shift, port in enumerate(LUT_INPUTS):
-            value = ports.get(port, "")
+            value = ports[port]
             index |= (values[value.removeprefix("!")] ^ value.startswith("!")) << shift
         results.append((mask >> index) & 1)
     if results not in ([0, 1], [1, 0]):

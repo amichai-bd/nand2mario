@@ -215,6 +215,10 @@ class NetlistTests(unittest.TestCase):
             # complement the register's reset value requires.
             "constant": {"lut_mask": "64'h0000000000000000"},
             "polarity": {"lut_mask": "64'h0F0F0F0F0F0F0F0F"},
+            # An instance that does not state every input is an unexpected shape,
+            # not a grounded input.
+            "partial": {"lut_inputs": {"dataa": "gnd", "datab": "gnd", "datac": "!" + buffered,
+                                       "datad": "gnd", "datae": "gnd"}},
         }
         for name, changes in cases.items():
             with self.subTest(case=name), self.assertRaises(ValueError):
