@@ -460,8 +460,10 @@ from `FPGA_CLK1_50`, with `KEY[0]` synchronized through two flops into an
 active-high reset. It uses ten pins, each stated by three or more sources:
 `FPGA_CLK1_50`, `KEY[0]` and `LED[7:0]`. `nano-invalid` shares that source and
 deliberately declares a negative clock period, so it must fail. The registry
-states those ten pin numbers because the builder needs them as machine-readable
-assignments; every other pin on this board is stated only in the table above.
+states a target's own pin numbers because the builder needs them as
+machine-readable assignments: those ten, plus the two
+[UART pins](#uart-endpoint-pins) below. Every other pin on this board is stated
+only in the tables above, and every pin's provenance is stated only there.
 
 Quartus analyses this industrial device at four corners, `Slow 1100mV 100C`,
 `Slow 1100mV -40C`, `Fast 1100mV 100C` and `Fast 1100mV -40C`, and the builder
