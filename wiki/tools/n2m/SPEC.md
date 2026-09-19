@@ -2641,11 +2641,24 @@ the bitstream was shifted, not that configuration completed: openFPGALoader does
 not read `CONF_DONE` back, and the result's `scope` says so.
 
 This backend refuses the MAX 10 family outright. openFPGALoader v1.1.1
-`Altera::program` sends every MAX 10 device to `max10_program` before it looks at
-the file or the requested mode, and `max10_program` reads the image with its POF
-parser and writes the internal flash, so there is no volatile MAX 10
-configuration to ask for and a `.sof` offered under `--write-sram` would be a
-flash write. The DE10-Lite stays with `quartus_pgm`, and the refusal names it.
+`Altera::program` routes on family before it looks at the file or the requested
+mode, so the `MEM_MODE` its constructor does set for an `.rbf` under
+`--write-sram` is discarded and there is no volatile MAX 10 path to select.
+`max10_program` then branches on the extension: only a `.pof` goes through
+`POFParser`, and anything else — including the `.rbf` this backend builds — goes
+to `max10_program_ufm`, which reads it with `RawParser` and, with no
+`--flash-sector` given, calls `max10_flow_erase` with mask `0x3` and `writeXFM`.
+That erases and rewrites UFM1+UFM0, the internal flash region this repository's
+[game library](#flash-library-image) lives in.
+
+On the DE10-Lite's own part that release aborts before any flash access, because
+`max10_memory_map` holds only `10M08SAU`, `10M16SA` and `10M25SA` and the 10M50's
+IDCODE `0x031050dd` is not among them: `Model not supported. Please update
+max10_memory_map.`. That makes this refusal necessary rather than redundant — the
+only thing between a `.sof` and a UFM erase on the qualified board is a missing
+table entry any later release may fill — so the family is refused outright and no
+release is trusted into that path. The MAX 10 stays with `quartus_pgm`, and the
+refusal names it.
 
 ### Flash programming
 
