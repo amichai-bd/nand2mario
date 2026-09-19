@@ -334,7 +334,9 @@ def enumerate_chain(root, folder, run, *, programmer="auto", quartus_bin=None, o
     The chosen attempt's log becomes `chain.log`: it is the enumeration the
     programmer acted on, and every rejected attempt keeps its own name.
     """
-    boards = registered_boards(root)
+    # With an image there is one expected board; without one, every registered
+    # board is a candidate and the registry is read for them.
+    boards = registered_boards(root) if expected is None else {}
     attempts, missing = _attempts(programmer, quartus_bin, openfpgaloader_bin, cable, probe_firmware)
     if not attempts:
         raise RuntimeError("no JTAG programmer found: missing " + " and ".join(missing)
