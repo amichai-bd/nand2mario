@@ -405,6 +405,8 @@ def _explain_code(code, lines):
                    "width 1. The formal width of the signal in the module is 2.  The extra bits will be left "
                    "dangling without any fan-out logic."): 2}
         return _explain_lines(code, lines, wanted, DANGLING_REASON)
+    if code != "14320":
+        raise ValueError("no Cyclone V clocking explanation for diagnostic " + code)
     wanted = {f'Synthesized away node "{wrapper}|{node}"': 1
               for wrapper in FIT_WRAPPERS.values() for node in REMOVED_NODES}
     return _explain_lines(code, lines, wanted, REMOVED_REASON)

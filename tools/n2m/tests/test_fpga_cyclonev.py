@@ -169,6 +169,26 @@ class VcoRangeTests(unittest.TestCase):
             self.assertEqual(float(cv.physical_vco(cv.SYSTEM_MODULE)), 600.0)
             cv.validate(cv.DEFINITION)
 
+    def test_a_divider_is_stated_as_the_half_periods_the_hardware_programs(self):
+        """The values a real `ip-generate` run emits for each divide shape."""
+        for value, expected in {
+                # M=26 and C=26 in the shipped system PLL: even, split evenly.
+                26: {"hi": "13", "lo": "13", "bypass": '"false"', "odd": '"false"'},
+                # M=63 and C=25 in the shipped pixel PLL: odd, split unevenly.
+                63: {"hi": "32", "lo": "31", "bypass": '"false"', "odd": '"true"'},
+                25: {"hi": "13", "lo": "12", "bypass": '"false"', "odd": '"true"'},
+                5: {"hi": "3", "lo": "2", "bypass": '"false"', "odd": '"true"'},
+                # A divide of one bypasses the counter with both halves parked.
+                1: {"hi": "256", "lo": "256", "bypass": '"true"', "odd": '"false"'},
+        }.items():
+            with self.subTest(value=value):
+                self.assertEqual(cv._counter_halves("m_cnt", value),
+                                 {"m_cnt_hi_div": expected["hi"], "m_cnt_lo_div": expected["lo"],
+                                  "m_cnt_bypass_en": expected["bypass"],
+                                  "m_cnt_odd_div_duty_en": expected["odd"]})
+        self.assertEqual(set(cv._counter_halves("c_cnt", 26, index=0)),
+                         {"c_cnt_hi_div0", "c_cnt_lo_div0", "c_cnt_bypass_en0", "c_cnt_odd_div_duty_en0"})
+
     def test_counters_that_miss_the_contract_frequency_are_refused(self):
         with self.configured(cv.SYSTEM_MODULE, (26, 2, 25, 1, 20, 4000)):
             with self.assertRaises(ValueError) as error:
