@@ -1329,8 +1329,9 @@ and never falls back between the two. The compile set is fixed by the tree:
 1. every `.sv` file under `src/rtl`, packages first, each package after the
    packages it names with `::`; a package cycle fails before any tool runs;
 2. every source of every target in every board registry, the
-   [DE10-Lite](../../../src/fpga/de10_lite/targets.json) and the
-   [DE10-Nano](../../../src/fpga/de10_nano/targets.json), validated by the
+   [DE10-Lite](../../../src/fpga/de10_lite/targets.json), the
+   [DE10-Nano](../../../src/fpga/de10_nano/targets.json) and the
+   [DE2-115](../../../src/fpga/de2_115/targets.json), validated by the
    same [target definition](#fpga-build) and synthesis
    [dependency resolver](#hdl-includes) as `fpga build`. Every registered top
    is elaborated once, whichever board registers it;
@@ -2070,6 +2071,8 @@ python3 tools/build.py fpga build nano-clocking --quartus-bin <directory> --tag 
 python3 tools/build.py fpga build nano-clocking-invalid --quartus-bin <directory> --tag nano-clocking-invalid --json
 python3 tools/build.py fpga build nano-uart --quartus-bin <directory> --tag nano-uart --json
 python3 tools/build.py fpga build nano-uart-invalid --quartus-bin <directory> --tag nano-uart-invalid --json
+python3 tools/build.py fpga build de2-smoke --quartus-bin <directory> --tag de2-smoke --json
+python3 tools/build.py fpga build de2-invalid --quartus-bin <directory> --tag de2-invalid --json
 ```
 
 `--quartus-bin` names the directory holding `quartus_sh`, `quartus_map`,
@@ -2091,6 +2094,11 @@ timebase on virtual ports, and the invalid target names a MAX 10 ALTPLL clock as
 a checked endpoint that no Cyclone V netlist contains.
 `nano-uart` and `nano-uart-invalid` are that board's
 [UART endpoint pair](#de10-nano-uart-endpoint-image).
+`de2-smoke` and `de2-invalid` are the flow-proof pair for the DE2-115: the
+[flow proof](../../src/de2-115-board.md#targets) fits a counter on that board's
+red LEDs, and it places a drive strength on each LED pin because Cyclone IV E
+reports an output pin without one as an incomplete I/O assignment. It has no
+PLL.
 Each invalid target must FAIL with exit 1, naming the missing or wrong endpoint;
 neither ever becomes a passing build. No command programs the board,
 opens UART, or proves physical operation. Design-specific PLL/frame/fit evidence
@@ -2099,8 +2107,9 @@ belongs to the [clocking](../../src/rtl/clocking/MAS_clocking.md) and
 [timing contract](../../src/clocks-resets-cdc.md).
 
 One registry per supported board: the
-[DE10-Lite registry](../../../src/fpga/de10_lite/targets.json) and the
-[DE10-Nano registry](../../../src/fpga/de10_nano/targets.json). Each has exactly
+[DE10-Lite registry](../../../src/fpga/de10_lite/targets.json), the
+[DE10-Nano registry](../../../src/fpga/de10_nano/targets.json) and the
+[DE2-115 registry](../../../src/fpga/de2_115/targets.json). Each has exactly
 `schema_version: 2`, a `board` object and a `targets` object, and target names
 are unique across boards, so one name still selects one board. The `board`
 object has exactly `name`, `device`, `family`, `timing_corners` and
@@ -2109,7 +2118,8 @@ name, at least three distinct analysed timing corners of the form
 `<Slow|Fast> <n>mV <t>C`, and the repository-relative `wiki/` page that owns
 that board's pin and resource data
 ([DE10-Lite](../../src/board-bring-up.md),
-[DE10-Nano](../../src/de10-nano-board.md)). A registry whose specification page
+[DE10-Nano](../../src/de10-nano-board.md),
+[DE2-115](../../src/de2-115-board.md)). A registry whose specification page
 is missing fails. Each named target has exactly `device`, `top`, ordered
 nonempty `sources` and `constraints` lists, a `pins` port-to-package-pin
 object, and a `virtual_pins` port-pattern list. A target's `device` must equal
@@ -2119,7 +2129,14 @@ and evidence check reads them from it, so no device is named in the build path.
 Inputs are unique existing repository-relative `.sv` and `.sdc` paths under
 `src/`, without traversal or symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
 names permit an optional numeric or wildcard array index. Physical assignments
-use 3.3-V LVTTL. HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
+use 3.3-V LVTTL. An output pin also states whatever its device family's fitter
+needs before it stops calling the pin an incomplete I/O assignment (Quartus
+15714): Cyclone V a drive strength and a slew rate, Cyclone IV E a drive
+strength, MAX 10 neither. That table is per family, not per board, and a family
+absent from it states nothing extra. On the DE2-115 the vendor table puts most
+pins on banks the board does not power at 3.3 V, which is why its fit is a
+build-path result and
+[not a programmable image](../../src/de2-115-board.md#io-voltage-and-what-the-flow-proof-declares). HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
 loads are rejected. SDC permits one literal clock,
 delay, exception or uncertainty assignment per line, using the bounded command
 set in the [validator](../../../tools/n2m/fpga.py). Collection getters may select
@@ -2170,7 +2187,8 @@ Required evidence includes map/fit/assembler/timing reports, a nonempty SOF,
 the successful exact-device fit summary with final timing models, and timing
 summary checks for setup, hold and minimum pulse width at every corner the
 target's board declares. The DE10-Lite declares Slow 1200mV 85C, Slow 1200mV 0C
-and Fast 1200mV 0C; the industrial Cyclone V of the DE10-Nano declares
+and Fast 1200mV 0C, and the commercial Cyclone IV E of the DE2-115 declares the
+same three; the industrial Cyclone V of the DE10-Nano declares
 Slow 1100mV 100C, Slow 1100mV -40C, Fast 1100mV 100C and Fast 1100mV -40C.
 Every reported slack must be finite and nonnegative with zero TNS. The audit
 requires zero illegal/unconstrained clock/input/output setup and hold counts, no

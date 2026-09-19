@@ -5,6 +5,9 @@ Hardware and software specifications belong in this directory.
 - [DE10-Nano board](de10-nano-board.md): the second board's device, JTAG chain,
   pin data with provenance, the GPIO header positions its UART endpoint uses, and
   the resources it lacks against the DE10-Lite.
+- [DE2-115 board](de2-115-board.md): the third board's device, JTAG chain, pin
+  data with provenance and independent source counts, the I/O voltages its banks
+  carry, and the ALTPLL and M9K paths it reuses instead of replacing.
 - [DMG tile pixel](rtl/display/MAS_display.md): first isolated display unit.
 - [VGA frame bridge](rtl/vga/MAS_vga.md): immutable frame ownership and scaled scanout.
 - [Interface contracts](rtl/interfaces/MAS_interfaces.md): generated addresses, packets,

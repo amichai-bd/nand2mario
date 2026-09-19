@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "board": {
+    "name": "DE2-115",
+    "device": "EP4CE115F29C7",
+    "family": "Cyclone IV E",
+    "timing_corners": [
+      "Slow 1200mV 85C",
+      "Slow 1200mV 0C",
+      "Fast 1200mV 0C"
+    ],
+    "specification": "wiki/src/de2-115-board.md"
+  },
+  "targets": {
+    "de2-invalid": {
+      "device": "EP4CE115F29C7",
+      "top": "de2_smoke",
+      "sources": [
+        "src/fpga/de2_115/de2_smoke.sv"
+      ],
+      "constraints": [
+        "src/fpga/de2_115/de2_invalid.sdc"
+      ],
+      "pins": {
+        "clk_reference": "PIN_Y2",
+        "key0_n": "PIN_M23",
+        "leds[0]": "PIN_G19",
+        "leds[1]": "PIN_F19",
+        "leds[2]": "PIN_E19",
+        "leds[3]": "PIN_F21",
+        "leds[4]": "PIN_F18",
+        "leds[5]": "PIN_E18",
+        "leds[6]": "PIN_J19",
+        "leds[7]": "PIN_H19"
+      },
+      "virtual_pins": []
+    },
+    "de2-smoke": {
+      "device": "EP4CE115F29C7",
+      "top": "de2_smoke",
+      "sources": [
+        "src/fpga/de2_115/de2_smoke.sv"
+      ],
+      "constraints": [
+        "src/fpga/de2_115/de2_smoke.sdc"
+      ],
+      "pins": {
+        "clk_reference": "PIN_Y2",
+        "key0_n": "PIN_M23",
+        "leds[0]": "PIN_G19",
+        "leds[1]": "PIN_F19",
+        "leds[2]": "PIN_E19",
+        "leds[3]": "PIN_F21",
+        "leds[4]": "PIN_F18",
+        "leds[5]": "PIN_E18",
+        "leds[6]": "PIN_J19",
+        "leds[7]": "PIN_H19"
+      },
+      "virtual_pins": []
+    }
+  }
+}
