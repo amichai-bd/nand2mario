@@ -83,17 +83,20 @@ MODEL_PIN_EXEMPT = ("Cyclone V",)
 def identity(directory, *, family="MAX 10"):
     """The installed altsyncram definition, declaration and simulation model.
 
-    Unless its family is exempt, a build compares the installed model with the
-    digest [the ledger](accepted_vendor_sources.json) accepted for that
-    installation, and records it there the first time that installation is seen.
-    The model is the reviewed simulation counterpart of the memory MAX 10
-    synthesizes, and the source of the mixed-port coercion diagnostic
+    All three are compared with the digests
+    [the ledger](accepted_vendor_sources.json) accepted for that installation,
+    and recorded there the first time that installation is seen. Every family
+    synthesizes through the definition and declaration, so they are checked
+    unconditionally.
+
+    The model is the simulation counterpart of the memory MAX 10 synthesizes and
+    the source of the mixed-port coercion diagnostic
     [`intel_memory`](intel_memory.py) classifies in Questa; its licence and
     originating installation stay in [the dependency record](dependencies.json).
-    A Cyclone V build compiles no simulation model, so its record keeps the
-    installed hashes as found, the way the Quartus executables are recorded
-    rather than compared. Every other family is checked, whether or not anyone
-    has thought about it.
+    A Cyclone V build compiles no simulation model, so its record keeps that one
+    installed hash as found, the way the Quartus executables are recorded rather
+    than compared. Every other family is checked, whether or not anyone has
+    thought about it.
     """
     quartus = Path(directory).resolve().parent
     paths = {"definition": quartus / "libraries/megafunctions/altsyncram.tdf",
@@ -101,7 +104,9 @@ def identity(directory, *, family="MAX 10"):
              "model": quartus / "eda/sim_lib/altera_mf.v"}
     if any(not path.is_file() for path in paths.values()):
         raise ValueError("missing installed Intel memory synthesis dependency")
-    checked = {} if family in MODEL_PIN_EXEMPT else {"model": paths["model"]}
+    checked = {name: paths[name] for name in ("definition", "declaration")}
+    if family not in MODEL_PIN_EXEMPT:
+        checked["model"] = paths["model"]
     provenance = vendor_sources.check(directory, checked)
     return {name: provenance.get(name) or {"path": str(path), "sha256": file_hash(path)}
             for name, path in paths.items()}

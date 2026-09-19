@@ -128,6 +128,24 @@ class CheckTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing installed vendor source"):
             vendor_sources.check(self.bin, {"model": self.root / "absent.v"})
 
+    def test_a_record_lost_to_a_concurrent_write_refuses_the_run(self):
+        """The load-modify-save is unlocked, so the read-back is what closes it.
+
+        A writer landing inside that window would otherwise leave the run holding
+        bytes the ledger does not accept. Standing in for that writer here proves
+        the run refuses instead of proceeding.
+        """
+        real_save = vendor_sources.save
+
+        def hijacked(ledger):
+            ledger["installations"]["linux"]["sources"][MODEL] = "f" * 64
+            real_save(ledger)
+
+        with patch.object(vendor_sources, "save", hijacked):
+            with self.assertRaisesRegex(ValueError, "changed while this run was recording it"):
+                self.check("model")
+        self.assertEqual(read_json(self.ledger)["installations"]["linux"]["sources"][MODEL], "f" * 64)
+
     def test_notices_name_every_first_sighting_once(self):
         result = self.check()
         self.assertEqual(vendor_sources.notices({"tools": {"a": result, "b": result}}),
@@ -135,6 +153,16 @@ class CheckTests(unittest.TestCase):
                                                              sha256=entry["sha256"])
                                 for entry in result.values()))
         self.assertEqual(vendor_sources.notices({"tools": self.check()}), [])
+
+    def test_notices_reach_a_descriptor_source_list(self):
+        """A simulation descriptor keeps its sources in a list, not a mapping."""
+        result = self.check()
+        descriptor = {"selection": "intel-memory",
+                      "sources": [{"name": entry["source"], **entry} for entry in result.values()]}
+        self.assertEqual(vendor_sources.notices(descriptor),
+                         sorted(vendor_sources.NOTICE.format(installation="linux", source=entry["source"],
+                                                             sha256=entry["sha256"])
+                                for entry in result.values()))
 
 
 class AcceptTests(unittest.TestCase):
@@ -283,11 +311,26 @@ class TrackedLedgerTests(unittest.TestCase):
         self.assertEqual(windows[MODEL], dependencies["intel_memory"]["sources"]["altera_mf.v"])
         for name, digest in dependencies["intel_adc"]["sources"].items():
             self.assertEqual(windows[name], digest, name)
+        # The six On-Chip Flash digests unblocked `flash-proof`, and the constants
+        # they came from are gone, so every one is anchored here.
         flash = "ip/altera/altera_onchip_flash/"
-        self.assertEqual(windows[flash + "rtl/altera_onchip_flash_block.v"],
-                         "6afaeaf53c8596647ee4e56b7d79193970c79efd7c774584a84b0e444a88dfb1")
-        self.assertEqual(windows[flash + "altera_onchip_flash/altera_onchip_flash_hw.tcl"],
-                         "d4a832155d41eaf776d3fea061e22bc09ffc1050d2e7048c6e2e84c0b914f613")
+        for name, digest in (
+                ("altera_onchip_flash/altera_onchip_flash.v",
+                 "03a088deb2baaef6b33229b2bf3717d659efceac30043a1243066672195db316"),
+                ("altera_onchip_flash/altera_onchip_flash_avmm_data_controller.v",
+                 "a87a4f86b581ba3b78fb9189bf6215bf1722bc56757fc5cd30a1853787d8f517"),
+                ("altera_onchip_flash/altera_onchip_flash_util.v",
+                 "4091b0255ebe2b534f87b6af95ee0d4dda965c975b9a0457c7e6f36d38b2e301"),
+                ("rtl/altera_onchip_flash_block.v",
+                 "6afaeaf53c8596647ee4e56b7d79193970c79efd7c774584a84b0e444a88dfb1"),
+                ("altera_onchip_flash/altera_onchip_flash_hw.tcl",
+                 "d4a832155d41eaf776d3fea061e22bc09ffc1050d2e7048c6e2e84c0b914f613"),
+                ("altera_onchip_flash/altera_onchip_flash_hw_proc.tcl",
+                 "bd6465a1f3cb08e65888ed5a7d5f085b5979bc8073d8878844bd8f422ac29a2c")):
+            self.assertEqual(windows[flash + name], digest, name)
+        # Exactly the seventeen the repository already recorded; a new seed needs
+        # its own review rather than arriving unnoticed.
+        self.assertEqual(len(windows), 17)
 
 
 class CycloneVGeneratorTests(unittest.TestCase):

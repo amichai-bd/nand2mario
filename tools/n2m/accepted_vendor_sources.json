@@ -31,6 +31,8 @@
         "quartus/libraries/megafunctions/altera_pll.v": "fcbc01f84408787c3f0595f39b5e9ebaec979c5123506752e80e7040550840f4",
         "quartus/libraries/megafunctions/altera_std_synchronizer.v": "36e2c3efac7d0af1f92db47dee690eebf402949fc8dd8c55d12dee7c8cccf292",
         "quartus/libraries/megafunctions/altpll.tdf": "8e82a3f4969e2e0595f618e603482036330a469f2d6d0d1ff146495bf5cccbe1",
+        "quartus/libraries/megafunctions/altsyncram.inc": "59a978ea0c0eac6d92c697a9811cd45a5ed2cc5780c77f6f26ad315f88aebf02",
+        "quartus/libraries/megafunctions/altsyncram.tdf": "b144d7a53cb2808ebe754c4374d7cb99d27844b3e57dba88e3687f014537dbcb",
         "quartus/libraries/megafunctions/xml_info/altpll_info.xml": "40c31c5d5124b9ec27ec651ac1f7537839a412707794dc5a4eba77c5d6f22320",
         "quartus/libraries/megafunctions/xml_info/altpll_rules.xml": "9277fee5fcf052b2a84c2e0663da9fb55a3d90528a07e2b495f67864d52a151d",
         "quartus/libraries/megafunctions/xml_info/altpll_wiz_map.xml": "745f7be4205d5d60dfb2a4ca02fb496262cdbe0414d3802a3a2e721ce4d52e42",

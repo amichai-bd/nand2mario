@@ -13,6 +13,8 @@ from n2m.questa import diagnostic
 from n2m.records import file_hash, read_json
 
 MODEL = "quartus/eda/sim_lib/altera_mf.v"
+DEFINITION = "quartus/libraries/megafunctions/altsyncram.tdf"
+DECLARATION = "quartus/libraries/megafunctions/altsyncram.inc"
 
 
 class IntelMemoryTests(unittest.TestCase):
@@ -107,9 +109,8 @@ class IntelMemoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing Intel simulation library"):
             intel_memory.resolve(self.root, self.questa(), target, str(self.models / "absent"))
 
-    def test_a_vendor_model_target_runs_through_the_selected_questa_binding(self):
+    def select_questa(self):
         from n2m.simulation import load_target
-        self.prepare_model()
         self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
@@ -120,10 +121,32 @@ class IntelMemoryTests(unittest.TestCase):
         self.sim.tools = {name: name for name in ("vlib", "vmap", "vlog", "vsim")}
         self.sim.info = {"backend": "questa", "tools": {name: {"path": name}
                                                          for name in self.sim.tools}}
+
+    def test_a_vendor_model_target_runs_through_the_selected_questa_binding(self):
+        self.prepare_model()
+        self.select_questa()
         result = self.run_stage()
         self.assertEqual((result["status"], result["simulator"]), ("PASS", "questa"), result)
         self.assertEqual(result["options"]["vendor_model"]["selection"], "intel-memory")
         self.assertTrue(any(argv[0] == "vsim" for argv in self.sim.calls))
+        # Nothing was first-sighted, so the record carries no vendor notice.
+        self.assertEqual([line for line in result["notices"] if "Recorded vendor source" in line], [])
+
+    def test_a_first_sighting_is_named_in_the_simulation_record(self):
+        """The Questa path reports a first sighting the way `fpga build` does.
+
+        Without this the only signals are the descriptor field and the ledger
+        diff, and the decision requires a first run to record rather than pass
+        silently.
+        """
+        self.prepare_model(accepted=False)
+        self.select_questa()
+        result = self.run_stage()
+        self.assertEqual(result["status"], "PASS", result)
+        self.assertEqual(result["notices"][-1],
+                         vendor_sources.NOTICE.format(installation="linux", source=MODEL,
+                                                      sha256=file_hash(self.source)))
+        self.assertEqual(result["options"]["vendor_model"]["sources"][0]["accepted"], "recorded")
 
     def test_selected_tool_installation_discovery(self):
         self.prepare_model()
@@ -201,12 +224,15 @@ class IntelDiagnosticTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("Original test bytes, not an Intel implementation.")
             model = file_hash(quartus / "eda/sim_lib/altera_mf.v")
-            # Nothing is recorded yet, so the first build records the model and says so.
+            # Nothing is recorded yet, so the first build records all three and says so.
             first = fpga_intel_memory.identity(bin64)
             self.assertEqual((first["model"]["sha256"], first["model"]["accepted"]), (model, "recorded"))
-            self.assertEqual(read_json(ledger)["installations"]["windows"]["sources"], {MODEL: model})
-            # Only the model is compared; the definition and declaration stay recorded as found.
-            self.assertNotIn("accepted", first["definition"])
+            self.assertEqual(set(read_json(ledger)["installations"]["windows"]["sources"]),
+                             {MODEL, DEFINITION, DECLARATION})
+            # Every family synthesizes through the definition and declaration, so
+            # both are compared whether or not the model is.
+            for name in ("definition", "declaration"):
+                self.assertEqual(first[name]["accepted"], "recorded")
             # The exemption is named, so a family nobody has considered is checked
             # like MAX 10. Only Cyclone V, which compiles no simulation model,
             # records the installed hash as found.
@@ -218,6 +244,14 @@ class IntelDiagnosticTests(unittest.TestCase):
             exempt = fpga_intel_memory.identity(bin64, family="Cyclone V")
             self.assertEqual(exempt["model"]["sha256"], changed)
             self.assertNotIn("accepted", exempt["model"])
+            # The exemption covers the simulation model alone: the exempt family's
+            # own synthesis inputs are still compared.
+            self.assertEqual(exempt["definition"]["accepted"], "unchanged")
+            (quartus / "libraries/megafunctions/altsyncram.tdf").write_text("Different original test bytes.")
+            with self.assertRaisesRegex(ValueError, "changed since it was accepted"):
+                fpga_intel_memory.identity(bin64, family="Cyclone V")
+            (quartus / "libraries/megafunctions/altsyncram.tdf").write_text(
+                "Original test bytes, not an Intel implementation.")
             # With the change accepted, every family builds and records it as unchanged.
             record = vendor_sources.accept(bin64, [MODEL], "Reviewed original host-test bytes for this test.")
             self.assertEqual(record["changed"], {MODEL: {"from": model, "to": changed}})

@@ -1976,7 +1976,7 @@ record:
 
 | The ledger holds | Result | What the record says |
 | --- | --- | --- |
-| nothing for that source | the digest is written to the ledger | `accepted: recorded`, and a notice names the source and digest |
+| nothing for that source | the digest is written to the ledger | `accepted: recorded`, and a notice names the source and digest in both the `fpga build` and the Questa simulation record |
 | the same digest | the stage proceeds | `accepted: unchanged` |
 | a different digest | the stage refuses before any tool runs | the refusal names the source, the platform, the accepted digest, the installed one, both releases and how to accept the change |
 
@@ -1994,9 +1994,12 @@ not part of the ledger key either: an upgrade that changes a vendor file under
 retained evidence is exactly what this record exists to catch, so it refuses
 rather than starting a fresh record.
 
-A build may only add a source the ledger does not hold. It can never replace an
-accepted digest, and a concurrent build's additions are merged rather than
-overwritten. One command changes an accepted digest:
+A build may only add a source the ledger does not hold, and it never replaces a
+digest the ledger already holds. The merge re-reads first, so a concurrent
+build's additions survive. That load-modify-save is not locked, so a write
+landing inside it could leave a run holding bytes the ledger does not accept; the
+read-back afterwards refuses that run instead, naming the digest the ledger ended
+up with. One command changes an accepted digest:
 
 ```bash
 python3 tools/build.py vendor accept --quartus-bin <dir> --source <installation-relative path> --reason "<why>" --json
@@ -2022,9 +2025,15 @@ before is weaker now. Every vendor file a stage records goes through the ledger
 except two named cases: the six Quartus executables tool discovery probes,
 whose control is the matching `--version` banner it records for each of them,
 and the simulation model on a
-[family exempt from it](#de10-nano-uart-endpoint-image). The megafunction and IP
-generators carry no such banner, so they are recorded here like any other vendor
-file.
+[family exempt from it](#de10-nano-uart-endpoint-image). Everything else is
+compared, including the `altsyncram` definition and declaration every family
+synthesizes through, and the twelve clock-generation dependencies of
+[MAX 10 ALTPLL](#max-10-altpll) and [Cyclone V Altera PLL](#cyclone-v-altera-pll)
+— their generators, primitives, atom and register models and definition Tcl or
+XML. Those twelve were recorded but not compared before; comparing them is why
+the rule above needs no further exception. The megafunction and IP generators
+carry no `--version` banner, so the ledger is the only thing that would notice a
+Quartus patch changing one under a retained fit.
 
 A diagnostic classifier that explains one vendor file's warnings names the
 sources it read and refuses a descriptor whose source never reached the ledger.

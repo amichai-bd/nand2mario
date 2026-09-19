@@ -19,10 +19,10 @@ installation's platform has accepted in [the ledger](accepted_vendor_sources.jso
 - different: a vendor file changed under our evidence. The build refuses and
   names the source, the platform, the accepted digest and the installed one.
 
-A build may only add a source the ledger does not hold. It can never change an
-accepted digest: [`vendor accept`](cli.py) does that, it requires a reason, and
-it leaves the old and new digests in the entry's history. That is what keeps the
-record from being rewritten by the builds it guards.
+A build may only add a source the ledger does not hold. It never replaces a
+digest the ledger already holds: [`vendor accept`](cli.py) does that, it requires
+a reason, and it leaves the old and new digests in the entry's history. That is
+what keeps the record from being rewritten by the builds it guards.
 
 Licence, redistribution terms, purpose and the originating installation of each
 vendor source stay in [dependencies.json](dependencies.json). This file holds
@@ -219,9 +219,11 @@ def check(directory, paths):
 def _record(name, added, release):
     """Add digests this platform has never recorded. Present digests are left alone.
 
-    Re-reading here keeps a concurrent build's additions, and the merge only
-    writes names that are still absent, so a build can never replace an accepted
-    digest even when two of them record at once.
+    The merge re-reads and only writes names that are still absent, so a build
+    never replaces a digest the ledger already holds. That load-modify-save is
+    not locked, so a write landing inside it could leave the run proceeding on
+    bytes the ledger does not accept; the read-back afterwards refuses that run
+    instead, naming the source the ledger ended up holding.
     """
     ledger = load()
     entry = _entry(ledger, name)
@@ -234,6 +236,13 @@ def _record(name, added, release):
     except OSError as error:
         raise ValueError(f"cannot record the installed vendor sources in {ledger_path().as_posix()}: {error}."
                          f" A first build on a new installation records what it read; see {SPEC}") from error
+    accepted = _entry(load(), name)["sources"]
+    for source, digest in sorted(added.items()):
+        if accepted.get(source) != digest:
+            raise ValueError(f"the record of {source} on the {name} Quartus installation changed while this run "
+                             f"was recording it: the run read {digest}, the ledger holds "
+                             f"{accepted.get(source) or 'nothing'}. Nothing is accepted on this run; rerun it "
+                             f"once the other writer has finished. See {SPEC}")
 
 
 NOTICE = ("Recorded vendor source for the first time on the {installation} Quartus installation: "
@@ -243,12 +252,17 @@ NOTICE = ("Recorded vendor source for the first time on the {installation} Quart
 def notices(recorded):
     """One line per vendor source a run recorded for the first time.
 
-    Walks whatever nested record the caller assembled, so a stage adding another
-    vendor dependency reports it without a second list to keep in step.
+    Walks whatever nested record the caller assembled, dicts and lists alike, so
+    a build's tool identities and a simulation descriptor's source list both
+    report without a second inventory to keep in step.
     """
     lines = []
 
     def walk(value):
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                walk(item)
+            return
         if not isinstance(value, dict):
             return
         if value.get("accepted") in STATUSES:
