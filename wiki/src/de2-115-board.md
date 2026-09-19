@@ -44,8 +44,18 @@ implementation:
   DE10-Lite. Cyclone V refuses outright — `Wizard ALTPLL supports the following
   list of device families only : MAX 10` — which is why that board needs
   [its own clocking implementation](de10-nano-board.md#resources-this-board-lacks-against-the-de10-lite).
-  No target on this board generates a clock yet; the flow proof runs from the
-  50 MHz reference directly.
+  So [`de2-clocking`](#targets) fits the DE10-Lite's own wrapper
+  [`n2m_clocking.sv`](../../src/fpga/de10_lite/n2m_clocking.sv) in place, and the
+  generated HDL differs from the DE10-Lite's in the family string alone. Neither
+  kind of copy is available: a copy keeping the module name fails the
+  [Questa compile gate](../tools/n2m/SPEC.md#questa-compile-gate), which compiles
+  every registered source into one library in a single `vlog` and warns
+  `vlog-2275 Existing module 'n2m_clocking' ... will be overwritten`, and the gate
+  fails on any warning; a renamed copy instead forks the fitted instance
+  hierarchy every clocking check and constraint names, which is what the
+  Cyclone V wrapper costs. The clocks, the solved counters and every check are the
+  same; what this family changes is listed in the
+  [builder contract](../tools/n2m/SPEC.md#cyclone-iv-e-altpll).
 - **M9K serves Cyclone IV E.** `quartus_map` accepts
   [`n2m_intel_ram.sv`](../../src/rtl/common/n2m_intel_ram.sv) unchanged for
   `EP4CE115F29C7`, reporting `Parameter "ram_block_type" = "M9K"` with 0 errors,
@@ -313,6 +323,45 @@ period, so it must fail. The registry states a target's own pin numbers because
 the builder needs them as machine-readable assignments; every pin's provenance is
 stated only in the tables above.
 
+`de2-clocking` is the clocking proof: the 25 MHz system and 25.2 MHz pixel clocks
+of the [clock contract](clocks-resets-cdc.md) generated from `CLOCK_50` by two
+ALTPLL instances, behind the shared
+[`n2m_reset_control.sv`](../../src/rtl/clocking/n2m_reset_control.sv) and
+[`n2m_timebase.sv`](../../src/rtl/clocking/n2m_timebase.sv), observed on virtual
+ports by [`de2_clocking_proof.sv`](../../src/fpga/de2_115/de2_clocking_proof.sv).
+It uses one pin, `CLOCK_50` on `PIN_Y2`, and instantiates the DE10-Lite's ALTPLL
+wrapper unchanged, so the fitted hierarchy, the checked clock names and the whole
+lock, metastability, reset-chain and clock-transfer evidence are that board's.
+The fit reports both clocks at their documented rates — the system PLL at
+`M=104, N=8, C=26` from a 650 MHz VCO for 25.0 MHz, the pixel PLL at
+`M=63, N=5, C=25` from a 630 MHz VCO for 25.2 MHz, both compensating `clock0` at
+50% duty and zero phase from a dedicated pin — with 120 logic elements, 77
+registers, 2 of 4 PLLs, one pin and 21 virtual pins, and positive slack for
+setup, hold, recovery, removal and minimum pulse width on all three clocks at all
+three corners. Its worst slack is 0.181 ns, on `clk_reference` hold at
+`Fast 1200mV 0C`.
+
+Three diagnostics are classified rather than hidden: the LogicLock notice and the
+AN 447 caution the flow proof also carries, and one
+`Critical Warning (176598)` stating that a PLL's input clock is not fully
+compensated because it is fed by a remote clock pin. That one follows from the
+clock contract, not from a shortage of clock pins: this board has four dedicated
+clock inputs ([above](#clocks)), but
+[both PLLs take the same reference](rtl/clocking/MAS_clocking.md), and only one
+PLL location on this device reaches `CLOCK_50` locally, so the Fitter places the
+other where that pin arrives over the remote dedicated path. Both PLLs still take
+the pin directly and nothing in this composition times a path against the
+reference pin, so the caution is recorded with that reason; the
+[builder contract](../tools/n2m/SPEC.md#cyclone-iv-e-altpll) states exactly what
+it accepts.
+
+`de2-clocking-invalid` is that pair's negative control. It shares every source and
+constraint and names the Cyclone V Altera PLL's system clock as the checked
+output-delay clock instead of ALTPLL's, so `read_sdc` finds no such clock, reports
+`Error (332000): checked endpoint count mismatch: clock_0` with the offending SDC
+line, and the Fitter exits nonzero. A passing `de2-clocking` fit is therefore
+evidence rather than an absent check.
+
 Quartus analyses this commercial device at three corners, `Slow 1200mV 85C`,
 `Slow 1200mV 0C` and `Fast 1200mV 0C`, and the builder requires setup, hold and
 minimum-pulse-width slack at each. It also requires a drive strength and a slew
@@ -348,7 +397,14 @@ image must not be.
 - `python3 tools/build.py fpga build de2-smoke` must PASS with its fit, timing and
   assembly reports retained; `de2-invalid` must FAIL. Both are recorded in the
   [builder contract](../tools/n2m/SPEC.md#fpga-build).
-- The Questa compile gate elaborates `de2_smoke` with every other registered top.
+- `python3 tools/build.py fpga build de2-clocking` must PASS with its generated
+  HDL, fit, timing, lock, metastability, reset-chain and clock-transfer evidence
+  retained; `de2-clocking-invalid` must FAIL. Both are recorded in the
+  [builder contract](../tools/n2m/SPEC.md#fpga-build).
+- [`test_fpga_cycloneive.py`](../../tools/n2m/tests/test_fpga_cycloneive.py) covers
+  what this family changes against MAX 10 and what it still refuses.
+- The Questa compile gate elaborates `de2_smoke` and `de2_clocking_proof` with
+  every other registered top.
 
 Physical verification of this board is not done. It needs explicit hardware
 authorization, and it is not part of the flow proof.

@@ -1,5 +1,9 @@
 `timescale 1ns/1ps
 // Vendor wrapper. n2m_pixel_pll is generated beneath the build tag by Quartus.
+// Shared by two boards: ALTPLL serves Cyclone IV E as well, so the DE2-115's
+// clocking proof instantiates this file in place rather than copying it. Editing
+// it changes both boards' fitted hierarchy and every check that names it; see
+// README.md here and src/fpga/de2_115/README.md.
 module n2m_clocking (
     input  logic clk_reference,
     input  logic board_reset_n,

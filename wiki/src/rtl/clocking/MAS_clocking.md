@@ -33,11 +33,14 @@ public-boundary oracle. Assertion logic is excluded from the FPGA netlist; every
 named chain endpoint and asynchronous clear pin remains subject to the existing
 fit/timing audit without a topology waiver.
 
-Each board has an FPGA wrapper holding its two parallel generated PLL instances
+Each vendor PLL has an FPGA wrapper holding its two parallel generated instances
 and presenting the same interface to `n2m_reset_control`: the
-[MAX 10 wrapper](../../../../src/fpga/de10_lite/n2m_clocking.sv) instantiates
-ALTPLL, the [Cyclone V wrapper](../../../../src/fpga/de10_nano/n2m_clocking_cyclonev.sv)
-the Altera PLL IP. In both, the two PLLs take the same board reference;
+[ALTPLL wrapper](../../../../src/fpga/de10_lite/n2m_clocking.sv), and the
+[Cyclone V wrapper](../../../../src/fpga/de10_nano/n2m_clocking_cyclonev.sv) for
+the Altera PLL IP that family needs instead. There is one wrapper per vendor PLL
+rather than one per board: ALTPLL serves Cyclone IV E as well, so the DE2-115's
+[clocking proof](../../../../src/fpga/de2_115/de2_clocking_proof.sv) instantiates
+that same ALTPLL wrapper. In every case the two PLLs take the same board reference;
 bootstrap state runs on that reference and cannot depend on a stopped PLL output. Vendor files are generated under the build attempt.
 The [portable test plan](../../../../src/dv/clocking/README.md) independently
 checks control behavior; it does not establish vendor PLL behavior. The shared

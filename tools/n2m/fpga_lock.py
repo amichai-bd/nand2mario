@@ -1,9 +1,23 @@
-"""Recognize only the documented MAX 10 ALTPLL locked-output event latch."""
+"""Recognize only the documented ALTPLL locked-output event latch.
+
+The topology is ALTPLL's, so every family this IP serves shares it; what differs
+is the primitives the fitted atoms are named in. `MAX10` is that family's set and
+it is the default rather than a constant: a family passes its own, so an
+unsupported primitive still fails instead of hiding a sink.
+"""
+from typing import NamedTuple
 import re
 
 PLL = "u_clocking|u_pll|altpll_component|auto_generated|"
 RESET = "u_clocking|u_reset|"
 ROW = "n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll_lock_sync"
+# One back-annotation directive opens the EDA netlist of a family whose
+# simulation model carries delays, which Cyclone IV E's does and MAX 10's cannot
+# (Quartus 10905: a MAX 10 device gets the functional netlist only). A system
+# task call in an initial block declares no net and drives no port, so it can
+# hide neither a driver nor a sink; the file it names is still matched, and more
+# than one statement fails, so nothing else passes as one.
+ANNOTATION = re.compile(r'initial\s+\$sdf_annotate\s*\(\s*"[A-Za-z0-9_.-]+\.sdo"\s*\)')
 OUTPUTS = {
     "dffeas": {"q"}, "fiftyfivenm_lcell_comb": {"combout", "cout"},
     "fiftyfivenm_clkctrl": {"outclk"}, "fiftyfivenm_io_ibuf": {"o"}, "fiftyfivenm_io_obuf": {"o", "obar"},
@@ -11,6 +25,24 @@ OUTPUTS = {
     "fiftyfivenm_adcblock": {"eoc", "dout"}, "fiftyfivenm_unvm": {"busy", "osc", "bgpbusy", "sp_pass", "se_pass", "drdout"},
     "fiftyfivenm_ram_block": {"portadataout", "portbdataout"},
 }
+
+
+class Primitives(NamedTuple):
+    """One family's fitted atom names, and the output ports of each type it may use.
+
+    The checks below name a cell by its role, so the type names live here and a
+    family that spells them differently reuses the checks instead of copying them.
+    `register` is `dffeas` in every family so far, so it is stated once and
+    still passed rather than assumed.
+    """
+    outputs: dict
+    pll: str
+    lut: str
+    buffer: str
+    register: str = "dffeas"
+
+
+MAX10 = Primitives(OUTPUTS, "fiftyfivenm_pll", "fiftyfivenm_lcell_comb", "fiftyfivenm_clkctrl")
 
 
 def parse_netlist(text, top, outputs=None):
@@ -28,10 +60,14 @@ def parse_netlist(text, top, outputs=None):
     assigned_nets = []
     declarations = []
     parameters = {}
+    annotations = []
     # Consume every statement. Unknown syntax cannot silently hide another sink.
     for statement in text.split(";"):
         statement = statement.strip()
         if not statement or statement == "endmodule":
+            continue
+        if ANNOTATION.fullmatch(statement):
+            annotations.append(statement)
             continue
         if re.fullmatch(r"module\s+" + re.escape(top) + r"\s*\([A-Za-z0-9_,\s]+\)", statement):
             continue
@@ -67,6 +103,9 @@ def parse_netlist(text, top, outputs=None):
             raise ValueError("unsupported or duplicate netlist connection")
         ports = {key: re.sub(r"\s", "", value) for key, value in connections}
         cells[name] = (kind, ports)
+
+    if len(annotations) > 1:
+        raise ValueError("duplicate netlist delay annotation")
 
     for constant, declaration in {"gnd": "wire gnd", "vcc": "wire vcc", "devclrn": "tri1 devclrn", "devpor": "tri1 devpor"}.items():
         if re.search(r"\\" + constant + r"\s", text) or [d for d in declarations if re.search(r"\b" + constant + r"$", d)] != [declaration]:
@@ -193,13 +232,19 @@ def verify(text, checks, top="clocking_proof", *, extra_rows=()):
             "topology": "constant-one D; PLL reset clears; raw lock loss propagates; only reset sampling fanout"}
 
 
-def verify_parallel(text, checks, top, *, extra_rows=()):
+def verify_parallel(text, checks, top, *, extra_rows=(), primitives=MAX10):
     """Prove both lock events only qualify reset, including either raw lock loss.
 
     extra_rows names further no-clock registers the caller has already
     accounted for (the flash IP's atom strobe register); they are not lock
     events and get no further inspection here.
+
+    `primitives` is the family's fitted atom set, defaulting to MAX 10's. The
+    topology below is ALTPLL's and is shared; only the atom names and their
+    output ports differ, so a family passes its own set rather than copying this
+    function.
     """
+    outputs = primitives.outputs
     from .fpga_pll import SYSTEM_NET
     system = "u_clocking|u_system_pll|altpll_component|auto_generated|"
     system_row = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
@@ -209,7 +254,7 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
     if sorted(rows) != sorted(expected_rows):
         raise ValueError("parallel lock event inventory differs")
-    _, cells, params, declarations, rhs, lhs = parse_netlist(text, top)
+    _, cells, params, declarations, rhs, lhs = parse_netlist(text, top, outputs=outputs)
     def cell(name, kind, modes=None):
         if cells.get(name, (None,))[0] != kind or modes is not None and params.get(name) != modes:
             raise ValueError("parallel lock cell/mode differs: " + name)
@@ -220,13 +265,13 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
         if any(contains(net, value) for value in rhs + lhs):
             raise ValueError("parallel lock alias is not allowed")
         return {(n,p) for n,(kind,ports) in cells.items() for p,v in ports.items()
-                if p not in OUTPUTS[kind] and contains(net, v)}
+                if p not in outputs[kind] and contains(net, v)}
     register_modes = {"is_wysiwyg": '"true"', "power_up": '"low"'}
     buffer_modes = {"clock_type": '"global clock"', "ena_register_mode": '"none"'}
-    reset = cell(RESET + "pll_areset", "dffeas", register_modes)
+    reset = cell(RESET + "pll_areset", primitives.register, register_modes)
     if reset['clk'] != r"\clk_reference~inputclkctrl_outclk":
         raise ValueError("PLL reset bootstrap depends on a generated clock")
-    reset_buffer = cell(RESET + "pll_areset~clkctrl", "fiftyfivenm_clkctrl", buffer_modes)
+    reset_buffer = cell(RESET + "pll_areset~clkctrl", primitives.buffer, buffer_modes)
     if reset_buffer != {"ena":"vcc", "inclk":"{vcc,vcc,vcc,"+reset['q']+"}", "clkselect":"2'b00",
                         "devclrn":"devclrn", "devpor":"devpor", "outclk":r"\u_clocking|u_reset|pll_areset~clkctrl_outclk"}:
         raise ValueError("parallel PLL reset buffer differs")
@@ -234,9 +279,9 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
     critical = [(reset['q'],RESET+'pll_areset','q'),(reset_buffer['outclk'],RESET+'pll_areset~clkctrl','outclk')]
     events = []
     for prefix in (PLL, system):
-        pll = cell(prefix + "pll1", "fiftyfivenm_pll")
-        ff = cell(prefix + "pll_lock_sync", "dffeas", register_modes)
-        feeder = cell(prefix + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb",
+        pll = cell(prefix + "pll1", primitives.pll)
+        ff = cell(prefix + "pll_lock_sync", primitives.register, register_modes)
+        feeder = cell(prefix + "pll_lock_sync~feeder", primitives.lut,
                       {"lut_mask":"16'hFFFF", "sum_lutc_input":'"datac"'})
         if (pll['areset'] != '!'+reset_buffer['outclk'] or pll['inclk'] != r"{gnd,\clk_reference~input_o}"
                 or ff != {"clk":pll['locked'], "d":feeder['combout'], "asdata":"vcc", "clrn":reset_buffer['outclk'],
@@ -252,7 +297,7 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
     names = [RESET+'lock_reset~0',RESET+'lock_reset']
     gates = []
     for name in names:
-        gate = cell(name,'fiftyfivenm_lcell_comb')
+        gate = cell(name, primitives.lut)
         modes = params.get(name,{})
         if (set(modes) != {'lut_mask','sum_lutc_input'} or modes['sum_lutc_input'] != '"datac"'
                 or not re.fullmatch(r"16'h[0-9A-Fa-f]{4}",modes['lut_mask'])
@@ -277,7 +322,7 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
     if users(gates[0]['combout']) != {(names[1],p) for p,v in gates[1].items() if v==gates[0]['combout']}:
         raise ValueError("parallel lock intermediate gate fanout differs")
     buffer_name=RESET+'lock_reset~clkctrl'
-    buffer=cell(buffer_name,'fiftyfivenm_clkctrl',buffer_modes)
+    buffer=cell(buffer_name, primitives.buffer, buffer_modes)
     if (buffer != {'ena':'vcc','inclk':'{vcc,vcc,vcc,'+gates[-1]['combout']+'}', 'clkselect':"2'b00",
                    'devclrn':'devclrn','devpor':'devpor','outclk':r"\u_clocking|u_reset|lock_reset~clkctrl_outclk"}
             or users(gates[-1]['combout']) != {(buffer_name,'inclk')}):
@@ -288,7 +333,7 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
         raise ValueError("parallel lock reset reaches a functional datapath")
     for i in (0,1):
         name=RESET+f'lock_samples[{i}]'
-        ff=cell(name,'dffeas',register_modes)
+        ff=cell(name, primitives.register, register_modes)
         if (ff.get('clk') != SYSTEM_NET or ff.get('clrn') != '!'+buffer['outclk']
                 or any(ff.get(p)!=v for p,v in {'prn':'vcc','ena':'vcc','aload':'gnd','sclr':'gnd','devclrn':'devclrn','devpor':'devpor'}.items())
                 or ff.get('sload') not in ('gnd','vcc') or ff.get('q') != "\\"+name):
@@ -297,7 +342,7 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
         expected='vcc' if i==0 else "\\"+RESET+'lock_samples[0]'
         if selected != expected:
             feeder_name=name+'~feeder'
-            feeder=cell(feeder_name,'fiftyfivenm_lcell_comb')
+            feeder=cell(feeder_name, primitives.lut)
             modes=params.get(feeder_name,{})
             if (selected != feeder.get('combout') or feeder.get('cin')!='gnd' or feeder.get('cout')!=''
                     or set(modes)!={'lut_mask','sum_lutc_input'} or modes['sum_lutc_input']!='"datac"'
@@ -312,7 +357,7 @@ def verify_parallel(text, checks, top, *, extra_rows=()):
             critical.append((selected,feeder_name,'combout'))
         critical.append((ff['q'],name,'q'))
     for net,name,port in critical:
-        drivers={(n,p) for n,(kind,ports) in cells.items() for p,v in ports.items() if p in OUTPUTS[kind] and contains(net, v)}
+        drivers={(n,p) for n,(kind,ports) in cells.items() for p,v in ports.items() if p in outputs[kind] and contains(net, v)}
         if drivers != {(name,port)} or any(contains(net, value) for value in lhs):
             raise ValueError("parallel lock net has extra drivers")
     return {'endpoints':[ROW,system_row], 'classification':'two constant-one ALTPLL lock events',

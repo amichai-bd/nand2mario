@@ -16,6 +16,15 @@ names a missing asynchronous-reset endpoint and must fail the checked SDC
 collection; it cannot count as a positive fit. See the
 [clocking test plan](../../dv/clocking/README.md) and
 [generation/evidence rules](../../../wiki/tools/n2m/SPEC.md#generated-clocking-inputs).
+[`n2m_clocking.sv`](n2m_clocking.sv) is the ALTPLL wrapper, not just this board's:
+ALTPLL serves Cyclone IV E too, so the DE2-115's
+[clocking proof](../de2_115/README.md) instantiates this file in place. **Changing
+it changes both boards.** It is instantiated rather than copied because a copy
+keeping the module name fails the
+[Questa compile gate](../../../wiki/tools/n2m/SPEC.md#questa-compile-gate), which
+compiles every registered source into one library in one `vlog` and fails on its
+`vlog-2275 ... will be overwritten` warning, and a renamed copy forks the fitted
+instance hierarchy every clocking check names.
 
 The `ppu_proof` component target connects the actual PPU and VGA bridge. CPU
 register and VRAM/OAM response ports are explicitly timed virtual pins; #130

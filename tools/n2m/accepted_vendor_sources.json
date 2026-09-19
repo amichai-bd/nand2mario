@@ -26,6 +26,7 @@
         "quartus/bin/qmegawiz": "27a1bf5dd18d3ff3b1d85469db3a0d6fc4b77b6136f5b498afa60047af3cf30a",
         "quartus/eda/sim_lib/altera_mf.v": "ce0c10121162fc3f07c0056046017e0b9030f7a127face48586ffdb1ff713466",
         "quartus/eda/sim_lib/altera_primitives.v": "ee5816dc09e3ed0ebd754c3fac996462d296a51ae8b11a7c6f4e158389c7316a",
+        "quartus/eda/sim_lib/cycloneive_atoms.v": "06158389424fdadda10c00daa885ffad0a40bba5527cf779566c09a17b7fd7fc",
         "quartus/eda/sim_lib/cyclonev_atoms.v": "7b670025e351ca50a1aa7db9801c5b79284a934d28a36dcbcd59b951cb74971a",
         "quartus/eda/sim_lib/fiftyfivenm_atoms.v": "31918f21b95a89fc0feca8b83e6326c73505a4b29146ebfc210bbe39e575b53c",
         "quartus/libraries/megafunctions/altera_pll.v": "fcbc01f84408787c3f0595f39b5e9ebaec979c5123506752e80e7040550840f4",
