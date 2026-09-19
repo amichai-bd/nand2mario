@@ -16,11 +16,20 @@ from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_me
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
-REGISTRIES = ("src/fpga/de10_lite/targets.json", "src/fpga/de10_nano/targets.json")
+REGISTRIES = ("src/fpga/de10_lite/targets.json", "src/fpga/de10_nano/targets.json",
+              "src/fpga/de2_115/targets.json")
 BOARD_FIELDS = {"name", "device", "family", "timing_corners", "specification"}
-# The one family whose vendor primitives, I/O completion rules and netlist atoms
-# differ from the MAX 10 defaults; the family itself comes from the registry.
+# The one family whose vendor primitives and netlist atoms differ from the MAX 10
+# defaults; the family itself comes from the registry.
 CYCLONEV_FAMILY = "Cyclone V"
+# Which output-pin settings a family's fitter needs before it stops calling the
+# pin an incomplete I/O assignment (Quartus 15714). This is a family fact, not a
+# board one: the Cyclone V fitter names a missing drive strength and slew rate,
+# the Cyclone IV E fitter names a missing drive strength, and the MAX 10 fitter
+# names neither. A family absent here states nothing extra, which is how MAX 10
+# keeps the assignments it always had.
+OUTPUT_IO_COMPLETION = {"Cyclone V": ("CURRENT_STRENGTH_NEW \"8MA\"", "SLEW_RATE 1"),
+                        "Cyclone IV E": ("CURRENT_STRENGTH_NEW \"8MA\"",)}
 TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta", "quartus_eda")
 BUILD_ID_OVERRIDE_NOTICE = ("BUILD_ID pinned by --build-id for netlist comparison only; "
                             "this result is not a board image and programming refuses it")
@@ -41,7 +50,11 @@ ALLOCATOR_OVERRIDE_NOTICE = ("notice: Quartus processes launch with TBB_MALLOC_D
 CLASSIFIED = {
     "10905": r"Generated the EDA functional simulation netlist because it is the only supported netlist type for this device\.",
     "292013": r"Feature LogicLock is only available with a valid subscription license\. You can purchase a software subscription to gain full access to this feature\.",
-    "169177": r"\d+ pins must meet Intel FPGA requirements for 3\.3-, 3\.0-, and 2\.5-V interfaces\. For more information, refer to AN 447: Interfacing MAX 10 Devices with 3\.3/3\.0/2\.5-V LVTTL/LVCMOS I/O Systems\.",
+    # AN 447 is one application note per family; the fitter writes the fitted
+    # family's name into its title, so the family word varies and the rest of the
+    # sentence does not. Only that word is generalised: the note still has to be
+    # AN 447 about the same three interface voltages.
+    "169177": r"\d+ pins must meet Intel FPGA requirements for 3\.3-, 3\.0-, and 2\.5-V interfaces\. For more information, refer to AN 447: Interfacing [A-Za-z0-9][A-Za-z0-9 ]* Devices with 3\.3/3\.0/2\.5-V LVTTL/LVCMOS I/O Systems\.",
 }
 GENERATED_DESIGN_FILES = (
     "n2m_system_pll_altpll.v", "n2m_pixel_pll_altpll.v",
@@ -266,11 +279,11 @@ def prepare(root, folder, target, build_id=None):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         if (target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-        # Cyclone V calls an output pin without a drive strength and slew rate an
-        # incomplete I/O assignment (Quartus 15714), so every output states both.
-        if target["family"] == CYCLONEV_FAMILY and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
-            lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-            lines.append(f'set_instance_assignment -name SLEW_RATE 1 -to {tcl_word(port)}')
+        # A family whose fitter needs more on an output pin states it here, so the
+        # requirement follows the device family rather than one board's target.
+        if port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port):
+            for setting in OUTPUT_IO_COMPLETION.get(target["family"], ()):
+                lines.append(f'set_instance_assignment -name {setting} -to {tcl_word(port)}')
         # SDRAM command, address, clock and data pins: 3.3-V LVTTL at 8 mA.
         if sdram_target(target) and port.startswith("DRAM_"):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')

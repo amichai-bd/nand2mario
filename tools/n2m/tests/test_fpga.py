@@ -732,7 +732,8 @@ class FpgaTests(unittest.TestCase):
                 self.assertEqual(target["device"], board["device"])
                 self.assertEqual(fpga.target_registry(repository, name), registry)
         expected = {"builder-smoke": ("10M50DAF484C7G", "MAX 10", 3),
-                    "nano-smoke": ("5CSEBA6U23I7", "Cyclone V", 4)}
+                    "nano-smoke": ("5CSEBA6U23I7", "Cyclone V", 4),
+                    "de2-smoke": ("EP4CE115F29C7", "Cyclone IV E", 3)}
         for name, (device, family, corners) in expected.items():
             with self.subTest(target=name):
                 definition = fpga.target_definition(repository, name)
@@ -758,6 +759,28 @@ class FpgaTests(unittest.TestCase):
             self.assertIn(f'set_instance_assignment -name SLEW_RATE 1 -to "{port}"', qsf)
         self.assertEqual(qsf.count("SLEW_RATE"), 8)
         self.assertEqual(qsf.count("CURRENT_STRENGTH_NEW"), 8)
+
+    def test_each_family_states_only_the_output_settings_its_fitter_needs(self):
+        """Quartus 15714 is per family: the table drives it, not a board name."""
+        repository = Path(__file__).resolve().parents[3]
+        expected = {"nano-smoke": ("CURRENT_STRENGTH_NEW", "SLEW_RATE"),
+                    "de2-smoke": ("CURRENT_STRENGTH_NEW",),
+                    "builder-smoke": ()}
+        for name, settings in expected.items():
+            with self.subTest(target=name):
+                definition = fpga.target_definition(repository, name)
+                folder = self.build / ("io-" + name)
+                folder.mkdir(parents=True)
+                fpga.prepare(repository, folder, definition)
+                qsf = (folder / "design.qsf").read_text(encoding="utf-8")
+                leds = sum(1 for port in definition["pins"] if port.startswith("leds["))
+                for setting in ("CURRENT_STRENGTH_NEW", "SLEW_RATE"):
+                    self.assertEqual(qsf.count(setting), leds if setting in settings else 0)
+                for index in range(leds):
+                    port = f"leds\\[{index}\\]"
+                    for setting in settings:
+                        value = '"8MA"' if setting == "CURRENT_STRENGTH_NEW" else "1"
+                        self.assertIn(f'set_instance_assignment -name {setting} {value} -to "{port}"', qsf)
 
     def test_registry_schema_and_board_definition_are_checked(self):
         self.assertEqual(sorted(fpga.board_registries(self.root)), ["smoke"])

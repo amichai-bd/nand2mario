@@ -608,7 +608,7 @@ units:
   timer-reload: {kind: sim, level: 1, labels: [timer], duration_seconds: 0.51}
   timer-request-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: 0.53}
   tools/ci/tests/test_pr_policy.py: {kind: unit, level: 0, labels: [ci], duration_seconds: 0.52, inputs: [.github/workflows/pr-policy.yml]}
-  tools/ci/tests/test_profiles.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 13.46, inputs: [src/dv/builder/targets.json, src/fpga/de10_lite, src/fpga/de10_nano, src/rtl]}
+  tools/ci/tests/test_profiles.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 13.46, inputs: [src/dv/builder/targets.json, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl]}
   tools/ci/tests/test_trust.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 2.92, inputs: []}
   tools/n2m/tests/test_affected.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.91, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_affected_mutations.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 20.26}
@@ -625,7 +625,7 @@ units:
   tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 1.84, inputs: [tools/n2m/dependencies.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.01, inputs: [cfg, src/dv, src/rtl, src/sw, tools/sw/opcodes.json]}
   tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 3.32, inputs: [cfg/interfaces.json, src/fpga/de10_lite/library.json, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.01, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.01, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.18, inputs: [tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.21, inputs: [tools, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: []}
@@ -633,12 +633,12 @@ units:
   tools/n2m/tests/test_fpga_flash.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 4.39, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_hold.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.10, inputs: []}
-  tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.24, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.24, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.15, inputs: []}
   tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.95, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_uart_cyclonev.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.13, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.32, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.32, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_vga.py: {kind: unit, level: 1, labels: [builder, fpga], duration_seconds: 6.69, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_gui_pad.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.26, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.10, inputs: []}
@@ -655,7 +655,7 @@ units:
   tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.26, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.30, inputs: [src/fpga/de10_lite/library.json, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/wiki/board_frames]}
   tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 2.17, inputs: [cfg, src/sw, tools]}
-  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 6.02, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 6.02, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 7.09, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_menu_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.70, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, wiki/src/sw/menu/previews]}
   tools/n2m/tests/test_menu_v2.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 1.58, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, tools/sw/menu_v2, wiki/src/sw/menu/previews]}
@@ -687,8 +687,8 @@ units:
   tools/n2m/tests/test_startup202.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_startup204.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_test_budget.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 8.24, inputs: [src/dv/builder/targets.json, src/dv/python, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_tui.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 8.33, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/rtl, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_v05_board.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.66, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_tui.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 8.33, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_v05_board.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.66, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_v05_online.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.22, inputs: [src/dv/v05/program.json]}
   tools/n2m/tests/test_v05_preload.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.55, inputs: [cfg/interfaces.json, src/dv/builder/targets.json, src/dv/python, src/dv/v05, src/sw, tools/sw/opcodes.json]}
   tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.40, inputs: [src/dv/v05/check.py, src/dv/v05/program.json, src/dv/v05/reference.py]}
