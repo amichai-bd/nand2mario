@@ -502,9 +502,10 @@ the host commands that need them are refused rather than answered falsely.
 `LED[2:0]` count sent bytes, so an exchange is visible at the board.
 The image carries its producing build identity through `N2M_NANO_UART_BUILD_ID`,
 as the DE10-Lite board images carry theirs, so a host can tell which bitstream
-answers it. The fit places 1,285 ALMs, 1,395 registers, both PLLs and the
+answers it. The fit places both PLLs, twelve pins and the
 endpoint's six stores in 13 M10K blocks (76,272 bits), with positive slack at all
-four corners. `nano-uart-invalid` shares those sources and deliberately names the
+four corners and about 1,300 ALMs and 1,400 registers; the identity constant is
+folded into logic, so those two counts move with it. `nano-uart-invalid` shares those sources and deliberately names the
 MAX 10 ALTPLL system clock as the checked output-delay clock of the `uart_tx`
 group, which no Cyclone V netlist contains, so the Fitter refuses the collection
 and the build fails naming that endpoint.
