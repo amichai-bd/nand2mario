@@ -2026,14 +2026,22 @@ except two named cases: the six Quartus executables tool discovery probes,
 whose control is the matching `--version` banner it records for each of them,
 and the simulation model on a
 [family exempt from it](#de10-nano-uart-endpoint-image). Everything else is
-compared, including the `altsyncram` definition and declaration every family
-synthesizes through, and the twelve clock-generation dependencies of
-[MAX 10 ALTPLL](#max-10-altpll) and [Cyclone V Altera PLL](#cyclone-v-altera-pll)
-— their generators, primitives, atom and register models and definition Tcl or
-XML. Those twelve were recorded but not compared before; comparing them is why
-the rule above needs no further exception. The megafunction and IP generators
-carry no `--version` banner, so the ledger is the only thing that would notice a
-Quartus patch changing one under a retained fit.
+compared: 33 installed sources, against the 17 the digest constants and the
+dependency record pinned before. The 16 that were recorded but never compared are
+
+- the `altsyncram` definition and declaration every family synthesizes through,
+  `altsyncram.tdf` and `altsyncram.inc`;
+- eleven clock-generation dependencies of [MAX 10 ALTPLL](#max-10-altpll) and
+  [Cyclone V Altera PLL](#cyclone-v-altera-pll) — both generators, `altpll.tdf`,
+  `altera_pll.v`, `cyclonev_atoms.v`, the three `xml_info/altpll_*.xml` files and
+  the three Altera PLL component Tcl files;
+- three Intel ADC definitions — `altera_modular_adc_control.sdc`,
+  `altera_modular_adc_control_hw.tcl` and `top/altera_modular_adc_hw.tcl`.
+
+Nothing that was compared stopped being compared. Comparing these 16 is why the
+rule above needs no further exception, and none of them carries a `--version`
+banner, so the ledger is the only thing that would notice a Quartus patch changing
+one under a retained fit.
 
 A diagnostic classifier that explains one vendor file's warnings names the
 sources it read and refuses a descriptor whose source never reached the ledger.
