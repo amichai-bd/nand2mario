@@ -247,8 +247,13 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=
                                f"{expected['device']}; its only path for that family writes the internal "
                                "flash. Program this board with quartus_pgm.")
         with progress.stage("Derive raw volatile image", f"image: {raw_image}"):
+            # The programmer identifies itself into the record before it writes:
+            # nothing pins this tool, so the record has to say which one wrote.
+            identity = fpga_jtag.version(execute(fpga_jtag.version_command(chain["tool"]),
+                                                 folder, "version.log", fpga_jtag.DETECT_TIMEOUT))
             image = volatile_image(folder, quartus_bin, located, timeout)
-            extra = {"volatile_image": raw_image, "volatile_image_sha256": file_hash(image)}
+            extra = {"volatile_image": raw_image, "volatile_image_sha256": file_hash(image),
+                     "backend_version": identity["release"], "backend_banner": identity["banner"]}
         command = fpga_jtag.sram_command(chain["tool"], index, chain["position"], image,
                                          chain["probe_firmware"])
         scope = ("JTAG configuration only; openFPGALoader shifts the bitstream and reports Done without "

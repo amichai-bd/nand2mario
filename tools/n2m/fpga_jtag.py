@@ -229,6 +229,26 @@ def select_any(chains, boards, cable=None):
     return found[0]
 
 
+# openFPGALoader prints `openFPGALoader v1.1.1`. The version is recorded rather
+# than pinned: the repository does not ship this tool, and a record that cannot
+# say which programmer wrote a board is not evidence. The MAX 10 refusal does not
+# depend on the version, so a newer release is not trusted into that path either.
+VERSION_BANNER = re.compile(r"openFPGALoader\s+v(\d+\.\d+(?:\.\d+)?)")
+
+
+def version_command(tool):
+    """The read-only banner that identifies the programmer for the record."""
+    return [tool, "--Version"]
+
+
+def version(output):
+    """The recorded openFPGALoader release, or a refusal naming the banner."""
+    found = VERSION_BANNER.search(str(output))
+    if not found:
+        raise RuntimeError("unrecognized openFPGALoader version banner; see version.log")
+    return {"release": found[1], "banner": found[0]}
+
+
 def detect_command(tool, cable, probe_firmware=None):
     """The read-only `openFPGALoader` enumeration for one cable."""
     return [tool, "-c", cable, *(["--probe-firmware", str(probe_firmware)] if probe_firmware else []), "--detect"]

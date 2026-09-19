@@ -46,6 +46,8 @@ LOAD_FAILED = ("Load SRAM: [=========                                         ] 
 CONVERTED = "Info: Quartus Prime Convert_programming_file was successful. 0 errors, 0 warnings\n"
 # openFPGALoader on a cable that is not attached: it fails and says so.
 ABSENT_CABLE = "unable to open ftdi device: -3 (device not found)\nempty\nJTAG init failed with: std::exception\n"
+# The banner the installed openFPGALoader prints for `--Version`.
+VERSION_BANNER = "openFPGALoader v1.1.1\n"
 
 
 def stage_registry(root):
@@ -743,6 +745,8 @@ class ProgrammerBackendTests(FpgaProgramTests):
             elif name == "quartus_cpf":
                 Path(argv[-1]).write_bytes(b"raw volatile image\n")
                 output = convert
+            elif "--Version" in argv:
+                output = VERSION_BANNER
             elif "--detect" in argv:
                 output = detect if argv[argv.index("-c") + 1] == cable else ABSENT_CABLE
             else:
@@ -760,7 +764,7 @@ class ProgrammerBackendTests(FpgaProgramTests):
             result = program(ROOT, self.folder, sof, quartus_bin="tools", probe_firmware="blaster_6810.hex")
         names = [Path(call[0]).name for call in calls]
         self.assertEqual(names, ["jtagconfig", "openFPGALoader", "openFPGALoader",
-                                 "quartus_cpf", "openFPGALoader"],
+                                 "openFPGALoader", "quartus_cpf", "openFPGALoader"],
                          "the unreadable Quartus chain falls through, both cables are read, "
                          "then the image is converted and loaded")
         self.assertNotIn("--detect", calls[-1], "the last command is the load, not an enumeration")
@@ -775,6 +779,8 @@ class ProgrammerBackendTests(FpgaProgramTests):
                           "--index-chain", "1", "--file-type", "rbf", "--write-sram",
                           "--bitstream", str(rbf.resolve())])
         self.assertEqual(result["volatile_image_sha256"], file_hash(rbf))
+        self.assertEqual((result["backend_version"], result["backend_banner"]),
+                         ("1.1.1", "openFPGALoader v1.1.1"))
         self.assertEqual(result["device_state"], "changed")
         self.assertIn("CONF_DONE", result["scope"])
         self.assertIn("5CSE*A6/5CSX*6", (self.folder / "chain.log").read_text(),
@@ -808,6 +814,7 @@ class ProgrammerBackendTests(FpgaProgramTests):
         self.assertNotIn("quartus_cpf", names, "nothing is converted after a failed identity check")
         self.assertTrue(all("--detect" in call for call in calls if Path(call[0]).name == "openFPGALoader"),
                         "every openFPGALoader command was an enumeration")
+        self.assertNotIn("--Version", [flag for call in calls for flag in call])
         self.assertEqual(device_state_after(self.folder), "unchanged")
 
     def test_a_de10_lite_image_cannot_reach_a_cyclone_v_or_the_reverse(self):
@@ -842,7 +849,7 @@ class ProgrammerBackendTests(FpgaProgramTests):
         self.assertIn("no volatile configuration for the MAX 10", str(caught.exception))
         self.assertIn("quartus_pgm", str(caught.exception))
         self.assertTrue(all("--detect" in call for call in calls),
-                        "the identity matched, and still nothing was converted or written")
+                        "the identity matched, and still nothing was identified, converted or written")
         self.assertEqual(device_state_after(self.folder), "unchanged")
 
     def test_no_programmer_at_all_names_the_tools_not_the_operating_system(self):
@@ -864,7 +871,7 @@ class ProgrammerBackendTests(FpgaProgramTests):
                 patch("n2m.fpga_program.execute", side_effect=self.responder(calls)):
             result = program(ROOT, self.folder, sof, quartus_bin="tools", cable="usb-blasterII")
         self.assertEqual([Path(call[0]).name for call in calls],
-                         ["openFPGALoader", "quartus_cpf", "openFPGALoader"],
+                         ["openFPGALoader", "openFPGALoader", "quartus_cpf", "openFPGALoader"],
                          "a named openFPGALoader cable never enumerates through Quartus")
         self.assertEqual(result["cable"], "usb-blasterII")
 
@@ -907,7 +914,26 @@ class ProgrammerBackendTests(FpgaProgramTests):
                 program(ROOT, self.folder, sof, quartus_bin="tools")
         self.assertIn("raw volatile image", str(caught.exception))
         self.assertEqual([Path(call[0]).name for call in calls][-1], "quartus_cpf")
-        self.assertTrue(all("--detect" in call for call in calls if Path(call[0]).name == "openFPGALoader"))
+        self.assertTrue(all("--detect" in call or "--Version" in call
+                            for call in calls if Path(call[0]).name == "openFPGALoader"))
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+    def test_an_unrecognized_programmer_banner_refuses_before_the_load(self):
+        sof = self.nano_attempt()
+        calls = []
+
+        def run(argv, cwd, log, timeout=60):
+            calls.append(argv)
+            output = "some other tool 9.9\n" if "--Version" in argv else NANO_DETECT
+            (Path(cwd) / log).write_text(output)
+            return output
+
+        with fake_programmers(quartus=False, openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=run):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+        self.assertIn("unrecognized openFPGALoader version banner", str(caught.exception))
         self.assertEqual(device_state_after(self.folder), "unchanged")
 
     def test_an_openfpgaloader_load_without_done_is_unconfirmed(self):

@@ -2611,7 +2611,12 @@ debug access port, and the matched position is what addresses the write.
 
 `openFPGALoader` has no `.sof` reader, so the checked image is converted in the
 operation directory by `quartus_cpf -c <sof> <rbf>`, whose own success line is
-required, and the result records the raw image and its hash. The load is
+required, and the result records the raw image and its hash. Before that, the
+programmer identifies itself: `openFPGALoader --Version` must print a
+recognisable `openFPGALoader v<release>` banner, recorded as `backend_version`
+and `backend_banner`. The repository does not ship this tool, so a record that
+cannot say which programmer wrote a board is not evidence; the version is
+recorded, not pinned, and no version is trusted into the MAX 10 path. The load is
 `openFPGALoader -c <cable> [--probe-firmware <hex>] --index-chain <position>
 --file-type rbf --write-sram --bitstream <rbf>`; `--probe-firmware` defaults to
 `blaster_6810.hex` beside the Quartus Linux executables, which a
