@@ -24,22 +24,40 @@ QUESTA_COMPILE_TOOLS = ("vlib", "vmap", "vlog", "vopt")
 # caller's directory; `-lic_noqueue` refuses to wait behind a busy license
 # server instead of blocking the probe.
 QUESTA_LICENSE_PROBE = ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f")
-# Only a license *environment* failure refuses: no license file or server is
-# configured, so no amount of waiting would help. A server that is merely busy
-# reports something else, and `-lic_noqueue` makes the probe say so at once
-# instead of blocking; contention is left to the run, which queues normally.
-QUESTA_LICENSE_FAILURE = re.compile(
-    r"(?i)unable to find the licen[cs]e file|invalid licen[cs]e environment")
-QUESTA_LICENSE = ("no Questa runtime license: vsim found no license file or server. "
+# Only an unconfigured or unreachable license refuses, because no amount of
+# waiting supplies one. These are vsim's CAUSE lines, printed first.
+#
+# They are matched instead of the terminal lines that follow them, because those
+# are generic: `Unable to checkout a license.  Vsim is closing.` and
+# `Invalid license environment. Application closing.` are what vsim prints after
+# ANY failed startup checkout. libvsim.so carries that pair in the same routine
+# as its queue messages, and `-lic_noqueue` skips the queue branch into it, so a
+# host whose seats are merely taken prints the same closing pair. Matching it
+# would refuse a correctly licensed host and misname the reason. Contention
+# (`All ... currently in use`, `Licensed number of users already reached`) must
+# reach the run, which queues without `-lic_noqueue` and passes.
+# Searched against the whole output, not per line: vsim wraps the unreachable-server
+# cause across two lines, so `run 'lmutil lmdiag'` lands on the second one.
+QUESTA_LICENSE_UNCONFIGURED = re.compile(
+    r"(?is)unable to find the licen[cs]e file"          # nothing configured
+    r"|run\s+'lmutil\s+lmdiag'")                        # configured but unreachable
+# The generic closing lines. Everything before the first of them is the cause
+# vsim actually reported, wrapped or not, and that is what the refusal quotes.
+QUESTA_LICENSE_CLOSING = re.compile(
+    r"(?i)vsim is closing|invalid licen[cs]e environment|application closing")
+QUESTA_LICENSE = ("no Questa runtime license: vsim found no usable license file or server. "
                   "Point SALT_LICENSE_SERVER or LM_LICENSE_FILE at a license that grants "
                   "vsim and retry; the Questa compile gate needs none because it never "
                   "launches vsim")
 
 
 class ToolError(RuntimeError):
-    def __init__(self, message, output=""):
+    def __init__(self, message, output="", record=None):
         super().__init__(message)
         self.output = output
+        # The probe or command record behind the failure, so a refusal carries
+        # the same auditable evidence a pass puts in the discovery log.
+        self.record = record
 
 
 def run_tool(argv, cwd=None, timeout=60, env=None):
@@ -85,24 +103,42 @@ def questa_tools(directory, names, run=run_tool):
     return tools, info
 
 
+def questa_license_cause(output):
+    """The lines vsim printed before its generic closing pair, as one sentence.
+
+    The cause may wrap across lines, so it is rejoined and its whitespace
+    collapsed; quoting one matched line would start mid-sentence.
+    """
+    lines = []
+    for line in output.splitlines():
+        if QUESTA_LICENSE_CLOSING.search(line):
+            break
+        if line.strip():
+            lines.append(line.strip())
+    return " ".join(lines) or output.strip()
+
+
 def questa_license(vsim, run=run_tool):
     """Prove vsim can check out a runtime license, and name the license when it cannot.
 
-    Returns the probe record for the discovery log. An unconfigured license is a
-    ToolError carrying the vendor's own words, so the refusal names the license
-    rather than a host. Any other nonzero exit is recorded and left alone: this
-    probe exists to name an unconfigured license, not to second-guess a vsim
-    whose own run reports the detail or would queue for a busy seat.
+    Returns the probe record. Refusal needs both halves: a nonzero exit and a
+    cause line saying the license is unconfigured or unreachable. The ToolError
+    quotes that cause line, so the refusal names why, not just that it failed,
+    and carries the record for the failure evidence.
+
+    Everything else passes through. A taken seat, a vsim broken for another
+    reason, and a zero exit whose output merely mentions a license all reach the
+    run, which reports its own detail and can queue for a seat.
     """
     argv = [vsim, *QUESTA_LICENSE_PROBE]
     result = run(argv)
     output = result.stdout or ""
+    unconfigured = bool(QUESTA_LICENSE_UNCONFIGURED.search(output))
     record = {"argv": argv, "exit_code": result.returncode, "output": output,
-              "licensed": not QUESTA_LICENSE_FAILURE.search(output)}
+              "licensed": not (result.returncode and unconfigured)}
     if not record["licensed"]:
-        named = next((line.strip() for line in output.splitlines()
-                      if QUESTA_LICENSE_FAILURE.search(line)), "")
-        raise ToolError(f"{QUESTA_LICENSE}: {named}" if named else QUESTA_LICENSE, output)
+        raise ToolError(f"{QUESTA_LICENSE}: {questa_license_cause(output)}",
+                        output, record=record)
     return record
 
 
@@ -187,6 +223,8 @@ class Simulator:
         self.tools, self.info = questa_tools(directory, QUESTA_SIMULATION_TOOLS, self.run)
         self.info["license_required"] = require_license
         if require_license:
+            # The record joins the log either way: a refusal carries it on the
+            # ToolError, because the caller never sees this object.
             self.info["discovery"].append(questa_license(self.tools["vsim"], self.run))
         self.compiler, self.runtime = self.tools["vlog"], self.tools["vsim"]
 

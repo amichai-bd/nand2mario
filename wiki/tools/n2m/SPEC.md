@@ -23,8 +23,10 @@ under `tools/n2m/`.
 
 ## Available commands
 
-Simulation commands run on Linux with Verilator, native or under WSL, or on
-Windows PowerShell with Questa. Omit `--sim` for the host-native default:
+Simulation commands run on Linux with Verilator, native or under WSL, or with
+Questa wherever its executables and a
+[runtime license](#questa-runtime-license) are present. Omit `--sim` for the
+host-native default, which is Verilator off Windows and Questa on it:
 
 ```bash
 python3 tools/build.py doctor --json
@@ -220,9 +222,11 @@ the measured time, the `.pof` hash and the power-cycle step; its dry run
 reports the record check and the written command only.
 
 These handoffs never execute their next command. Linux remains a Verilator host;
-Windows PowerShell remains the Questa simulation, JTAG and launcher host. The
-`fpga build` handoff names the current host, because an installed Quartus runs
-it on either one. No command silently crosses that boundary. The ordinary
+Windows PowerShell remains the JTAG and launcher host. The `fpga build` handoff
+names the current host, because an installed Quartus runs it on either one, and
+so does a Questa simulation handoff, because Questa follows its executables and
+its [runtime license](#questa-runtime-license). No command silently crosses a
+host boundary. The ordinary
 hardware safeguards still apply before a person runs the printed programming or
 launcher command.
 With `--json`, none of these human lines is written and stdout remains exactly
@@ -331,17 +335,34 @@ so identifying `vsim` proves only that it is installed, never that it can run.
 banners and before any workspace work depends on it. The probe is
 `vsim -c -nolog -lic_noqueue -do "quit -f"`: it loads no design, writes no
 transcript into the caller's directory, and refuses to wait behind a busy
-license server. Its argv, exit code and output join the discovery record.
+license server. Its argv, exit code and output join the discovery record on a
+pass, and travel on the refusal to the failure `result.json` under
+`discovery/`, whose `failure.log` keeps the same output.
 
-An unconfigured license in that output fails the command naming the license and
-quoting the vendor's own line, never an operating system:
-`no Questa runtime license: vsim found no license file or server. Point
+Refusal needs both halves: a nonzero probe exit and a cause saying the license is
+unconfigured (`Unable to find the license file`) or configured but unreachable
+(the `run 'lmutil lmdiag'` wording). `vsim` wraps the second cause across two
+lines, so both the match and the quote read the whole output: the quoted cause is
+every line before the closing pair, rejoined and whitespace-collapsed, never a
+single matched line that would start mid-sentence. The command then fails naming
+the license and quoting that cause, never an operating system:
+`no Questa runtime license: vsim found no usable license file or server. Point
 SALT_LICENSE_SERVER or LM_LICENSE_FILE at a license that grants vsim and retry;
-the Questa compile gate needs none because it never launches vsim`. Only that
-case refuses, because no amount of waiting would supply a license that is not
-configured. Any other nonzero probe exit is recorded and not refused: a seat that
-is merely taken is left to the run, which queues normally, and a `vsim` broken
-for another reason reports its own detail.
+the Questa compile gate needs none because it never launches vsim`.
+
+The cause lines are matched rather than the lines that follow them, because
+`Unable to checkout a license.  Vsim is closing.` and `Invalid license
+environment. Application closing.` are what `vsim` prints after any failed
+startup checkout, whatever the cause. `libvsim.so` holds that pair in the same
+routine as its queue messages, and `-lic_noqueue` skips the queue branch into
+it, so a host whose seats are merely taken prints the same closing pair.
+Classifying on it would refuse a correctly licensed host and misname the reason.
+
+Everything else passes through and is recorded, not refused: contention
+(`All ... currently in use`, `Licensed number of users already reached`) reaches
+the run, which omits `-lic_noqueue`, queues and gets its seat; a `vsim` broken
+for another reason reports its own detail; and a zero exit is a working license
+whatever its output mentions.
 
 This is why the two Questa paths differ on the same host. The Quartus-bundled
 Questa on a Linux host compiles and elaborates the gate to PASS, and the same
@@ -972,7 +993,8 @@ evidence.
 ## Questa simulation
 
 Native Questa executes each target whose `simulators` includes `questa`, on any
-host holding the executables and a [runtime license](#questa-runtime-license). Command construction, macro handling and Intel model bindings live in
+host holding the executables and a [runtime license](#questa-runtime-license).
+Command construction, macro handling and Intel model bindings live in
 [`questa.py`](../../../tools/n2m/questa.py),
 [`intel_memory.py`](../../../tools/n2m/intel_memory.py) and
 [`intel_adc.py`](../../../tools/n2m/intel_adc.py). Unselected backend options
@@ -1332,7 +1354,7 @@ and the `log`. PASS exits 0 and updates `workdir/latest.txt`; FAIL exits 1
 and names the failing step and the offending file or unit in `error`. The
 gate is never cached: every invocation compiles again.
 
-The Windows [doctor](#environment-doctor) with `--sim questa` adds the
+The [doctor](#environment-doctor) with `--sim questa`, on any host, adds the
 `questa-lint` check: it discovers the four executables, records their banners
 and the exact command, and reports PASS without running the gate. The
 simulation smoke's runtime license status does not affect that check.

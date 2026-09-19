@@ -378,6 +378,11 @@ def tagged(root, args, header, publish, progress=None):
                 log.write_text(failure_text, encoding="utf-8")
                 failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
                 report["artifacts"] = failure_artifacts
+                # A probe that refused carries its own record. Keep it beside the
+                # failure so the argv and exit behind the refusal stay auditable,
+                # exactly as a passing discovery records them.
+                if error.record is not None:
+                    report["discovery"] = [error.record]
                 atomic_json(folder / "result.json", report)
             if operation_folder is not None:
                 # The retained program.log decides what the failure means for the

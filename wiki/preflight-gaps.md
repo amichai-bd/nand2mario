@@ -110,14 +110,17 @@ confirmed. Dependency fetching requirements remain in GAP-013.
 The [build command](tools/n2m/SPEC.md) implements tagged doctor, builder
 checks and self-checking simulation. Under its
 [simulator policy](tools/n2m/SPEC.md#simulator-policy), Verilator runs natively
-on Linux and Questa runs natively on Windows. `doctor`, `sim test`, `regress` and
+on Linux and Questa runs natively wherever its executables and a
+[runtime license](tools/n2m/SPEC.md#questa-runtime-license) are present.
+`doctor`, `sim test`, `regress` and
 `tests run` select the host-native default or an explicit supported backend. The
 [builder implementation](../tools/n2m/cli.py) dispatches scoped doctor, software,
 simulation, regression and FPGA stages with tagged evidence. Command ownership
 follows the installed tools wherever it can: `fpga build` and the Questa
 compile gate run from a discovered Quartus or Questa on any host, and name a
-missing tool rather than an operating system. Linux owns Verilator, Windows
-PowerShell owns Questa simulation and `fpga program`, and
+missing tool rather than an operating system. A Questa simulation does the same,
+naming the missing executable or the missing runtime license. Linux owns
+Verilator and Windows PowerShell owns `fpga program`, and
 [command ownership](tools/n2m/SPEC.md#command-ownership) names each refusal.
 
 **Risk**
