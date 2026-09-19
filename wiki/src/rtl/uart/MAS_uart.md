@@ -9,6 +9,14 @@ numeric values. The [clock/reset contract](../../clocks-resets-cdc.md) owns dot
 ordering and the UART synchronizer. This owner implements those rules without
 adding DMG address decoding or a second peripheral state owner.
 
+The endpoint is board-independent: it takes `clk_sys`, `reset_sys`, `uart_rx` and
+`uart_tx` and names no pin or device. It is placed on the qualified DE10-Lite's
+[board images](../../board-bring-up.md) and on the DE10-Nano's
+[`nano-uart` image](../../de10-nano-board.md#targets); the block type behind the
+[shared Intel RAM wrapper](../common/MAS_memory_primitives.md#vendor-family-selection)
+is the one fact that follows the family, so the M9K figures below are the MAX 10
+ones.
+
 ## Module boundaries
 
 All modules use `clk_sys`. Global `reset_sys` clears transport and image validity;

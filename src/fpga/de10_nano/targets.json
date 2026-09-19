@@ -184,6 +184,194 @@
         "leds[7]": "PIN_AA23"
       },
       "virtual_pins": []
+    },
+    "nano-uart": {
+      "device": "5CSEBA6U23I7",
+      "top": "nano_uart_proof",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/storage/n2m_sdram_pkg.sv",
+        "src/rtl/memory/n2m_memory_pkg.sv",
+        "src/rtl/input/n2m_input_pkg.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/uart/n2m_uart_pkg.sv",
+        "src/rtl/uart/n2m_uart_packet_store.sv",
+        "src/rtl/uart/n2m_uart_packet_rx.sv",
+        "src/rtl/uart/n2m_uart_exchange_store.sv",
+        "src/rtl/uart/n2m_uart_exchange.sv",
+        "src/rtl/uart/n2m_uart_tx.sv",
+        "src/rtl/uart/n2m_uart_packet_tx.sv",
+        "src/rtl/uart/n2m_uart_response.sv",
+        "src/rtl/uart/n2m_uart_presence_store.sv",
+        "src/rtl/uart/n2m_uart_load.sv",
+        "src/rtl/uart/n2m_uart_rx.sv",
+        "src/rtl/input/n2m_input.sv",
+        "src/rtl/uart/n2m_uart_core_control.sv",
+        "src/rtl/uart/n2m_uart_host_registers.sv",
+        "src/rtl/uart/n2m_uart_validate.sv",
+        "src/rtl/uart/n2m_uart_sdram.sv",
+        "src/rtl/uart/n2m_uart_commands.sv",
+        "src/rtl/uart/n2m_uart.sv",
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/fpga/de10_nano/n2m_clocking_cyclonev.sv",
+        "src/fpga/de10_nano/nano_uart_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_nano/nano_uart.sdc"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll_cyclonev",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125,
+        "system_divide": 2
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "u_clocking|u_system_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk",
+            "count": 8,
+            "ports": [
+              "uart_tx",
+              "leds[0]",
+              "leds[1]",
+              "leds[2]",
+              "leds[4]",
+              "leds[5]",
+              "leds[6]",
+              "leds[7]"
+            ]
+          },
+          {
+            "clock": "u_clocking|u_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk",
+            "count": 1,
+            "ports": [
+              "leds[3]"
+            ]
+          }
+        ],
+        "reference_ns": "20.000"
+      },
+      "pins": {
+        "clk_reference": "PIN_V11",
+        "board_reset_n": "PIN_AH17",
+        "uart_rx": "PIN_W14",
+        "uart_tx": "PIN_Y17",
+        "leds[0]": "PIN_W15",
+        "leds[1]": "PIN_AA24",
+        "leds[2]": "PIN_V16",
+        "leds[3]": "PIN_V15",
+        "leds[4]": "PIN_AF26",
+        "leds[5]": "PIN_AE26",
+        "leds[6]": "PIN_Y16",
+        "leds[7]": "PIN_AA23"
+      },
+      "virtual_pins": []
+    },
+    "nano-uart-invalid": {
+      "device": "5CSEBA6U23I7",
+      "top": "nano_uart_proof",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/storage/n2m_sdram_pkg.sv",
+        "src/rtl/memory/n2m_memory_pkg.sv",
+        "src/rtl/input/n2m_input_pkg.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/uart/n2m_uart_pkg.sv",
+        "src/rtl/uart/n2m_uart_packet_store.sv",
+        "src/rtl/uart/n2m_uart_packet_rx.sv",
+        "src/rtl/uart/n2m_uart_exchange_store.sv",
+        "src/rtl/uart/n2m_uart_exchange.sv",
+        "src/rtl/uart/n2m_uart_tx.sv",
+        "src/rtl/uart/n2m_uart_packet_tx.sv",
+        "src/rtl/uart/n2m_uart_response.sv",
+        "src/rtl/uart/n2m_uart_presence_store.sv",
+        "src/rtl/uart/n2m_uart_load.sv",
+        "src/rtl/uart/n2m_uart_rx.sv",
+        "src/rtl/input/n2m_input.sv",
+        "src/rtl/uart/n2m_uart_core_control.sv",
+        "src/rtl/uart/n2m_uart_host_registers.sv",
+        "src/rtl/uart/n2m_uart_validate.sv",
+        "src/rtl/uart/n2m_uart_sdram.sv",
+        "src/rtl/uart/n2m_uart_commands.sv",
+        "src/rtl/uart/n2m_uart.sv",
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/fpga/de10_nano/n2m_clocking_cyclonev.sv",
+        "src/fpga/de10_nano/nano_uart_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_nano/nano_uart.sdc"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll_cyclonev",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125,
+        "system_divide": 2
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "count": 8,
+            "ports": [
+              "uart_tx",
+              "leds[0]",
+              "leds[1]",
+              "leds[2]",
+              "leds[4]",
+              "leds[5]",
+              "leds[6]",
+              "leds[7]"
+            ]
+          },
+          {
+            "clock": "u_clocking|u_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk",
+            "count": 1,
+            "ports": [
+              "leds[3]"
+            ]
+          }
+        ],
+        "reference_ns": "20.000"
+      },
+      "pins": {
+        "clk_reference": "PIN_V11",
+        "board_reset_n": "PIN_AH17",
+        "uart_rx": "PIN_W14",
+        "uart_tx": "PIN_Y17",
+        "leds[0]": "PIN_W15",
+        "leds[1]": "PIN_AA24",
+        "leds[2]": "PIN_V16",
+        "leds[3]": "PIN_V15",
+        "leds[4]": "PIN_AF26",
+        "leds[5]": "PIN_AE26",
+        "leds[6]": "PIN_Y16",
+        "leds[7]": "PIN_AA23"
+      },
+      "virtual_pins": []
     }
   }
 }

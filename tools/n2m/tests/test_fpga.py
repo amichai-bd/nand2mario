@@ -181,7 +181,8 @@ class FpgaTests(unittest.TestCase):
         with patch.object(fpga.fpga_intel_memory, "identity", return_value={"primitive": {"sha256": "pinned"}}) as identity:
             result = self.run_build(execute)
             self.assertEqual(result["status"], "PASS", result)
-            identity.assert_called_once_with(self.args.quartus_bin)
+            # The pinned MAX 10 model requirement follows the board's family.
+            identity.assert_called_once_with(self.args.quartus_bin, family="MAX 10")
             self.assertEqual(result["tools"]["altsyncram"]["primitive"]["sha256"], "pinned")
             self.assertTrue(any("--simulation" in c["argv"] for c in result["commands"]))
             self.assertEqual(self.run_build(execute)["cache"], "CACHED")

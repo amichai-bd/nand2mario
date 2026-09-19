@@ -112,6 +112,20 @@ and [undefined mixed-port results with different clocks](https://docs.altera.com
 These document683431 sections were read at revision2025-12-15. Simulation data
 alone does not establish collision safety or the fitted device configuration.
 
+## Vendor family selection
+
+The vendor instance names one device family and one block type, and they are the
+only device-dependent values in the wrapper. MAX 10 is the default text: family
+`MAX 10`, block `M9K`. A Cyclone V build defines `N2M_RAM_CYCLONEV`, and the
+wrapper then states family `Cyclone V` and block `M10K`, because Cyclone V has no
+M9K block and naming one there is a fitter substitution warning rather than a
+placement. The selection is textual, so a MAX 10 build preprocesses to the same
+tokens as before and nothing else in the wrapper changes. The
+[builder contract](../../../tools/n2m/SPEC.md#de10-nano-uart-endpoint-image)
+defines the macro from the target's board family, and the same contract keeps the
+pinned simulation-model requirement on every family but the one that compiles no
+simulation model.
+
 ## Build and ownership
 
 The [builder contract](../../../tools/n2m/SPEC.md) owns simulation compile

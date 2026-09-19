@@ -5,6 +5,20 @@
 // Contract: wiki/src/rtl/common/MAS_memory_primitives.md.
 // MAX 10 synthesis sees the vendor altsyncram instance. Verilator predefines
 // VERILATOR and selects the repository double with the same shape and rules.
+
+// The vendor family and its block type are the only device-dependent values in
+// this wrapper. The builder defines N2M_RAM_CYCLONEV for a Cyclone V target
+// (wiki/tools/n2m/SPEC.md#fpga-build) because that family has no M9K block, and
+// naming one there is a fitter substitution warning rather than a placement.
+// The default text is the MAX 10 one, so a MAX 10 build preprocesses unchanged.
+`ifdef N2M_RAM_CYCLONEV
+`define N2M_RAM_FAMILY "Cyclone V"
+`define N2M_RAM_BLOCK_TYPE "M10K"
+`else
+`define N2M_RAM_FAMILY "MAX 10"
+`define N2M_RAM_BLOCK_TYPE "M9K"
+`endif
+
 module n2m_intel_ram #(
     parameter integer DEPTH = 1024,
     parameter integer DATA_BITS = 8,
@@ -79,7 +93,7 @@ module n2m_intel_ram #(
     );
 `else
     altsyncram #(
-        .intended_device_family("MAX 10"), .ram_block_type("M9K"),
+        .intended_device_family(`N2M_RAM_FAMILY), .ram_block_type(`N2M_RAM_BLOCK_TYPE),
         .operation_mode("BIDIR_DUAL_PORT"), .lpm_type("altsyncram"),
         .width_a(DATA_BITS), .widthad_a(ADDRESS_BITS), .numwords_a(DEPTH),
         .width_b(DATA_BITS), .widthad_b(ADDRESS_BITS), .numwords_b(DEPTH),
@@ -135,3 +149,6 @@ module n2m_intel_ram #(
     `N2M_ASSERT(INTEL_RAM_WRITE_KNOWN, clk_a, reset_a,
         !a_write || !$isunknown(a_wdata))
 endmodule
+
+`undef N2M_RAM_FAMILY
+`undef N2M_RAM_BLOCK_TYPE

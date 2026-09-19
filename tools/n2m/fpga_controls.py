@@ -7,17 +7,23 @@ CHAINS = tuple((f"button{i}", f"buttons_n[{i}]", f"u_physical|u_buttons|button_m
 
 
 def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID", instances=1):
+    """The generated macro and the compiled 128-bit constant are the same identity.
+
+    Quartus writes the synthesis report in ASCII on both supported families, so
+    the read states utf-8 rather than leaving the decode to the host locale. Only
+    the fit report carries a non-ASCII byte, and `FIT_ENCODING` owns that fact.
+    """
     import re
     if not isinstance(build_id, str) or not re.fullmatch('[0-9a-f]{32}', build_id) or int(build_id, 16) == 0:
-        raise ValueError('controls proof requires its nonzero producing build identity')
+        raise ValueError('build identity must be a nonzero producing fingerprint')
     qsf = (folder / 'design.qsf').read_text()
     lines = [line for line in qsf.splitlines() if macro in line]
     if lines != [f'set_global_assignment -name VERILOG_MACRO "{macro}=128\'h{build_id}"']:
-        raise ValueError('controls generated macro differs from producing identity')
-    report = (folder / 'output/design.map.rpt').read_text()
+        raise ValueError('generated identity macro differs from the producing identity')
+    report = (folder / 'output/design.map.rpt').read_text(encoding='utf-8')
     values = re.findall(r';\s*BUILD_ID\s*;\s*([01]+)\s*;\s*Unsigned Binary\s*;', report)
     if values != [f'{int(build_id, 16):0128b}'] * instances:
-        raise ValueError('controls compiled 128-bit identity differs')
+        raise ValueError('compiled 128-bit identity differs')
     return build_id
 
 
@@ -137,10 +143,15 @@ def constraints(quote, *, chains=CHAINS):
     return "\n".join(lines) + "\n"
 
 
-def audit(quote, *, chains=CHAINS):
+def audit(quote, *, chains=CHAINS, corners=fpga_vga.CORNERS, voltage=1200):
+    """The retained per-corner setup/hold report for every chain.
+
+    The corner set and core voltage belong to the board, so a family with other
+    analysed corners passes its own; the DE10-Lite defaults are unchanged.
+    """
     lines = []
-    for corner, model, temperature in fpga_vga.CORNERS:
-        lines += [f"set_operating_conditions -model {model} -voltage 1200 -temperature {temperature}", "update_timing_netlist"]
+    for corner, model, temperature in corners:
+        lines += [f"set_operating_conditions -model {model} -voltage {voltage} -temperature {temperature}", "update_timing_netlist"]
         for name, port, first, second in chains:
             lines += fpga_vga.collection("registers", [first], "controls_launch_" + name, quote)
             lines += fpga_vga.collection("registers", [second], "controls_capture_" + name, quote)
@@ -149,29 +160,40 @@ def audit(quote, *, chains=CHAINS):
     return "\n".join(lines) + "\n"
 
 
-def required_reports(*, chains=CHAINS):
-    return [f"controls_{corner}_{name}_{check}.rpt" for corner, _, _ in fpga_vga.CORNERS
+def required_reports(*, chains=CHAINS, corners=fpga_vga.CORNERS):
+    return [f"controls_{corner}_{name}_{check}.rpt" for corner, _, _ in corners
             for name, _, _, _ in chains for check in ("setup", "hold")]
+
+
+def verify_reports(folder, *, chains=CHAINS, corners=fpga_vga.CORNERS, system_clock="clk_sys"):
+    """Each retained report times exactly one met path between the two named stages.
+
+    This half of the audit reads reports, so it is family-neutral: only the
+    corner labels and the launching clock's name come from the board.
+    """
+    import re
+    paths = {}
+    for corner, _, _ in corners:
+        for name, _, first, second in chains:
+            for check in ("setup", "hold"):
+                report = folder / "output" / f"controls_{corner}_{name}_{check}.rpt"
+                text = report.read_text()
+                if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
+                    raise ValueError("missing or violated control synchronizer path")
+                rows = [r for r in fpga_vga.rows(fpga_vga.summary(text)) if len(r) == 8 and r[0] != "Slack"]
+                if (len(rows) != 1 or [fpga_vga.node(v) for v in rows[0][1:3]] != [first, second]
+                        or rows[0][3:5] != [system_clock, system_clock] or fpga_vga.number(rows[0][0]) < 0):
+                    raise ValueError("control synchronizer timing endpoints or clocks differ")
+                paths[report.name] = fpga_vga.number(rows[0][0])
+    return paths
 
 
 def verify(folder, *, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk", chains=CHAINS, top="controls_proof"):
     """Check every external-control synchronizer path and its sole first-stage sink."""
     from .fpga_lock import parse_netlist, OUTPUTS
     import re
-    output = folder / 'output'
-    result = {'paths': {}, 'first_stage_sinks': {}}
-    for corner, _, _ in fpga_vga.CORNERS:
-        for name, _, first, second in chains:
-            for check in ('setup', 'hold'):
-                report = output / f'controls_{corner}_{name}_{check}.rpt'
-                text = report.read_text()
-                if not re.search(r'Report Timing: Found 1 ' + check + r' paths \(0 violated\)', text):
-                    raise ValueError('missing or violated control synchronizer path')
-                rows = [r for r in fpga_vga.rows(fpga_vga.summary(text)) if len(r) == 8 and r[0] != 'Slack']
-                if (len(rows) != 1 or [fpga_vga.node(v) for v in rows[0][1:3]] != [first, second]
-                        or rows[0][3:5] != [system_clock, system_clock] or fpga_vga.number(rows[0][0]) < 0):
-                    raise ValueError('control synchronizer timing endpoints or clocks differ')
-                result['paths'][report.name] = fpga_vga.number(rows[0][0])
+    result = {'paths': verify_reports(folder, chains=chains, system_clock=system_clock),
+              'first_stage_sinks': {}}
     text = (folder / 'simulation/questa/design.vo').read_text()
     _, cells, params, declarations, rhs, lhs = parse_netlist(text, top)
     def sinks(net):

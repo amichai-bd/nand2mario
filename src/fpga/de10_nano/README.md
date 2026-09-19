@@ -26,5 +26,20 @@ virtual control and observation ports.
 family's generation and evidence, selected by
 [`fpga_clocking.py`](../../../tools/n2m/fpga_clocking.py).
 `nano-clocking-invalid` names a MAX 10 ALTPLL clock as a checked endpoint and
-must fail. The DE10-Lite remains the qualified board; its physical verification
+must fail.
+
+`nano-uart` places the qualified UART endpoint behind those clocks in
+[`nano_uart_proof.sv`](nano_uart_proof.sv), with `uart_rx` and `uart_tx` on the
+GPIO pins the [board specification](../../../wiki/src/de10-nano-board.md#uart-endpoint-pins)
+records with their header positions, `KEY[0]` as reset and `LED[7:0]` showing
+clocking, endpoint state and serial activity. `n2m_uart` is unchanged: only the
+product memory wrapper selects this family's block, and
+[`fpga_uart_cyclonev.py`](../../../tools/n2m/fpga_uart_cyclonev.py) owns the
+Cyclone V receive-synchronizer and fitted-store evidence while `fpga_controls`
+still owns the collections and the corner reports. `nano-uart-invalid` names the
+MAX 10 ALTPLL clock for the `uart_tx` output-delay group and must fail. A passing
+fit is placement and timing evidence; no image has been programmed and no serial
+link has been driven.
+
+The DE10-Lite remains the qualified board; its physical verification
 is in [board bring-up](../../../wiki/src/board-bring-up.md).

@@ -73,14 +73,31 @@ def verify_netlist(text, *, system_clock=SYS_CLOCK):
     return evidence
 
 
-def identity(directory):
+# The one family that does not compile the pinned simulation model, so its build
+# records the installed hashes as found instead of requiring the pin. The check is
+# written as an exemption: a family nobody has considered fails closed.
+MODEL_PIN_EXEMPT = ("Cyclone V",)
+
+
+def identity(directory, *, family="MAX 10"):
+    """The installed altsyncram definition, declaration and simulation model.
+
+    A build must find the pinned model beside them unless its family is exempt.
+    The pin ([the dependency record](dependencies.json)) names the MAX 10 product
+    memory: that model is the reviewed simulation counterpart of the memory MAX 10
+    synthesizes, and the source of the mixed-port coercion diagnostic
+    [`intel_memory`](intel_memory.py) classifies in Questa. A Cyclone V build
+    compiles no simulation model, so its record keeps the installed hashes as
+    found, the way the Quartus executables are recorded rather than pinned.
+    Every other family is checked, whether or not anyone has thought about it.
+    """
     quartus = Path(directory).resolve().parent
     paths = {"definition": quartus / "libraries/megafunctions/altsyncram.tdf",
              "declaration": quartus / "libraries/megafunctions/altsyncram.inc",
              "model": quartus / "eda/sim_lib/altera_mf.v"}
     if any(not path.is_file() for path in paths.values()):
         raise ValueError("missing installed Intel memory synthesis dependency")
-    if file_hash(paths["model"]) != MIXED_MODE_MODEL_HASH:
+    if family not in MODEL_PIN_EXEMPT and file_hash(paths["model"]) != MIXED_MODE_MODEL_HASH:
         raise ValueError("Intel synthesis model differs from the reviewed simulation model")
     return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
 

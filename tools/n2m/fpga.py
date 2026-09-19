@@ -12,12 +12,15 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree
+from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
 REGISTRIES = ("src/fpga/de10_lite/targets.json", "src/fpga/de10_nano/targets.json")
 BOARD_FIELDS = {"name", "device", "family", "timing_corners", "specification"}
+# The one family whose vendor primitives, I/O completion rules and netlist atoms
+# differ from the MAX 10 defaults; the family itself comes from the registry.
+CYCLONEV_FAMILY = "Cyclone V"
 TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta", "quartus_eda")
 BUILD_ID_OVERRIDE_NOTICE = ("BUILD_ID pinned by --build-id for netlist comparison only; "
                             "this result is not a board image and programming refuses it")
@@ -181,7 +184,7 @@ def target_definition(root, name):
 
 def identity_target(target):
     """Return whether the live target carries a configurable build identity."""
-    return target.get("top") in ("controls_proof", "sdram_proof") or fpga_v05.board_target(target)
+    return target.get("top") in ("controls_proof", "sdram_proof", NANO_UART_TOP) or fpga_v05.board_target(target)
 
 
 # The SDRAM bring-up image: physical UART/reset/LED pins plus the DRAM pins,
@@ -190,6 +193,10 @@ def identity_target(target):
 SDRAM_TOP = "sdram_proof"
 # The DE10-Nano flow proof: a counter on the board LEDs, no PLL and no vendor IP.
 NANO_TOP = "nano_smoke"
+# The DE10-Nano UART endpoint image: the qualified endpoint behind this board's
+# Cyclone V clocking, on GPIO pins, with one identity macro and the same checked
+# receive synchronizer the DE10-Lite board images carry.
+NANO_UART_TOP = "nano_uart_proof"
 # The flash reader proof image: the On-Chip Flash IP walked over the user
 # range, physical reset and LED pins, no identity macro.
 FLASH_TOP = "flash_proof"
@@ -225,6 +232,18 @@ def prepare(root, folder, target, build_id=None):
             raise ValueError("physical SDRAM build requires a nonzero fingerprint identity")
         lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_SDRAM_BUILD_ID=128'h" + build_id))
         lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
+    if target["top"] == NANO_UART_TOP:
+        if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
+            raise ValueError("physical DE10-Nano UART build requires a nonzero fingerprint identity")
+        lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_NANO_UART_BUILD_ID=128'h" + build_id))
+        # Every unused package pin stays an input, so a slipped flying lead on the
+        # GPIO header meets a high-impedance pin. The fitter reports the
+        # reservation as tri-stated with a weak pull-up, which is still an input.
+        lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
+    # The product memory wrapper names one vendor family and block type. Cyclone V
+    # has no M9K, so its targets select the M10K text (wiki/src/rtl/common/MAS_memory_primitives.md).
+    if target["family"] == CYCLONEV_FAMILY and "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
+        lines.append('set_global_assignment -name VERILOG_MACRO "N2M_RAM_CYCLONEV=1"')
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
         for name in target[field]:
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
@@ -248,8 +267,8 @@ def prepare(root, folder, target, build_id=None):
         if (target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         # Cyclone V calls an output pin without a drive strength and slew rate an
-        # incomplete I/O assignment (Quartus 15714), so the flow proof states both.
-        if target["top"] == NANO_TOP and re.fullmatch(r"leds\[[0-9]\]", port):
+        # incomplete I/O assignment (Quartus 15714), so every output states both.
+        if target["family"] == CYCLONEV_FAMILY and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
             lines.append(f'set_instance_assignment -name SLEW_RATE 1 -to {tcl_word(port)}')
         # SDRAM command, address, clock and data pins: 3.3-V LVTTL at 8 mA.
@@ -277,6 +296,8 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target), controls=fpga_v05.control_target(target)) + "project_close")
     if target["top"] == SDRAM_TOP:
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word, chains=SDRAM_CHAINS) + "project_close")
+    if target["top"] == NANO_UART_TOP:
+        audit = audit.replace("project_close", fpga_uart_cyclonev.audit(tcl_word) + "project_close")
     # The images that drive SDRAM carry both watched clocks; see fpga_hold.
     if sdram_target(target):
         audit = audit.replace("project_close", fpga_hold.audit(tcl_word) + "project_close")
@@ -293,6 +314,8 @@ def checked_constraints(target):
         text += fpga_controls.constraints(tcl_word)
     if target["top"] == SDRAM_TOP:
         text += fpga_controls.constraints(tcl_word, chains=SDRAM_CHAINS)
+    if target["top"] == NANO_UART_TOP:
+        text += fpga_uart_cyclonev.constraints(tcl_word)
     return text
 
 
@@ -583,6 +606,13 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
             system_net=fpga_pll.SYSTEM_NET, chains=SDRAM_CHAINS, top=SDRAM_TOP)
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_SDRAM_BUILD_ID", instances=1)
+    # The DE10-Nano endpoint image: the same checked chain, read from a Cyclone V
+    # netlist and its four corners.
+    if target["top"] == NANO_UART_TOP:
+        evidence["intel_memory"] = fpga_uart_cyclonev.verify_memory(folder)
+        evidence["board_uart"] = fpga_uart_cyclonev.verify(folder, top=NANO_UART_TOP)
+        evidence["board_build_id"] = fpga_controls.verify_identity(
+            folder, build_id, macro="N2M_NANO_UART_BUILD_ID", instances=1)
     if fpga_flash.flash_target(target):
         evidence["onchip_flash"] = fpga_flash.verify(folder, target["top"])
     if sdram_target(target):
@@ -629,6 +659,8 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=True)]
         if fpga_v05.board_target(target):
             required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.chains(target))]
+        if target.get("top") == NANO_UART_TOP:
+            required += [folder / "output" / name for name in fpga_uart_cyclonev.required_reports()]
         if sdram_target(target):
             required += [folder / "output" / name for name in fpga_controls.required_reports(chains=SDRAM_CHAINS)]
             required += [folder / "output" / name for name in fpga_hold.required_reports()]
@@ -675,7 +707,7 @@ def build_fpga(root, build, args, provenance=None, progress=None):
                 clocking = fpga_clocking.implementation(target["family"])
                 record["tools"][clocking.TOOLS_KEY] = clocking.identity(args.quartus_bin)
             if "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
-                record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
+                record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin, family=target["family"])
             if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
                 record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
             if fpga_flash.flash_target(target):
