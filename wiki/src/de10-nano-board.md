@@ -168,6 +168,95 @@ All pins are single-ended and use the `3.3-V LVTTL` I/O standard, the same
 standard and voltage as the DE10-Lite pins in
 [board bring-up](board-bring-up.md#wiring-voltage-ground-and-reset-polarity).
 
+### Vendor pin table
+
+The [DE10-Nano user manual](#references) is the published table every source
+above transcribes, so it is the primary source rather than a fourth
+transcription. Its Table 3-10 gives the package pins and its Figure 3-20 gives
+the physical arrangement of both expansion headers, which no settings file
+carries. The revision read here is dated December 31, 2019.
+
+Read row by row against the tables below, it states the same package pin for 143
+of the 145 signals and disagrees with none. It writes `HDMI_I2S`,
+`HDMI_I2C_SCL` and `HDMI_I2C_SDA` as `HDMI_I2S0`, `I2C_SCL` and `I2C_SDA` at the
+same pins. `LED[6]` and `LED[7]` fall on a page break in the copy read and were
+not confirmed from it; every other row was. This is still the vendor's published
+table and not a measurement, so the caveat above is unchanged: no pin here is
+verified against hardware.
+
+### GPIO header positions
+
+Both 40-pin headers carry the same arrangement, so a position means the same
+thing on `GPIO_0` (JP1) and `GPIO_1` (JP7):
+
+| Header position | Carries |
+|---|---|
+| 1 to 10 | `GPIO_x[0]` to `GPIO_x[9]`, in order |
+| 11 | 5 V |
+| 12 | GND |
+| 13 to 28 | `GPIO_x[10]` to `GPIO_x[25]`, in order |
+| 29 | 3.3 V |
+| 30 | GND |
+| 31 to 40 | `GPIO_x[26]` to `GPIO_x[35]`, in order |
+
+The header is two rows of twenty. Odd positions are one row and even positions
+the other, and position `2k-1` faces position `2k`, so consecutive even
+positions are neighbours along one row.
+
+### UART endpoint pins
+
+The [`nano-uart` target](#targets) places the host serial link on `GPIO_0` (JP1):
+
+| Signal | GPIO | Pin | Header position | Sources |
+|---|---|---|---|---|
+| `uart_rx` | `GPIO_0[27]` | `PIN_W14` | JP1 position 32 | 3, and the vendor manual |
+| `uart_tx` | `GPIO_0[29]` | `PIN_Y17` | JP1 position 34 | 3, and the vendor manual |
+
+Why these two, out of 72 header pins:
+
+- `GPIO_0` and `GPIO_1` are the only groups three transcribing sources state;
+  the Arduino header and the LTC2308 have two. The vendor manual states both
+  groups as well, so these pins carry the strongest provenance this board has
+  for a free pin.
+- Nothing else on this page claims them, and the endpoint needs pins no board
+  resource shares.
+- JP1 position 30 is a GND pin, and 30, 32 and 34 are three consecutive
+  positions along the even row. The operator's three flying leads therefore land
+  on three neighbouring pins of one row instead of spanning the header.
+- The only supply beside them is the 3.3 V at position 29, which is the level the
+  adapter already uses, so a lead that slips across the row cannot present 5 V to
+  a 3.3-V LVTTL input. The other ground, at position 12, faces the 5 V at
+  position 11, which is why the endpoint is not placed at that end.
+- The image reserves every unused package pin as a tri-stated input, so a lead
+  that slips onto a neighbouring GPIO pin meets a high-impedance input.
+
+An add-on board on JP1 uses these pins: the MiSTer SDRAM signals above resolve
+to `GPIO_0`. JP1 must be free for this image.
+
+### Wiring the host adapter
+
+The host end is a USB serial adapter at 3.3 V, the same class the DE10-Lite
+bring-up used. These pins are 3.3-V LVTTL, so a 5 V adapter must not reach them.
+The link is 115200 baud, 8N1, no flow control, as the
+[endpoint contract](rtl/uart/MAS_uart.md) states.
+
+Three leads, and no fourth:
+
+| Adapter lead | Board signal | Header position |
+|---|---|---|
+| TX, the adapter's output | `uart_rx`, `GPIO_0[27]`, `PIN_W14` | JP1 position 32 |
+| RX, the adapter's input | `uart_tx`, `GPIO_0[29]`, `PIN_Y17` | JP1 position 34 |
+| GND | board ground | JP1 position 30 |
+
+Leave the adapter's supply lead unconnected: the board has its own supply, and
+the header's 5 V and 3.3 V pins are outputs. `KEY[0]` is the reset.
+The host selects the port through the builder's
+[serial port enumeration](../tools/n2m/SPEC.md#serial-port-enumeration); no
+device node or adapter serial belongs on this page.
+
+Nothing here has been wired or programmed. This is the wiring the image expects,
+and physical bring-up is separate work under its own authorization.
+
 ### Clocks
 
 | Signal | Pin | Sources | Attesting sources |
@@ -378,8 +467,9 @@ Quartus analyses this industrial device at four corners, `Slow 1100mV 100C`,
 `Slow 1100mV -40C`, `Fast 1100mV 100C` and `Fast 1100mV -40C`, and the builder
 requires setup, hold and minimum-pulse-width slack at each of them, and recovery
 and removal as well from a target that carries generated clocks. It also
-requires a drive strength and a slew rate on every `LED` pin, because Cyclone V
-reports an output pin without both as an incomplete I/O assignment.
+requires a drive strength and a slew rate on every output pin of a Cyclone V
+target, because Cyclone V reports an output pin without both as an incomplete I/O
+assignment.
 
 `nano-clocking` is the clocking proof: the Cyclone V wrapper
 [`n2m_clocking_cyclonev.sv`](../../src/fpga/de10_nano/n2m_clocking_cyclonev.sv)
@@ -400,9 +490,32 @@ sources and deliberately names
 the MAX 10 ALTPLL system clock as a checked output-delay endpoint, which no
 Cyclone V netlist contains, so it must fail naming that endpoint.
 
-`GPIO_0`, `GPIO_1`, the ADV7513 group, the Arduino header and the LTC2308 are
-mapped above but belong to no target. Nothing places them until a target needs
-them.
+`nano-uart` is the host endpoint image: the qualified
+[UART endpoint](rtl/uart/MAS_uart.md) unchanged, behind this board's two PLLs,
+under [`nano_uart_proof.sv`](../../src/fpga/de10_nano/nano_uart_proof.sv). It
+uses twelve real pins and no virtual pin: `FPGA_CLK1_50`, `KEY[0]` as reset,
+`LED[7:0]`, and the two [UART pins](#uart-endpoint-pins) above. There is no core,
+no video and no storage in it, so the endpoint's other inputs are tied off and
+the host commands that need them are refused rather than answered falsely.
+`LED[7]` shows clocking ready, `LED[6]` toggles on every byte the endpoint sends,
+`LED[5:4]` show the endpoint state, `LED[3]` is the pixel-clock heartbeat and
+`LED[2:0]` count sent bytes, so an exchange is visible at the board.
+The image carries its producing build identity through `N2M_NANO_UART_BUILD_ID`,
+as the DE10-Lite board images carry theirs, so a host can tell which bitstream
+answers it. The fit places 1,285 ALMs, 1,395 registers, both PLLs and the
+endpoint's six stores in 13 M10K blocks (76,272 bits), with positive slack at all
+four corners. `nano-uart-invalid` shares those sources and deliberately names the
+MAX 10 ALTPLL system clock as the checked output-delay clock of the `uart_tx`
+group, which no Cyclone V netlist contains, so the Fitter refuses the collection
+and the build fails naming that endpoint.
+
+A passing fit is evidence of placement and timing only. Nothing has been
+programmed onto a DE10-Nano and no serial link has been driven, so the endpoint
+is not known to work on this board.
+
+`GPIO_1`, the ADV7513 group, the Arduino header and the LTC2308 are mapped above
+but belong to no target, and so is every `GPIO_0` pin but the two the UART uses.
+Nothing places them until a target needs them.
 
 ## Verification
 
@@ -422,15 +535,30 @@ them.
   those checks and
   [`test_fpga_cyclonev.py`](../../tools/n2m/tests/test_fpga_cyclonev.py) proves
   their rejections.
-- The Questa compile gate elaborates `nano_smoke` and `nano_clocking_proof` with
-  every other registered top.
+- `python3 tools/build.py fpga build nano-uart` must PASS with the reports above
+  and, in addition, its four-corner receive-synchronizer paths, its fitted store
+  inventory and its compiled build identity checked;
+  `nano-uart-invalid` must FAIL. The
+  [builder contract](../tools/n2m/SPEC.md#de10-nano-uart-endpoint-image) owns
+  those checks and
+  [`test_fpga_uart_cyclonev.py`](../../tools/n2m/tests/test_fpga_uart_cyclonev.py)
+  proves their rejections.
+- The Questa compile gate elaborates `nano_smoke`, `nano_clocking_proof` and
+  `nano_uart_proof` with every other registered top.
 
 Physical verification of this board is not done. It needs explicit hardware
 authorization, and it is not part of the flow proof.
 
 ## References
 
-- [DE10-Nano user manual](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=1046)
+- [DE10-Nano user manual](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=1046),
+  Terasic. Section 3.6.2, Figure 3-20 and Table 3-10 are the
+  [vendor pin table](#vendor-pin-table) and the
+  [header positions](#gpio-header-positions); the revision read was dated
+  December 31, 2019 (SHA-256
+  `cd709cb8c9cf425a81404a49f6b9ed1f67283767954657fe0ca2232fd84d84b2` of that
+  PDF). Vendor documentation is a reference, not redistributed source, and no
+  copy is committed.
 - Cyclone V Device Datasheet, Intel document `CV-51002`, PLL Specifications table,
   the `fVCO` row and its footnote. It is the source of the
   [VCO range](#pll-vco-range) above. Vendor documentation is a reference, not

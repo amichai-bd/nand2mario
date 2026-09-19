@@ -26,8 +26,9 @@ from . import fpga_clocking, fpga_lock_cyclonev
 
 TOOLS_KEY = "altera_pll"
 FAMILY = "Cyclone V"
-# Only the bounded Cyclone V clocking proof carries generated clocks today.
-SUPPORTED_TOPS = ("nano_clocking_proof",)
+# The Cyclone V tops that carry generated clocks: the bounded clocking proof and
+# the UART endpoint image that consumes the same two PLLs.
+SUPPORTED_TOPS = ("nano_clocking_proof", "nano_uart_proof")
 PIXEL_MODULE = "n2m_pixel_pll_cyclonev"
 SYSTEM_MODULE = "n2m_system_pll_cyclonev"
 # The fitted atom hierarchy the Fitter and the Timing Analyzer both name. A
@@ -439,23 +440,47 @@ def _explain_lines(code, lines, wanted, reason):
     return [{"code": code, "text": line, "reason": reason} for line in lines]
 
 
+def _connectivity_tables(report):
+    """Every port connectivity table in the synthesis report, by owning instance."""
+    tables = {}
+    owner = None
+    for line in report.splitlines():
+        heading = re.fullmatch(r'; Port Connectivity Checks: "([^"]+)"\s*;\s*', line)
+        if heading:
+            owner = heading[1]
+            if owner in tables:
+                raise ValueError("duplicate connectivity check owner")
+            tables[owner] = {}
+            continue
+        if owner is None:
+            continue
+        cells = [cell.strip() for cell in line.split(";")[1:-1]]
+        if len(cells) == 4 and cells[0] not in ("Port", ""):
+            tables[owner][(cells[0], cells[1], cells[2])] = cells[3]
+        elif tables[owner] and line.startswith("+--"):
+            owner = None
+    return tables
+
+
 def _verify_connectivity(folder):
+    """Only the two generated PLL wrappers may carry a connectivity warning.
+
+    Any other instance's table is accepted only when every row is informational:
+    an unconnected diagnostic output or a constant-driven input of the product
+    RTL, which the 12241 message's own hierarchy count corroborates.
+    """
     report = (folder / "output/design.map.rpt").read_text(encoding="cp1252")
-    owners = re.findall(r'(?m)^; Port Connectivity Checks: "([^"]+)"\s*;\s*$', report)
-    expected = sorted(FIT_WRAPPERS.values())
-    if sorted(owners) != sorted(expected):
+    tables = _connectivity_tables(report)
+    warned = sorted(owner for owner, rows in tables.items()
+                    if any(severity == "Warning" for _, _, severity in rows))
+    if warned != sorted(FIT_WRAPPERS.values()):
         raise ValueError("connectivity check owners differ")
-    for owner in expected:
-        lines = report[report.index(f'; Port Connectivity Checks: "{owner}"'):].splitlines()
-        rows = {}
-        for line in lines[1:]:
-            cells = [cell.strip() for cell in line.split(";")[1:-1]]
-            if len(cells) == 4 and cells[0] not in ("Port", ""):
-                rows[(cells[0], cells[1], cells[2])] = cells[3]
-            elif rows and line.startswith("+--"):
-                break
-        if rows != CONNECTIVITY_PORTS:
+    for owner in warned:
+        if tables[owner] != CONNECTIVITY_PORTS:
             raise ValueError("connectivity check port set or severity differs")
+    for owner, rows in tables.items():
+        if owner not in warned and any(severity != "Info" for _, _, severity in rows):
+            raise ValueError("connectivity check severity differs: " + owner)
 
 
 def clock_inventory(definition, reference):
@@ -493,7 +518,7 @@ def lock_event_count(target):
 
 
 def verify_lock_event(folder, checks, top="nano_clocking_proof", *, parallel=False, extra_rows=()):
-    if not parallel or extra_rows:
+    if not parallel or extra_rows or top not in SUPPORTED_TOPS:
         raise ValueError("unsupported Cyclone V clocking composition")
     return fpga_lock_cyclonev.verify((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
 

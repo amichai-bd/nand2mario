@@ -1953,8 +1953,8 @@ and includes its header hashes in each fresh manifest, without caching.
 
 `fpga build --build-id <32 lowercase hex digits, nonzero>` is a comparison-only option for the
 targets that carry an identity macro (`controls_proof`, the `v05` board
-targets and `sdram_proof`). It replaces the fingerprint-derived `N2M_CONTROLS_BUILD_ID` /
-`N2M_V05_BUILD_ID` / `N2M_SDRAM_BUILD_ID` constant with the given nonzero value so two builds of
+targets, `sdram_proof` and `nano_uart_proof`). It replaces the fingerprint-derived `N2M_CONTROLS_BUILD_ID` /
+`N2M_V05_BUILD_ID` / `N2M_SDRAM_BUILD_ID` / `N2M_NANO_UART_BUILD_ID` constant with the given nonzero value so two builds of
 different sources can be compared with `tools/fpga_netlist_compare.py`; the
 constant is folded into logic, so fingerprint-derived identities never match
 across sources. The record carries `build_id_override: true` and a notice, the
@@ -2003,6 +2003,49 @@ first-stage inverter behind a separate feeder LUT; the fit varies with the
 identity constant, so both packings are legal results of the same RTL. Wider
 logic, longer chains, ambiguous drivers or bypass fanout fail.
 
+### DE10-Nano UART endpoint image
+
+`nano-uart` places the unchanged UART endpoint behind the
+[Cyclone V clocking](#cyclone-v-altera-pll) on that board's
+[recorded GPIO pins](../../src/de10-nano-board.md#uart-endpoint-pins). It
+requires a nonzero producing identity through `N2M_NANO_UART_BUILD_ID`;
+generated assignment and compiled constant must agree, exactly as the DE10-Lite
+board images require theirs. Unused package pins are reserved as tri-stated
+inputs, and every output pin states a drive strength and a slew rate because the
+family requires both.
+
+Cyclone V has no M9K block, so a Cyclone V target that lists
+[`n2m_intel_ram`](../../src/rtl/common/MAS_memory_primitives.md#vendor-family-selection)
+carries the `N2M_RAM_CYCLONEV=1` macro, which selects the M10K text in that one
+wrapper. A MAX 10 build preprocesses unchanged. The pinned Intel memory model
+requirement stays a MAX 10 requirement: that model is the reviewed simulation
+counterpart of MAX 10 product memory and the source of the recorded mixed-port
+coercion diagnostic, so another family's fit records the installed definition,
+declaration and model hashes as found, the way the Quartus executables are
+recorded.
+
+[`fpga_uart_cyclonev`](../../../tools/n2m/fpga_uart_cyclonev.py) owns this
+family's evidence and reuses the external-control audit above for everything
+that is not family-specific:
+
+- the receive line's four-corner setup and hold paths between the two
+  synchronizer stages, analysed at 1100 mV and this board's four corners, each
+  met and launched by the fitted system clock;
+- the fitted netlist structure: the external port reaches one input buffer, that
+  buffer reaches the first stage and nothing else, through at most two checked
+  unary Cyclone V LUTs whose combined polarity matches the register's reset
+  value, and both stages run on the generated system clock with the qualified
+  system reset;
+- the fitted memories: exactly the endpoint's six stores with their shapes,
+  register stages and read-during-write modes, 13 M10K blocks and 76,272 bits,
+  and nothing else.
+
+`nano-uart-invalid` names the MAX 10 ALTPLL system clock as the checked
+output-delay clock of the `uart_tx` group. No Cyclone V netlist contains it, so
+the Fitter refuses the collection and the build fails naming that endpoint; it
+never becomes a passing build. Neither target programs the board or opens a
+serial port: the pair ends at a checked fit.
+
 The composed memory check accounts for every logical store and physical atom:
 seven direct-profile stores (84 atoms), four 5760-byte snapshot stores (32),
 three dual-clock VGA banks (18), and six UART stores (13). The complete inventory
@@ -2019,6 +2062,8 @@ python3 tools/build.py fpga build nano-smoke --quartus-bin <directory> --tag nan
 python3 tools/build.py fpga build nano-invalid --quartus-bin <directory> --tag nano-invalid --json
 python3 tools/build.py fpga build nano-clocking --quartus-bin <directory> --tag nano-clocking --json
 python3 tools/build.py fpga build nano-clocking-invalid --quartus-bin <directory> --tag nano-clocking-invalid --json
+python3 tools/build.py fpga build nano-uart --quartus-bin <directory> --tag nano-uart --json
+python3 tools/build.py fpga build nano-uart-invalid --quartus-bin <directory> --tag nano-uart-invalid --json
 ```
 
 `--quartus-bin` names the directory holding `quartus_sh`, `quartus_map`,
@@ -2038,6 +2083,8 @@ the [clocking proof](../../src/de10-nano-board.md#targets) fits the Cyclone V
 wrapper's two generated Altera PLL instances with the shared reset controller and
 timebase on virtual ports, and the invalid target names a MAX 10 ALTPLL clock as
 a checked endpoint that no Cyclone V netlist contains.
+`nano-uart` and `nano-uart-invalid` are that board's
+[UART endpoint pair](#de10-nano-uart-endpoint-image).
 Each invalid target must FAIL with exit 1, naming the missing or wrong endpoint;
 neither ever becomes a passing build. No command programs the board,
 opens UART, or proves physical operation. Design-specific PLL/frame/fit evidence

@@ -50,13 +50,15 @@ OUTPUTS = {
                               "phasedone", "shift", "shiften", "shiftenm", "up"},
     # A simulation-only task container with no ports; it drives nothing.
     "altera_pll_reconfig_tasks": set(),
+    # The family's memory atom, present in any image that carries product stores.
+    "cyclonev_ram_block": {"portadataout", "portbdataout"},
 }
 REGISTER_MODES = {"is_wysiwyg": '"true"', "power_up": '"low"'}
 BUFFER_MODES = {"clock_type": '"global clock"', "disable_mode": '"low"',
                 "ena_register_mode": '"always enabled"', "ena_register_power_up": '"high"',
                 "test_syn": '"high"'}
 LUT_INPUTS = ("dataa", "datab", "datac", "datad", "datae", "dataf")
-SUPPORTED_TOPS = ("nano_clocking_proof",)
+SUPPORTED_TOPS = ("nano_clocking_proof", "nano_uart_proof")
 
 
 def verify(text, checks, top="nano_clocking_proof"):

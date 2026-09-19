@@ -73,14 +73,24 @@ def verify_netlist(text, *, system_clock=SYS_CLOCK):
     return evidence
 
 
-def identity(directory):
+def identity(directory, *, family="MAX 10"):
+    """The installed altsyncram definition, declaration and simulation model.
+
+    A MAX 10 build must find the pinned model beside them: that model is the
+    reviewed simulation counterpart of the memory it synthesizes, and its
+    time-zero mixed-port coercion is recorded evidence
+    ([the pin](dependencies.json) names the MAX 10 product memory). Another
+    family's fit neither simulates against it nor produces that diagnostic, so
+    its record keeps the installed hashes as found, exactly as the Quartus
+    executables are recorded rather than pinned.
+    """
     quartus = Path(directory).resolve().parent
     paths = {"definition": quartus / "libraries/megafunctions/altsyncram.tdf",
              "declaration": quartus / "libraries/megafunctions/altsyncram.inc",
              "model": quartus / "eda/sim_lib/altera_mf.v"}
     if any(not path.is_file() for path in paths.values()):
         raise ValueError("missing installed Intel memory synthesis dependency")
-    if file_hash(paths["model"]) != MIXED_MODE_MODEL_HASH:
+    if family == "MAX 10" and file_hash(paths["model"]) != MIXED_MODE_MODEL_HASH:
         raise ValueError("Intel synthesis model differs from the reviewed simulation model")
     return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
 

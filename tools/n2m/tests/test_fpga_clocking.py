@@ -289,7 +289,8 @@ class FitReportEncodingTests(unittest.TestCase):
 # rest, so the inventory is exact and a new adopter cannot appear unnoticed.
 FIT_REPORT_READERS = {"n2m/fpga_pll.py": 2, "n2m/fpga_pll_cyclonev.py": 1, "n2m/fpga_vga.py": 1,
                       "n2m/fpga_v05.py": 1, "n2m/fpga_intel_memory.py": 1,
-                      "n2m/fpga_memory_stores.py": 1, "n2m/fpga_adc.py": 1}
+                      "n2m/fpga_memory_stores.py": 1, "n2m/fpga_adc.py": 1,
+                      "n2m/fpga_uart_cyclonev.py": 1}
 TOOLS = Path(__file__).resolve().parents[2]
 
 
