@@ -6,23 +6,24 @@ CHAINS = tuple((f"button{i}", f"buttons_n[{i}]", f"u_physical|u_buttons|button_m
     ("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_serial_rx|rx_sync"),)
 
 
-def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID", instances=1, encoding="utf-8"):
+def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID", instances=1):
     """The generated macro and the compiled 128-bit constant are the same identity.
 
-    `encoding` is the synthesis report's; Quartus writes it per family, and the
-    checked constant itself is ASCII either way.
+    Quartus writes the synthesis report in ASCII on both supported families, so
+    the read states utf-8 rather than leaving the decode to the host locale. Only
+    the fit report carries a non-ASCII byte, and `FIT_ENCODING` owns that fact.
     """
     import re
     if not isinstance(build_id, str) or not re.fullmatch('[0-9a-f]{32}', build_id) or int(build_id, 16) == 0:
-        raise ValueError('controls proof requires its nonzero producing build identity')
+        raise ValueError('build identity must be a nonzero producing fingerprint')
     qsf = (folder / 'design.qsf').read_text()
     lines = [line for line in qsf.splitlines() if macro in line]
     if lines != [f'set_global_assignment -name VERILOG_MACRO "{macro}=128\'h{build_id}"']:
-        raise ValueError('controls generated macro differs from producing identity')
-    report = (folder / 'output/design.map.rpt').read_text(encoding=encoding)
+        raise ValueError('generated identity macro differs from the producing identity')
+    report = (folder / 'output/design.map.rpt').read_text(encoding='utf-8')
     values = re.findall(r';\s*BUILD_ID\s*;\s*([01]+)\s*;\s*Unsigned Binary\s*;', report)
     if values != [f'{int(build_id, 16):0128b}'] * instances:
-        raise ValueError('controls compiled 128-bit identity differs')
+        raise ValueError('compiled 128-bit identity differs')
     return build_id
 
 

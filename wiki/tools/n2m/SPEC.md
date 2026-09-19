@@ -2010,19 +2010,25 @@ logic, longer chains, ambiguous drivers or bypass fanout fail.
 [recorded GPIO pins](../../src/de10-nano-board.md#uart-endpoint-pins). It
 requires a nonzero producing identity through `N2M_NANO_UART_BUILD_ID`;
 generated assignment and compiled constant must agree, exactly as the DE10-Lite
-board images require theirs. Unused package pins are reserved as tri-stated
-inputs, and every output pin states a drive strength and a slew rate because the
-family requires both.
+board images require theirs. Unused package pins are reserved as inputs, which the
+fitter reports as tri-stated with a weak pull-up, and every output pin states a
+drive strength and a slew rate because the family requires both.
 
 Cyclone V has no M9K block, so a Cyclone V target that lists
 [`n2m_intel_ram`](../../src/rtl/common/MAS_memory_primitives.md#vendor-family-selection)
 carries the `N2M_RAM_CYCLONEV=1` macro, which selects the M10K text in that one
-wrapper. A MAX 10 build preprocesses unchanged. The pinned Intel memory model
-requirement stays a MAX 10 requirement: that model is the reviewed simulation
-counterpart of MAX 10 product memory and the source of the recorded mixed-port
-coercion diagnostic, so another family's fit records the installed definition,
-declaration and model hashes as found, the way the Quartus executables are
-recorded.
+wrapper. A MAX 10 build preprocesses unchanged.
+
+The pinned Intel memory model requirement is written as one named exemption, so a
+family nobody has considered is checked rather than skipped. Cyclone V is the
+exemption: no Quartus stage and no Questa gate compiles `altera_mf.v` for it, and
+that model is the reviewed simulation counterpart of MAX 10 product memory. Its
+mixed-port coercion is a Questa diagnostic that
+[`intel_memory`](../../../tools/n2m/intel_memory.py) classifies against the same
+pin, and no Quartus build of either family produces it. A Cyclone V build
+therefore records the installed definition, declaration and model hashes as
+found, the way the Quartus executables are recorded; every MAX 10 target that
+lists the wrapper still refuses an unpinned model before any stage runs.
 
 [`fpga_uart_cyclonev`](../../../tools/n2m/fpga_uart_cyclonev.py) owns this
 family's evidence and reuses the external-control audit above for everything

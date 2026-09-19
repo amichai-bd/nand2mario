@@ -236,8 +236,9 @@ def prepare(root, folder, target, build_id=None):
         if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
             raise ValueError("physical DE10-Nano UART build requires a nonzero fingerprint identity")
         lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_NANO_UART_BUILD_ID=128'h" + build_id))
-        # Every unused package pin stays a tri-stated input, so a slipped flying
-        # lead on the GPIO header meets a high-impedance pin.
+        # Every unused package pin stays an input, so a slipped flying lead on the
+        # GPIO header meets a high-impedance pin. The fitter reports the
+        # reservation as tri-stated with a weak pull-up, which is still an input.
         lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
     # The product memory wrapper names one vendor family and block type. Cyclone V
     # has no M9K, so its targets select the M10K text (wiki/src/rtl/common/MAS_memory_primitives.md).
@@ -611,8 +612,7 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["intel_memory"] = fpga_uart_cyclonev.verify_memory(folder)
         evidence["board_uart"] = fpga_uart_cyclonev.verify(folder, top=NANO_UART_TOP)
         evidence["board_build_id"] = fpga_controls.verify_identity(
-            folder, build_id, macro="N2M_NANO_UART_BUILD_ID", instances=1,
-            encoding=fpga_clocking.FIT_ENCODING)
+            folder, build_id, macro="N2M_NANO_UART_BUILD_ID", instances=1)
     if fpga_flash.flash_target(target):
         evidence["onchip_flash"] = fpga_flash.verify(folder, target["top"])
     if sdram_target(target):

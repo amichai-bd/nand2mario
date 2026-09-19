@@ -123,7 +123,8 @@ placement. The selection is textual, so a MAX 10 build preprocesses to the same
 tokens as before and nothing else in the wrapper changes. The
 [builder contract](../../../tools/n2m/SPEC.md#de10-nano-uart-endpoint-image)
 defines the macro from the target's board family, and the same contract keeps the
-pinned simulation-model requirement a MAX 10 requirement.
+pinned simulation-model requirement on every family but the one that compiles no
+simulation model.
 
 ## Build and ownership
 

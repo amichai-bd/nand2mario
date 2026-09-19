@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import tempfile
 
 import test_builder
@@ -157,6 +158,21 @@ class IntelDiagnosticTests(unittest.TestCase):
                 path.write_text("Original test bytes, not an Intel implementation.")
             with self.assertRaisesRegex(ValueError, "differs from the reviewed"):
                 fpga_intel_memory.identity(quartus / "bin64")
+            model = file_hash(quartus / "eda/sim_lib/altera_mf.v")
+            # The exemption is named, so a family nobody has considered is checked
+            # like MAX 10. Only Cyclone V, which compiles no simulation model,
+            # records the installed hash as found.
+            for family in ("MAX 10", "Arria V", "", None):
+                with self.subTest(family=family), self.assertRaisesRegex(ValueError, "differs from the reviewed"):
+                    fpga_intel_memory.identity(quartus / "bin64", family=family)
+            exempt = fpga_intel_memory.identity(quartus / "bin64", family="Cyclone V")
+            self.assertEqual(exempt["model"]["sha256"], model)
+            # With the pin satisfied, every family is accepted and records it.
+            with patch.object(fpga_intel_memory, "MIXED_MODE_MODEL_HASH", model):
+                for family in ("MAX 10", "Cyclone V"):
+                    with self.subTest(pinned=family):
+                        recorded = fpga_intel_memory.identity(quartus / "bin64", family=family)
+                        self.assertEqual(recorded["model"]["sha256"], model)
 
 
 if __name__ == "__main__":

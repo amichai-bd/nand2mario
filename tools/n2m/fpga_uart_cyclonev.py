@@ -34,9 +34,9 @@ RESET_NET = r"\u_clocking|u_reset|sys_release[1]"
 REGISTER_MODES = {"is_wysiwyg": '"true"', "power_up": '"low"'}
 LUT_MODES = {"extended_lut": '"off"', "shared_arith": '"off"'}
 LUT_INPUTS = fpga_lock_cyclonev.LUT_INPUTS
-# The endpoint's own memories are M10K atoms; the netlist consumer must know the
-# primitive to account for every sink, so it is named with the family's others.
-OUTPUTS = {**fpga_lock_cyclonev.OUTPUTS, "cyclonev_ram_block": {"portadataout", "portbdataout"}}
+# The family's primitives, including the memory atom the endpoint's stores place;
+# the netlist consumer must know every one of them to account for every sink.
+OUTPUTS = fpga_lock_cyclonev.OUTPUTS
 # The fitter may pack a feeder LUT behind the inverter, as it may on MAX 10.
 MAX_UNARY_LUTS = fpga_controls.MAX_UNARY_LUTS
 # The endpoint's own six stores, as owner -> (depth, width, M10K blocks). They are
@@ -73,7 +73,8 @@ def verify_memory(folder):
     Each row is bound to its owner, shape, mode, register stage and
     read-during-write behaviour, and the summary totals must be exactly what
     those six add up to. Placement locations are a fitter result and are not
-    checked.
+    checked. The fit report is the placement fact: the vendor netlist's own atom
+    parameter names a different block, which is not where the store was placed.
     """
     fit = (folder / "output/design.fit.rpt").read_text(encoding=FIT_ENCODING)
     rows = [row for row in fpga_vga.rows(fit) if len(row) == 28 and row[1] == "M10K block"]

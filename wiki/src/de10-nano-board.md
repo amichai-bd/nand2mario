@@ -227,8 +227,16 @@ Why these two, out of 72 header pins:
   adapter already uses, so a lead that slips across the row cannot present 5 V to
   a 3.3-V LVTTL input. The other ground, at position 12, faces the 5 V at
   position 11, which is why the endpoint is not placed at that end.
-- The image reserves every unused package pin as a tri-stated input, so a lead
-  that slips onto a neighbouring GPIO pin meets a high-impedance input.
+- The hazard this accepts: position 30 faces position 29, so a ground lead that
+  slips across the row shorts the board's 3.3 V rail to the adapter's ground.
+  Seat the ground lead first and check it against the header drawing. The rejected
+  end would put 5 V one position away instead, which is worse, but this residual
+  is real.
+- The image reserves every unused package pin as an input, so a lead that slips
+  onto a neighbouring GPIO pin meets a high-impedance input. The fit reports the
+  reservation as `As input tri-stated with weak pull-up`, and every unused package
+  pin is `RESERVED_INPUT_WITH_WEAK_PULLUP` in the fitted pin report, including the
+  four neighbours a lead could reach.
 
 An add-on board on JP1 uses these pins: the MiSTer SDRAM signals above resolve
 to `GPIO_0`. JP1 must be free for this image.
@@ -558,10 +566,11 @@ authorization, and it is not part of the flow proof.
   Terasic. Section 3.6.2, Figure 3-20 and Table 3-10 are the
   [vendor pin table](#vendor-pin-table) and the
   [header positions](#gpio-header-positions); the revision read was dated
-  December 31, 2019 (SHA-256
-  `cd709cb8c9cf425a81404a49f6b9ed1f67283767954657fe0ca2232fd84d84b2` of that
-  PDF). Vendor documentation is a reference, not redistributed source, and no
-  copy is committed.
+  December 31, 2019, and the copy this page was written from hashed to SHA-256
+  `cd709cb8c9cf425a81404a49f6b9ed1f67283767954657fe0ca2232fd84d84b2`, which is a
+  record of what was read rather than a second reader's confirmation. Vendor
+  documentation is a reference, not redistributed source, and no copy is
+  committed.
 - Cyclone V Device Datasheet, Intel document `CV-51002`, PLL Specifications table,
   the `fVCO` row and its footnote. It is the source of the
   [VCO range](#pll-vco-range) above. Vendor documentation is a reference, not
