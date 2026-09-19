@@ -161,27 +161,36 @@ class QuestaTests(unittest.TestCase):
         self.assertEqual(read_json(mirror)["authoritative_result"], current.relative_to(self.root).as_posix())
 
 
-# Real vsim transcripts. Every failed startup checkout ends with the same generic
-# pair, whatever the cause, so each fixture below carries it: a fixture that
-# omitted it would confirm the classifier's assumption instead of testing it.
+# Measured vsim transcripts, captured on this host from
+# `vsim -c -nolog -lic_noqueue -do "quit -f"`. Every failed startup checkout ends
+# with the same generic pair whatever the cause, so each fixture carries it.
 TERMINAL = ("Unable to checkout a license.  Vsim is closing.\n"
             "** Error: Invalid license environment. Application closing.\n")
-# Nothing configured: the transcript this repository's Linux host produces from
-# `vsim -c -nolog -lic_noqueue -do "quit -f"`.
-UNLICENSED_VSIM = (
+# Neither license variable set. Also what LM_LICENSE_FILE or MGLS_LICENSE_FILE
+# alone produces: vsim reads neither, so it still reports SALT unset.
+UNSET_VSIM = (
     "Unable to find the license file.  It appears that your license file environment "
     "variable (SALT_LICENSE_SERVER) is not set correctly.\n" + TERMINAL)
-# Configured but unreachable, from SALT_LICENSE_SERVER=1717@nonexistent.invalid.
-# vsim WRAPS this cause across two lines, so the `lmutil lmdiag` wording lands on
-# the second one. Reproduced exactly: a single-line fixture would let a
-# per-line classifier pass while the real tool slipped through.
-UNREACHABLE_VSIM = (
+# A variable IS set and the checkout failed. Byte-identical for an unreachable
+# server, a nonexistent path, a garbage file and a valid-syntax file with a bogus
+# signature, all four measured; the wording carries no cause beyond "it is set".
+# vsim WRAPS it across two lines, so `lmutil lmdiag` lands on the second. A
+# single-line fixture would let a per-line classifier pass while the tool slipped.
+SET_BUT_UNUSABLE_VSIM = (
     "Unable to checkout a license. Make sure your license file environment variable "
     "(SALT_LICENSE_SERVER)\n"
     "is set correctly and then run 'lmutil lmdiag' to diagnose the problem.\n" + TERMINAL)
-# Seats taken. The cause line differs; the closing pair is identical.
-BUSY_VSIM = "Licensed number of users already reached.\n" + TERMINAL
-QUEUED_VSIM = "All licenses are currently in use, your request has been queued.\n" + TERMINAL
+# QUESTA_LICENSE_PROXY set to an unreachable proxy.
+PROXY_VSIM = (
+    "Couldn't connect to proxy '1717@nonexistent.invalid'.\n"
+    "** Fatal: Failed to initialize licensing environment with status 111.\n" + TERMINAL)
+# This repository's real contention: one node-locked seat, already held. The
+# recorded refusal is exit 12 with this wording (PR #455 review evidence, cited in
+# wiki/blogs/2026-09-13-remote-fpga.md). Only the phrase and the exit are
+# recorded, so nothing else is invented here; TERMINAL is appended in a separate
+# case rather than assumed to be present.
+BUSY_SEAT = "an instance of QuestaSim is already running\n"
+BUSY_SEAT_EXIT = 12
 
 
 class QuestaLicenseTests(unittest.TestCase):
@@ -199,65 +208,80 @@ class QuestaLicenseTests(unittest.TestCase):
         except ToolError as error:
             return None, error, calls
 
-    def test_an_unconfigured_license_is_refused_by_license_not_by_host(self):
-        for output in (UNLICENSED_VSIM, UNREACHABLE_VSIM):
-            with self.subTest(output=output.splitlines()[0]):
-                record, error, calls = self.probe(output)
-                self.assertIsNone(record)
-                message = str(error)
-                self.assertTrue(message.startswith(QUESTA_LICENSE + ": "), message)
-                quoted = message[len(QUESTA_LICENSE) + 2:]
-                # The quote is the cause, never the generic closing line.
-                self.assertNotIn("Invalid license environment", quoted)
-                self.assertNotIn("Vsim is closing", quoted)
-                self.assertIn("SALT_LICENSE_SERVER", quoted)
-                # It is the WHOLE cause. vsim wraps the unreachable-server text, so
-                # quoting the matched line alone would start mid-sentence at "is set
-                # correctly and then run 'lmutil lmdiag'...". Rejoining is required.
-                self.assertTrue(quoted.startswith("Unable to "), quoted)
-                self.assertTrue(quoted.endswith("."), quoted)
-                self.assertNotIn("\n", quoted)
-                self.assertEqual(error.output, output)
-                # The refusal carries its record, because the caller never sees
-                # the Simulator that raised.
-                self.assertEqual((error.record["exit_code"], error.record["licensed"]), (4, False))
-                # The reason is the license, never an operating system.
-                for absent in ("Windows", "PowerShell", "Linux", "operating system"):
-                    self.assertNotIn(absent, message)
-                self.assertEqual(calls, [["/tools/vsim", *QUESTA_LICENSE_PROBE]])
+    def assert_refused(self, output):
+        record, error, calls = self.probe(output)
+        self.assertIsNone(record)
+        message = str(error)
+        self.assertTrue(message.startswith(QUESTA_LICENSE + ": "), message)
+        quoted = message[len(QUESTA_LICENSE) + 2:]
+        # The quote is what vsim reported, never the generic closing line, and it
+        # is whole: a wrapped cause is rejoined, so it never starts mid-sentence.
+        self.assertNotIn("Invalid license environment", quoted)
+        self.assertNotIn("Vsim is closing", quoted)
+        self.assertNotIn("\n", quoted)
+        self.assertTrue(quoted.endswith("."), quoted)
+        self.assertEqual((error.record["exit_code"], error.record["licensed"]), (4, False))
+        for absent in ("Windows", "PowerShell", "Linux", "operating system"):
+            self.assertNotIn(absent, message)
+        self.assertEqual(calls, [["/tools/vsim", *QUESTA_LICENSE_PROBE]])
+        return quoted
 
-    def test_a_taken_seat_reaches_the_run_that_can_queue_for_it(self):
-        """The case `-lic_noqueue` deliberately creates in the probe.
+    def assert_reaches_the_run(self, output, returncode=4):
+        record, error, _ = self.probe(output, returncode)
+        self.assertIsNone(error, f"refused: {error}")
+        self.assertTrue(record["licensed"])
+        return record
 
-        Both transcripts end with the same generic pair an unconfigured host
-        prints, so classifying on that pair would refuse a correctly licensed
-        host and tell it to configure a license it already has. Only the cause
-        line separates them, and contention must pass through: the real run omits
-        `-lic_noqueue`, queues, and gets its seat.
+    def test_an_unset_license_variable_is_refused_by_license_not_by_host(self):
+        quoted = self.assert_refused(UNSET_VSIM)
+        self.assertTrue(quoted.startswith("Unable to find the license file"), quoted)
+
+    def test_a_set_but_unusable_license_is_refused_with_its_whole_wrapped_cause(self):
+        """Four measured causes share this output, so the refusal claims no more
+        than vsim does: the variable is set and the checkout failed."""
+        quoted = self.assert_refused(SET_BUT_UNUSABLE_VSIM)
+        self.assertTrue(quoted.startswith("Unable to checkout a license."), quoted)
+        # Rejoined across the wrap, so the second line is present and attached.
+        self.assertIn("is set correctly and then run 'lmutil lmdiag'", quoted)
+
+    def test_an_unreachable_license_proxy_is_refused(self):
+        """Without this, a host with only QUESTA_LICENSE_PROXY set reached the run
+        and failed there, which is what the probe exists to prevent."""
+        quoted = self.assert_refused(PROXY_VSIM)
+        self.assertTrue(quoted.startswith("Couldn't connect to proxy"), quoted)
+
+    def test_this_repositorys_contended_seat_reaches_the_run(self):
+        """The contention this repository actually has: one node-locked seat held
+        by another run, refused with exit 12 and wording the probe does not match.
+        It must reach the run, which reports the seat itself."""
+        for output in (BUSY_SEAT, BUSY_SEAT + TERMINAL):
+            with self.subTest(terminal=output.endswith(TERMINAL)):
+                record = self.assert_reaches_the_run(output, BUSY_SEAT_EXIT)
+                self.assertEqual(record["exit_code"], BUSY_SEAT_EXIT)
+
+    def test_a_floating_seats_exhausted_host_would_be_misclassified(self):
+        """A stated limit, pinned so it cannot change unnoticed.
+
+        On a floating licence with every seat taken, `-lic_noqueue` turns the
+        queue wait into the same validation failure a broken licence produces, and
+        the vendor puts no distinction in the output, so such a host is refused.
+        Not reachable on this repository's node-locked seat, whose refusal is the
+        case above. If a future vsim distinguishes the two, this test fails and the
+        classifier and the SPEC limit should both be revisited.
         """
-        for output in (BUSY_VSIM, QUEUED_VSIM):
-            with self.subTest(output=output.splitlines()[0]):
-                record, error, _ = self.probe(output)
-                self.assertIsNone(error)
-                self.assertTrue(record["licensed"])
-                self.assertEqual(record["exit_code"], 4)
+        _, error, _ = self.probe(SET_BUT_UNUSABLE_VSIM)
+        self.assertIsNotNone(error)
 
     def test_the_generic_closing_pair_alone_never_refuses(self):
-        """It is what vsim prints after any failed checkout, so on its own it
-        names no cause and cannot justify a license refusal."""
-        record, error, _ = self.probe(TERMINAL)
-        self.assertIsNone(error)
-        self.assertTrue(record["licensed"])
+        """It follows any failed checkout, so on its own it names no cause."""
+        self.assert_reaches_the_run(TERMINAL)
 
-    def test_refusal_requires_a_nonzero_exit_as_well_as_a_cause(self):
+    def test_refusal_requires_a_nonzero_exit_as_well_as_a_wording(self):
         """A vsim that exits 0 has a license, whatever its output mentions."""
-        record, error, _ = self.probe(UNLICENSED_VSIM + "Reading pref.tcl\n# quit -f\n",
-                                     returncode=0)
-        self.assertIsNone(error)
-        self.assertTrue(record["licensed"])
-        # The same output with a nonzero exit does refuse, so the exit code is
-        # what separates the two and neither half decides alone.
-        _, error, _ = self.probe(UNLICENSED_VSIM, returncode=4)
+        self.assert_reaches_the_run(UNSET_VSIM + "Reading pref.tcl\n# quit -f\n", returncode=0)
+        # The same output with a nonzero exit does refuse, so neither half decides
+        # alone and the exit code genuinely participates.
+        _, error, _ = self.probe(UNSET_VSIM, returncode=4)
         self.assertIsNotNone(error)
 
     def test_the_probe_argv_stays_the_documented_one(self):
@@ -266,19 +290,25 @@ class QuestaLicenseTests(unittest.TestCase):
         directory and `-lic_noqueue` never waits behind a busy server."""
         self.assertEqual(QUESTA_LICENSE_PROBE, ("-c", "-nolog", "-lic_noqueue", "-do", "quit -f"))
 
+    def test_the_refusal_advises_only_variables_vsim_reads(self):
+        """Measured: LM_LICENSE_FILE and MGLS_LICENSE_FILE are ignored, so naming
+        them would send an operator to a setting that cannot work."""
+        self.assertIn("SALT_LICENSE_SERVER", QUESTA_LICENSE)
+        self.assertIn("QUESTA_LICENSE_PROXY", QUESTA_LICENSE)
+        self.assertNotIn("LM_LICENSE_FILE", QUESTA_LICENSE)
+        self.assertNotIn("MGLS_LICENSE_FILE", QUESTA_LICENSE)
+
     def test_a_licensed_vsim_passes_and_records_the_probe(self):
-        record, error, _ = self.probe("# quit\n", returncode=0)
-        self.assertIsNone(error)
-        self.assertTrue(record["licensed"])
+        record = self.assert_reaches_the_run("# quit\n", returncode=0)
         self.assertEqual((record["argv"], record["exit_code"]),
                          (["/tools/vsim", *QUESTA_LICENSE_PROBE], 0))
 
-    def test_a_nonzero_exit_without_a_license_cause_is_recorded_not_refused(self):
-        """The probe names an unconfigured license. It does not second-guess a vsim
-        whose own run reports the detail, so Windows keeps its existing behavior."""
-        record, error, _ = self.probe("** Error: something else entirely\n", returncode=1)
-        self.assertIsNone(error)
-        self.assertEqual((record["licensed"], record["exit_code"]), (True, 1))
+    def test_a_nonzero_exit_without_a_license_wording_is_recorded_not_refused(self):
+        """The probe names a license it can prove absent or unusable. It does not
+        second-guess a vsim whose own run reports the detail, so Windows keeps its
+        existing behavior."""
+        record = self.assert_reaches_the_run("** Error: something else entirely\n", returncode=1)
+        self.assertEqual(record["exit_code"], 1)
 
     def test_preparation_discovers_the_tools_without_consulting_the_license(self):
         """`sim prepare` launches no vsim, so it must not need a checkout: the run
@@ -288,7 +318,7 @@ class QuestaLicenseTests(unittest.TestCase):
         def run_tool(argv):
             if "-version" in argv:
                 return SimpleNamespace(returncode=0, stdout="Questa 2025.2")
-            return SimpleNamespace(returncode=4, stdout=UNLICENSED_VSIM)
+            return SimpleNamespace(returncode=4, stdout=UNSET_VSIM)
 
         with patch("n2m.simulator.shutil.which", return_value=present), \
                 patch.object(Simulator, "run", side_effect=run_tool) as run:

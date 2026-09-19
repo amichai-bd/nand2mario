@@ -339,30 +339,43 @@ license server. Its argv, exit code and output join the discovery record on a
 pass, and travel on the refusal to the failure `result.json` under
 `discovery/`, whose `failure.log` keeps the same output.
 
-Refusal needs both halves: a nonzero probe exit and a cause saying the license is
-unconfigured (`Unable to find the license file`) or configured but unreachable
-(the `run 'lmutil lmdiag'` wording). `vsim` wraps the second cause across two
-lines, so both the match and the quote read the whole output: the quoted cause is
-every line before the closing pair, rejoined and whitespace-collapsed, never a
-single matched line that would start mid-sentence. The command then fails naming
-the license and quoting that cause, never an operating system:
-`no Questa runtime license: vsim found no usable license file or server. Point
-SALT_LICENSE_SERVER or LM_LICENSE_FILE at a license that grants vsim and retry;
-the Questa compile gate needs none because it never launches vsim`.
+Refusal needs both halves: a nonzero probe exit and one of three wordings. Each
+means exactly what the vendor prints, no more:
 
-The cause lines are matched rather than the lines that follow them, because
-`Unable to checkout a license.  Vsim is closing.` and `Invalid license
-environment. Application closing.` are what `vsim` prints after any failed
-startup checkout, whatever the cause. `libvsim.so` holds that pair in the same
-routine as its queue messages, and `-lic_noqueue` skips the queue branch into
-it, so a host whose seats are merely taken prints the same closing pair.
-Classifying on it would refuse a correctly licensed host and misname the reason.
+1. `Unable to find the license file` — neither license variable is set. `vsim`
+   reads only `SALT_LICENSE_SERVER` and `QUESTA_LICENSE_PROXY`; with
+   `LM_LICENSE_FILE` or `MGLS_LICENSE_FILE` set instead it prints this same line,
+   so the refusal names only the two that work.
+2. The `run 'lmutil lmdiag'` wording — a variable **is** set and the checkout
+   failed. It carries no cause beyond that: an unreachable server, a nonexistent
+   path, a garbage file and a syntactically valid file with a bogus signature all
+   produce byte-identical output. It is matched deliberately, so a configured but
+   unusable license is named during discovery instead of part-way into a run.
+   `vsim` wraps it across two lines, which is why both the match and the quote
+   read the whole output.
+3. `Couldn't connect to proxy` — `QUESTA_LICENSE_PROXY` names a proxy that cannot
+   be reached. Without this wording such a host, holding no license at all,
+   reached the run before failing there.
 
-Everything else passes through and is recorded, not refused: contention
-(`All ... currently in use`, `Licensed number of users already reached`) reaches
-the run, which omits `-lic_noqueue`, queues and gets its seat; a `vsim` broken
-for another reason reports its own detail; and a zero exit is a working license
-whatever its output mentions.
+The quoted cause is every line before the closing pair, rejoined and
+whitespace-collapsed, never a single matched line that would start mid-sentence.
+The command then fails naming the license and quoting that cause, never an
+operating system:
+`no Questa runtime license: vsim could not validate one. Set
+SALT_LICENSE_SERVER, or QUESTA_LICENSE_PROXY, to a license that grants vsim and
+retry; vsim reads no other license variable. The Questa compile gate needs none
+because it never launches vsim`.
+
+The closing lines are never matched. `Unable to checkout a license.  Vsim is
+closing.` and `Invalid license environment. Application closing.` follow every
+failed startup checkout whatever the cause, so classifying on them would refuse
+any contention at all.
+
+Everything else passes through and is recorded, not refused: a `vsim` broken for
+another reason reports its own detail, and a zero exit is a working license
+whatever its output mentions. This repository's own contention passes through
+too. Its license is one node-locked seat, and a held seat is refused with exit 12
+and `an instance of QuestaSim is already running`, which matches no wording above.
 
 This is why the two Questa paths differ on the same host. The Quartus-bundled
 Questa on a Linux host compiles and elaborates the gate to PASS, and the same
@@ -370,6 +383,15 @@ installation cannot run `sim test --sim questa`, because only the second needs
 the checkout. `doctor --sim questa` reports both: the `questa` smoke fails
 naming the license while `questa-lint` passes on the gate tools' availability.
 No acceptance criterion requires a licensed Questa run.
+
+#### Known limit: a floating license with every seat taken
+
+On a floating license with no free seat, `-lic_noqueue` turns the queue wait into
+the same validation failure a broken license produces, so wording 2 matches and
+such a host is refused and told to configure a license it already has. The vendor
+puts no distinction in that output, so the probe cannot draw one; the limit is
+recorded rather than guessed at. It is not reachable on this repository's
+node-locked license, whose contention is the exit-12 case above.
 
 ## Test catalogue
 

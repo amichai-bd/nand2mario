@@ -23,9 +23,9 @@ import serial_fixture
 ROOT = Path(__file__).resolve().parents[3]
 
 
-# The exact transcript this repository's Linux host produced from
-# `vsim -c -nolog -lic_noqueue -do "quit -f"` with no license configured.
-UNLICENSED_VSIM = (
+# Measured on this host from `vsim -c -nolog -lic_noqueue -do "quit -f"` with no
+# license variable set. The classifier's own cases live in test_questa.py.
+UNSET_VSIM = (
     "Unable to find the license file.  It appears that your license file environment "
     "variable (SALT_LICENSE_SERVER) is not set correctly.\n"
     "Unable to checkout a license.  Vsim is closing.\n"
@@ -152,7 +152,7 @@ class DoctorTests(unittest.TestCase):
             if "-version" in argv:
                 return SimpleNamespace(returncode=0, stdout="Questa 2025.2\n")
             if argv[0].endswith("vsim"):
-                return SimpleNamespace(returncode=4, stdout=UNLICENSED_VSIM)
+                return SimpleNamespace(returncode=4, stdout=UNSET_VSIM)
             return SimpleNamespace(returncode=0, stdout="Errors: 0, Warnings: 0\n")
 
         with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
