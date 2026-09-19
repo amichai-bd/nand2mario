@@ -7,7 +7,9 @@ evidence is therefore the qualification itself, proved from the netlist:
 
 - both PLLs take the board reference through its input buffer, and both take
   their reset from the one bootstrap register that runs on that raw reference,
-  so no PLL reset depends on a stopped PLL output;
+  so no PLL reset depends on a stopped PLL output; the IP's Cyclone V branch
+  drives the fractional PLL's active-low `nresync` with the complement of its
+  active-high `rst`, so that register's released level reaches the PLL directly;
 - one lock gate combines both raw locks with that reset, and its truth table is
   evaluated over every combination, so either lock loss and the reset each still
   reach the sampling reset;
@@ -18,13 +20,17 @@ import re
 
 from . import fpga_lock
 
-PLL = "u_clocking|u_pll|altera_pll_i|"
-SYSTEM = "u_clocking|u_system_pll|altera_pll_i|"
+PLL = "u_clocking|u_pll|altera_pll_i|cyclonev_pll|"
+SYSTEM = "u_clocking|u_system_pll|altera_pll_i|cyclonev_pll|"
 RESET = "u_clocking|u_reset|"
-# The fitted atom suffixes inside each PLL wrapper instance.
-FRACTIONAL = "general[0].gpll~FRACTIONAL_PLL"
-COUNTER = "general[0].gpll~PLL_OUTPUT_COUNTER"
-REFCLK_SELECT = "general[0].gpll~PLL_REFCLK_SELECT"
+# The fitted atom suffixes inside each PLL wrapper instance. The request states
+# the physical counters, so the IP instantiates its Cyclone V PLL directly and
+# these are that PLL's own atom names.
+FRACTIONAL = "fpll_0|fpll"
+COUNTER = "counter[0].output_counter"
+REFCLK_SELECT = "fpll_0|REFCLK_SELECT"
+REFCLK_OUT = "fpll_0|refclk_select_clkout_wire"
+OUTPUT_WIRE = "divclk[0]"
 # The board reference: the input buffer's output and the global buffer that
 # clocks the bootstrap register. Neither is a generated clock.
 REFERENCE_PIN = "clk_reference"
@@ -95,21 +101,25 @@ def verify(text, checks, top="nano_clocking_proof"):
         pll = cell(prefix + FRACTIONAL, "cyclonev_fractional_pll")
         select = cell(prefix + REFCLK_SELECT, "cyclonev_pll_refclk_select")
         counter = cell(prefix + COUNTER, "cyclonev_pll_output_counter")
-        outputs = cell(prefix + "outclk_wire[0]~CLKENA0", "cyclonev_clkena", BUFFER_MODES)
-        if (pll.get("nresync") != "!" + released
-                or pll.get("refclkin") != "\\" + prefix + REFCLK_SELECT + "_O_CLKOUT"
-                or select.get("clkout") != "\\" + prefix + REFCLK_SELECT + "_O_CLKOUT"
+        outputs = cell(prefix + OUTPUT_WIRE + "~CLKENA0", "cyclonev_clkena", BUFFER_MODES)
+        # The IP's Cyclone V branch drives the fractional PLL's active-low
+        # `nresync` with the complement of its active-high `rst`, so the reset
+        # register's released level reaches it directly. The polarity convention
+        # of that vendor port is the vendor's; this binds the structure.
+        if (pll.get("nresync") != released
+                or pll.get("refclkin") != "\\" + prefix + REFCLK_OUT
+                or select.get("clkout") != "\\" + prefix + REFCLK_OUT
                 or select.get("clkin") != "{gnd,gnd,gnd," + REFERENCE_OUT + "}"
-                or counter.get("divclk") != "\\" + prefix + "outclk_wire[0]"
-                or outputs.get("inclk") != "\\" + prefix + "outclk_wire[0]"
+                or counter.get("divclk") != "\\" + prefix + OUTPUT_WIRE
+                or outputs.get("inclk") != "\\" + prefix + OUTPUT_WIRE
                 or outputs.get("ena") != "vcc"
-                or outputs.get("outclk") != "\\" + prefix + "outclk_wire[0]~CLKENA0_outclk"):
+                or outputs.get("outclk") != "\\" + prefix + OUTPUT_WIRE + "~CLKENA0_outclk"):
             raise ValueError("Cyclone V PLL reference, reset or output binding differs: " + prefix)
         locks.append(pll["lock"])
         critical += [(pll["lock"], prefix + FRACTIONAL, "lock"),
                      (counter["divclk"], prefix + COUNTER, "divclk"),
-                     (outputs["outclk"], prefix + "outclk_wire[0]~CLKENA0", "outclk")]
-    system_net = "\\" + SYSTEM + "outclk_wire[0]~CLKENA0_outclk"
+                     (outputs["outclk"], prefix + OUTPUT_WIRE + "~CLKENA0", "outclk")]
+    system_net = "\\" + SYSTEM + OUTPUT_WIRE + "~CLKENA0_outclk"
 
     # One gate qualifies reset with both raw locks. Its inputs may be inverted,
     # so each is resolved to its net and polarity before the table is evaluated.

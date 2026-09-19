@@ -8,11 +8,15 @@ generation command, the generated-HDL check and every report check; the
 [clocking registry](fpga_clocking.py) selects it by the board's family.
 
 The clock contract is unchanged: a 50 MHz reference, a 25 MHz system clock and a
-25.2 MHz pixel clock (wiki/src/clocks-resets-cdc.md). The request states those
-frequencies and the IP solves the physical counters; the fit report's M, N and C
-counters and the analysed clock periods are then checked exactly, so the realized
-division is evidence and a different solution fails the build.
+25.2 MHz pixel clock (wiki/src/clocks-resets-cdc.md). The request states the
+physical counters rather than a desired frequency, so the generated HDL states
+the VCO frequency and the VCO post-scale divider itself and the checks read the
+intended oscillator out of the design instead of inferring it from a report. The
+fit report's M, N and C counters and the analysed clock periods are then checked
+exactly, so the realized division is evidence and a different solution fails the
+build.
 """
+from collections import namedtuple
 from fractions import Fraction
 from pathlib import Path
 import re
@@ -26,30 +30,92 @@ FAMILY = "Cyclone V"
 SUPPORTED_TOPS = ("nano_clocking_proof",)
 PIXEL_MODULE = "n2m_pixel_pll_cyclonev"
 SYSTEM_MODULE = "n2m_system_pll_cyclonev"
-# The fitted atom hierarchy the Fitter and the Timing Analyzer both name.
-SYSTEM_PLL = "u_clocking|u_system_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER"
-PIXEL_PLL = "u_clocking|u_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER"
+# The fitted atom hierarchy the Fitter and the Timing Analyzer both name. A
+# request that states the physical counters makes the IP instantiate its
+# Cyclone V PLL directly, so the atoms sit under `cyclonev_pll` and carry that
+# PLL's own names instead of the family-generic `general[0].gpll` ones.
+SYSTEM_INSTANCE = "u_clocking|u_system_pll|altera_pll_i|cyclonev_pll"
+PIXEL_INSTANCE = "u_clocking|u_pll|altera_pll_i|cyclonev_pll"
+COUNTER_ATOM = "counter[0].output_counter"
+FRACTIONAL_ATOM = "fpll_0|fpll"
+SYSTEM_PLL = SYSTEM_INSTANCE + "|" + COUNTER_ATOM
+PIXEL_PLL = PIXEL_INSTANCE + "|" + COUNTER_ATOM
 SYSTEM_CLOCK = SYSTEM_PLL + "|divclk"
 PIXEL_CLOCK = PIXEL_PLL + "|divclk"
-SYSTEM_VCO = "u_clocking|u_system_pll|altera_pll_i|general[0].gpll~FRACTIONAL_PLL|vcoph[0]"
-PIXEL_VCO = "u_clocking|u_pll|altera_pll_i|general[0].gpll~FRACTIONAL_PLL|vcoph[0]"
-SYSTEM_NET = r"\u_clocking|u_system_pll|altera_pll_i|outclk_wire[0]~CLKENA0_outclk"
-# The fitted PLL block each usage-summary column belongs to, by wrapper instance.
-FIT_SYSTEM = ("n2m_clocking_cyclonev:u_clocking|n2m_system_pll_cyclonev:u_system_pll|"
-              "altera_pll:altera_pll_i|general[0].gpll~FRACTIONAL_PLL")
-FIT_PIXEL = ("n2m_clocking_cyclonev:u_clocking|n2m_pixel_pll_cyclonev:u_pll|"
-             "altera_pll:altera_pll_i|general[0].gpll~FRACTIONAL_PLL")
-# The counters Quartus solves for each requested output, and the VCO they imply.
-# multiply/divide/output-divide, as the fit report's M, N and C counters.
-COUNTERS = {SYSTEM_MODULE: (12, 2, 12), PIXEL_MODULE: (63, 5, 25)}
+SYSTEM_VCO = SYSTEM_INSTANCE + "|" + FRACTIONAL_ATOM + "|vcoph[0]"
+PIXEL_VCO = PIXEL_INSTANCE + "|" + FRACTIONAL_ATOM + "|vcoph[0]"
+SYSTEM_NET = "\\" + SYSTEM_INSTANCE + "|divclk[0]~CLKENA0_outclk"
+# The generated wrapper instance each PLL is, as the synthesis report's port
+# connectivity checks name it, and the Cyclone V PLL instance inside it that
+# owns every fitted atom.
+FIT_WRAPPERS = {SYSTEM_MODULE: ("n2m_clocking_cyclonev:u_clocking|n2m_system_pll_cyclonev:u_system_pll|"
+                               "altera_pll:altera_pll_i"),
+                PIXEL_MODULE: ("n2m_clocking_cyclonev:u_clocking|n2m_pixel_pll_cyclonev:u_pll|"
+                               "altera_pll:altera_pll_i")}
+FIT_PLL = "altera_cyclonev_pll:cyclonev_pll"
+# The fit report names each atom by entity and instance, so its fractional PLL
+# carries the enclosing base entity the Timing Analyzer's node name omits.
+FIT_FRACTIONAL = "altera_cyclonev_pll_base:" + FRACTIONAL_ATOM
+FIT_SYSTEM = FIT_WRAPPERS[SYSTEM_MODULE] + "|" + FIT_PLL + "|" + FIT_FRACTIONAL
+FIT_PIXEL = FIT_WRAPPERS[PIXEL_MODULE] + "|" + FIT_PLL + "|" + FIT_FRACTIONAL
+# The PLL VCO operating range this board's speed grade allows, in MHz. The
+# fVCO row of the PLL Specifications table gives 600 to 1400 MHz for the -C7
+# and -I7 speed grades, and 5CSEBA6U23I7 is -I7; wiki/src/de10-nano-board.md
+# cites the datasheet.
+VCO_RANGE_MHZ = (Fraction(600), Fraction(1400))
+# The physical configuration each PLL instance states. `multiply`, `divide` and
+# `counter` are the M, N and C counters; `post_scale` is the VCO post-scale
+# divider K; `charge_pump` and `bandwidth` are the loop filter settings the IP
+# derives for that configuration. The generator is driven with the counters and
+# the generated HDL must state all of it back, so the VCO is a recorded design
+# fact and not a solver's choice. Both instances keep K at 1, so the oscillator
+# and the figure every tool prints are the same number.
+Configuration = namedtuple("Configuration", "multiply divide counter post_scale charge_pump bandwidth")
+CONFIGURATION = {SYSTEM_MODULE: Configuration(26, 2, 26, 1, 20, 4000),
+                 PIXEL_MODULE: Configuration(63, 5, 25, 1, 20, 6000)}
 # The one definition this family supports; the pixel ratio and the system
 # divider are the clock contract's, shared with the MAX 10 definition.
 DEFINITION = {"module": PIXEL_MODULE, "input_ps": 20000, "multiply": 63, "divide": 125, "system_divide": 2}
 
 
 def validate(definition):
+    """The one supported definition, realized by an in-range, exact configuration.
+
+    Every entry point validates, so a configuration whose VCO leaves the
+    datasheet range or whose counters miss the contract's frequency refuses the
+    build here, before any tool is launched.
+    """
     if definition != DEFINITION:
         raise ValueError("unsupported PLL definition")
+    low, high = VCO_RANGE_MHZ
+    for module in (SYSTEM_MODULE, PIXEL_MODULE):
+        vco = physical_vco(module, definition)
+        if not low <= vco <= high:
+            raise ValueError(f"PLL VCO frequency outside the Cyclone V range: {module} runs at "
+                             f"{float(vco):.6g} MHz, not {float(low):.6g} to {float(high):.6g} MHz")
+        config = CONFIGURATION[module]
+        if stated_vco(module, definition) / config.counter != frequencies(definition)[module]:
+            raise ValueError("PLL configuration does not produce the contract frequency: " + module)
+
+
+def physical_vco(module, definition=None):
+    """The oscillator frequency in MHz the datasheet range bounds, as an exact ratio.
+
+    The VCO post-scale divider K sits between the oscillator and the phase mux
+    that feeds both the M feedback counter and the C output counters, so the
+    frequency the IP states and the fit report prints is the oscillator divided
+    by K. The datasheet says the same in the fVCO footnote: the reported figure
+    takes K into account and can fall below the fVCO specification when K is 2.
+    The range applies to the oscillator, so the check multiplies K back in.
+    """
+    config = CONFIGURATION[module]
+    reference = frequencies(DEFINITION if definition is None else definition)["reference"]
+    return reference * config.multiply * config.post_scale / config.divide
+
+
+def stated_vco(module, definition=None):
+    """The VCO figure the generated HDL states and the fit report prints: the oscillator over K."""
+    return physical_vco(module, definition) / CONFIGURATION[module].post_scale
 
 
 def frequencies(definition):
@@ -115,12 +181,17 @@ def generation_command(identity, definition, module, device):
         raise ValueError("unsupported generated PLL module")
     if not isinstance(device, str) or not re.fullmatch(r"[A-Za-z0-9]+", device):
         raise ValueError("Cyclone V PLL generation requires the target device")
-    output = frequencies(definition)[module]
+    config = CONFIGURATION[module]
     return [identity["generator"]["path"], "--component-name=altera_pll", f"--output-name={module}",
             "--file-set=QUARTUS_SYNTH", "--output-directory=.", f"--report-file=qip:{module}.qip",
             f"--component-parameter=gui_reference_clock_frequency={float(frequencies(definition)['reference']):.1f}",
             "--component-parameter=gui_number_of_clocks=1",
-            f"--component-parameter=gui_output_clock_frequency0={float(output):.1f}",
+            # The physical counters, not a desired frequency: the IP then states
+            # the VCO and its post-scale divider instead of solving for them.
+            "--component-parameter=gui_en_adv_params=1",
+            f"--component-parameter=gui_multiply_factor={config.multiply}",
+            f"--component-parameter=gui_divide_factor_n={config.divide}",
+            f"--component-parameter=gui_divide_factor_c0={config.counter}",
             "--component-parameter=gui_use_locked=1",
             "--component-parameter=gui_operation_mode=direct",
             f"--part={device}", f"--system-info=DEVICE_FAMILY={FAMILY}"]
@@ -158,21 +229,56 @@ def verify(folder, definition=None):
         _verify_module(folder, definition, module)
 
 
+def _counter_halves(name, value, index=""):
+    """One divider's stated parameters: its two half-periods, bypass and odd duty.
+
+    A Cyclone V counter is programmed as its high and low half-period counts, so
+    an odd divide splits unevenly and sets the odd-duty enable, and a divide of
+    one bypasses the counter with both halves parked at their maximum.
+    """
+    if value == 1:
+        high, low, bypass, odd = 256, 256, "true", "false"
+    else:
+        high, low, bypass = (value + 1) // 2, value // 2, "false"
+        odd = "true" if value % 2 else "false"
+    return {f"{name}_hi_div{index}": str(high), f"{name}_lo_div{index}": str(low),
+            f"{name}_bypass_en{index}": f'"{bypass}"', f"{name}_odd_div_duty_en{index}": f'"{odd}"'}
+
+
 def _verify_module(folder, definition, module):
     path = folder / (module + ".v")
     text = path.read_text(encoding="utf-8")
     values = frequencies(definition)
+    config = CONFIGURATION[module]
     expected = {"fractional_vco_multiplier": '"false"',
                 "reference_clock_frequency": f'"{float(values["reference"]):.1f} MHz"',
+                "pll_fractional_cout": "32", "pll_dsm_out_sel": '"1st_order"',
                 "operation_mode": '"direct"', "number_of_clocks": "1",
                 "output_clock_frequency0": f'"{float(values[module]):.6f} MHz"',
                 "phase_shift0": '"0 ps"', "duty_cycle0": "50",
-                "pll_type": '"General"', "pll_subtype": '"General"'}
+                "pll_type": '"Cyclone V"', "pll_subtype": '"General"',
+                # The VCO this design states, its post-scale divider and the loop
+                # filter the IP derives for them. physical_vco explains the two
+                # frequencies; the datasheet range is checked in validate.
+                "pll_output_clk_frequency": f'"{float(stated_vco(module, definition)):.1f} MHz"',
+                "pll_vco_div": str(config.post_scale),
+                "pll_cp_current": str(config.charge_pump), "pll_bwctrl": str(config.bandwidth),
+                "pll_fractional_division": '"1"', "mimic_fbclk_type": '"none"',
+                "pll_fbclk_mux_1": '"glb"', "pll_fbclk_mux_2": '"m_cnt"',
+                "pll_m_cnt_in_src": '"ph_mux_clk"', "pll_slf_rst": '"false"'}
+    expected.update(_counter_halves("m_cnt", config.multiply))
+    expected.update(_counter_halves("n_cnt", config.divide))
+    expected.update(_counter_halves("c_cnt", config.counter, index=0))
+    expected.update({"c_cnt_prst0": "1", "c_cnt_ph_mux_prst0": "0", "c_cnt_in_src0": '"ph_mux_clk"'})
     # Every other output must be off, so the instance carries exactly one clock.
     for index in range(1, 18):
         expected[f"output_clock_frequency{index}"] = '"0 MHz"'
         expected[f"phase_shift{index}"] = '"0 ps"'
         expected[f"duty_cycle{index}"] = "50"
+        expected.update({f"c_cnt_hi_div{index}": "1", f"c_cnt_lo_div{index}": "1",
+                         f"c_cnt_prst{index}": "1", f"c_cnt_ph_mux_prst{index}": "0",
+                         f"c_cnt_in_src{index}": '"ph_mux_clk"', f"c_cnt_bypass_en{index}": '"true"',
+                         f"c_cnt_odd_div_duty_en{index}": '"false"'})
     for key, value in expected.items():
         found = re.findall(r"\.\s*" + key + r"\s*\(\s*([^,()]*?)\s*\)", text)
         if found != [value]:
@@ -205,8 +311,34 @@ CONNECTIVITY_PORTS = {
 }
 
 
+# The vendor PLL wrappers' outputs that the Cyclone V general-purpose branch
+# never drives, each with the vendor file and line that declares it. A different
+# port, file or line is a different diagnostic and fails.
+UNDRIVEN_PORTS = (("clkout[0]", "altera_cyclonev_pll.v", 637), ("extclk", "altera_cyclonev_pll.v", 632),
+                  ("loaden", "altera_cyclonev_pll.v", 641), ("lvdsclk", "altera_cyclonev_pll.v", 642),
+                  ("lvds_clk", "altera_pll.v", 320), ("loaden", "altera_pll.v", 321),
+                  ("extclk_out", "altera_pll.v", 322))
+# The dynamic-phase-shift counter select tie-off the wrapper builds and synthesis
+# then removes, one set per PLL instance.
+REMOVED_NODES = tuple(f"cntsel_temp[{index}]" for index in range(5)) + ("gnd",)
+REMOVED_HEADERS = {"14284": "Warning (14284): Synthesized away the following node(s):",
+                   "14285": "Warning (14285): Synthesized away the following LCELL buffer node(s):"}
+# Every diagnostic code this family's clocking explains. A code outside this set
+# reaches the builder's own classifier and fails the build.
+EXPLAINED_CODES = ("12241", "330000", "10034", "12030", "14284", "14285", "14320")
+UNDRIVEN_REASON = ("An output of the vendor PLL wrapper that its Cyclone V general-purpose branch does not drive: "
+                   "the LVDS, external-clock and cascade outputs this configuration does not use. The generated "
+                   "wrapper leaves every one of them unconnected, which the synthesis connectivity report states "
+                   "independently, so no net in the design reads an undriven port.")
+DANGLING_REASON = ("The vendor's own wrapper connects a one-bit net to the Cyclone V PLL's two-bit external clock "
+                   "port. That port is itself undriven and unconnected in the generated wrapper, so the dangling "
+                   "bit reaches nothing.")
+REMOVED_REASON = ("The counter-select tie-off the wrapper builds for dynamic phase shifting, removed because this "
+                  "configuration has no reconfiguration ports; the connectivity report shows `cntsel` unconnected.")
+
+
 def explained_diagnostics(text, folder, definition):
-    """Explain the two Cyclone V clocking diagnostics, each against its report.
+    """Explain every Cyclone V clocking diagnostic, each against its own evidence.
 
     12241 counts the generated wrapper's unconnected optional Altera PLL ports.
     It is accepted only after the synthesis report's two port connectivity
@@ -219,30 +351,87 @@ def explained_diagnostics(text, folder, definition):
     initialize a timing netlist and skips timing-driven synthesis. The Fitter
     and the Timing Analyzer read the same constraints where those clocks do
     exist; the retained four-corner slack is the timing evidence.
+
+    10034, 12030, 14284, 14285 and 14320 come with stating the physical
+    counters: the IP then instantiates its Cyclone V PLL directly, and that
+    branch leaves the LVDS, external-clock and cascade outputs undriven, mis-sizes
+    its own external clock connection and ties off the unused phase-shift
+    selects. Each port and node is named exactly, twice over for the two PLL
+    instances, and the same connectivity report shows those wrapper ports
+    unconnected, so none of them reaches the design.
     """
     validate(definition)
     lines = [line.strip() for line in text.splitlines()
-             if line.strip().startswith(("Warning (12241):", "Warning (330000):"))]
+             if line.strip().startswith(tuple(f"Warning ({code}):" for code in EXPLAINED_CODES))]
     if not lines:
         return []
-    if sorted(set(lines)) != sorted({CONNECTIVITY_WARNING, SYNTHESIS_WARNING}) or len(lines) != 2:
+    explained = []
+    for code in EXPLAINED_CODES:
+        found = [line for line in lines if line.startswith(f"Warning ({code}):")]
+        explained += _explain_code(code, found)
+    if len(explained) != len(lines):
         raise ValueError("Cyclone V clocking diagnostic identity or count differs")
     _verify_connectivity(folder)
-    return [{"code": "12241", "text": CONNECTIVITY_WARNING,
-             "reason": "The generated Altera PLL wrapper leaves the IP's optional reconfiguration, feedback and "
-                       "secondary-output ports unconnected; the synthesis report names exactly those ports on "
-                       "exactly the two PLL instances."},
-            {"code": "330000", "text": SYNTHESIS_WARNING,
-             "reason": "The checked endpoint collections name the generated PLL output clocks, which exist only "
-                       "after synthesis; the Fitter and the Timing Analyzer read them against netlists that carry "
-                       "those clocks, and the four-corner slack is retained."}]
+    return explained
+
+
+def _explain_code(code, lines):
+    """Explain one diagnostic code's lines, or refuse them.
+
+    Every message must be one this family predicts, and the count must be
+    exactly what the two PLL instances produce.
+    """
+    if code in ("12241", "330000"):
+        expected = CONNECTIVITY_WARNING if code == "12241" else SYNTHESIS_WARNING
+        reason = ("The generated Altera PLL wrapper leaves the IP's optional reconfiguration, feedback and "
+                  "secondary-output ports unconnected; the synthesis report names exactly those ports on "
+                  "exactly the two PLL instances.") if code == "12241" else (
+                 "The checked endpoint collections name the generated PLL output clocks, which exist only "
+                 "after synthesis; the Fitter and the Timing Analyzer read them against netlists that carry "
+                 "those clocks, and the four-corner slack is retained.")
+        if lines != [expected]:
+            raise ValueError("Cyclone V clocking diagnostic identity or count differs: " + code)
+        return [{"code": code, "text": expected, "reason": reason}]
+    if code in REMOVED_HEADERS:
+        if lines != [REMOVED_HEADERS[code]]:
+            raise ValueError("Cyclone V clocking diagnostic identity or count differs: " + code)
+        return [{"code": code, "text": lines[0], "reason": REMOVED_REASON}]
+    if code == "10034":
+        wanted = {f'Output port "{port}" at {source}({line}) has no driver': 2
+                  for port, source, line in UNDRIVEN_PORTS}
+        return _explain_lines(code, lines, wanted, UNDRIVEN_REASON)
+    if code == "12030":
+        wanted = {('Port "extclk" on the entity instantiation of "cyclonev_pll" is connected to a signal of '
+                   "width 1. The formal width of the signal in the module is 2.  The extra bits will be left "
+                   "dangling without any fan-out logic."): 2}
+        return _explain_lines(code, lines, wanted, DANGLING_REASON)
+    wanted = {f'Synthesized away node "{wrapper}|{node}"': 1
+              for wrapper in FIT_WRAPPERS.values() for node in REMOVED_NODES}
+    return _explain_lines(code, lines, wanted, REMOVED_REASON)
+
+
+def _explain_lines(code, lines, wanted, reason):
+    """Bind each message body to its expected count, allowing the vendor file suffix.
+
+    The suffix carries the installed Quartus path, so it is matched by shape and
+    never by value; the port, node, file and line in the body are exact.
+    """
+    counts = {}
+    for line in lines:
+        body = line.removeprefix(f"Warning ({code}): ")
+        match = next((key for key in wanted if body == key or body.startswith(key + " File: ")), None)
+        if match is None:
+            raise ValueError(f"unpredicted Cyclone V clocking diagnostic {code}: {body}")
+        counts[match] = counts.get(match, 0) + 1
+    if counts != wanted:
+        raise ValueError("Cyclone V clocking diagnostic identity or count differs: " + code)
+    return [{"code": code, "text": line, "reason": reason} for line in lines]
 
 
 def _verify_connectivity(folder):
     report = (folder / "output/design.map.rpt").read_text(encoding="cp1252")
     owners = re.findall(r'(?m)^; Port Connectivity Checks: "([^"]+)"\s*;\s*$', report)
-    expected = [FIT_PIXEL.removesuffix("|general[0].gpll~FRACTIONAL_PLL"),
-                FIT_SYSTEM.removesuffix("|general[0].gpll~FRACTIONAL_PLL")]
+    expected = sorted(FIT_WRAPPERS.values())
     if sorted(owners) != sorted(expected):
         raise ValueError("connectivity check owners differ")
     for owner in expected:
@@ -266,7 +455,7 @@ def clock_inventory(definition, reference):
     rows = {"clk_reference": ("Base", reference, None, None)}
     for module, vco, output in ((SYSTEM_MODULE, SYSTEM_VCO, SYSTEM_CLOCK),
                                 (PIXEL_MODULE, PIXEL_VCO, PIXEL_CLOCK)):
-        multiply, divide, counter = COUNTERS[module]
+        multiply, divide, counter = CONFIGURATION[module][:3]
         rows[vco] = ("Generated", reference * divide / multiply,
                      ["50.00", str(divide), str(multiply)], "clk_reference")
         rows[output] = ("Generated", reference * divide * counter / multiply,
@@ -319,17 +508,17 @@ def verify_fit(folder, target):
     if sorted(blocks) != sorted((FIT_SYSTEM, FIT_PIXEL)):
         raise ValueError("fitted PLL owners differ")
     for owner, module in ((FIT_SYSTEM, SYSTEM_MODULE), (FIT_PIXEL, PIXEL_MODULE)):
-        multiply, divide, counter = COUNTERS[module]
+        multiply, divide, counter = CONFIGURATION[module][:3]
         values = frequencies(target["pll"])
         expected = {**FIT_EXPECTED, "M Counter": str(multiply), "N Counter": str(divide),
                     "C Counter": str(counter),
-                    "PLL VCO Frequency": _megahertz(values["reference"] * multiply / divide),
+                    "PLL VCO Frequency": _megahertz(stated_vco(module, target["pll"])),
                     "Output Clock Frequency": _megahertz(values[module]),
                     "C Counter Odd Divider Even Duty Enable": "On" if counter % 2 else "Off"}
         for key, value in expected.items():
             if blocks[owner].get(key) != value:
                 raise ValueError(f"fitted PLL configuration differs: {key}")
-        if blocks[owner].get("PLL Output Counter") != owner.replace("~FRACTIONAL_PLL", "~PLL_OUTPUT_COUNTER"):
+        if blocks[owner].get("PLL Output Counter") != FIT_WRAPPERS[module] + "|" + FIT_PLL + "|" + COUNTER_ATOM:
             raise ValueError("fitted PLL output counter owner differs")
     summary = (folder / "output/design.fit.summary").read_text(encoding="utf-8")
     if re.findall(r"(?m)^Total PLLs : (\d+) /", summary) != ["2"]:
@@ -365,7 +554,7 @@ def _usage_blocks(report):
         if current is None:
             raise ValueError("PLL usage row without an owner")
         key = key.lstrip("- ")
-        if key.endswith("~PLL_OUTPUT_COUNTER"):
+        if key.endswith("|" + COUNTER_ATOM):
             key, value = "PLL Output Counter", key
         elif not value:
             # A section label such as "PLL Refclk Select"; its rows follow.

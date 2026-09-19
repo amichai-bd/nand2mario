@@ -87,14 +87,22 @@ class DefinitionTests(unittest.TestCase):
         command = cv.generation_command(identity, cv.DEFINITION, cv.PIXEL_MODULE, "5CSEBA6U23I7")
         self.assertEqual(command[0], "/quartus/ip-generate")
         for expected in ("--component-name=altera_pll", "--output-name=" + cv.PIXEL_MODULE,
-                         "--component-parameter=gui_output_clock_frequency0=25.2",
+                         "--component-parameter=gui_en_adv_params=1",
+                         "--component-parameter=gui_multiply_factor=63",
+                         "--component-parameter=gui_divide_factor_n=5",
+                         "--component-parameter=gui_divide_factor_c0=25",
                          "--component-parameter=gui_reference_clock_frequency=50.0",
                          "--component-parameter=gui_operation_mode=direct",
                          "--component-parameter=gui_use_locked=1",
                          "--part=5CSEBA6U23I7", "--system-info=DEVICE_FAMILY=Cyclone V"):
             self.assertIn(expected, command)
-        self.assertIn("--component-parameter=gui_output_clock_frequency0=25.0",
-                      cv.generation_command(identity, cv.DEFINITION, cv.SYSTEM_MODULE, "5CSEBA6U23I7"))
+        # No desired frequency is requested at all: the counters state the VCO.
+        self.assertFalse([item for item in command if "gui_output_clock_frequency" in item])
+        system = cv.generation_command(identity, cv.DEFINITION, cv.SYSTEM_MODULE, "5CSEBA6U23I7")
+        for expected in ("--component-parameter=gui_multiply_factor=26",
+                         "--component-parameter=gui_divide_factor_n=2",
+                         "--component-parameter=gui_divide_factor_c0=26"):
+            self.assertIn(expected, system)
         for device in (None, "", "5CSEBA6U23I7 ", "../etc"):
             with self.subTest(device=device), self.assertRaises(ValueError):
                 cv.generation_command(identity, cv.DEFINITION, cv.PIXEL_MODULE, device)
@@ -111,15 +119,89 @@ class DefinitionTests(unittest.TestCase):
         self.assertEqual(cv.lock_event_count({"top": "nano_clocking_proof"}), 0)
 
 
-def generated_hdl(module, frequency):
+class VcoRangeTests(unittest.TestCase):
+    """The recorded datasheet range refuses a configuration outside it.
+
+    The range bounds the oscillator, not the figure the tools print. The post-scale
+    divider K sits between them, so a design is judged on `physical_vco`: a K=2
+    design whose printed figure is below the floor is legal and must be accepted,
+    and a K=2 design whose printed figure is inside the range is still refused when
+    the oscillator is not.
+    """
+
+    def configured(self, module, config):
+        return patch.dict(cv.CONFIGURATION, {module: cv.Configuration(*config)})
+
+    def test_the_shipped_configuration_states_an_in_range_vco(self):
+        low, high = cv.VCO_RANGE_MHZ
+        self.assertEqual((float(low), float(high)), (600.0, 1400.0))
+        for module, vco in ((cv.SYSTEM_MODULE, 650.0), (cv.PIXEL_MODULE, 630.0)):
+            with self.subTest(module=module):
+                self.assertEqual(float(cv.physical_vco(module)), vco)
+                # K is 1, so the oscillator and the printed figure are one number.
+                self.assertEqual(cv.physical_vco(module), cv.stated_vco(module))
+                self.assertTrue(low <= cv.physical_vco(module) <= high)
+
+    def test_every_entry_point_refuses_an_out_of_range_oscillator(self):
+        # multiply, divide, counter, post_scale, charge_pump, bandwidth; each still
+        # produces exactly 25 MHz, so only the oscillator is wrong.
+        for name, config in {"half the floor, as the solver once chose": (6, 1, 12, 1, 20, 2000),
+                             "above the ceiling": (30, 1, 60, 1, 20, 2000),
+                             "printed figure in range, oscillator above it": (15, 1, 30, 2, 20, 2000)}.items():
+            with self.configured(cv.SYSTEM_MODULE, config):
+                self.assertEqual(cv.stated_vco(cv.SYSTEM_MODULE) / config[2],
+                                 cv.frequencies(cv.DEFINITION)[cv.SYSTEM_MODULE])
+                for entry in (lambda: cv.validate(cv.DEFINITION),
+                              lambda: cv.generated_sources(cv.DEFINITION),
+                              lambda: cv.cache_files(cv.DEFINITION),
+                              lambda: cv.assignments(cv.DEFINITION),
+                              lambda: cv.generation_command({"generator": {"path": "/ip-generate"}}, cv.DEFINITION,
+                                                            cv.SYSTEM_MODULE, "5CSEBA6U23I7"),
+                              lambda: cv.verify(Path("."), cv.DEFINITION)):
+                    with self.subTest(configuration=name), self.assertRaises(ValueError) as error:
+                        entry()
+                    self.assertIn("PLL VCO frequency outside the Cyclone V range", str(error.exception))
+
+    def test_a_post_scale_divider_below_the_printed_floor_is_accepted(self):
+        """The same counters with K=2 run the oscillator at 600 MHz and are legal."""
+        with self.configured(cv.SYSTEM_MODULE, (6, 1, 12, 2, 20, 2000)):
+            self.assertEqual(float(cv.stated_vco(cv.SYSTEM_MODULE)), 300.0)
+            self.assertEqual(float(cv.physical_vco(cv.SYSTEM_MODULE)), 600.0)
+            cv.validate(cv.DEFINITION)
+
+    def test_counters_that_miss_the_contract_frequency_are_refused(self):
+        with self.configured(cv.SYSTEM_MODULE, (26, 2, 25, 1, 20, 4000)):
+            with self.assertRaises(ValueError) as error:
+                cv.validate(cv.DEFINITION)
+        self.assertIn("does not produce the contract frequency", str(error.exception))
+
+
+def generated_hdl(module, frequency=None):
     """A generated Altera PLL wrapper with exactly the parameters the check reads."""
+    config = cv.CONFIGURATION[module]
+    frequency = frequency or f"{float(cv.frequencies(cv.DEFINITION)[module]):.6f} MHz"
     parameters = [('fractional_vco_multiplier', '"false"'), ('reference_clock_frequency', '"50.0 MHz"'),
+                  ('pll_fractional_cout', '32'), ('pll_dsm_out_sel', '"1st_order"'),
                   ('operation_mode', '"direct"'), ('number_of_clocks', '1'),
                   ('output_clock_frequency0', f'"{frequency}"'), ('phase_shift0', '"0 ps"'), ('duty_cycle0', '50')]
     for index in range(1, 18):
         parameters += [(f'output_clock_frequency{index}', '"0 MHz"'), (f'phase_shift{index}', '"0 ps"'),
                        (f'duty_cycle{index}', '50')]
-    parameters += [('pll_type', '"General"'), ('pll_subtype', '"General"')]
+    parameters += [('pll_type', '"Cyclone V"'), ('pll_subtype', '"General"')]
+    for name, value in (("m_cnt", config.multiply), ("n_cnt", config.divide)):
+        parameters += sorted(cv._counter_halves(name, value).items())
+    parameters += sorted({**cv._counter_halves("c_cnt", config.counter, index=0), "c_cnt_prst0": "1",
+                          "c_cnt_ph_mux_prst0": "0", "c_cnt_in_src0": '"ph_mux_clk"'}.items())
+    for index in range(1, 18):
+        parameters += [(f'c_cnt_hi_div{index}', '1'), (f'c_cnt_lo_div{index}', '1'), (f'c_cnt_prst{index}', '1'),
+                       (f'c_cnt_ph_mux_prst{index}', '0'), (f'c_cnt_in_src{index}', '"ph_mux_clk"'),
+                       (f'c_cnt_bypass_en{index}', '"true"'), (f'c_cnt_odd_div_duty_en{index}', '"false"')]
+    parameters += [('pll_vco_div', str(config.post_scale)), ('pll_cp_current', str(config.charge_pump)),
+                   ('pll_bwctrl', str(config.bandwidth)),
+                   ('pll_output_clk_frequency', f'"{float(cv.stated_vco(module)):.1f} MHz"'),
+                   ('pll_fractional_division', '"1"'), ('mimic_fbclk_type', '"none"'),
+                   ('pll_fbclk_mux_1', '"glb"'), ('pll_fbclk_mux_2', '"m_cnt"'),
+                   ('pll_m_cnt_in_src', '"ph_mux_clk"'), ('pll_slf_rst', '"false"')]
     body = ",\n".join(f"\t\t.{key}({value})" for key, value in parameters)
     return (f"`timescale 1ns/10ps\nmodule  {module}(\n\n\t// interface 'refclk'\n\tinput wire refclk,\n\n"
             "\t// interface 'reset'\n\tinput wire rst,\n\n\t// interface 'outclk0'\n\toutput wire outclk_0,\n\n"
@@ -130,8 +212,8 @@ def generated_hdl(module, frequency):
 
 class GeneratedHdlTests(unittest.TestCase):
     def write(self, folder, pixel=None, system=None):
-        (folder / (cv.PIXEL_MODULE + ".v")).write_text(pixel or generated_hdl(cv.PIXEL_MODULE, "25.200000 MHz"))
-        (folder / (cv.SYSTEM_MODULE + ".v")).write_text(system or generated_hdl(cv.SYSTEM_MODULE, "25.000000 MHz"))
+        (folder / (cv.PIXEL_MODULE + ".v")).write_text(pixel or generated_hdl(cv.PIXEL_MODULE))
+        (folder / (cv.SYSTEM_MODULE + ".v")).write_text(system or generated_hdl(cv.SYSTEM_MODULE))
 
     def test_requested_parameters_are_accepted(self):
         with tempfile.TemporaryDirectory(dir=scratch()) as temporary:
@@ -140,7 +222,7 @@ class GeneratedHdlTests(unittest.TestCase):
             cv.verify(folder, cv.DEFINITION)
 
     def test_every_parameter_and_port_mutation_is_rejected(self):
-        good = generated_hdl(cv.PIXEL_MODULE, "25.200000 MHz")
+        good = generated_hdl(cv.PIXEL_MODULE)
         mutations = {
             "wrong output frequency": good.replace("25.200000 MHz", "25.000000 MHz"),
             "wrong reference": good.replace('"50.0 MHz"', '"100.0 MHz"'),
@@ -157,6 +239,17 @@ class GeneratedHdlTests(unittest.TestCase):
             "renamed instance": good.replace(") altera_pll_i (", ") altera_pll_other ("),
             "extra port": good.replace("\toutput wire locked\n", "\toutput wire locked,\n\toutput wire phout\n"),
             "reset port renamed": good.replace("\tinput wire rst,", "\tinput wire areset,"),
+            # The VCO the design states, its post-scale divider and the counters
+            # that produce them are all evidence; each mutation is a different PLL.
+            "wrong stated VCO": good.replace('.pll_output_clk_frequency("630.0 MHz")',
+                                             '.pll_output_clk_frequency("300.0 MHz")'),
+            "post-scale divider changed": good.replace(".pll_vco_div(1)", ".pll_vco_div(2)"),
+            "M counter changed": good.replace(".m_cnt_hi_div(32)", ".m_cnt_hi_div(31)"),
+            "C counter changed": good.replace(".c_cnt_hi_div0(13)", ".c_cnt_hi_div0(12)"),
+            "odd duty dropped": good.replace('.c_cnt_odd_div_duty_en0("true")',
+                                             '.c_cnt_odd_div_duty_en0("false")'),
+            "loop filter changed": good.replace(".pll_bwctrl(6000)", ".pll_bwctrl(4000)"),
+            "counters solved instead of stated": re.sub(r"\n\t\t\.(?:pll_output_clk_frequency|pll_vco_div)\([^)]*\),", "", good),
         }
         for name, text in mutations.items():
             with tempfile.TemporaryDirectory(dir=scratch()) as temporary:
@@ -188,15 +281,15 @@ def usage_summary(overrides=()):
     """A PLL Usage Summary with both fitted PLLs, optionally mutated by (owner, key, value)."""
     blocks = []
     for owner, module in ((cv.FIT_SYSTEM, cv.SYSTEM_MODULE), (cv.FIT_PIXEL, cv.PIXEL_MODULE)):
-        multiply, divide, counter = cv.COUNTERS[module]
+        multiply, divide, counter = cv.CONFIGURATION[module][:3]
         rows = [("PLL Type", "Integer PLL"), ("PLL Location", "FRACTIONALPLL_X0_Y1_N0"),
                 ("PLL Feedback clock type", "none"), ("PLL Bandwidth", "Auto"),
                 ("Reference Clock Frequency", "50.0 MHz"), ("Reference Clock Sourced by", "Dedicated Pin"),
-                ("PLL VCO Frequency", f"{50.0 * multiply / divide:.1f} MHz"), ("PLL Operation Mode", "Direct"),
+                ("PLL VCO Frequency", f"{float(cv.stated_vco(module)):.1f} MHz"), ("PLL Operation Mode", "Direct"),
                 ("PLL Enable", "On"), ("PLL Fractional Division", "N/A"), ("M Counter", str(multiply)),
                 ("N Counter", str(divide)), ("IOPLL Self RST", "Off"), ("PLL Refclk Select", ""),
                 ("CLKIN(0) source", "clk_reference~input"), ("PLL Output Counter", ""),
-                (owner.replace("~FRACTIONAL_PLL", "~PLL_OUTPUT_COUNTER"), ""),
+                (cv.FIT_WRAPPERS[module] + "|" + cv.FIT_PLL + "|" + cv.COUNTER_ATOM, ""),
                 ("Output Clock Frequency", f"{50.0 * multiply / divide / counter:.1f} MHz"),
                 ("C Counter Odd Divider Even Duty Enable", "On" if counter % 2 else "Off"),
                 ("Duty Cycle", "50.0000"), ("Phase Shift", "0.000000 degrees"), ("C Counter", str(counter)),
@@ -223,7 +316,7 @@ def clock_rows():
     rows = [("clk_reference", "Base", "20.000", None, "")]
     for module, vco, output in ((cv.SYSTEM_MODULE, cv.SYSTEM_VCO, cv.SYSTEM_CLOCK),
                                 (cv.PIXEL_MODULE, cv.PIXEL_VCO, cv.PIXEL_CLOCK)):
-        multiply, divide, counter = cv.COUNTERS[module]
+        multiply, divide, counter = cv.CONFIGURATION[module][:3]
         rows.append((vco, "Generated", f"{20.0 * divide / multiply:.3f}",
                      ("50.00", str(divide), str(multiply)), "clk_reference"))
         rows.append((output, "Generated", f"{20.0 * divide * counter / multiply:.3f}",
@@ -262,7 +355,7 @@ class FitEvidenceTests(unittest.TestCase):
             "wrong system M counter": usage_summary([(cv.FIT_SYSTEM, "M Counter", "13")]),
             "wrong pixel N counter": usage_summary([(cv.FIT_PIXEL, "N Counter", "6")]),
             "wrong C counter": usage_summary([(cv.FIT_PIXEL, "C Counter", "24")]),
-            "wrong VCO": usage_summary([(cv.FIT_SYSTEM, "PLL VCO Frequency", "650.0 MHz")]),
+            "wrong VCO": usage_summary([(cv.FIT_SYSTEM, "PLL VCO Frequency", "300.0 MHz")]),
             "wrong output frequency": usage_summary([(cv.FIT_PIXEL, "Output Clock Frequency", "25.0 MHz")]),
             "compensated operation": usage_summary([(cv.FIT_SYSTEM, "PLL Operation Mode", "Normal")]),
             "fractional division": usage_summary([(cv.FIT_PIXEL, "PLL Fractional Division", "On")]),
@@ -357,21 +450,21 @@ def netlist(**changes):
                                    "shared_arith": '"off"'})
     locks = []
     for prefix in (system, pixel):
-        select = "\\" + prefix + fpga_lock_cyclonev.REFCLK_SELECT + "_O_CLKOUT"
+        select = "\\" + prefix + fpga_lock_cyclonev.REFCLK_OUT
         lock = "\\" + prefix + "locked_wire[0]"
         cell("cyclonev_pll_refclk_select", prefix + fpga_lock_cyclonev.REFCLK_SELECT,
              clkin=changes.get("refclk_input", "{gnd,gnd,gnd," + reference_out + "}"), clkout=select,
-             extswitchbuf="\\" + prefix + fpga_lock_cyclonev.REFCLK_SELECT + "_O_EXTSWITCHBUF",
+             extswitchbuf="\\" + prefix + "fpll_0|refclk_select_extswitchbuf_wire",
              clk0bad="", clk1bad="", pllclksel="")
         cell("cyclonev_fractional_pll", prefix + fpga_lock_cyclonev.FRACTIONAL,
-             nresync=changes.get("pll_reset", "!" + release), refclkin=select, lock=lock,
+             nresync=changes.get("pll_reset", release), refclkin=select, lock=lock,
              fbclk="\\" + prefix + "fboutclk_wire[0]", coreclkfb="\\" + prefix + "fboutclk_wire[0]",
              cntnen="", mcntout="", fblvdsout="", plniotribuf="", shiftdoneout="", tclk="", mhi="", vcoph="")
         cell("cyclonev_pll_output_counter", prefix + fpga_lock_cyclonev.COUNTER,
-             cascadein="gnd", divclk="\\" + prefix + "outclk_wire[0]", cascadeout="", shiftdone0o="")
-        cell("cyclonev_clkena", prefix + "outclk_wire[0]~CLKENA0", inclk="\\" + prefix + "outclk_wire[0]",
-             ena="vcc", outclk="\\" + prefix + "outclk_wire[0]~CLKENA0_outclk", enaout="")
-        modes(prefix + "outclk_wire[0]~CLKENA0", fpga_lock_cyclonev.BUFFER_MODES)
+             cascadein="gnd", divclk="\\" + prefix + fpga_lock_cyclonev.OUTPUT_WIRE, cascadeout="", shiftdone0o="")
+        cell("cyclonev_clkena", prefix + fpga_lock_cyclonev.OUTPUT_WIRE + "~CLKENA0", inclk="\\" + prefix + fpga_lock_cyclonev.OUTPUT_WIRE,
+             ena="vcc", outclk="\\" + prefix + fpga_lock_cyclonev.OUTPUT_WIRE + "~CLKENA0_outclk", enaout="")
+        modes(prefix + fpga_lock_cyclonev.OUTPUT_WIRE + "~CLKENA0", fpga_lock_cyclonev.BUFFER_MODES)
         locks.append(lock)
     gate = "\\" + reset + "lock_reset~combout"
     inputs = changes.get("gate_inputs", {"dataa": "!" + locks[0], "datab": "gnd", "datac": "!" + locks[1],
@@ -388,7 +481,7 @@ def netlist(**changes):
     modes(reset + "lock_samples[0]~feeder", {"extended_lut": '"off"',
                                              "lut_mask": changes.get("feeder_mask", "64'hFFFFFFFFFFFFFFFF"),
                                              "shared_arith": '"off"'})
-    sampling = changes.get("sampling_clock", "\\" + system + "outclk_wire[0]~CLKENA0_outclk")
+    sampling = changes.get("sampling_clock", "\\" + system + fpga_lock_cyclonev.OUTPUT_WIRE + "~CLKENA0_outclk")
     cell("dffeas", reset + "lock_samples[0]", clk=sampling, d=feeder, asdata="vcc",
          clrn=changes.get("sample_clear", "!" + gate), aload="gnd", sclr="gnd", sload="gnd", ena="vcc",
          devclrn="devclrn", devpor="devpor", q="\\" + reset + "lock_samples[0]", prn="vcc")
@@ -425,10 +518,11 @@ class LockEvidenceTests(unittest.TestCase):
     def test_bootstrap_reset_and_reference_mutations_are_rejected(self):
         system = fpga_lock_cyclonev.SYSTEM
         mutations = {
-            "bootstrap on a generated clock": {"bootstrap_clock": "\\" + system + "outclk_wire[0]~CLKENA0_outclk"},
+            "bootstrap on a generated clock": {
+                "bootstrap_clock": "\\" + system + fpga_lock_cyclonev.OUTPUT_WIRE + "~CLKENA0_outclk"},
             "reset cleared by something else": {"reset_clear": "vcc"},
             "PLL reset not the bootstrap register": {"pll_reset": "gnd"},
-            "PLL reset uninverted": {"pll_reset": "\\" + fpga_lock_cyclonev.RESET + "pll_areset~q"},
+            "PLL reset inverted": {"pll_reset": "!\\" + fpga_lock_cyclonev.RESET + "pll_areset~q"},
             "PLL reference not the board pin": {"refclk_input": "{gnd,gnd,gnd,gnd}"},
             "sampling on the reference": {"sampling_clock": fpga_lock_cyclonev.REFERENCE_NET},
             "sample cleared by something else": {"sample_clear": "vcc"},
@@ -481,9 +575,7 @@ class DiagnosticTests(unittest.TestCase):
         output.mkdir(parents=True, exist_ok=True)
         ports = cv.CONNECTIVITY_PORTS if ports is None else ports
         blocks = []
-        for owner in owners if owners is not None else [
-                cv.FIT_PIXEL.removesuffix("|general[0].gpll~FRACTIONAL_PLL"),
-                cv.FIT_SYSTEM.removesuffix("|general[0].gpll~FRACTIONAL_PLL")]:
+        for owner in owners if owners is not None else sorted(cv.FIT_WRAPPERS.values()):
             blocks.append(f'; Port Connectivity Checks: "{owner}" ;')
             blocks.append("; Port ; Type ; Severity ; Details ;")
             blocks += [f"; {name} ; {kind} ; {severity} ; {detail} ;"
@@ -494,36 +586,62 @@ class DiagnosticTests(unittest.TestCase):
     def text(self, *lines):
         return "\n".join(lines) + "\n"
 
-    def test_both_clocking_diagnostics_are_explained(self):
+    def predicted(self):
+        """Every diagnostic line the two fitted PLL instances produce, in log order."""
+        quartus = "/opt/quartus/libraries/megafunctions"
+        lines = [cv.SYNTHESIS_WARNING, cv.CONNECTIVITY_WARNING]
+        for port, source, line in cv.UNDRIVEN_PORTS:
+            lines += [f'Warning (10034): Output port "{port}" at {source}({line}) has no driver'
+                      f" File: {quartus}/{source} Line: {line}"] * 2
+        lines += ['Warning (12030): Port "extclk" on the entity instantiation of "cyclonev_pll" is connected to a '
+                  "signal of width 1. The formal width of the signal in the module is 2.  The extra bits will be "
+                  f"left dangling without any fan-out logic. File: {quartus}/altera_pll.v Line: 2224"] * 2
+        lines += [cv.REMOVED_HEADERS["14284"], cv.REMOVED_HEADERS["14285"]]
+        lines += [f'Warning (14320): Synthesized away node "{wrapper}|{node}"'
+                  f" File: {quartus}/altera_pll.v Line: 425"
+                  for wrapper in cv.FIT_WRAPPERS.values() for node in cv.REMOVED_NODES]
+        return lines
+
+    def test_every_clocking_diagnostic_is_explained(self):
         with tempfile.TemporaryDirectory(dir=scratch()) as temporary:
             folder = Path(temporary)
             self.connectivity(folder)
-            explained = cv.explained_diagnostics(self.text(cv.CONNECTIVITY_WARNING, cv.SYNTHESIS_WARNING),
-                                                 folder, cv.DEFINITION)
-            self.assertEqual([entry["code"] for entry in explained], ["12241", "330000"])
+            lines = self.predicted()
+            explained = cv.explained_diagnostics(self.text(*lines), folder, cv.DEFINITION)
+            self.assertEqual(len(explained), len(lines))
+            self.assertEqual({entry["code"] for entry in explained}, set(cv.EXPLAINED_CODES))
             self.assertTrue(all(entry["reason"] for entry in explained))
+            self.assertEqual(sorted(entry["text"] for entry in explained), sorted(lines))
 
     def test_no_diagnostic_explains_nothing(self):
         with tempfile.TemporaryDirectory(dir=scratch()) as temporary:
             self.assertEqual(cv.explained_diagnostics("", Path(temporary), cv.DEFINITION), [])
 
     def test_diagnostic_identity_count_and_report_mutations_are_rejected(self):
+        lines = self.predicted()
         with tempfile.TemporaryDirectory(dir=scratch()) as temporary:
             folder = Path(temporary)
             self.connectivity(folder)
-            for name, text in {
-                    "only one": self.text(cv.CONNECTIVITY_WARNING),
-                    "repeated": self.text(cv.CONNECTIVITY_WARNING, cv.SYNTHESIS_WARNING, cv.SYNTHESIS_WARNING),
-                    "count differs": self.text(cv.CONNECTIVITY_WARNING.replace("2 hierarchies", "3 hierarchies"),
-                                               cv.SYNTHESIS_WARNING),
-            }.items():
+            mutations = {
+                "connectivity warning missing": [line for line in lines if line != cv.CONNECTIVITY_WARNING],
+                "synthesis warning repeated": lines + [cv.SYNTHESIS_WARNING],
+                "hierarchy count differs": [line.replace("2 hierarchies", "3 hierarchies") for line in lines],
+                "one undriven port only once": [line for line in lines
+                                                if "extclk_out" not in line] + [next(line for line in lines
+                                                                                     if "extclk_out" in line)],
+                "another undriven port": lines + [lines[2].replace("lvds_clk", "outclk_1")],
+                "another removed node": lines + [lines[-1].replace("gnd", "stranger")],
+                "a vendor line from another file": [line.replace("altera_pll.v(320)", "altera_other.v(320)")
+                                                   for line in lines],
+                "a vendor line from another line number": [line.replace("altera_pll.v(320)", "altera_pll.v(999)")
+                                                           for line in lines],
+            }
+            for name, text in mutations.items():
                 with self.subTest(mutation=name), self.assertRaises(ValueError):
-                    cv.explained_diagnostics(text, folder, cv.DEFINITION)
-        good = self.text(cv.CONNECTIVITY_WARNING, cv.SYNTHESIS_WARNING)
+                    cv.explained_diagnostics(self.text(*text), folder, cv.DEFINITION)
+        good = self.text(*lines)
         for name, kwargs in {
-                "third hierarchy": {"owners": [cv.FIT_PIXEL.removesuffix("|general[0].gpll~FRACTIONAL_PLL"),
-                                               cv.FIT_SYSTEM.removesuffix("|general[0].gpll~FRACTIONAL_PLL"),
-                                               "other:u_other"]},
+                "third hierarchy": {"owners": [*sorted(cv.FIT_WRAPPERS.values()), "other:u_other"]},
                 "unexpected port": {"ports": {**cv.CONNECTIVITY_PORTS, ("outclk_1", "Output", "Warning"): "unused"}},
                 "severity raised": {"ports": {(name, kind, "Critical Warning" if name == "refclk1" else severity): detail
                                               for (name, kind, severity), detail in cv.CONNECTIVITY_PORTS.items()}},

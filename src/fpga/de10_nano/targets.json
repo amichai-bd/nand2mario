@@ -45,7 +45,7 @@
         ],
         "output_delays": [
           {
-            "clock": "u_clocking|u_system_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk",
+            "clock": "u_clocking|u_system_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk",
             "count": 10,
             "ports": [
               "ready",
@@ -54,7 +54,7 @@
             ]
           },
           {
-            "clock": "u_clocking|u_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk",
+            "clock": "u_clocking|u_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk",
             "count": 8,
             "ports": [
               "pix_count[*]"
@@ -117,7 +117,7 @@
             ]
           },
           {
-            "clock": "u_clocking|u_pll|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk",
+            "clock": "u_clocking|u_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk",
             "count": 8,
             "ports": [
               "pix_count[*]"

@@ -49,7 +49,8 @@ silently substitute 25 MHz. No clock switching or dynamic PLL reconfiguration.
 The rates are the contract; the vendor IP that realizes them is the board's. The
 paragraph above is the qualified DE10-Lite implementation. A Cyclone V board has
 no ALTPLL and uses the Altera PLL IP for the same two outputs from the same
-reference, with its own solved counters and its own evidence path
+reference, with its own stated counters, its own
+[VCO range](de10-nano-board.md#pll-vco-range) and its own evidence path
 ([DE10-Nano](de10-nano-board.md#targets),
 [builder contract](../tools/n2m/SPEC.md#generated-clocking-inputs)).
 
