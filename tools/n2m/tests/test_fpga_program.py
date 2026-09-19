@@ -31,6 +31,9 @@ FAILED = "Info: Quartus Prime Programmer failed. 1 error\n"
 # chain is read, and the two cables fail differently.
 UNREADABLE_CHAIN = ("1) DE-SoC [1-3.2]\n  Unable to read device chain - Hardware not attached\n"
                     "2) USB-Blaster [1-2]\n  Unable to read device chain - JTAG chain broken\n")
+# `openFPGALoader --detect` on the DE2-115: one Cyclone IV E on the FTDI cable.
+DE2_DETECT = ("index 0:\n\tidcode 0x20f70dd\n\tmanufacturer altera\n\tfamily cyclone III/IV/10 LP\n"
+              "\tmodel  EP3C120/EP4CE115/10CL120\n\tirlength 10\n")
 # `openFPGALoader --detect` on the DE10-Nano: the ARM debug access port of the
 # Cyclone V SoC sits at chain position 0 and the FPGA at position 1.
 NANO_DETECT = ("index 0:\n\tidcode   0x4ba00477\n\ttype     Cortex A9\n\tirlength 4\n"
@@ -732,13 +735,17 @@ class ProgrammerBackendTests(FpgaProgramTests):
 
     def nano_attempt(self):
         """A DE10-Nano attempt: the same record rules, a Cyclone V target."""
-        attempt = self.folder / "nano"
+        return self.board_attempt("nano", "nano-smoke", "5CSEBA6U23I7")
+
+    def board_attempt(self, name, target, device):
+        """A built attempt for any registered board: the same record rules, its own device."""
+        attempt = self.folder / name
         attempt.mkdir()
         sof = attempt / "output/design.sof"
         sof.parent.mkdir()
         sof.write_text("not a real bitstream\n")
         (attempt / "result.json").write_text(json.dumps(
-            {"status": "PASS", "target": "nano-smoke", "device": "5CSEBA6U23I7",
+            {"status": "PASS", "target": target, "device": device,
              "artifacts": {sof.resolve().relative_to(ROOT.resolve()).as_posix(): file_hash(sof)}}))
         return sof
 
@@ -801,6 +808,38 @@ class ProgrammerBackendTests(FpgaProgramTests):
                       "chain.log is the enumeration the programmer acted on")
         self.assertTrue((self.folder / "chain-quartus.log").is_file(),
                         "the rejected Quartus attempt keeps its own log")
+
+    def test_openfpgaloader_configures_a_cyclone_iv_e_on_its_own_cable(self):
+        """The third supported board, end to end: its own device, its own cable, no MAX 10 path."""
+        sof = self.board_attempt("de2", "de2-smoke", "EP4CE115F29C7")
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute",
+                      side_effect=self.responder(calls, detect=DE2_DETECT, cable="usb-blaster")):
+            result = program(ROOT, self.folder, sof, quartus_bin="tools")
+        self.assertEqual((result["board"], result["expected_device"], result["family"]),
+                         ("DE2-115", "EP4CE115F29C7", "Cyclone IV E"))
+        self.assertEqual((result["backend"], result["cable"], result["chain_position"]),
+                         ("openfpgaloader", "usb-blaster", 0))
+        self.assertEqual(result["devices"], ["EP3C120/EP4CE115/10CL120"])
+        self.assertEqual(result["device_state"], "changed")
+        self.assertIn("--write-sram", result["command"])
+
+        # And that same image is refused against either other board's chain.
+        for other in (NANO_DETECT, VALID_CHAIN):
+            with self.subTest(other=other[:12]):
+                calls = []
+                detect = other if other is NANO_DETECT else ABSENT_CABLE
+                with fake_programmers(openfpgaloader=True), \
+                        patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                        patch("n2m.fpga_program.execute",
+                              side_effect=self.responder(calls, jtagconfig=other, detect=detect,
+                                                         cable="usb-blasterII")):
+                    with self.assertRaises(RuntimeError) as caught:
+                        program(ROOT, self.folder, sof, quartus_bin="tools")
+                self.assertIn("EP4CE115F29C7 (DE2-115)", str(caught.exception))
+                self.assertNotIn("quartus_cpf", [Path(call[0]).name for call in calls])
 
     def test_quartus_is_used_whenever_its_own_chain_reads(self):
         calls = []

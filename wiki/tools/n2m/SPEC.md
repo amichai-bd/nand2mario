@@ -2617,8 +2617,8 @@ package family letters, and an alternative matches when it is a prefix of the
 ordering code, because the ordering code continues with the package, speed and
 temperature grade no IDCODE carries. `10M50DA(.|ES)/10M50DC` and `10M50D` are the
 DE10-Lite's `10M50DAF484C7G`, `5CSEBA6(.|ES)/5CSEMA6` and `5CSE*A6/5CSX*6` the
-DE10-Nano's `5CSEBA6U23I7`, and `EP4CE115` and `EP3C120/EP4CE115/10CL120` an
-`EP4CE115F29C7`. Exactly one cable must hold exactly one matching device; other
+DE10-Nano's `5CSEBA6U23I7`, and `EP4CE115` and `EP3C120/EP4CE115/10CL120` the
+DE2-115's `EP4CE115F29C7`. Exactly one cable must hold exactly one matching device; other
 devices keep their place, because a Cyclone V SoC chain also carries its ARM
 debug access port, and the matched position is what addresses the write.
 
@@ -2724,8 +2724,9 @@ unreadable Quartus chain to a converted volatile load, Quartus keeping the
 operation whenever its own chain reads, the MAX 10 refusal, a successful
 `openFPGALoader --detect` exit on a garbled chain refused before any write, a
 DE10-Lite image refused against a Cyclone V and the reverse, two cables that both
-report the board refused on either backend with both named, `--programmer`
-refused with `--pof`, a failed conversion, a load without `Done`, and the device
+report the board refused on either backend with both named, each board's own
+volatile configuration end to end with its own cable and chain position,
+`--programmer` refused with `--pof`, a failed conversion, a load without `Done`, and the device
 string of every registered board against what each tool prints for it. A board added to the registry
 without its own case fails that test rather than a board session. Every
 programmer is a fake and no test touches hardware. The board session that programs the flash and observes the
