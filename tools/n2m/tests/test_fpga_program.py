@@ -875,6 +875,17 @@ class ProgrammerBackendTests(FpgaProgramTests):
                          "a named openFPGALoader cable never enumerates through Quartus")
         self.assertEqual(result["cable"], "usb-blasterII")
 
+    def test_a_pinned_backend_and_the_other_one_s_cable_is_refused(self):
+        for programmer, cable, fragment in (("quartus", "usb-blasterII", "jtagconfig chain index"),
+                                            ("openfpgaloader", "1", "not an openFPGALoader cable")):
+            with self.subTest(programmer=programmer):
+                with fake_programmers(openfpgaloader=True), patch("n2m.fpga_program.execute") as run:
+                    with self.assertRaises(ValueError) as caught:
+                        program(ROOT, self.folder, self.sof, quartus_bin="tools",
+                                programmer=programmer, cable=cable)
+                    run.assert_not_called()
+                self.assertIn(fragment, str(caught.exception))
+
     def test_a_record_without_a_registered_target_has_no_expected_device(self):
         listed = json.loads((self.folder / "result.json").read_text())
         for edit, fragment in (({"target": None}, "names no FPGA target"),

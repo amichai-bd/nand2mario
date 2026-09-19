@@ -354,6 +354,15 @@ def enumerate_chain(root, folder, run, *, programmer="auto", quartus_bin=None, o
     The chosen attempt's log becomes `chain.log`: it is the enumeration the
     programmer acted on, and every rejected attempt keeps its own name.
     """
+    # A pinned backend and a cable the other one names is a contradiction, not a
+    # preference: silently ignoring either half would program through a
+    # programmer or a cable the operator did not choose.
+    if programmer == QUARTUS and cable in CABLES:
+        raise ValueError(f"--jtag-cable {cable} names an openFPGALoader cable, "
+                         "but --programmer quartus selects a jtagconfig chain index")
+    if programmer == OPENFPGALOADER and cable is not None and cable not in CABLES:
+        raise ValueError(f"--jtag-cable {cable} is not an openFPGALoader cable; "
+                         "use one of " + ", ".join(CABLES))
     # With an image there is one expected board; without one, every registered
     # board is a candidate and the registry is read for them.
     boards = registered_boards(root) if expected is None else {}

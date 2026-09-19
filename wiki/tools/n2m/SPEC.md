@@ -2583,8 +2583,11 @@ that diagnosis is not a prerequisite for programming.
 `--programmer quartus|openfpgaloader` pins one backend, and `--jtag-cable` names
 one cable the way the chosen backend names cables: a `jtagconfig` chain index, or
 an `openFPGALoader` cable name (`usb-blaster`, `usb-blasterII`) which also
-selects that backend. Omitted, every cable of every candidate backend is
-enumerated read-only and the one reporting the expected board is used. Each
+selects that backend. A pinned backend together with the other one's cable name
+is refused rather than resolved, because ignoring either half would use a
+programmer or a cable the operator did not choose. Omitted, every cable of every
+candidate backend is enumerated read-only and the one reporting the expected
+board is used. Each
 attempt keeps its own `chain-<backend>[-<cable>].log`; the attempt the programmer
 acted on becomes `chain.log`. An enumeration is bounded at 30 seconds
 independently of the programming timeout, and its exit status decides nothing:
