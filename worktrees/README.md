@@ -39,9 +39,10 @@ gh pr merge <number> --squash --match-head-commit <full-40-character-reviewed-sh
 ```
 
 `--match-head-commit` takes the full 40-character SHA. An abbreviated one, such
-as the seven characters `git log --oneline` prints, is rejected before any merge
-request is sent: `Could not coerce value "<sha7>" to GitObjectID`. Expand it
-with `git rev-parse <reviewed-sha>`.
+as the seven characters `git log --oneline` prints, is rejected before the merge
+is attempted: `Could not coerce value "<sha7>" to GitObjectID`. Expand it with
+`git rev-parse <reviewed-sha>`, or read the remote head with
+`gh pr view <number> --json headRefOid` when the commit is not in this checkout.
 
 Do not pass `--delete-branch` from an author worktree. Root owns worktree and
 branch deletion after the post-merge verification below.
