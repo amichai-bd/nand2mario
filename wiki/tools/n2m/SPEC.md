@@ -2136,7 +2136,9 @@ strength, MAX 10 neither. That table is per family, not per board, and a family
 absent from it states nothing extra. On the DE2-115 the vendor table puts most
 pins on banks the board does not power at 3.3 V, which is why its fit is a
 build-path result and
-[not a programmable image](../../src/de2-115-board.md#io-voltage-and-what-the-flow-proof-declares). HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
+[not a programmable image](../../src/de2-115-board.md#io-voltage-and-what-the-flow-proof-declares)
+until [#862](https://github.com/amichai-bd/nand2mario/issues/862) settles the
+per-pin standard. HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
 loads are rejected. SDC permits one literal clock,
 delay, exception or uncertainty assignment per line, using the bounded command
 set in the [validator](../../../tools/n2m/fpga.py). Collection getters may select

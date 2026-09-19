@@ -213,8 +213,9 @@ pins. The fitter reports bank 7 at 3.3 V because the assignment asked for it, an
 that is a statement about the project, not about the board. It does not weaken
 the flow proof, which is a Cyclone IV E build-path result and explicitly not a
 board image, and it is exactly why no DE2-115 image may be programmed on the
-strength of this fit. A per-pin I/O standard for this board is an open decision
-and must be settled before any DE2-115 image is programmed.
+strength of this fit. A per-pin I/O standard for this board is
+[#862](https://github.com/amichai-bd/nand2mario/issues/862), which must be
+settled before any DE2-115 image is programmed.
 
 ## Pin groups
 
@@ -312,10 +313,11 @@ than per board.
 
 The fit places 34 logic elements, 42 registers and ten pins, with positive slack
 at all three corners, no unconstrained path, no ignored constraint and no
-structural timing problem. One diagnostic is classified rather than hidden: the
+structural timing problem. Two diagnostics are classified rather than hidden: the
 fitter's AN 447 caution that two pins — the two 3.3-V LVTTL inputs `clk_reference`
-and `key0_n` — must meet the 3.3/3.0/2.5-V interface requirements. The DE10-Lite
-fit carries the same caution with `MAX 10` in the application note's title.
+and `key0_n` — must meet the 3.3/3.0/2.5-V interface requirements, and the
+LogicLock subscription notice every board's fit carries. The DE10-Lite fit
+carries the same AN 447 caution with `MAX 10` in the application note's title.
 
 A passing fit is evidence of the build path, placement and timing only. Nothing
 has been programmed onto a DE2-115, and the
