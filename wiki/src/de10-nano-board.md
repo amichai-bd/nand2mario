@@ -89,6 +89,12 @@ The onboard USB-Blaster II enumerates as `09fb:6810` unconfigured and becomes
 `09fb:6010` only after `blaster_6810.hex` is loaded into cable RAM. That
 firmware is volatile: every replug returns the cable to `6810`.
 
+`fpga program --sof` configures this board through
+[openFPGALoader](../tools/n2m/SPEC.md#programming-backends), which needs that
+firmware image and addresses index 1 explicitly, and it refuses any chain that
+does not report `5CSEBA6U23I7`. A garbled read is refused rather than trusted:
+`openFPGALoader --detect` returns success whatever it found.
+
 ## Pin data
 
 Every assignment below was taken from public Quartus settings files that carry

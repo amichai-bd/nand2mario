@@ -342,7 +342,7 @@ def _fpga_plan(menu, root):
                      ("quartus", lambda _: _quartus(menu, root))]
             plan = _editable(menu, steps, lambda answers: Plan(
                 ["fpga", "program", "--sof", answers["sof"], "--quartus-bin", answers["quartus"]],
-                ("fpga", "program"), "Windows PowerShell", "PROGRAM the attached FPGA over JTAG"))
+                ("fpga", "program"), "Current host", "PROGRAM the attached FPGA over JTAG"))
         if plan is not BACK:
             return plan
 

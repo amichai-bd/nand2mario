@@ -14,6 +14,7 @@ import uuid
 from .records import atomic_json, atomic_text, file_hash, git_state, tag_directory, workspace
 from .simulation import SIMULATORS, load_target, prepare, publish_mirror, simulate, stage_paths
 from .simulator import Simulator, ToolError
+from . import fpga_jtag
 from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
@@ -42,8 +43,11 @@ def parser():
     leaves[0].add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
     leaves[0].add_argument("--questa-bin", help="directory containing native Questa tools; otherwise discover on PATH")
     leaves[0].add_argument("--sim", choices=SIMULATORS)
-    for option in ("quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
+    for option in ("quartus-bin", "jtag-cable", "openfpgaloader-bin", "probe-firmware",
+                   "uart-port", "uart-vid", "uart-pid", "uart-identity"):
         leaves[0].add_argument("--" + option)
+    leaves[0].add_argument("--programmer", choices=fpga_jtag.PROGRAMMER_CHOICES, default="auto",
+                           help="JTAG backend; auto reads the chain through the first available one that reports a supported board")
     sim = commands.add_parser("sim").add_subparsers(dest="action", required=True)
     test = sim.add_parser("test", help="compile, elaborate, run, and check a named target")
     test.add_argument("target")
@@ -142,15 +146,19 @@ def parser():
     build.add_argument("--build-id", help="comparison only: pin the 128-bit identity macro (32 hex digits) instead of the fingerprint prefix; the result cannot be programmed")
     build.add_argument("--tag")
     build.add_argument("--json", action="store_true")
-    program_parser = fpga.add_parser("program", help="write a checked .sof (volatile) or .pof (internal flash) to the connected board; USB-Blaster/10M50DA identity checked first")
+    program_parser = fpga.add_parser("program", help="write a checked .sof (volatile) or .pof (internal flash) to the connected board; the chain must report the image's own board device first")
     image = program_parser.add_mutually_exclusive_group(required=True)
     image.add_argument("--sof", help="path to a design.sof built by 'fpga build'")
     image.add_argument("--pof", help="path to a design.pof built by 'fpga build' of a flash image; program, verify and blank-check the internal flash")
     program_parser.add_argument("--dry-run", action="store_true",
                                 help="with --pof: run the record checks and write the exact quartus_pgm command; no JTAG access")
     program_parser.add_argument("--quartus-bin", required=True, help="explicit directory containing Quartus executables")
-    program_parser.add_argument("--jtag-cable", help="required JTAG chain index if more than one is ever present")
-    program_parser.add_argument("--timeout", type=int, help="quartus_pgm timeout in seconds; 60 for --sof, 600 for --pof")
+    program_parser.add_argument("--jtag-cable", help="one cable: a jtagconfig chain index, or an openFPGALoader cable name (usb-blaster, usb-blasterII) which also selects that backend")
+    program_parser.add_argument("--programmer", choices=fpga_jtag.PROGRAMMER_CHOICES, default="auto",
+                                help="JTAG backend; auto programs through the first available one whose chain reports the image's board")
+    program_parser.add_argument("--openfpgaloader-bin", help="explicit directory containing openFPGALoader; otherwise discover on PATH")
+    program_parser.add_argument("--probe-firmware", help="FX2 firmware image for a USB-Blaster II; defaults to blaster_6810.hex beside the Quartus Linux executables")
+    program_parser.add_argument("--timeout", type=int, help="programmer timeout in seconds; 60 for --sof, 600 for --pof")
     program_parser.add_argument("--tag")
     program_parser.add_argument("--json", action="store_true")
     lint = commands.add_parser("lint", help="front-end gates without a simulation run").add_subparsers(dest="action", required=True)
@@ -313,7 +321,10 @@ def tagged(root, args, header, publish, progress=None):
                             raise ValueError("--dry-run applies only to --pof")
                         progress.line(f"FPGA program: {args.sof}")
                         result = program_fpga(root, folder, Path(args.sof), quartus_bin=args.quartus_bin,
-                                              cable=args.jtag_cable, timeout=args.timeout or 60, progress=progress)
+                                              cable=args.jtag_cable, timeout=args.timeout or 60, progress=progress,
+                                              programmer=args.programmer,
+                                              openfpgaloader_bin=args.openfpgaloader_bin,
+                                              probe_firmware=args.probe_firmware)
                     # The operation directory keeps its own record beside its logs,
                     # so the retained evidence outlives later commands on the tag.
                     atomic_json(folder / "result.json", {"status": "PASS", "provenance": provenance, **result})
@@ -526,17 +537,19 @@ def _human_result(args, report, progress):
             progress.line(f"Flash image (.pof, library in the user range): {flash_images[-1]}")
             progress.line(f"CFM0 used {pof.get('cfm0_used_bytes')} of {pof.get('cfm0_bytes')} bytes; spare {pof.get('cfm0_spare_bytes')}")
         if status == "PASS" and bitstreams and not report.get("build_id_override"):
-            # Programming stays on Windows, so a fit on another host cannot
-            # offer this host's Quartus directory; the placeholder says so.
-            quartus = args.quartus_bin if platform.system() == "Windows" else "<Quartus-bin>"
-            progress.line("Next (Windows PowerShell): " + powershell_command([
-                "python", "tools/build.py", "fpga", "program", "--sof", bitstreams[-1],
-                "--quartus-bin", quartus]))
+            # Programming is a tool-availability decision now, so the fitting
+            # host can offer its own Quartus directory and its own shell.
+            progress.line("Next: " + current_host_command([
+                "tools/build.py", "fpga", "program", "--sof", bitstreams[-1],
+                "--quartus-bin", args.quartus_bin]))
         return
 
     if args.command == "fpga" and args.action == "program":
         if report.get("cable") and report.get("devices"):
-            progress.line(f"JTAG: cable {report['cable']}; device {', '.join(report['devices'])}")
+            progress.line(f"JTAG: backend {report.get('backend', 'unknown')}; cable {report['cable']}; "
+                          f"device {', '.join(report['devices'])}")
+        if report.get("volatile_image"):
+            progress.line(f"Raw volatile image: {report['volatile_image']}")
         if report.get("program_log"):
             progress.line(f"Program log: {report['program_log']}")
         if status != "PASS" and report.get("device_state"):
@@ -569,18 +582,21 @@ def _human_result(args, report, progress):
     progress.line(f"{report.get('cache', status)}: {args.command} tag={report.get('tag', '-')}")
 
 
-# One build tool, one refused backend and two verified-access boundaries. No
+# One build tool, one refused backend and one verified-access boundary. No
 # command launches the other operating system or translates one backend into
-# another. Only physical access and a source build are host facts; `fpga build`,
+# another. Only a source build is a host fact; `fpga build`, `fpga program`,
 # `lint questa` and `--sim questa` decide by tool discovery inside their stages,
 # so a missing tool or license names itself.
 # The pinned Verilator is an autoconf, make and g++ source build, so there is no
 # supported Windows Verilator for discovery to find; that refusal is a fact about
 # the tool, not a policy.
 VERILATOR_HOST = "Verilator simulation runs on Linux"
-# Programming needs a working USB-Blaster driver and JTAG daemon. Only the
-# Windows path has been verified; Linux JTAG access stays out of reach until it is.
-FPGA_PROGRAM_HOST = "FPGA programming runs on Windows PowerShell; Linux JTAG access is unverified"
+# `fpga program` used to refuse every non-Windows host because Linux JTAG access
+# was unverified. It is verified for reading: `openFPGALoader` enumerates the
+# attached cables on a host whose Quartus daemon cannot. So the refusal is now a
+# tool-availability decision inside the stage, which names the missing programmer
+# rather than the operating system. Writing to a board still needs the owner's
+# authorization for that run; nothing here programs a board by itself.
 # The pinned Verilator is an autoconf/make/g++ source build, so its
 # installation belongs to the same host that runs it.
 TOOLS_HOST = "Pinned host tool installation runs on Linux"
@@ -609,15 +625,14 @@ def resolve_simulator(args, system=None):
 def foreign_host(args):
     """The refusal message when this OS does not own the requested command.
 
-    `fpga build`, `lint questa` and `--sim questa` are absent: an installed
-    Quartus or Questa runs them on any host, and their own discovery names the
-    missing tool or the missing Questa runtime license.
+    `fpga build`, `fpga program`, `lint questa` and `--sim questa` are absent:
+    an installed Quartus, Questa or openFPGALoader runs them on any host, and
+    their own discovery names the missing tool, the missing programmer or the
+    missing Questa runtime license.
     """
     system = platform.system()
     if simulator_command(args) and args.sim == "verilator" and system == "Windows":
         return VERILATOR_HOST
-    if args.command == "fpga" and args.action == "program" and system != "Windows":
-        return FPGA_PROGRAM_HOST
     if args.command == "tools" and system == "Windows":
         return TOOLS_HOST
     return None

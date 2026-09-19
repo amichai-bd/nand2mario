@@ -298,19 +298,25 @@ taken, reporting `Verilator simulation runs on Linux`, because the
 [pinned Verilator](#pinned-verilator-installation) is an autoconf, `make` and
 `g++` source build: there is no supported Windows Verilator for discovery to
 find. Questa simulation carries no operating-system refusal; see the
-[runtime license](#questa-runtime-license). Non-Windows hosts refuse
-`fpga program` with
-`FPGA programming runs on Windows PowerShell; Linux JTAG access is unverified`,
-which is a verified-access boundary, not a claim about the tools. Windows
-refuses `tools` with `Pinned host tool installation runs on Linux`, because the
-pinned Verilator is an autoconf, `make` and `g++` source build.
+[runtime license](#questa-runtime-license). Windows refuses `tools` with
+`Pinned host tool installation runs on Linux`, because the pinned Verilator is
+an autoconf, `make` and `g++` source build.
 
-`fpga build`, `lint questa` and `--sim questa` carry no operating-system
-refusal. Each discovers its own executables and reports the real result, so an
-absent tool fails naming that tool: `missing explicit Quartus tool: quartus_sh`
-for the fit and `missing vlib; select the Questa tool directory explicitly` for
-the gate and for a simulation. A tagged workspace is taken before that
-discovery, exactly as on the host that already owned the command.
+`fpga build`, `fpga program`, `lint questa` and `--sim questa` carry no
+operating-system refusal. Each discovers its own executables and reports the
+real result, so an absent tool fails naming that tool:
+`missing explicit Quartus tool: quartus_sh` for the fit,
+`missing vlib; select the Questa tool directory explicitly` for the gate and
+for a simulation, and `no JTAG programmer found: missing jtagconfig (Quartus)
+and openFPGALoader; select a tool directory explicitly` for programming. A
+tagged workspace is taken before that discovery, exactly as on the host that
+already owned the command.
+
+`fpga program` carried an operating-system refusal while Linux JTAG access was
+unverified. It is verified for reading, so the refusal became the
+[backend decision](#programming-backends) inside the stage. Writing to a board
+still needs the owner's authorization for that run; no command programs a board
+on its own.
 
 Every command header and simulation record carries `os` (`platform.system()`),
 and caches, fingerprints and compiled objects live under the running host's own
@@ -324,6 +330,8 @@ license naming;
 [`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers the gate on both
 hosts and its missing-tool failure, and
 [`test_fpga.py`](../../../tools/n2m/tests/test_fpga.py) the fit's.
+[`test_fpga_program.py`](../../../tools/n2m/tests/test_fpga_program.py) covers
+the programming refusal naming both programmers rather than a host.
 
 ### Questa runtime license
 
@@ -1750,9 +1758,16 @@ adds the remaining tools:
   with the build flow's [allocator override](#quartus-allocator-override) and
   reports the same `environment` and `notice`, so the doctor and `fpga build`
   see the same Quartus behavior.
-- JTAG: invoke only `jtagconfig` enumeration. Exactly one USB-Blaster chain must
-  report `10M50DA`; `--jtag-cable <index>` selects among multiple chains. This is
-  reported identity, not wiring, voltage, or programming proof.
+- JTAG: enumerate through whichever [programmer](#programming-backends) is
+  available, and report which one was used. No image is selected, so no single
+  board is expected: exactly one cable must report exactly one
+  [registered board's](#programming-backends) device, and the check names that
+  board, the backend, the resolved tool, the exact command, the matched chain
+  position and the reason every rejected attempt was rejected.
+  `--jtag-cable <cable>` selects one cable, `--programmer` one backend,
+  `--openfpgaloader-bin` and `--probe-firmware` its tool directory and cable
+  firmware. Nothing is written: both programmers only read. This is reported
+  identity, not wiring, voltage, or programming proof.
 - UART: Windows and Linux enumerate serial ports into the same records, so one
   selection rule serves both hosts. Select with `--uart-port`, `--uart-vid`,
   `--uart-pid`, or exact `--uart-identity` (the OS identity, which may include a
@@ -2551,6 +2566,67 @@ the command that seeds it, `python tools/build.py sw library --tag <tag>` online
 once on this host, and names the cache root and the variable, so a fresh
 worktree or a Quartus build says what to run instead of stalling on the network.
 
+### Programming backends
+
+Two programmers can configure a device over JTAG, and
+[`fpga_jtag.py`](../../../tools/n2m/fpga_jtag.py) decides which one
+[`fpga program --sof`](#flash-programming) uses. Quartus's `jtagconfig` and
+`quartus_pgm` are tried first; `openFPGALoader` follows. The decision is not tool
+presence alone: an available programmer that cannot read a chain holding the
+expected board falls through to the next one, because Quartus's `jtagd` answers
+without reading either attached cable on the Linux development host. Missing
+shared libraries, device permissions, udev rules, stale daemon state and
+interference from `openFPGALoader` were each ruled out there by measurement, the
+two cables fail with two different errors, and the daemon was not diagnosed;
+that diagnosis is not a prerequisite for programming.
+
+`--programmer quartus|openfpgaloader` pins one backend, and `--jtag-cable` names
+one cable the way the chosen backend names cables: a `jtagconfig` chain index, or
+an `openFPGALoader` cable name (`usb-blaster`, `usb-blasterII`) which also
+selects that backend. Omitted, every cable of every candidate backend is
+enumerated read-only and the one reporting the expected board is used. Each
+attempt keeps its own `chain-<backend>[-<cable>].log`; the attempt the programmer
+acted on becomes `chain.log`. An enumeration is bounded at 30 seconds
+independently of the programming timeout, and its exit status decides nothing:
+`openFPGALoader --detect` returns success whatever it read, including an empty
+chain and a garbled one. A `jtagconfig` chain is a candidate only on a supported
+board's programming cable, which that tool names `USB-Blaster` for the FTDI cable
+and `DE-SoC` for the USB-Blaster II the SoC boards build in; a chain on other
+hardware is never selected, however its device reads.
+
+The expected device is the board the registry gives the attempt record's target,
+so the check generalises to every supported board instead of naming one device.
+A record whose target is not registered, or whose own `device` disagrees with the
+registry, is refused: with nothing trustworthy to compare, an image built for one
+board could reach another. A reported chain name is a `/`-separated list of the
+ordering codes one IDCODE covers, with `(...)` revision groups and `*` for the
+package family letters, and an alternative matches when it is a prefix of the
+ordering code, because the ordering code continues with the package, speed and
+temperature grade no IDCODE carries. `10M50DA(.|ES)/10M50DC` and `10M50D` are the
+DE10-Lite's `10M50DAF484C7G`, `5CSEBA6(.|ES)/5CSEMA6` and `5CSE*A6/5CSX*6` the
+DE10-Nano's `5CSEBA6U23I7`, and `EP4CE115` and `EP3C120/EP4CE115/10CL120` a
+`EP4CE115F29C7`. Exactly one cable must hold exactly one matching device; other
+devices keep their place, because a Cyclone V SoC chain also carries its ARM
+debug access port, and the matched position is what addresses the write.
+
+`openFPGALoader` has no `.sof` reader, so the checked image is converted in the
+operation directory by `quartus_cpf -c <sof> <rbf>`, whose own success line is
+required, and the result records the raw image and its hash. The load is
+`openFPGALoader -c <cable> [--probe-firmware <hex>] --index-chain <position>
+--file-type rbf --write-sram --bitstream <rbf>`; `--probe-firmware` defaults to
+`blaster_6810.hex` beside the Quartus Linux executables, which a
+[USB-Blaster II](../../src/de10-nano-board.md#jtag-chain) needs because its
+firmware is volatile. Success requires both `Load SRAM` and `Done`. That proves
+the bitstream was shifted, not that configuration completed: openFPGALoader does
+not read `CONF_DONE` back, and the result's `scope` says so.
+
+This backend refuses the MAX 10 family outright. openFPGALoader v1.1.1
+`Altera::program` sends every MAX 10 device to `max10_program` before it looks at
+the file or the requested mode, and `max10_program` reads the image with its POF
+parser and writes the internal flash, so there is no volatile MAX 10
+configuration to ask for and a `.sof` offered under `--write-sram` would be a
+flash write. The DE10-Lite stays with `quartus_pgm`, and the refusal names it.
+
 ### Flash programming
 
 `fpga program` takes exactly one image: `--sof <path>` configures the device
@@ -2572,8 +2648,12 @@ chain index (or the given `--jtag-cable`), records `dry_run: true`, and never
 runs `jtagconfig` or `quartus_pgm`. It proves the record rules and the command
 without a board.
 
-Without `--dry-run`, `jtagconfig` is re-read and must report exactly one
-USB-Blaster chain with a `10M50DA`, then
+Without `--dry-run`, `jtagconfig` is re-read and must report exactly one cable
+holding the device its target's board is registered with. The
+[backend decision](#programming-backends) does not apply: openFPGALoader's only
+MAX 10 path writes the internal flash through its own POF parser, and a flash
+write follows the documented `quartus_pgm` operation letters and timing, not a
+substitute. Then
 `quartus_pgm -c <cable> -m jtag -o "pvb;<pof>"` runs: program, verify and
 blank-check. `quartus_pgm --help=o` of Quartus Prime 25.1std Lite lists `BPV`
 among the valid operation combinations and gives `-o pvb;file.pof` as its
@@ -2611,14 +2691,23 @@ path. The result carries `device_state`: `changed` after the success line,
 `program.log` (`unchanged` when `quartus_pgm` never ran, `changed` when its
 success line is present and only the host record failed afterwards,
 `unconfirmed` otherwise) and never re-runs the programmer; the operator
-decides on a second pass.
+decides on a second pass. Both backends' success signatures are read, because
+neither one's wording can appear in the other's output.
 [`test_fpga_program.py`](../../../tools/n2m/tests/test_fpga_program.py)
 covers each refusal, the dry run, the command line, the measured time, the
 chain and programmer failures, the CLI text with doubled tools, the portable
 record paths for UNC roots, Windows separators, components with spaces and a
 relative image input (as pure Windows paths, so the check runs on any host),
-the pre-JTAG path derivation and the `device_state` of failed records; no test
-touches hardware. The board session that programs the flash and observes the
+the pre-JTAG path derivation and the `device_state` of failed records. It also
+covers each [backend](#programming-backends): the fall-through from an
+unreadable Quartus chain to a converted volatile load, Quartus keeping the
+operation whenever its own chain reads, the MAX 10 refusal, a successful
+`openFPGALoader --detect` exit on a garbled chain refused before any write, a
+DE10-Lite image refused against a Cyclone V and the reverse, a failed
+conversion, a load without `Done`, and the device string of every registered
+board against what each tool prints for it. A board added to the registry
+without its own case fails that test rather than a board session. Every
+programmer is a fake and no test touches hardware. The board session that programs the flash and observes the
 menu at power-up is separate work under the
 [bring-up procedure](../../src/board-bring-up.md#flash-programming-procedure).
 

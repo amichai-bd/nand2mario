@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import test_builder
 from n2m import doctor, verilator, verilator_install
-from n2m.cli import FPGA_PROGRAM_HOST, TOOLS_HOST, VERILATOR_HOST, main
+from n2m.cli import TOOLS_HOST, VERILATOR_HOST, main
 from n2m.records import read_json
 from n2m.simulation import load_target
 from n2m.simulator import Simulator, ToolError, verilator_executable
@@ -845,13 +845,14 @@ class HostOwnershipTests(unittest.TestCase):
                     for absent in ("runs on Windows", "PowerShell", "operating system"):
                         self.assertNotIn(absent, report["error"])
 
-    def test_linux_refuses_only_fpga_programming(self):
-        """Programming is a physical-access fact; the fit is a tool fact."""
+    def test_linux_programming_is_refused_by_tool_discovery_not_by_the_host(self):
+        """No refusal names the operating system: the stage's own discovery names the programmer."""
         code, report = self.run_cli("Linux", "fpga", "program", "--sof", "x.sof",
                                    "--quartus-bin", "tools", "--tag", "l2")
         self.assertEqual(code, 1)
-        self.assertEqual((report["status"], report["error"], report["os"]),
-                         ("FAIL", FPGA_PROGRAM_HOST, "Linux"))
+        self.assertEqual((report["status"], report["os"]), ("FAIL", "Linux"))
+        for absent in ("runs on Windows", "PowerShell", "operating system", "unverified"):
+            self.assertNotIn(absent, report["error"])
 
     def test_linux_reaches_the_fpga_build_stage(self):
         """No refusal stands between Linux and Quartus: the stage itself runs."""
