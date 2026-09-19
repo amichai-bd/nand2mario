@@ -39,10 +39,9 @@ gh pr merge <number> --squash --match-head-commit <full-40-character-reviewed-sh
 ```
 
 `--match-head-commit` takes the full 40-character SHA. An abbreviated one, such
-as the seven characters `git log --oneline` and every status report print, is
-rejected before any merge request is sent:
-`Could not coerce value "<sha7>" to GitObjectID`. Expand it with
-`git rev-parse <reviewed-sha>`.
+as the seven characters `git log --oneline` prints, is rejected before any merge
+request is sent: `Could not coerce value "<sha7>" to GitObjectID`. Expand it
+with `git rev-parse <reviewed-sha>`.
 
 Do not pass `--delete-branch` from an author worktree. Root owns worktree and
 branch deletion after the post-merge verification below.
@@ -57,14 +56,14 @@ gh issue view <issue> --json state,closedAt
 If merged, report the merge commit and local error to root; do not retry.
 If remote state is unclear, investigate before any retry or cleanup.
 
-The command is also refused intermittently with `the base branch policy
-prohibits the merge` on a pull request that is fully mergeable: `mergeStateStatus`
-`CLEAN`, the check rollup `SUCCESS`, no unresolved conversations and the base
-identical to `main`. It can be refused again on an immediate retry. The cause is
-unestablished; later pull requests merged with the same command under the same
-protection, so do not read the refusal as a property of branch protection.
-Confirm the pull request is still open and unmerged as above, then merge through
-the REST endpoint:
+The command is also refused intermittently, with
+`the base branch policy prohibits the merge`, on a pull request that is fully
+mergeable: `mergeStateStatus` `CLEAN`, the check rollup `SUCCESS`, no unresolved
+conversations and the base identical to `main`. It can be refused again on an
+immediate retry. The cause is unestablished; later pull requests merged with the
+same command under the same protection, so do not read the refusal as a property
+of branch protection. Confirm the pull request is still open and unmerged as
+above, then merge through the REST endpoint:
 
 ```powershell
 gh api --method PUT repos/<owner>/<repo>/pulls/<number>/merge -f merge_method=squash -f sha=<full-40-character-reviewed-sha>
