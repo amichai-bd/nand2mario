@@ -299,8 +299,9 @@ why the flow proof drives `LEDR[7:0]` and not the green bank.
 
 [`src/fpga/de2_115/targets.json`](../../src/fpga/de2_115/targets.json) registers
 this board. The registry names the device, the family, the analysed timing
-corners and this page; the
-[builder contract](../tools/n2m/SPEC.md#fpga-build) owns that schema.
+corners, the [I/O standard each package pin is supplied at](#io-voltage-and-what-the-flow-proof-declares)
+and this page; the [builder contract](../tools/n2m/SPEC.md#fpga-build) owns that
+schema.
 
 `de2-smoke` is the flow proof: the counter in
 [`de2_smoke.sv`](../../src/fpga/de2_115/de2_smoke.sv) driving `LEDR[7:0]` from
