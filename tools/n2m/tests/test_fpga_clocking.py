@@ -283,16 +283,13 @@ class FitReportEncodingTests(unittest.TestCase):
                 self.assertIs(fpga_clocking.implementation(family).FIT_ENCODING, fpga_clocking.FIT_ENCODING)
 
 
-# `fpga_adc.py` reads the same report with a bare `read_text()`, which takes the
-# host's locale encoding instead of Quartus's. That is the same defect in a
-# different disguise and it is not fixed here: #838 names the six sites below,
-# and widening it again is the owner's decision, not this test's. Until that
-# decision lands the site is listed, not silently skipped, so the count is
-# exact and a seventh adopter cannot appear unnoticed.
-PENDING_HOST_LOCALE_READER = "n2m/fpga_adc.py"
+# Every module that reads the report, with the number of reads it owns. There is
+# no pending site: `fpga_adc.py` was the last reader to decode by host locale
+# and it now states the encoding like the rest, so the inventory is complete and
+# an eighth adopter cannot appear unnoticed.
 FIT_REPORT_READERS = {"n2m/fpga_pll.py": 2, "n2m/fpga_pll_cyclonev.py": 1, "n2m/fpga_vga.py": 1,
                       "n2m/fpga_v05.py": 1, "n2m/fpga_intel_memory.py": 1,
-                      "n2m/fpga_memory_stores.py": 1}
+                      "n2m/fpga_memory_stores.py": 1, "n2m/fpga_adc.py": 1}
 TOOLS = Path(__file__).resolve().parents[2]
 
 
@@ -331,8 +328,7 @@ class FitReportReaderInventoryTests(unittest.TestCase):
 
     def test_every_fit_report_read_states_the_one_encoding(self):
         found = self.readers()
-        self.assertEqual({name: len(v) for name, v in found.items()},
-                         {**FIT_REPORT_READERS, PENDING_HOST_LOCALE_READER: 1},
+        self.assertEqual({name: len(v) for name, v in found.items()}, FIT_REPORT_READERS,
                          "a fit-report read appeared or moved; state its encoding and update this inventory")
         for name, count in FIT_REPORT_READERS.items():
             for index, value in enumerate(found[name]):
@@ -341,17 +337,17 @@ class FitReportReaderInventoryTests(unittest.TestCase):
                     self.assertEqual(value.id, "FIT_ENCODING")
 
     def test_no_fit_report_read_branches_on_the_host(self):
-        """The defect's shape, forbidden everywhere including the pending site."""
+        """The defect's shape, forbidden everywhere."""
         for name, values in self.readers().items():
             for index, value in enumerate(values):
                 with self.subTest(module=name, read=index):
                     source = "" if value is None else ast.unparse(value)
                     self.assertNotIn("os.name", source)
 
-    def test_the_pending_site_is_still_the_only_host_locale_read(self):
-        """Fails the day it is fixed or a second one appears, so neither is lost."""
+    def test_no_fit_report_read_decodes_by_host_locale(self):
+        """No read leaves the encoding to the host, so none can drift back."""
         unstated = [name for name, values in self.readers().items() if any(v is None for v in values)]
-        self.assertEqual(unstated, [PENDING_HOST_LOCALE_READER])
+        self.assertEqual(unstated, [])
 
 
 if __name__ == "__main__":

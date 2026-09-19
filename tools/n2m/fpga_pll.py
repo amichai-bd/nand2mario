@@ -253,9 +253,20 @@ def validate(definition):
         raise ValueError("unsupported PLL definition")
 
 
+def generator(directory):
+    """The megafunction generator in an explicit Quartus binary directory.
+
+    The `.exe` suffix is a genuine platform fact: Quartus ships `qmegawiz.exe`
+    on Windows and `qmegawiz` elsewhere. Every caller that needs the generator
+    takes it from here, so no second copy of the fact can drift. The path is
+    joined as given; resolving belongs to the caller that wants it.
+    """
+    return Path(directory) / ("qmegawiz.exe" if os.name == "nt" else "qmegawiz")
+
+
 def identity(directory):
     directory = Path(directory).resolve()
-    paths = {"generator": directory / ("qmegawiz.exe" if os.name == "nt" else "qmegawiz"),
+    paths = {"generator": generator(directory),
              "definition": directory.parent / "libraries/megafunctions/xml_info/altpll_info.xml",
              "primitive": directory.parent / "libraries/megafunctions/altpll.tdf",
              "atom_model": directory.parent / "eda/sim_lib/fiftyfivenm_atoms.v",
