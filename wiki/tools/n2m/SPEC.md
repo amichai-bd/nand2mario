@@ -2964,20 +2964,51 @@ as the only one it supports. The
 [Altera PLL IP](https://www.intel.com/content/www/us/en/docs/programmable/683359/current/pll-intel-fpga-ip-core.html)
 takes its place. `ip-generate` from the explicit Quartus directory produces one
 wrapper and one QIP per instance, named `n2m_pixel_pll_cyclonev` and
-`n2m_system_pll_cyclonev`, for the target's own device and family. The request
-states the contract's frequencies (50 MHz reference, 25 MHz system, 25.2 MHz
-pixel) with one output clock, `locked` enabled and `direct` operation; the IP
-solves the physical counters. Its executable, the IP's component/rules/callback
+`n2m_system_pll_cyclonev`, for the target's own device and family.
+
+The request states the physical counters, not a desired frequency: the 50 MHz
+reference, the M, N and C counters, one output clock, `locked` enabled and
+`direct` operation. The IP then derives the rest and writes it into the generated
+HDL, including the VCO frequency, the VCO post-scale divider K and the loop filter
+settings, so the intended oscillator is a recorded design fact instead of a
+solver's choice recovered from a report. The system PLL states `M=26, N=2, C=26`
+and the pixel PLL `M=63, N=5, C=25`, both with `K=1`, which give the contract's
+25 MHz and 25.2 MHz from 650 MHz and 630 MHz oscillators. The checker refuses a
+configuration whose oscillator leaves the
+[datasheet VCO range](../../src/de10-nano-board.md#pll-vco-range), whose counters
+miss the contract frequency, or whose post-scale divider is neither 1 nor 2, before
+any tool launches. The oscillator is the stated
+figure multiplied by K, so a design that legally uses `K=2` to reach a low output
+is accepted while one that states no post-scale divider at all is refused.
+
+The generator's executable, the IP's component/rules/callback
 Tcl, the `altera_pll` primitive and the Cyclone V atom and register models enter
-the request fingerprint. The generated HDL is checked against every requested
-parameter, including that all seventeen other output clocks are off and that the
-four ports are exactly `refclk`, `rst`, `outclk_0` and `locked`; the generation
-log must report an implementable PLL and exactly its two files. Generated QIP Tcl
+the request fingerprint. The generated HDL is checked against every stated
+parameter: the counters as the high and low half-periods the hardware programs,
+the bypass and odd-duty flags each divide implies, the VCO frequency, the
+post-scale divider, the loop filter, and that all seventeen other output clocks
+are off and bypassed and the four ports are exactly `refclk`, `rst`, `outclk_0`
+and `locked`. The generation log must report an implementable PLL and exactly its
+two files. Generated QIP Tcl
 is retained but not evaluated, so the compensation mode, the auto-reset setting
 and the bandwidth preset are written into the project from the checker's own
 constants. Without the compensation mode the fitter warns that the PLL has no
 clock to compensate (177007) and compensates every output. There is no generator
 retry: the Windows ALTPLL crash signature does not apply.
+
+Stating the counters makes the IP instantiate its Cyclone V PLL directly rather
+than the family-generic inference, so every fitted atom sits under `cyclonev_pll`
+and that branch leaves its unused LVDS, external-clock and DLL outputs
+undriven. Each resulting diagnostic is named exactly and explained against its own
+evidence: 10034 for those seven vendor output ports, twice over for the two
+instances; 12030 for the vendor's own one-bit connection to a two-bit external
+clock port; and 14284, 14285 and 14320 for the six phase-shift tie-off nodes per
+instance that synthesis removes. The synthesis connectivity report independently
+shows the wrapper leaving those ports unconnected. An unpredicted port, node or
+message body fails the build, and so does a missing or repeated message. Each
+message's trailing `File:` and `Line:` suffix is matched by shape only, because it
+carries the installed Quartus path; 10034 states its vendor file and line in the
+message body itself, where both are exact.
 
 The fit report's PLL Usage Summary is bound to the two wrapper instances and
 checked value by value: PLL type, feedback clock type, bandwidth, reference
@@ -3004,9 +3035,11 @@ resolved. An unsupported primitive, an extra consumer or any no-clock row fails.
 The netlist's own inversions are resolved before each truth table is evaluated.
 The reset register holds the complement of the contract's `pll_areset`, because a
 Cyclone V register clears asynchronously to zero and the contract powers that
-reset up asserted. The port polarity convention of the vendor's PLL reset input
-is the vendor's; the checks bind the structure, and no hardware claim is made
-about this board.
+reset up asserted. The IP's Cyclone V branch drives the fractional PLL's
+active-low `nresync` with the complement of its own active-high `rst`, so that
+register's released level reaches the PLL directly. The port polarity convention
+of the vendor's PLL reset input is the vendor's; the checks bind the structure,
+and no hardware claim is made about this board.
 
 ### Checked timing assignments
 

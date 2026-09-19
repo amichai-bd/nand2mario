@@ -33,6 +33,27 @@ Both device rows come from the `Fitter Status : Successful` summary of a local
 fit: `nano-smoke` for the Cyclone V and `builder-smoke` for the MAX 10, both on
 Quartus Prime Lite 25.1std.0 Build 1129.
 
+### PLL VCO range
+
+The Cyclone V Device Datasheet bounds each PLL's voltage-controlled oscillator by
+speed grade. `5CSEBA6U23I7` is the **-I7** grade, so its `fVCO` range is **600 to
+1400 MHz**:
+
+| Speed grade | `fVCO` |
+|---|---|
+| -C6 | 600 to 1600 MHz |
+| -C7, -I7 | 600 to 1400 MHz |
+| -C8, -A7 | 600 to 1300 MHz |
+
+The same table's `fVCO` footnote states that the VCO frequency Quartus reports
+already takes the VCO post-scale counter K into account, so a reported figure can
+sit below the `fVCO` minimum when K is 2. The range therefore applies to the
+oscillator itself, which is the reported figure multiplied by K. Every PLL on this
+board states its counters and its K, so that number is a design fact rather than a
+report reading, and the
+[builder contract](../tools/n2m/SPEC.md#cyclone-v-altera-pll) refuses a
+configuration outside this range.
+
 ### Resources this board lacks against the DE10-Lite
 
 - No MAX 10 UFM, so the flash game library has no home here.
@@ -367,10 +388,15 @@ with the shared `n2m_reset_control` and `n2m_timebase` under
 uses one real pin, `FPGA_CLK1_50`; every control and observation port is virtual,
 so it is a fit proof and not a board image. The two generated Altera PLL
 instances give the [clock contract](clocks-resets-cdc.md)'s 25 MHz system and
-25.2 MHz pixel clocks from that reference. The fit reports both PLLs as physical
-resources, the solved counters `M=12, N=2, C=12` (300 MHz VCO) for the system
-clock and `M=63, N=5, C=25` (630 MHz VCO) for the pixel clock, 58 ALMs and 86
-registers. `nano-clocking-invalid` shares those sources and deliberately names
+25.2 MHz pixel clocks from that reference. Both instances state their
+physical counters rather than a desired frequency, so the generated HDL carries
+the VCO frequency and the post-scale divider K. The fit reports both PLLs as
+physical resources, the counters `M=26, N=2, C=26` (650 MHz VCO, K=1) for the
+system clock and `M=63, N=5, C=25` (630 MHz VCO, K=1) for the pixel clock, 58 ALMs
+and 86 registers. Both oscillators are inside the
+[VCO range](#pll-vco-range) above, and the system PLL runs at the same 650 MHz
+the qualified DE10-Lite system PLL uses. `nano-clocking-invalid` shares those
+sources and deliberately names
 the MAX 10 ALTPLL system clock as a checked output-delay endpoint, which no
 Cyclone V netlist contains, so it must fail naming that endpoint.
 
@@ -405,6 +431,10 @@ authorization, and it is not part of the flow proof.
 ## References
 
 - [DE10-Nano user manual](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=1046)
+- Cyclone V Device Datasheet, Intel document `CV-51002`, PLL Specifications table,
+  the `fVCO` row and its footnote. It is the source of the
+  [VCO range](#pll-vco-range) above. Vendor documentation is a reference, not
+  redistributed source.
 - [Cyclone V device overview](https://www.intel.com/content/www/us/en/docs/programmable/683694/current/cyclone-v-device-overview.html)
 - [Board bring-up](board-bring-up.md): the qualified DE10-Lite path.
 - [Builder FPGA build contract](../tools/n2m/SPEC.md#fpga-build)
