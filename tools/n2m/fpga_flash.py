@@ -1,4 +1,4 @@
-"""Resolve the installed Intel On-Chip Flash IP and stage its pinned sources.
+"""Resolve the installed Intel On-Chip Flash IP and stage its accepted sources.
 
 The IP is plain parameterised Verilog: n2m_flash_reader instantiates
 altera_onchip_flash directly with the parameters its hw.tcl derives, so no
@@ -10,24 +10,25 @@ from pathlib import Path
 import re
 import shutil
 
-from . import flash_library
+from . import flash_library, vendor_sources
 from .records import file_hash
 
 READER = "src/rtl/storage/n2m_flash_reader.sv"
 IP_NAME = "altera_onchip_flash"
-# Quartus Prime 25.1std Lite ip/altera/altera_onchip_flash: the synthesis
-# fileset of altera_onchip_flash_hw_proc.tcl generate_synth for the parallel
-# read-only configuration (no csr controller, no vendor SDC).
+# ip/altera/altera_onchip_flash: the synthesis fileset of
+# altera_onchip_flash_hw_proc.tcl generate_synth for the parallel read-only
+# configuration (no csr controller, no vendor SDC), each with the IP folder that
+# holds it. Digests are not stated here: `identity` compares every installed file
+# with the digest [the ledger](accepted_vendor_sources.json) accepted for that
+# installation, and [the dependency record](dependencies.json) keeps the licence
+# and the installation the first digests came from.
 SOURCES = {
-    "altera_onchip_flash.v": ("altera_onchip_flash", "03a088deb2baaef6b33229b2bf3717d659efceac30043a1243066672195db316"),
-    "altera_onchip_flash_avmm_data_controller.v": ("altera_onchip_flash", "a87a4f86b581ba3b78fb9189bf6215bf1722bc56757fc5cd30a1853787d8f517"),
-    "altera_onchip_flash_util.v": ("altera_onchip_flash", "4091b0255ebe2b534f87b6af95ee0d4dda965c975b9a0457c7e6f36d38b2e301"),
-    "altera_onchip_flash_block.v": ("rtl", "6afaeaf53c8596647ee4e56b7d79193970c79efd7c774584a84b0e444a88dfb1"),
+    "altera_onchip_flash.v": "altera_onchip_flash",
+    "altera_onchip_flash_avmm_data_controller.v": "altera_onchip_flash",
+    "altera_onchip_flash_util.v": "altera_onchip_flash",
+    "altera_onchip_flash_block.v": "rtl",
 }
-DEFINITIONS = {
-    "altera_onchip_flash_hw.tcl": "d4a832155d41eaf776d3fea061e22bc09ffc1050d2e7048c6e2e84c0b914f613",
-    "altera_onchip_flash_hw_proc.tcl": "bd6465a1f3cb08e65888ed5a7d5f085b5979bc8073d8878844bd8f422ac29a2c",
-}
+DEFINITIONS = ("altera_onchip_flash_hw.tcl", "altera_onchip_flash_hw_proc.tcl")
 CONFIGURATION_MODE = 'set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"'
 # The reader's INIT_FILENAME parameter names the Intel HEX the assembler folds
 # into the .pof user range; the file sits beside the generated project.
@@ -44,7 +45,7 @@ READER_INSTANCES = {
                            ("n2m_boot_copier", "u_copier"), ("n2m_flash_reader", "u_reader")),
 }
 # Registers of the vendor data controller that only its read-and-write mode
-# reads: Quartus 25.1 names each once with its line in the pinned file.
+# reads: Quartus 25.1 names each once with its line in the accepted file.
 UNUSED_OBJECTS = (
     (201, "flash_sector_addr"), (217, "flash_drdin_neg_reg"), (218, "write_count"), (219, "erase_count"),
     (222, "write_timeout"), (224, "write_wait_neg"), (225, "erase_timeout"), (231, "flash_se_pass_reg"),
@@ -72,24 +73,24 @@ def flash_target(target):
 
 
 def identity(directory):
-    """Paths and hashes of the installed IP; a changed vendor file is unsupported."""
+    """Paths, digests and accepted record of the installed IP.
+
+    A file whose digest changed since this installation accepted it fails here,
+    before any stage runs; a file this installation has never recorded is
+    recorded and marked as such.
+    """
     quartus = Path(directory).resolve().parent
     ip = quartus.parent / "ip/altera" / IP_NAME
-    paths = {name: ip / folder / name for name, (folder, _) in SOURCES.items()}
+    paths = {name: ip / folder / name for name, folder in SOURCES.items()}
     paths.update({name: ip / IP_NAME / name for name in DEFINITIONS})
     paths["atom_model"] = quartus / "eda/sim_lib/fiftyfivenm_atoms.v"
     if any(not p.is_file() for p in paths.values()):
         raise ValueError("missing installed Intel On-Chip Flash IP dependency")
-    result = {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
-    pinned = {name: sha for name, (_, sha) in SOURCES.items()} | DEFINITIONS
-    for name, sha in pinned.items():
-        if result[name]["sha256"] != sha:
-            raise ValueError(f"unsupported Intel On-Chip Flash IP source: {name}")
-    return result
+    return vendor_sources.check(directory, paths)
 
 
 def stage(folder, sources):
-    """Copy the pinned synthesis files beside the generated project."""
+    """Copy the accepted synthesis files beside the generated project."""
     for name in SOURCES:
         source = Path(sources[name]["path"])
         if file_hash(source) != sources[name]["sha256"]:
@@ -182,19 +183,19 @@ def no_clock_rows(top):
 
 
 def explained_diagnostics(text, folder, sources, top, log_name):
-    """Exact vendor read-only-mode and strobe diagnostics of the pinned IP.
+    """Exact vendor read-only-mode and strobe diagnostics of the installed IP.
 
     The data controller keeps its write and erase registers under a generate
     branch the read-only mode never reads, and the IP's sense-enable strobe
     clocks one register inside the UFM atom without a clock assignment; the
     vendor's own generated project suppresses that message
     (MESSAGE_DISABLE 332060). Here both are classified line by line: the
-    complete inventory, the pinned source identity and the count per log
+    complete inventory, the accepted source identity and the count per log
     must all match, and nothing is suppressed.
     """
-    for name, (_, sha) in SOURCES.items():
-        if sources.get(name, {}).get("sha256") != sha or file_hash(folder / name) != sha:
-            raise ValueError("unsupported Intel On-Chip Flash IP source for diagnostic classification")
+    for name, digest in vendor_sources.require_accepted(sources, *SOURCES).items():
+        if file_hash(folder / name) != digest:
+            raise ValueError("staged Intel On-Chip Flash IP source differs from the accepted installed source")
     lines = [line.strip() for line in text.splitlines()]
     required = []
     if log_name == "compile.log":
@@ -214,7 +215,7 @@ def explained_diagnostics(text, folder, sources, top, log_name):
     if sorted(actual) != sorted(required + [strobe] * strobe_count):
         raise ValueError("unexpected On-Chip Flash IP diagnostic")
     return [{"code": re.match(r"Warning \((\d+)\)", line)[1], "text": line,
-             "reason": "pinned Intel On-Chip Flash IP: read-only mode leaves the vendor write/erase registers "
+             "reason": "accepted Intel On-Chip Flash IP: read-only mode leaves the vendor write/erase registers "
                        "unread and its sense-enable strobe clocks one UFM atom register without a clock assignment"}
             for line in required + [strobe]]
 

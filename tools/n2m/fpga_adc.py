@@ -4,7 +4,7 @@ import shutil
 import re
 
 from .records import file_hash
-from . import fpga_pll
+from . import fpga_pll, vendor_sources
 from .fpga_clocking import FIT_ENCODING
 from .fpga_lock import parse_netlist, OUTPUTS
 
@@ -238,11 +238,13 @@ CONTROL = (
     "fiftyfivenm_adcblock_top_wrapper.v", "fiftyfivenm_adcblock_primitive_wrapper.v",
     "altera_modular_adc_control.sdc",
 )
-SUPPORTED_CONTROL = {
-    "altera_modular_adc_control.v": "03fb3f3602704606e33a477491da61ae2415409e1376212b71c95354ece49d92",
-    "altera_modular_adc_control_fsm.v": "dd39a51bd11f96ddea56de2be9ef56e2184985d2063a1ab2bda4ca1506e40105",
-    "altera_modular_adc_control_avrg_fifo.v": "e4570567d633185546949acf6d6f9d875ee6567a6adc44e27d22c296361accf8",
-}
+# The three control sources whose exact warnings, lines and node names the
+# classifier below explains. Their digests are not stated here: `identity`
+# compares each installed file with the digest
+# [the ledger](accepted_vendor_sources.json) accepted for that installation, and
+# the classifier requires the record it produced.
+DIAGNOSTIC_CONTROL = ("altera_modular_adc_control.v", "altera_modular_adc_control_fsm.v",
+                      "altera_modular_adc_control_avrg_fifo.v")
 
 
 def explained_diagnostics(text, folder, sources, top="adc_proof"):
@@ -251,11 +253,9 @@ def explained_diagnostics(text, folder, sources, top="adc_proof"):
     This does not permit general unused logic/RAM warnings. Raw lines, source
     identity and the complete 15-line inventory must all match.
     """
-    if any(sources.get(name, {}).get("sha256") != pin for name, pin in SUPPORTED_CONTROL.items()):
-        raise ValueError("unsupported ADC source for diagnostic classification")
-    for name, pin in SUPPORTED_CONTROL.items():
-        if file_hash(folder / name) != pin:
-            raise ValueError("copied ADC source differs from supported diagnostic pin")
+    for name, digest in vendor_sources.require_accepted(sources, *DIAGNOSTIC_CONTROL).items():
+        if file_hash(folder / name) != digest:
+            raise ValueError("copied ADC source differs from the accepted installed source")
     lines = [line.strip() for line in text.splitlines()]
     unused = ('Warning (10036): Verilog HDL or VHDL warning at altera_modular_adc_control_fsm.v(70): '
               'object "sync_ctrl_state_nxt" assigned a value but never read File: '
@@ -282,7 +282,7 @@ def explained_diagnostics(text, folder, sources, top="adc_proof"):
     if len(actual) != 15 or set(actual) != set(required):
         raise ValueError("unexpected ADC unused-feature diagnostic")
     return [{"code": re.match(r'Warning \((\d+)\)', line)[1], "text": line,
-             "reason": "pinned Intel ADC1 control: unused dual-ADC state and channel17 temperature FIFO"}
+             "reason": "accepted Intel ADC1 control: unused dual-ADC state and channel17 temperature FIFO"}
             for line in required]
 
 
@@ -300,7 +300,7 @@ def identity(directory):
     paths["pll_definition"] = quartus / "libraries/megafunctions/altpll.tdf"
     if any(not p.is_file() for p in paths.values()):
         raise ValueError("missing installed Intel ADC/PLL dependency")
-    result = {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
+    result = vendor_sources.check(directory, paths)
     result.update({"pll_" + name: value for name, value in fpga_pll.identity(directory).items()})
     return result
 

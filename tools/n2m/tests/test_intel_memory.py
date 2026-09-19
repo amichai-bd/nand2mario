@@ -7,20 +7,27 @@ from unittest.mock import patch
 import tempfile
 
 import test_builder
-from n2m import intel_memory, fpga_intel_memory
+import vendor_support
+from n2m import intel_memory, fpga_intel_memory, vendor_sources
 from n2m.questa import diagnostic
 from n2m.records import file_hash, read_json
+
+MODEL = "quartus/eda/sim_lib/altera_mf.v"
 
 
 class IntelMemoryTests(unittest.TestCase):
     setUp = test_builder.BuilderTests.setUp
     run_stage = test_builder.BuilderTests.run_stage
 
-    def prepare_model(self):
+    def prepare_model(self, accepted=True):
         self.models = self.root / "installation with spaces/quartus/eda/sim_lib"
         self.models.mkdir(parents=True)
         self.source = self.models / "altera_mf.v"
         self.source.write_text("// Original host-test dependency bytes; not a vendor simulation model.\n")
+        vendor_support.installation(self.models.parents[2])
+        self.ledger = vendor_support.ledger(
+            self, self.root / "workdir/test-ledger.json",
+            {MODEL: file_hash(self.source)} if accepted else {})
         self.pin_path = self.root / "tools/n2m/dependencies.json"
         self.pins = read_json(self.pin_path)
         self.pins["intel_memory"]["sources"]["altera_mf.v"] = file_hash(self.source)
@@ -53,6 +60,8 @@ class IntelMemoryTests(unittest.TestCase):
         target = read_json(self.root / "src/dv/builder/targets.json")["builder-smoke"]
         descriptor = intel_memory.resolve(self.root, self.questa(), target, str(self.models))
         self.assertEqual(descriptor["sources"][0]["sha256"], file_hash(self.source))
+        self.assertEqual(descriptor["sources"][0]["source"], MODEL)
+        self.assertEqual(descriptor["sources"][0]["accepted"], "unchanged")
         self.assertEqual(descriptor["binding_options"], ["-L", "n2m_altera_mf"])
         compile_commands, map_commands, binding = intel_memory.commands(self.questa(), self.build, self.build, descriptor)
         compiler = next(argv for argv, *_ in compile_commands if argv[0] == "vlog")
@@ -60,12 +69,38 @@ class IntelMemoryTests(unittest.TestCase):
         self.assertEqual(binding, ["-L", "n2m_altera_mf"])
         self.assertEqual(len(map_commands), 1)
 
-    def test_changed_or_missing_source_is_refused(self):
+    def test_changed_source_is_refused_and_a_new_one_is_recorded(self):
+        """A vendor file changing under accepted evidence fails; a first sighting records."""
         self.prepare_model()
         target = read_json(self.root / "src/dv/builder/targets.json")["builder-smoke"]
+        accepted = file_hash(self.source)
         self.source.write_text("// Different host-test dependency bytes\n")
-        with self.assertRaisesRegex(ValueError, "unsupported Intel memory model hash"):
+        with self.assertRaisesRegex(ValueError, "changed since it was accepted") as raised:
             intel_memory.resolve(self.root, self.questa(), target, str(self.models))
+        message = str(raised.exception)
+        for part in (MODEL, "linux", accepted, file_hash(self.source), "vendor accept"):
+            self.assertIn(part, message)
+        # The refused digest is never written: the ledger still holds the accepted one.
+        self.assertEqual(read_json(self.ledger)["installations"]["linux"]["sources"][MODEL], accepted)
+
+    def test_first_sighting_records_the_installed_source(self):
+        self.prepare_model(accepted=False)
+        target = read_json(self.root / "src/dv/builder/targets.json")["builder-smoke"]
+        descriptor = intel_memory.resolve(self.root, self.questa(), target, str(self.models))
+        self.assertEqual(descriptor["sources"][0]["accepted"], "recorded")
+        entry = read_json(self.ledger)["installations"]["linux"]
+        self.assertEqual(entry["sources"], {MODEL: file_hash(self.source)})
+        self.assertEqual(entry["quartus"], "0.0 host-test")
+        self.assertEqual(vendor_sources.notices({"model": descriptor["sources"][0]}),
+                         [vendor_sources.NOTICE.format(installation="linux", source=MODEL,
+                                                       sha256=file_hash(self.source))])
+        # The second run compares against what the first recorded.
+        again = intel_memory.resolve(self.root, self.questa(), target, str(self.models))
+        self.assertEqual(again["sources"][0]["accepted"], "unchanged")
+
+    def test_missing_source_and_library_are_refused(self):
+        self.prepare_model()
+        target = read_json(self.root / "src/dv/builder/targets.json")["builder-smoke"]
         self.source.unlink()
         with self.assertRaisesRegex(ValueError, "missing Intel memory model source"):
             intel_memory.resolve(self.root, self.questa(), target, str(self.models))
@@ -111,8 +146,10 @@ class IntelDiagnosticTests(unittest.TestCase):
     instance = "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
 
     def setUp(self):
+        self.model = "a" * 64
         self.descriptor = {"mixed_mode_instances": [self.instance],
-                           "sources": [{"name": "altera_mf.v", "sha256": intel_memory.MIXED_MODE_MODEL_HASH}]}
+                           "sources": [{"name": intel_memory.MIXED_MODE_MODEL,
+                                        **vendor_support.accepted("/vendor/altera_mf.v", self.model, MODEL)}]}
         self.pair = ("# Warning: read_during_write_mode_mixed_ports is assumed as               OLD_DATA\n"
                      f"# Time: 0  Instance: {self.instance}")
 
@@ -138,41 +175,56 @@ class IntelDiagnosticTests(unittest.TestCase):
             checked, _ = intel_memory.classify_diagnostics(self.pair + "\n" + extra, self.descriptor)
             self.assertEqual(diagnostic(checked), "unexplained simulator warning")
 
-    def test_unpinned_or_undeclared_warning_cannot_be_classified(self):
-        self.descriptor["sources"][0]["sha256"] = "0" * 64
-        with self.assertRaisesRegex(ValueError, "reviewed model source hash"):
+    def test_unrecorded_or_undeclared_warning_cannot_be_classified(self):
+        """The classifier explains a specific model's warning, so it refuses a
+        descriptor whose model never reached the accepted record."""
+        self.assertEqual(intel_memory.classify_diagnostics(self.pair, self.descriptor)[1][0]["model_sha256"],
+                         self.model)
+        del self.descriptor["sources"][0]["accepted"]
+        with self.assertRaisesRegex(ValueError, "not an accepted ledger record"):
             intel_memory.classify_diagnostics(self.pair, self.descriptor)
         checked, evidence = intel_memory.classify_diagnostics(self.pair, None)
         self.assertEqual(evidence, [])
         self.assertEqual(diagnostic(checked), "unexplained simulator warning")
 
-    def test_synthesis_rejects_missing_or_different_model(self):
+    def test_synthesis_refuses_a_changed_model_and_keeps_the_named_exemption(self):
         with tempfile.TemporaryDirectory() as directory:
-            quartus = Path(directory)
+            root = vendor_support.installation(Path(directory), platform="windows")
+            quartus = root / "quartus"
+            bin64 = quartus / "bin64"
+            ledger = vendor_support.ledger(self, root / "ledger.json", platform="windows")
             with self.assertRaisesRegex(ValueError, "missing installed"):
-                fpga_intel_memory.identity(quartus / "bin64")
+                fpga_intel_memory.identity(bin64)
             for relative in ("libraries/megafunctions/altsyncram.tdf",
                              "libraries/megafunctions/altsyncram.inc", "eda/sim_lib/altera_mf.v"):
                 path = quartus / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("Original test bytes, not an Intel implementation.")
-            with self.assertRaisesRegex(ValueError, "differs from the reviewed"):
-                fpga_intel_memory.identity(quartus / "bin64")
             model = file_hash(quartus / "eda/sim_lib/altera_mf.v")
+            # Nothing is recorded yet, so the first build records the model and says so.
+            first = fpga_intel_memory.identity(bin64)
+            self.assertEqual((first["model"]["sha256"], first["model"]["accepted"]), (model, "recorded"))
+            self.assertEqual(read_json(ledger)["installations"]["windows"]["sources"], {MODEL: model})
+            # Only the model is compared; the definition and declaration stay recorded as found.
+            self.assertNotIn("accepted", first["definition"])
             # The exemption is named, so a family nobody has considered is checked
             # like MAX 10. Only Cyclone V, which compiles no simulation model,
             # records the installed hash as found.
+            (quartus / "eda/sim_lib/altera_mf.v").write_text("Different original test bytes.")
+            changed = file_hash(quartus / "eda/sim_lib/altera_mf.v")
             for family in ("MAX 10", "Arria V", "", None):
-                with self.subTest(family=family), self.assertRaisesRegex(ValueError, "differs from the reviewed"):
-                    fpga_intel_memory.identity(quartus / "bin64", family=family)
-            exempt = fpga_intel_memory.identity(quartus / "bin64", family="Cyclone V")
-            self.assertEqual(exempt["model"]["sha256"], model)
-            # With the pin satisfied, every family is accepted and records it.
-            with patch.object(fpga_intel_memory, "MIXED_MODE_MODEL_HASH", model):
-                for family in ("MAX 10", "Cyclone V"):
-                    with self.subTest(pinned=family):
-                        recorded = fpga_intel_memory.identity(quartus / "bin64", family=family)
-                        self.assertEqual(recorded["model"]["sha256"], model)
+                with self.subTest(family=family), self.assertRaisesRegex(ValueError, "changed since it was accepted"):
+                    fpga_intel_memory.identity(bin64, family=family)
+            exempt = fpga_intel_memory.identity(bin64, family="Cyclone V")
+            self.assertEqual(exempt["model"]["sha256"], changed)
+            self.assertNotIn("accepted", exempt["model"])
+            # With the change accepted, every family builds and records it as unchanged.
+            record = vendor_sources.accept(bin64, [MODEL], "Reviewed original host-test bytes for this test.")
+            self.assertEqual(record["changed"], {MODEL: {"from": model, "to": changed}})
+            for family in ("MAX 10", "Cyclone V"):
+                with self.subTest(accepted=family):
+                    recorded = fpga_intel_memory.identity(bin64, family=family)
+                    self.assertEqual(recorded["model"]["sha256"], changed)
 
 
 if __name__ == "__main__":

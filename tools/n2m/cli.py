@@ -24,7 +24,7 @@ from .lint import lint_questa
 from .progress import Progress, powershell_command
 from .rgbds import oracle
 from .regress import clean, regress
-from . import catalogue, host_suite, interface_codec, verilator_install
+from . import catalogue, host_suite, interface_codec, vendor_sources, verilator_install
 from sw.build import assemble_target
 from sw.rom_build import build_target
 from sw.link_conformance import proof as link_proof
@@ -122,6 +122,14 @@ def parser():
                                   help="build only from an already fetched pinned source; never download")
     pinned_verilator.add_argument("--tag")
     pinned_verilator.add_argument("--json", action="store_true")
+    vendor = commands.add_parser("vendor", help="record reviewed installed vendor sources as accepted for an installation").add_subparsers(dest="action", required=True)
+    accepted = vendor.add_parser("accept", help="accept the installed digest of named vendor sources; the only way an accepted digest changes")
+    accepted.add_argument("--quartus-bin", required=True, help="explicit directory containing Quartus executables")
+    accepted.add_argument("--source", action="append", required=True,
+                          help="installation-relative path of a vendor source to accept; repeat for several")
+    accepted.add_argument("--reason", required=True,
+                          help="why the changed vendor bytes are accepted; recorded in the ledger with the digests")
+    accepted.add_argument("--json", action="store_true")
     remove = commands.add_parser("clean", help="remove generated output under exactly one build tag")
     remove.add_argument("--tag", required=True)
     remove.add_argument("--json", action="store_true")
@@ -642,6 +650,11 @@ def main(argv=None, root=None):
             report = regress(root, args, header, publish)
         elif args.command == "tests":
             report = catalogue.command(root, args, header, publish)
+        elif args.command == "vendor":
+            # No build tag and no workspace: the command's output is a tracked
+            # source change, reviewed like any other.
+            report = header("-")
+            report.update(status="PASS", **vendor_sources.accept(args.quartus_bin, args.source, args.reason))
         elif args.command == "clean":
             # No workspace: the tag directory itself is what clean removes.
             report = header(args.tag)

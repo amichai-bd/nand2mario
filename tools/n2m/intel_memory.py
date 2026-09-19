@@ -1,13 +1,18 @@
-"""Resolve the pinned installed Intel memory model; never synthesize a substitute."""
+"""Resolve the accepted installed Intel memory model; never synthesize a substitute."""
 import json
 from pathlib import Path
 import re
 
-from .records import file_hash
+from . import vendor_sources
 
 
 LIBRARY = "n2m_altera_mf"
-MIXED_MODE_MODEL_HASH = "2ae09f97f9606626da216e9eb91007beec3ebbe023c5b9415be472417fe49d5e"
+# The one source whose mixed-port coercion warning this module classifies. Its
+# digest is not stated here: the build compares the installed file with the
+# digest [the ledger](accepted_vendor_sources.json) accepted for that
+# installation, so a second installation records its own bytes and a vendor file
+# changing under retained evidence still fails closed.
+MIXED_MODE_MODEL = "altera_mf.v"
 
 
 def resolve(root, simulator, target, directory=None):
@@ -33,42 +38,38 @@ def resolve(root, simulator, target, directory=None):
         folder = Path(directory).resolve()
     if not folder.is_dir():
         raise ValueError("missing Intel simulation library; select --intel-sim-lib from the supported Quartus installation")
-    sources = []
-    for name, expected in pin["sources"].items():
+    for name in pin["sources"]:
         path = folder / name
         if not path.is_file() or path.is_symlink():
             raise ValueError(f"missing Intel memory model source: {name}")
-        actual = file_hash(path)
-        if actual != expected:
-            raise ValueError(f"unsupported Intel memory model hash: {name}; install the pinned release")
-        sources.append({"name": name, "path": str(path), "sha256": actual})
+    provenance = vendor_sources.check(folder, {name: folder / name for name in pin["sources"]})
+    sources = [{"name": name, **provenance[name]} for name in pin["sources"]]
     instances = target.get("intel_mixed_mode_instances", [])
     if (not isinstance(instances, list) or
             any(not isinstance(item, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.$\[\]]*", item) for item in instances) or
             len(set(instances)) != len(instances)):
         raise ValueError("invalid Intel mixed-mode diagnostic instance inventory")
-    if instances and not any(source["name"] == "altera_mf.v" and source["sha256"] == MIXED_MODE_MODEL_HASH for source in sources):
-        raise ValueError("Intel mixed-mode diagnostic requires the reviewed model source hash")
+    if instances:
+        vendor_sources.require_accepted({source["name"]: source for source in sources}, MIXED_MODE_MODEL)
     return {"selection": selection, "library": LIBRARY, "version": pin["version"],
             "sources": sources, "compile_options": ["-work", LIBRARY],
             "binding_options": ["-L", LIBRARY], "mixed_mode_instances": instances}
 
 
 def classify_diagnostics(output, descriptor):
-    """Record only the pinned model's time-zero mixed-mode coercion pairs."""
+    """Record only the accepted model's time-zero mixed-mode coercion pairs."""
     instances = descriptor.get("mixed_mode_instances", []) if descriptor else []
     if not instances:
         return output, []
-    if not any(source["name"] == "altera_mf.v" and source["sha256"] == MIXED_MODE_MODEL_HASH
-               for source in descriptor["sources"]):
-        raise ValueError("Intel mixed-mode diagnostic requires the reviewed model source hash")
+    model = vendor_sources.require_accepted({source["name"]: source for source in descriptor["sources"]},
+                                            MIXED_MODE_MODEL)[MIXED_MODE_MODEL]
     pattern = re.compile(r"^# Warning: read_during_write_mode_mixed_ports is assumed as +OLD_DATA\r?\n"
                          r"# Time: 0 +Instance: ([A-Za-z_][A-Za-z0-9_.$\[\]]*)\r?$", re.MULTILINE)
     matches = list(pattern.finditer(output))
     if sorted(match[1] for match in matches) != sorted(instances):
         raise ValueError("Intel mixed-mode diagnostic count or instance differs")
     evidence = [{"id": "intel-max10-mixed-mode-coercion", "time": 0,
-                 "instance": match[1], "raw": match[0], "model_sha256": MIXED_MODE_MODEL_HASH,
+                 "instance": match[1], "raw": match[0], "model_sha256": model,
                  "reason": "Different-clock mixed-port collisions are forbidden by the memory MAS."}
                 for match in matches]
     return pattern.sub("", output), evidence

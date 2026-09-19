@@ -5,7 +5,7 @@ import re
 from .records import file_hash
 from .fpga_clocking import FIT_ENCODING
 from .fpga_vga import rows, node
-from .intel_memory import MIXED_MODE_MODEL_HASH
+from . import vendor_sources
 
 
 SHAPES = {"byte_ram": (160, 8), "pair_ram": (80, 16),
@@ -73,23 +73,27 @@ def verify_netlist(text, *, system_clock=SYS_CLOCK):
     return evidence
 
 
-# The one family that does not compile the pinned simulation model, so its build
-# records the installed hashes as found instead of requiring the pin. The check is
-# written as an exemption: a family nobody has considered fails closed.
+# The one family that does not compile the simulation model, so its build records
+# the installed hashes as found instead of submitting the model to the accepted
+# record. The check is written as an exemption: a family nobody has considered is
+# checked rather than skipped.
 MODEL_PIN_EXEMPT = ("Cyclone V",)
 
 
 def identity(directory, *, family="MAX 10"):
     """The installed altsyncram definition, declaration and simulation model.
 
-    A build must find the pinned model beside them unless its family is exempt.
-    The pin ([the dependency record](dependencies.json)) names the MAX 10 product
-    memory: that model is the reviewed simulation counterpart of the memory MAX 10
+    Unless its family is exempt, a build compares the installed model with the
+    digest [the ledger](accepted_vendor_sources.json) accepted for that
+    installation, and records it there the first time that installation is seen.
+    The model is the reviewed simulation counterpart of the memory MAX 10
     synthesizes, and the source of the mixed-port coercion diagnostic
-    [`intel_memory`](intel_memory.py) classifies in Questa. A Cyclone V build
-    compiles no simulation model, so its record keeps the installed hashes as
-    found, the way the Quartus executables are recorded rather than pinned.
-    Every other family is checked, whether or not anyone has thought about it.
+    [`intel_memory`](intel_memory.py) classifies in Questa; its licence and
+    originating installation stay in [the dependency record](dependencies.json).
+    A Cyclone V build compiles no simulation model, so its record keeps the
+    installed hashes as found, the way the Quartus executables are recorded
+    rather than compared. Every other family is checked, whether or not anyone
+    has thought about it.
     """
     quartus = Path(directory).resolve().parent
     paths = {"definition": quartus / "libraries/megafunctions/altsyncram.tdf",
@@ -97,9 +101,10 @@ def identity(directory, *, family="MAX 10"):
              "model": quartus / "eda/sim_lib/altera_mf.v"}
     if any(not path.is_file() for path in paths.values()):
         raise ValueError("missing installed Intel memory synthesis dependency")
-    if family not in MODEL_PIN_EXEMPT and file_hash(paths["model"]) != MIXED_MODE_MODEL_HASH:
-        raise ValueError("Intel synthesis model differs from the reviewed simulation model")
-    return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
+    checked = {} if family in MODEL_PIN_EXEMPT else {"model": paths["model"]}
+    provenance = vendor_sources.check(directory, checked)
+    return {name: provenance.get(name) or {"path": str(path), "sha256": file_hash(path)}
+            for name, path in paths.items()}
 
 
 def audit(quote):

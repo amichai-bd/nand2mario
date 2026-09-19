@@ -1,0 +1,67 @@
+{
+  "acceptance": "Only `python tools/build.py vendor accept` changes an accepted digest, it requires a reason, and it records the old and new digests in that installation's history. A build may add a source this file does not hold; it can never replace one it does.",
+  "installations": {
+    "linux": {
+      "history": [],
+      "quartus": "25.1std.0.1129 lite",
+      "sources": {
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control.sdc": "935b067fbdf4f76d4c5d6a0c506dd760a16fc99a9af88ef5ff6fc7cb601c4793",
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control.v": "c320b2a9d3581d03135aa28eedc16e46828a3e07fd339ee625d30c2efc6385e2",
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v": "f03e10f0a8ed4775e3d424f31fe08879d8e341629385f7da89d1d1376a05a444",
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control_fsm.v": "2742b1769def921a07b0af391c2832216aa0ae16a6b8b3ae9369bb7a47d68a4a",
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control_hw.tcl": "48d9326d8e610f085a04b5ab7796508149560eac742b94ea55ed262d59fd81cf",
+        "ip/altera/altera_modular_adc/control/chsel_code_converter_sw_to_hw.v": "5db2d9cc2f6a415437c48ce540e014267e55c97acb3ec0bc1fa08d22f9128c0e",
+        "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_primitive_wrapper.v": "8a42bbbbe8285cb9205d22aeebe0595b093cc7c6b7ae0d4b1b18f8ae4ce7d157",
+        "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_top_wrapper.v": "2c81f938761e4b1411aae2b23ba0b92646798991aba74be5d04ec7d083b2ef60",
+        "ip/altera/altera_modular_adc/top/altera_modular_adc_hw.tcl": "0de2a5dab422d7c34100603413b6746ab86f77ca4aa3afe4740191692aee4669",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash.v": "4e9a94ba6063be25f3d25036fed81126bc92d042179674c874b8cc0875c2109d",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_avmm_data_controller.v": "a65907c6a38bc2f1bb56f45c90c099a72ffdf92326ff639c7cbf975f30e366b9",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_hw.tcl": "d4a832155d41eaf776d3fea061e22bc09ffc1050d2e7048c6e2e84c0b914f613",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_hw_proc.tcl": "bd6465a1f3cb08e65888ed5a7d5f085b5979bc8073d8878844bd8f422ac29a2c",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_util.v": "bf76e193ed201c5e050e5a15007c6ab28edc9ea394ae17e4f6a901ed8ea0c122",
+        "ip/altera/altera_onchip_flash/rtl/altera_onchip_flash_block.v": "d05ae475acd2f0c0c88fb2da5114e83e96fe2c35d2484b9e4e2be9865ce4df0c",
+        "ip/altera/altera_pll/source/top/pll_hw.tcl": "39d46df587a6c1b4952af40f55894f375e55a2f459e2ef9392f76e091020bb86",
+        "ip/altera/altera_pll/source/top/pll_hw_extra.tcl": "1fcd048037f5fc93865ebf1e7a3d802f798e59498ce34bf6423ef2273d402a6d",
+        "ip/altera/altera_pll/source/top/pll_rbc.tcl": "b0bdf2498491d812f2979da9ad94a20b24a9d0ebb3b9d004b7b74d092f93a96b",
+        "quartus/bin/qmegawiz": "27a1bf5dd18d3ff3b1d85469db3a0d6fc4b77b6136f5b498afa60047af3cf30a",
+        "quartus/eda/sim_lib/altera_mf.v": "ce0c10121162fc3f07c0056046017e0b9030f7a127face48586ffdb1ff713466",
+        "quartus/eda/sim_lib/altera_primitives.v": "ee5816dc09e3ed0ebd754c3fac996462d296a51ae8b11a7c6f4e158389c7316a",
+        "quartus/eda/sim_lib/cyclonev_atoms.v": "7b670025e351ca50a1aa7db9801c5b79284a934d28a36dcbcd59b951cb74971a",
+        "quartus/eda/sim_lib/fiftyfivenm_atoms.v": "31918f21b95a89fc0feca8b83e6326c73505a4b29146ebfc210bbe39e575b53c",
+        "quartus/libraries/megafunctions/altera_pll.v": "fcbc01f84408787c3f0595f39b5e9ebaec979c5123506752e80e7040550840f4",
+        "quartus/libraries/megafunctions/altera_std_synchronizer.v": "36e2c3efac7d0af1f92db47dee690eebf402949fc8dd8c55d12dee7c8cccf292",
+        "quartus/libraries/megafunctions/altpll.tdf": "8e82a3f4969e2e0595f618e603482036330a469f2d6d0d1ff146495bf5cccbe1",
+        "quartus/libraries/megafunctions/xml_info/altpll_info.xml": "40c31c5d5124b9ec27ec651ac1f7537839a412707794dc5a4eba77c5d6f22320",
+        "quartus/libraries/megafunctions/xml_info/altpll_rules.xml": "9277fee5fcf052b2a84c2e0663da9fb55a3d90528a07e2b495f67864d52a151d",
+        "quartus/libraries/megafunctions/xml_info/altpll_wiz_map.xml": "745f7be4205d5d60dfb2a4ca02fb496262cdbe0414d3802a3a2e721ce4d52e42",
+        "quartus/sopc_builder/bin/ip-generate": "bd7cca2e14f8d060cf23a91a84071433fa0b839bba00ce2fda8b79f33914c1eb"
+      }
+    },
+    "windows": {
+      "history": [],
+      "note": "Seeded from the digests this repository already recorded for the Windows installation it was developed on: dependencies.json intel_memory and intel_adc, and the On-Chip Flash IP source and definition constants fpga_flash.py carried. No file was rehashed for this record and no digest changed, so the Windows checks refuse exactly what they refused before. A Windows build records the release and the remaining vendor sources it reads on its next run.",
+      "quartus": null,
+      "sources": {
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control.v": "03fb3f3602704606e33a477491da61ae2415409e1376212b71c95354ece49d92",
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v": "e4570567d633185546949acf6d6f9d875ee6567a6adc44e27d22c296361accf8",
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control_fsm.v": "dd39a51bd11f96ddea56de2be9ef56e2184985d2063a1ab2bda4ca1506e40105",
+        "ip/altera/altera_modular_adc/control/chsel_code_converter_sw_to_hw.v": "996facc16fb6312c1b6d45a4f1a157ce4ae64ae8510ec63e9288920fdbcf201a",
+        "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_primitive_wrapper.v": "1c5741b5c96601a792e3645568ddae273951d70b8eb1bc3022183d86ae841536",
+        "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_top_wrapper.v": "763f8c0fd1c25affc2614dd8d162dea9218b7acc0db2d0ee45921e9cfeb30247",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash.v": "03a088deb2baaef6b33229b2bf3717d659efceac30043a1243066672195db316",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_avmm_data_controller.v": "a87a4f86b581ba3b78fb9189bf6215bf1722bc56757fc5cd30a1853787d8f517",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_hw.tcl": "d4a832155d41eaf776d3fea061e22bc09ffc1050d2e7048c6e2e84c0b914f613",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_hw_proc.tcl": "bd6465a1f3cb08e65888ed5a7d5f085b5979bc8073d8878844bd8f422ac29a2c",
+        "ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_util.v": "4091b0255ebe2b534f87b6af95ee0d4dda965c975b9a0457c7e6f36d38b2e301",
+        "ip/altera/altera_onchip_flash/rtl/altera_onchip_flash_block.v": "6afaeaf53c8596647ee4e56b7d79193970c79efd7c774584a84b0e444a88dfb1",
+        "quartus/eda/sim_lib/altera_mf.v": "2ae09f97f9606626da216e9eb91007beec3ebbe023c5b9415be472417fe49d5e",
+        "quartus/eda/sim_lib/altera_primitives.v": "7518a551688e52aa9bda3fbb913a84f8609f3ac0bcb0f3ab393c7c95ce59cad2",
+        "quartus/eda/sim_lib/fiftyfivenm_atoms.v": "f545157b354bc56af1a27f5666cd4bc6479d7696412f652076fe8efec7aaf9b7",
+        "quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v": "0600312e1d288b3354172dded919479e50752da5aa80d12dfdd82c1ee5d77c7b",
+        "quartus/libraries/megafunctions/altera_std_synchronizer.v": "821c0bd5ba6b1bcbc9c6e38c08d117ff692bd2b6cbb27f6c3f7c16f2c12e28db"
+      }
+    }
+  },
+  "purpose": "Digests of the installed Quartus vendor sources each installation platform has been accepted with. A build records a source this platform has never recorded, and refuses one whose digest changed since it was accepted. Licence, redistribution terms, purpose and the originating installation of every vendor source stay in dependencies.json.",
+  "schema_version": 1
+}

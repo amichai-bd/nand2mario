@@ -55,6 +55,8 @@ python3 tools/build.py clean --tag deliberate-aggregate --json
 Quartus and Questa are installed, on Linux or on Windows PowerShell; see
 [FPGA build](#fpga-build). `--sim questa` additionally needs a `vsim`
 [runtime license](#questa-runtime-license), which the gate does not.
+`vendor accept` records reviewed installed vendor bytes as accepted for an
+installation's platform; see [accepted vendor sources](#accepted-vendor-sources).
 `fpga program` still runs on Windows PowerShell,
 because only that JTAG path is verified:
 
@@ -1163,11 +1165,13 @@ the simulator's time and does not introduce a second RTL execution engine.
 
 ### Installed Intel ADC model
 
-`vendor_model: "intel-adc"` resolves the pinned installed control core, canonical
-synchronizer, public and encrypted MAX10 atoms, and PLL models. It uses the same
-installation discovery and explicit `--intel-sim-lib` selection as memory did
-while that option was accepted.
-Every source hash and PLL generation dependency enters the fingerprint before
+`vendor_model: "intel-adc"` resolves the installed control core, canonical
+synchronizer, public and encrypted MAX10 atoms, and PLL models, each
+[unchanged since that installation accepted it](#accepted-vendor-sources). It
+uses the same installation discovery and explicit `--intel-sim-lib` selection as
+memory did while that option was accepted, and it takes the executables
+directory from the installation's own layout rather than naming `quartus/bin64`.
+Every source digest and PLL generation dependency enters the fingerprint before
 reuse. Each attempt records the actual PLL generator command, verifies its
 parameters against the FPGA configuration, and retains the generated hash.
 Vendor compilation separates `n2m_intel_adc_atoms` from the control library
@@ -1176,9 +1180,9 @@ not overwrite the alternate definition embedded in `altera_mf.v`. Explicit
 run mappings and `-L` binding preserve that separation. Repository substitutes
 for these modules are rejected.
 
-The pinned top wrapper contains CR-CR-LF around its timescale. Only its exact
-vlog2083 line24 diagnostic is explained, with the supported source hash, path,
-single occurrence and one-warning/zero-error summary required. Raw logs and
+The installed top wrapper contains CR-CR-LF around its timescale. Only its
+exact vlog2083 line24 diagnostic is explained, with that wrapper's accepted
+record, path, single occurrence and one-warning/zero-error summary required. Raw logs and
 `explained_compile_diagnostics` retain that one actual warning. Other compiler
 or runtime warnings remain failures. No vendor bytes are edited or compiler
 warnings suppressed. Host dependency tests are not hardware behavior evidence.
@@ -1199,34 +1203,38 @@ covers the files and the refusal.
 Under Verilator none of this section applies: a `verilator` target's
 `vendor_model: "intel-memory"` is the recorded synthesis binding and the stage
 compiles the repository double. The Questa adapter requires the
-installed source set pinned in [dependencies.json](../../../tools/n2m/dependencies.json).
-It finds `quartus/eda/sim_lib` beside the selected Questa
-distribution, or takes `--intel-sim-lib <directory>` explicitly. Each required source must
-exist and match the supported hash before cache reuse or compilation. A missing,
-modified or wrong model fails; there is no portable fallback. Repository HDL
-that defines a shadow `altsyncram` or `altsyncram_body` is rejected.
+installed source set [dependencies.json](../../../tools/n2m/dependencies.json)
+names. It finds `quartus/eda/sim_lib` beside the selected Questa
+distribution, or takes `--intel-sim-lib <directory>` explicitly, which must sit
+inside a recognized Quartus installation. Each required source must exist and be
+[unchanged since that installation accepted it](#accepted-vendor-sources) before
+cache reuse or compilation. A missing model, or one that changed under accepted
+evidence, fails; there is no portable fallback. Repository HDL that defines a
+shadow `altsyncram` or `altsyncram_body` is rejected.
 
 Each attempt compiles the unchanged source into its own `n2m_altera_mf` library,
 maps that library in the run directory, and binds through `vsim -L n2m_altera_mf`.
 The record's `options.vendor_model` retains release, source paths/hashes,
-compilation options and binding options. These and the wrapper/fixture sources,
-parameters, dependency pin and builder options enter the fingerprint. Updating
-an approved pin changes the fingerprint; removing/changing an installed source
-cannot reuse an older PASS. Vendor source is never copied into tracked files.
+compilation options and binding options, and whether each source was unchanged
+since it was accepted or recorded for the first time. These and the
+wrapper/fixture sources, parameters, dependency record and builder options enter
+the fingerprint. Accepting a changed vendor source changes the fingerprint;
+removing or changing an installed source cannot reuse an older PASS. Vendor
+source is never copied into tracked files.
 
 `intel_mixed_mode_instances` names the exact vendor instances expected to emit
-the reviewed model's mixed-port coercion warning. This inventory is part of
+the accepted model's mixed-port coercion warning. This inventory is part of
 the Questa descriptor and fingerprint. A target may declare it only when its
 capability list includes Questa, because the Verilator double emits no coercion
 diagnostic. The forbidden collision it classifies is checked under both
 simulators by the wrapper's `INTEL_RAM_MIXED_PORT_A/B` assertions, which
-`intel-memory-collision` witnesses. Only the pinned source's exact two-line time-zero
-diagnostic is classified, and only during runtime. Missing, duplicate,
+`intel-memory-collision` witnesses. Only the accepted model's exact two-line
+time-zero diagnostic is classified, and only during runtime. Missing, duplicate,
 wrong-instance, wrong-time and other warnings fail. `explained_diagnostics`
-records each original pair, source hash and reason; raw logs remain unchanged.
-The exception applies only to the forbidden collision described by the memory
-MAS. Synthesis must use the same reviewed model source and must not produce
-Quartus critical warning 15003.
+records each original pair, the model digest it read and the reason; raw logs
+remain unchanged. The exception applies only to the forbidden collision described
+by the memory MAS. Synthesis must read the same accepted model source and must
+not produce Quartus critical warning 15003.
 
 The pinned ADC model has a separate, exact elaboration diagnostic profile:
 seven protected-model width messages, nine ignored `$rewind` return messages,
@@ -1234,8 +1242,9 @@ and two messages for its unused FIFO `eccstatus` output. The same profile occurs
 with 50 MHz and 25 MHz control clocks. The protected internal widths cannot be
 inspected; this classification does not prove arbitrary ADC configurations.
 Actual channel/sample/lock recovery checks and fitted product port/clock checks
-remain required. The ADC classifier checks source hashes, complete messages,
-locations, counts and summary lines. Any drift or additional warning fails.
+remain required. The ADC classifier checks that each source it explains is an
+accepted record, and then the complete messages, locations, counts and summary
+lines. Any drift or additional warning fails.
 Raw logs and the complete profile remain in `explained_diagnostics`; no simulator
 warning suppression is enabled.
 
@@ -1950,6 +1959,79 @@ file reads; constraints retain their separate SDC checks. The
 [standalone tile runner](../sim/SPEC.md#standalone-checks) uses the same resolver
 and includes its header hashes in each fresh manifest, without caching.
 
+## Accepted vendor sources
+
+Recording an installed vendor file's digest is provenance: it says which bytes
+produced a result. Comparing that digest with one fixed constant is a pin: it
+ties the project to one vendor installation. The same numbers did both jobs, so
+Quartus shipping a different `altera_mf.v` and different ADC control sources on
+Linux refused most DE10-Lite targets while the provenance those digests recorded
+was never in doubt.
+
+[`vendor_sources.py`](../../../tools/n2m/vendor_sources.py) separates them.
+[`accepted_vendor_sources.json`](../../../tools/n2m/accepted_vendor_sources.json)
+holds the digests each installation platform has been accepted with, and every
+stage that reads an installed vendor file compares what it hashed against that
+record:
+
+| The ledger holds | Result | What the record says |
+| --- | --- | --- |
+| nothing for that source | the digest is written to the ledger | `accepted: recorded`, and a notice names the source and digest |
+| the same digest | the stage proceeds | `accepted: unchanged` |
+| a different digest | the stage refuses before any tool runs | the refusal names the source, the platform, the accepted digest, the installed one, both releases and how to accept the change |
+
+The platform comes from the installation's own layout: Quartus keeps its 64-bit
+executables in `quartus/bin64` on Windows and ships `quartus/linux64` beside the
+launcher scripts on Linux, so the tree being hashed names itself and no host
+setting can disagree with it. That one fact also resolves the executables
+directory, which is why no stage spells one platform's path. A directory outside
+a recognized installation has no accepted provenance and is refused there.
+
+The release in `quartus/version.txt` is recorded as provenance and named in a
+refusal. It never decides whether a stage may proceed, because an installation
+need not carry one and two releases can ship the same bytes. It is deliberately
+not part of the ledger key either: an upgrade that changes a vendor file under
+retained evidence is exactly what this record exists to catch, so it refuses
+rather than starting a fresh record.
+
+A build may only add a source the ledger does not hold. It can never replace an
+accepted digest, and a concurrent build's additions are merged rather than
+overwritten. One command changes an accepted digest:
+
+```bash
+python3 tools/build.py vendor accept --quartus-bin <dir> --source <installation-relative path> --reason "<why>" --json
+```
+
+It requires a reason of at least twenty characters, refuses a source whose
+digest already matches, and appends the date, the reason and each `from`/`to`
+pair to that installation's history. The command writes a tracked file, so an
+acceptance is a reviewed source change like any other; that, and not the
+command, is the control. A first sighting records for the same reason: the new
+ledger line is a working-tree change, and the build's notice says the result was
+produced against bytes this installation had not recorded before.
+
+Licence, redistribution terms, purpose and the installation each digest first
+came from stay in [dependencies.json](../../../tools/n2m/dependencies.json),
+which also names which sources each Intel simulation descriptor resolves. The
+ledger holds digests only. Together they answer, for a retained result, which
+vendor bytes produced it and whether that installation had recorded them before.
+
+The `windows` entry was seeded from the digests this repository already recorded
+for the installation it was developed on, so no check that installation passed
+before is weaker now. Every vendor file a stage records goes through the ledger
+except two named cases: the seven Quartus executables tool discovery probes,
+whose control is the matching `--version` banner it records for each of them,
+and the simulation model on a
+[family exempt from it](#de10-nano-uart-endpoint-image). The megafunction and IP
+generators carry no such banner, so they are recorded here like any other vendor
+file.
+
+A diagnostic classifier that explains one vendor file's warnings names the
+sources it read and refuses a descriptor whose source never reached the ledger.
+It states no expected digest: the ledger already refused a source whose digest
+changed, and the exact warning text, line numbers, counts and node names the
+classifier requires still fail on any other bytes.
+
 ## FPGA build
 
 `fpga build --build-id <32 lowercase hex digits, nonzero>` is a comparison-only option for the
@@ -1968,8 +2050,9 @@ or one without a record, is refused. Other targets reject the option.
 An image that lists the [flash reader](../../src/rtl/storage/MAS_flash_library.md#on-chip-flash-ip-boundary)
 resolves the installed Intel On-Chip Flash IP through
 [`fpga_flash.py`](../../../tools/n2m/fpga_flash.py): the four synthesis files
-of `ip/altera/altera_onchip_flash/` and its two hw.tcl definitions must match
-the pinned SHA-256 values, the four files are copied beside the generated
+of `ip/altera/altera_onchip_flash/` and its two hw.tcl definitions must be
+[unchanged since that installation accepted them](#accepted-vendor-sources),
+the four files are copied beside the generated
 project and named as `VERILOG_FILE` assignments, and the QSF carries
 `INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"`. No generator runs: the
 reader instantiates `altera_onchip_flash` with the derived parameters itself.
@@ -2020,16 +2103,17 @@ Cyclone V has no M9K block, so a Cyclone V target that lists
 carries the `N2M_RAM_CYCLONEV=1` macro, which selects the M10K text in that one
 wrapper. A MAX 10 build preprocesses unchanged.
 
-The pinned Intel memory model requirement is written as one named exemption, so a
+The Intel memory model requirement is written as one named exemption, so a
 family nobody has considered is checked rather than skipped. Cyclone V is the
 exemption: no Quartus stage and no Questa gate compiles `altera_mf.v` for it, and
-that model is the reviewed simulation counterpart of MAX 10 product memory. Its
-mixed-port coercion is a Questa diagnostic that
+that model is the simulation counterpart of MAX 10 product memory. Its mixed-port
+coercion is a Questa diagnostic that
 [`intel_memory`](../../../tools/n2m/intel_memory.py) classifies against the same
-pin, and no Quartus build of either family produces it. A Cyclone V build
+model, and no Quartus build of either family produces it. A Cyclone V build
 therefore records the installed definition, declaration and model hashes as
 found, the way the Quartus executables are recorded; every MAX 10 target that
-lists the wrapper still refuses an unpinned model before any stage runs.
+lists the wrapper still refuses a model that
+[changed since it was accepted](#accepted-vendor-sources) before any stage runs.
 
 [`fpga_uart_cyclonev`](../../../tools/n2m/fpga_uart_cyclonev.py) owns this
 family's evidence and reuses the external-control audit above for everything
@@ -3046,9 +3130,13 @@ request creates a separate attempt.
 ALTPLL does not serve Cyclone V: `qmegawiz` refuses the family and names MAX 10
 as the only one it supports. The
 [Altera PLL IP](https://www.intel.com/content/www/us/en/docs/programmable/683359/current/pll-intel-fpga-ip-core.html)
-takes its place. `ip-generate` from the explicit Quartus directory produces one
-wrapper and one QIP per instance, named `n2m_pixel_pll_cyclonev` and
-`n2m_system_pll_cyclonev`, for the target's own device and family.
+takes its place. `ip-generate` from the explicit Quartus installation's
+`sopc_builder/bin` produces one wrapper and one QIP per instance, named
+`n2m_pixel_pll_cyclonev` and `n2m_system_pll_cyclonev`, for the target's own
+device and family. Quartus ships it as a shell script on Linux; the Windows
+spelling has never been observed from this repository, so Windows accepts
+`ip-generate.exe` or `ip-generate` and the refusal names every candidate it
+looked for instead of asserting a filename nobody here can confirm.
 
 The request states the physical counters, not a desired frequency: the 50 MHz
 reference, the M, N and C counters, one output clock, `locked` enabled and

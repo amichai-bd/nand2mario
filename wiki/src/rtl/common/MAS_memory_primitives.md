@@ -123,15 +123,17 @@ placement. The selection is textual, so a MAX 10 build preprocesses to the same
 tokens as before and nothing else in the wrapper changes. The
 [builder contract](../../../tools/n2m/SPEC.md#de10-nano-uart-endpoint-image)
 defines the macro from the target's board family, and the same contract keeps the
-pinned simulation-model requirement on every family but the one that compiles no
-simulation model.
+[accepted simulation-model requirement](../../../tools/n2m/SPEC.md#accepted-vendor-sources)
+on every family but the one that compiles no simulation model.
 
 ## Build and ownership
 
 The [builder contract](../../../tools/n2m/SPEC.md) owns simulation compile
 options and the FPGA build. Vendor source stays in the Quartus installation;
 the FPGA build records the installed `altsyncram` definition, declaration and
-model hashes against [the dependency record](../../../../tools/n2m/dependencies.json),
+model hashes, and checks the model against the digest that installation
+[has accepted](../../../tools/n2m/SPEC.md#accepted-vendor-sources); the licence and
+originating installation stay in [the dependency record](../../../../tools/n2m/dependencies.json),
 and evidence stays under the build tag. Selecting the double must not change
 any FPGA target's resource summary or primitive hierarchy rows; that identity
 is proved by rebuilding every target before and after a wrapper change with
