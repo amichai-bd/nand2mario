@@ -2975,8 +2975,9 @@ solver's choice recovered from a report. The system PLL states `M=26, N=2, C=26`
 and the pixel PLL `M=63, N=5, C=25`, both with `K=1`, which give the contract's
 25 MHz and 25.2 MHz from 650 MHz and 630 MHz oscillators. The checker refuses a
 configuration whose oscillator leaves the
-[datasheet VCO range](../../src/de10-nano-board.md#pll-vco-range) or whose counters
-miss the contract frequency, before any tool launches. The oscillator is the stated
+[datasheet VCO range](../../src/de10-nano-board.md#pll-vco-range), whose counters
+miss the contract frequency, or whose post-scale divider is neither 1 nor 2, before
+any tool launches. The oscillator is the stated
 figure multiplied by K, so a design that legally uses `K=2` to reach a low output
 is accepted while one that states no post-scale divider at all is refused.
 
@@ -2997,14 +2998,17 @@ retry: the Windows ALTPLL crash signature does not apply.
 
 Stating the counters makes the IP instantiate its Cyclone V PLL directly rather
 than the family-generic inference, so every fitted atom sits under `cyclonev_pll`
-and that branch leaves its unused LVDS, external-clock and cascade outputs
+and that branch leaves its unused LVDS, external-clock and DLL outputs
 undriven. Each resulting diagnostic is named exactly and explained against its own
 evidence: 10034 for those seven vendor output ports, twice over for the two
 instances; 12030 for the vendor's own one-bit connection to a two-bit external
 clock port; and 14284, 14285 and 14320 for the six phase-shift tie-off nodes per
 instance that synthesis removes. The synthesis connectivity report independently
-shows the wrapper leaving those ports unconnected. An unpredicted port, node, file
-or line fails the build.
+shows the wrapper leaving those ports unconnected. An unpredicted port, node or
+message body fails the build, and so does a missing or repeated message. Each
+message's trailing `File:` and `Line:` suffix is matched by shape only, because it
+carries the installed Quartus path; 10034 states its vendor file and line in the
+message body itself, where both are exact.
 
 The fit report's PLL Usage Summary is bound to the two wrapper instances and
 checked value by value: PLL type, feedback clock type, bandwidth, reference

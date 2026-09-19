@@ -395,7 +395,8 @@ physical resources, the counters `M=26, N=2, C=26` (650 MHz VCO, K=1) for the
 system clock and `M=63, N=5, C=25` (630 MHz VCO, K=1) for the pixel clock, 58 ALMs
 and 86 registers. Both oscillators are inside the
 [VCO range](#pll-vco-range) above, and the system PLL runs at the same 650 MHz
-the qualified DE10-Lite system PLL uses. `nano-clocking-invalid` shares those sources and deliberately names
+the qualified DE10-Lite system PLL uses. `nano-clocking-invalid` shares those
+sources and deliberately names
 the MAX 10 ALTPLL system clock as a checked output-delay endpoint, which no
 Cyclone V netlist contains, so it must fail naming that endpoint.
 

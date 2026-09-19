@@ -63,6 +63,8 @@ FIT_PIXEL = FIT_WRAPPERS[PIXEL_MODULE] + "|" + FIT_PLL + "|" + FIT_FRACTIONAL
 # and -I7 speed grades, and 5CSEBA6U23I7 is -I7; wiki/src/de10-nano-board.md
 # cites the datasheet.
 VCO_RANGE_MHZ = (Fraction(600), Fraction(1400))
+# The VCO post-scale divider is one bit, so K is 1 or 2 and nothing else.
+POST_SCALE_VALUES = (1, 2)
 # The physical configuration each PLL instance states. `multiply`, `divide` and
 # `counter` are the M, N and C counters; `post_scale` is the VCO post-scale
 # divider K; `charge_pump` and `bandwidth` are the loop filter settings the IP
@@ -89,6 +91,12 @@ def validate(definition):
         raise ValueError("unsupported PLL definition")
     low, high = VCO_RANGE_MHZ
     for module in (SYSTEM_MODULE, PIXEL_MODULE):
+        # The post-scale divider is one bit of hardware: the IP allows 1 or 2 and
+        # the datasheet footnote describes only those, so the oscillator can never
+        # be more than twice the figure the tools print.
+        if CONFIGURATION[module].post_scale not in POST_SCALE_VALUES:
+            raise ValueError(f"unsupported PLL VCO post-scale divider: {module} states "
+                             f"{CONFIGURATION[module].post_scale}, not 1 or 2")
         vco = physical_vco(module, definition)
         if not low <= vco <= high:
             raise ValueError(f"PLL VCO frequency outside the Cyclone V range: {module} runs at "
@@ -312,8 +320,9 @@ CONNECTIVITY_PORTS = {
 
 
 # The vendor PLL wrappers' outputs that the Cyclone V general-purpose branch
-# never drives, each with the vendor file and line that declares it. A different
-# port, file or line is a different diagnostic and fails.
+# never drives: LVDS, external clock and, for `clkout[0]`, the DLL. Each carries
+# the vendor file and line that declares it inside the message body, so a
+# different port, file or line there is a different diagnostic and fails.
 UNDRIVEN_PORTS = (("clkout[0]", "altera_cyclonev_pll.v", 637), ("extclk", "altera_cyclonev_pll.v", 632),
                   ("loaden", "altera_cyclonev_pll.v", 641), ("lvdsclk", "altera_cyclonev_pll.v", 642),
                   ("lvds_clk", "altera_pll.v", 320), ("loaden", "altera_pll.v", 321),
@@ -327,7 +336,7 @@ REMOVED_HEADERS = {"14284": "Warning (14284): Synthesized away the following nod
 # reaches the builder's own classifier and fails the build.
 EXPLAINED_CODES = ("12241", "330000", "10034", "12030", "14284", "14285", "14320")
 UNDRIVEN_REASON = ("An output of the vendor PLL wrapper that its Cyclone V general-purpose branch does not drive: "
-                   "the LVDS, external-clock and cascade outputs this configuration does not use. The generated "
+                   "the LVDS, external-clock and DLL outputs this configuration does not use. The generated "
                    "wrapper leaves every one of them unconnected, which the synthesis connectivity report states "
                    "independently, so no net in the design reads an undriven port.")
 DANGLING_REASON = ("The vendor's own wrapper connects a one-bit net to the Cyclone V PLL's two-bit external clock "
@@ -354,7 +363,7 @@ def explained_diagnostics(text, folder, definition):
 
     10034, 12030, 14284, 14285 and 14320 come with stating the physical
     counters: the IP then instantiates its Cyclone V PLL directly, and that
-    branch leaves the LVDS, external-clock and cascade outputs undriven, mis-sizes
+    branch leaves the LVDS, external-clock and DLL outputs undriven, mis-sizes
     its own external clock connection and ties off the unused phase-shift
     selects. Each port and node is named exactly, twice over for the two PLL
     instances, and the same connectivity report shows those wrapper ports

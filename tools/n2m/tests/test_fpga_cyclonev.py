@@ -169,6 +169,26 @@ class VcoRangeTests(unittest.TestCase):
             self.assertEqual(float(cv.physical_vco(cv.SYSTEM_MODULE)), 600.0)
             cv.validate(cv.DEFINITION)
 
+    def test_a_post_scale_divider_the_hardware_cannot_program_is_refused(self):
+        """K is one bit, so a configuration outside 1 or 2 is refused on its own.
+
+        Without this the range check alone would accept an arbitrary K, because
+        any oscillator can be brought inside the range by inventing a divider.
+        """
+        self.assertEqual(cv.POST_SCALE_VALUES, (1, 2))
+        # 600 MHz oscillator and exactly 25 MHz out, so only K is wrong.
+        with self.configured(cv.SYSTEM_MODULE, (6, 2, 6, 4, 20, 2000)):
+            self.assertEqual(float(cv.physical_vco(cv.SYSTEM_MODULE)), 600.0)
+            self.assertEqual(cv.stated_vco(cv.SYSTEM_MODULE) / 6,
+                             cv.frequencies(cv.DEFINITION)[cv.SYSTEM_MODULE])
+            with self.assertRaises(ValueError) as error:
+                cv.validate(cv.DEFINITION)
+        self.assertIn("unsupported PLL VCO post-scale divider", str(error.exception))
+        for post_scale in cv.POST_SCALE_VALUES:
+            with self.subTest(post_scale=post_scale):
+                with self.configured(cv.SYSTEM_MODULE, (13 * post_scale, post_scale, 26, post_scale, 20, 4000)):
+                    cv.validate(cv.DEFINITION)
+
     def test_a_divider_is_stated_as_the_half_periods_the_hardware_programs(self):
         """The values a real `ip-generate` run emits for each divide shape."""
         for value, expected in {
