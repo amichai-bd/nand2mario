@@ -214,7 +214,7 @@ units:
   flash-reader: {kind: sim, level: 1, labels: [storage], duration_seconds: 2.29}
   flash-reader-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.47}
   flash-reader-fault-range: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.47}
-  host-free-boot: {kind: sim, level: 1, labels: [input, system], duration_seconds: 4.20}
+  host-free-boot: {kind: sim, level: 1, labels: [input, system], duration_seconds: 156.73}
   host-play: {kind: sim, level: 2, labels: [host-play, integration, memory], duration_seconds: 287.11}
   host-play-frame: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 123.20}
   host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 143.99}
