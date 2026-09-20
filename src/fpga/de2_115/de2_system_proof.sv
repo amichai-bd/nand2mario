@@ -87,6 +87,8 @@ module de2_system_proof #(
     logic [7:0] published_q;
     logic gb_tick, physical_commit;
     logic [7:0] physical_buttons, effective_buttons, input_source_observe;
+    logic [31:0] epoch;
+    logic [63:0] dot_count;
     assign switch_mask = {switch_high, switch_low};
     assign key_mask = {2'b0, key_pressed[0], key_pressed[1], 4'b0};
     assign requested = switch_mask | key_mask;
@@ -131,7 +133,7 @@ module de2_system_proof #(
         .physical_commit, .physical_buttons, .effective_buttons, .input_source_observe,
         .red, .green, .blue, .hsync_n, .vsync_n, .paused, .fault,
         .display_sequence, .display_epoch,
-        .gb_tick, .core_reset(), .epoch(), .dot_count(),
+        .gb_tick, .core_reset(), .epoch, .dot_count,
         .retirement_valid(), .retirement(), .bus_commit(), .write_enable(),
         .address(), .write_data(), .read_data(), .irq_ack(),
         .source_valid(), .source_start(), .source_abort(),
@@ -165,10 +167,15 @@ module de2_system_proof #(
             3'd2: view_value = BUILD_ID[63:32];
             3'd3: view_value = BUILD_ID[31:0];
             3'd4: view_value = ROM_CRC32;
-            // Frames the pixel path has presented: a still number means no
-            // picture is being produced, whatever the monitor shows.
-            3'd5: view_value = display_sequence[31:0];
-            3'd6: view_value = display_epoch;
+            // Emulated dots elapsed: a still number means the core is not
+            // running, whatever the monitor shows. This and the epoch are the
+            // composition's own system-domain counters, not the frame bridge's
+            // pixel-domain ones: these digits are clocked in clk_sys, and
+            // sampling a 32-bit pixel-domain counter here would be an
+            // unsynchronized crossing between two unrelated clocks, which both
+            // tears the number and adds a path the analysis cannot meet.
+            3'd5: view_value = dot_count[31:0];
+            3'd6: view_value = epoch;
             // {fault, paused, which input source the core obeys, the mask it
             // obeys}. A lit fault digit explains a frozen picture on its own.
             3'd7: view_value = {14'b0, fault, paused, input_source_observe, effective_buttons};

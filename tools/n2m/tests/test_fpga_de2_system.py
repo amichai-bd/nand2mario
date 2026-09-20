@@ -57,6 +57,12 @@ class ReadoutTests(unittest.TestCase):
         for index, (high, low) in enumerate(((127, 96), (95, 64), (63, 32), (31, 0))):
             self.assertIn(f"3'd{index}: view_value = BUILD_ID[{high}:{low}];", text)
         self.assertIn(f"3'd4: view_value = {system.CRC_PARAMETER};", text)
+        # The two counter views are system-domain, so the readout register adds
+        # no crossing from the pixel domain it is not clocked in.
+        self.assertIn("3'd5: view_value = dot_count[31:0];", text)
+        self.assertIn("3'd6: view_value = epoch;", text)
+        self.assertNotIn("view_value = display_sequence", text)
+        self.assertNotIn("view_value = display_epoch", text)
 
     def test_the_most_significant_digit_takes_the_most_significant_nibble(self):
         """Digit d shows nibble d, so HEX7 carries bits 31 to 28."""

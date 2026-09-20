@@ -684,7 +684,7 @@ position leaves the digits stating something undefined:
 | `010` | build identity, bits 63 to 32 |
 | `011` | build identity, bits 31 to 0 |
 | `100` | CRC-32 of the ROM the build carried into the bitstream |
-| `101` | frames the pixel path has presented, low 32 bits |
+| `101` | emulated dots elapsed, low 32 bits |
 | `110` | core epoch |
 | `111` | `{fault, paused, input source, effective button mask}` |
 
@@ -699,6 +699,13 @@ in the build record come from the same packaged bytes. It identifies the carried
 ROM; that the bitstream actually holds those bytes is a separate and stronger
 result, read out of the fitted memory blocks by the
 [builder](../tools/n2m/SPEC.md#carried-rom-image).
+
+Views `101` and `110` are the composition's own system-domain counters rather
+than the frame bridge's pixel-domain ones, because the digits are clocked in the
+system domain: sampling a 32-bit pixel-domain counter into them would be an
+unsynchronized crossing between two unrelated clocks, which tears the number and
+adds a path the analysis cannot meet. A moving dot count is what says the core is
+running whatever the monitor shows.
 
 The controls are this board's own. `KEY[0]` is the board reset. `SW[7:0]` hold the
 eight DMG buttons in the order the shared button mask uses — right, left, up,
