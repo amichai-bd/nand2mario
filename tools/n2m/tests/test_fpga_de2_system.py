@@ -183,6 +183,28 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             system.validate(dict(self.target, virtual_pins=[*system.VIRTUAL, "paused_extra"]))
 
+    def test_the_dac_pin_clock_is_expected_of_every_image_that_places_the_port(self):
+        """The DAC's inverted pixel clock is recognized by the port, not by the top.
+
+        Both this board's standalone DAC fixture and its system image drive
+        `vga_clk`, and both declare `vga_dac_clk` on it, so the clock inventory has
+        to expect the row from either. Keyed by top alone it expects three clocks
+        where the analysis reports four, and the fit fails after meeting timing.
+        """
+        from tools.n2m import fpga_pll
+        for name in ("de2-vga", "de2-system"):
+            target = fpga.target_definition(ROOT, name)
+            with self.subTest(target=name):
+                self.assertIn(fpga_vga_dac.CLOCK_NAME, fpga_pll.pin_clocks(target))
+                inventory = fpga_pll.clock_inventory(target, float(target["timing"]["reference_ns"]))
+                self.assertEqual(len(inventory), 4)
+                kind, period, ratio, master = inventory[fpga_vga_dac.CLOCK_NAME]
+                self.assertEqual((kind, master, ratio), ("Generated", fpga_pll.PIXEL_CLOCK, ["", "1", "1"]))
+                self.assertAlmostEqual(period, 39.6825, places=4)
+        # A target that places no such port still expects three.
+        self.assertNotIn(fpga_vga_dac.CLOCK_NAME,
+                         fpga_pll.pin_clocks(fpga.target_definition(ROOT, "de2-clocking")))
+
     def test_the_carried_rom_reaches_the_store_instance_inside_the_composition(self):
         """The ROM store is several levels below this top, and the QSF names it."""
         self.assertEqual(fpga_rom_image.rom_path(system.TOP), "u_system|u_stores|rom")
