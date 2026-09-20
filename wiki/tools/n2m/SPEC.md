@@ -1534,8 +1534,10 @@ fresh interpreter with no inherited `PYTHONPATH`, exactly as
 imported first. Its list is the directory rather than a table, so a module
 added tomorrow is covered without being enrolled, and a second test proves
 the probe fails a module written without the insertion. It probes twice the
-core count at a time and cost 20.9 s of wall for 33 s of CPU on a contended
-four-core host, almost all of it importing the modules.
+core count at a time and spends 13 to 21 s of wall for 25 to 40 s of CPU on a
+four-core host, almost all of it importing the modules. The probes run `-B` like
+the rest of the suite, so a worktree holding no bytecode caches recompiles every
+module and pays the upper figure.
 
 The budget measures user plus system CPU time for the group's subprocess and
 every descendant it waits for, read from `os.wait4` on that one pid as the
@@ -4136,9 +4138,13 @@ fallback. Reads under the global-fallback prefixes are not misses for the
 same reason. The full trace of every declared unit takes several minutes,
 so it is opt-in and recorded when declarations change; a single unit takes
 its own run time plus about five seconds of catalogue validation. Each
-trace's log and record are kept under the tag. An unmodified checkout traces
-clean: every declared unit's reads fall inside its closure, so a reported
-problem belongs to the change under test.
+trace's log and record are kept under the tag. An unmodified checkout reports no
+miss: every declared unit's reads fall inside its closure, so a reported miss
+belongs to the change under test. The command's overall status carries no such
+guarantee. A unit whose 300-second wall a contended host stretches past, or one
+whose pinned environment a fresh worktree has not installed, fails the run while
+nothing in the tree reads outside its closure, so read the per-unit misses rather
+than the status.
 
 Limits: the proof covers the recorded rows, not every input; a detector is
 recorded as failing under that one mutation, not under every defect in the

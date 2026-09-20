@@ -36,8 +36,9 @@ PROBE = ("import sys, unittest\n"
          "sys.exit(1 if loader.errors else 0)\n")
 # The probes are independent processes, so they overlap. Each one spends much of its life
 # starting an interpreter and reading source, so twice the core count shortens this unit's
-# wall without spending more CPU: on this four-core host, 20 s instead of 32 s for the same
-# 33 s of CPU. Capped, because the sibling check groups are running beside it.
+# wall without spending more CPU: on a four-core host, 13 to 21 s of wall for the same 25 to
+# 40 s of CPU, the spread being load and whether the tree holds bytecode caches, since these
+# run -B. Capped, because the sibling check groups are running beside it.
 WORKERS = min(8, 2 * (os.cpu_count() or 1))
 
 
