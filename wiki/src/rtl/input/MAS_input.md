@@ -65,7 +65,9 @@ two owners hold different masks, and one update carrying a mask that never chang
 is what agrees them again. Without it a button held across the reset would stay
 invisible to the program until it moved. This is why the difference is taken
 against the mask JOYP last accepted rather than against this owner's own previous
-level; outside reset the two are the same value, so no other edge changes. A
+level. Every non-reset edge leaves that record equal to the effective mask, so no
+other edge changes; only the interval between a core reset releasing and the next
+edge holds the two apart, and that interval is the re-offer itself. A
 released mask needs no update and produces none, which keeps the UART default's
 effective0 exactly as it was. The
 [held-mask check](../../../../src/dv/input/README.md) settles both compositions
@@ -82,6 +84,7 @@ existing JOYP/IF boundary; oscillator restart remains the approved CPU contract.
 The [input verification](../../../../src/dv/input/README.md) covers generated address/value rejection before
 transport and before RTL effects; equivalent masks across both sources and all
 four JOYP row selections; isolation and atomic switching; reset and physical
-shadow retention; a mask held across a core reset; actual CPU HALT/STOP and pause; cached replay; and actual
+shadow retention; a mask held across a core reset; actual CPU HALT/STOP and pause;
+cached replay; and actual
 mask/source/event faults plus a named assertion failure. These component checks
 do not establish physical wiring or acquisition acceptance.

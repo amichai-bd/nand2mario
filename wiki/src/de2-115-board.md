@@ -727,8 +727,10 @@ is why. This image issues one core reset, from the host-free start path, two
 anything for 125000 cycles after that same release. So the held switch arrives on
 the ordinary commit that follows the reset, not across it. A core reset with a mask
 already published is the case the
-[input owner](rtl/input/MAS_input.md#reset-and-power) re-offers the mask on, and
-this board issues no second one.
+[input owner](rtl/input/MAS_input.md#reset-and-power) re-offers the mask on, and this
+board issues no second one: the start path's reset is a one-shot, and the only other
+source is the loader engine's swap request, which this image cannot raise because it
+carries no flash library and reports its SDRAM uninitialized.
 
 ## Targets
 

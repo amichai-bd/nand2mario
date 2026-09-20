@@ -100,8 +100,9 @@ owners, one per value of `PHYSICAL_SOURCE_DEFAULT`, and both JOYPs are read at F
 through all four row selections on tick edges: 40 checks over ten phases. Phase 0 is
 the power-up ordering, with the button held before the global reset releases and the
 single core reset issued two cycles after it, as the host-free start path does;
-measured here, that reset lands at cycle 3 and the first commit at cycle 11, so the
-held button arrives on the ordinary commit rather than across the reset. Phases 1 to
+measured here, that reset lands at cycle 3 and the first commit at cycle 11, counting
+the edge each is first sampled at, so the held button arrives on the ordinary commit
+rather than across the reset. Phases 1 to
 4 are the mechanism, with the mask already published and read, at four alignments:
 the reset driven on a negedge from the stimulus block, one delay past a posedge,
 released between edges, and as a single cycle. Phase 5 changes the mask while the
