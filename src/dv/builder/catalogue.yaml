@@ -660,7 +660,7 @@ units:
   tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.26, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.30, inputs: [src/fpga/de10_lite/library.json, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/wiki/board_frames]}
   tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 2.17, inputs: [cfg, src/sw, tools]}
-  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 6.02, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 6.02, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 7.09, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_menu_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.70, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, wiki/src/sw/menu/previews]}
   tools/n2m/tests/test_menu_v2.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 1.58, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, tools/sw/menu_v2, wiki/src/sw/menu/previews]}
