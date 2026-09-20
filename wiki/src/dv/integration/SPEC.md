@@ -55,6 +55,32 @@ timer overflow, JOYP selection nor snapshot commands. Unsupported owner requests
 fail service, and assertions reject STOP, nonzero input and snapshot commands.
 This is a bounded DV composition, not a new full board implementation.
 
+## Host-free start
+
+`host-free-boot` ([`tb_host_free.sv`](../../../../src/dv/system/tb_host_free.sv))
+is the execution check for a composition with no host link and no reachable boot
+copier — the shape a board that carries its program in the bitstream takes. It
+exists because a fit cannot see this: an image can fit, meet timing at every corner
+and provably hold the right program with its core paused for ever, because host
+pause is set at reset and the CPU is initialized only by a core reset, and a board
+with no host and no copier issues neither.
+
+The check instantiates [`n2m_v05_system`](../../rtl/system/MAS_system.md#host-free-composition)
+twice from one reset, both stores holding the same program through the
+[preload path](../preload/SPEC.md), `uart_rx` at the line's idle mark, storage
+reporting itself uninitialized and the menu-return button released:
+
+- the instance with a carried profile must release pause, produce emulated ticks,
+  reach its first CPU bus commit, retire an instruction, advance the dot count,
+  raise no fault and report the physical input source selected;
+- the instance with the default profile, every other input identical, must still be
+  paused with no tick and no dot.
+
+The second is the control. Without it a passing first instance would not show that
+the parameter is what releases the core rather than something incidental to the
+run. What a committed button mask then does inside the running joypad is the
+[input owner](../../rtl/input/MAS_input.md)'s subject and not this check's.
+
 ## Execution modes
 
 Use the accepted [continuous Python Client modes](../../../../src/dv/python/integration/README.md#continuous-real-uart-mode)

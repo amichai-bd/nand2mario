@@ -3670,6 +3670,31 @@ places `vga_clk`, not of one top by name, so both this board's images declare it
 and a target that places the port and declares no clock fails the clock inventory
 instead of passing with a clock missing.
 
+```bash
+python3 tools/build.py fpga build de2-system --quartus-bin <directory>
+python3 tools/build.py fpga build de2-system-invalid --quartus-bin <directory>
+```
+
+`de2-system` must PASS with the fit, positive slack at each of the board's three
+declared corners, the carried image's fitted contents, the readout's identity and
+CRC constants, the DAC's pin levels and every control chain's per-corner reports
+retained. `de2-system-invalid` must FAIL: it shares every source and pin and
+understates the readout's constrained endpoint count by one, so the generated
+collection check fails inside the fitter with
+`Error (332000): checked endpoint count mismatch: ports_0`, `read_sdc` reports
+`Critical Warning (332008)` and `Error (171000): Can't fit design in device`
+follows, because the fitter has no constraints to place against. Both errors belong
+to the control. A target that instead names a package pin the board record does not
+record refuses when its definition resolves, which every registry reader triggers,
+so that refusal is covered by a unit test rather than by a registered target.
+
+This image's core also has to start, which no fit shows. The
+[`host-free-boot`](../../src/dv/integration/SPEC.md) simulation runs the
+composition twice from one reset — once with the carried profile and once without,
+every other input identical — and requires the first to release pause, tick, fetch,
+retire and select the physical input source while the second stays paused and never
+ticks.
+
 ### Cyclone IV E ALTPLL
 
 ALTPLL serves this family, so

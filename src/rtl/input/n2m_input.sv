@@ -36,7 +36,9 @@ module n2m_input #(
         end
         effective_next = host_next.physical_source ? physical_next : host_next.host_buttons;
     end
-    // Core reset restores UART ownership but does not release external buttons.
+    // Core reset restores the default producer, the host's unless
+    // PHYSICAL_SOURCE_DEFAULT says otherwise, and does not release external
+    // buttons.
     // Quartus 25.1 rejects a named struct literal as a constant here (10734),
     // so the packed order {physical_source, host_buttons} is stated directly.
     localparam n2m_input_pkg::input_host_state_t HOST_RESET_STATE =

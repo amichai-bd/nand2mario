@@ -219,6 +219,7 @@ units:
   host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 143.99}
   host-play-missing: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 119.49}
   host-play-release: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 165.69}
+  host-free-boot: {kind: sim, level: 1, labels: [input, system], duration_seconds: 4.20}
   input-matrix: {kind: sim, level: 1, labels: [input], duration_seconds: 3.07}
   input-matrix-boundary: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.66}
   input-matrix-data: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.67}

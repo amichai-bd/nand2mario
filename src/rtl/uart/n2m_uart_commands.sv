@@ -272,7 +272,7 @@ module n2m_uart_commands #(
         .sdram_request_ready(sdram_request_ready), .sdram_response_valid(sdram_response_valid),
         .sdram_response_data(sdram_response_data)
     );
-    n2m_uart_core_control u_core_control (
+    n2m_uart_core_control #(.HOST_FREE_RUN(CARRIED_PROFILE != 8'h0)) u_core_control (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(core_start), .command(core_command),
         .step_budget(arguments[31:0]), .input_write(core_input), .gb_tick(gb_tick),
         .paused(paused), .core_initialized(core_initialized), .instruction_complete(instruction_complete),

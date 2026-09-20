@@ -335,6 +335,35 @@ exactly one command at a time. It is deliberately the opposite of SNAPSHOT's own
 rule, which forbids a fresh capture during readback because a capture would
 overwrite the bank being read.
 
+## Host-free start
+
+`HOST_FREE_RUN` states that this composition has no host and no boot copier that
+can reach `BOOT`, so two things a running core needs never happen and this owner
+issues both.
+
+The first is the power-up core reset. The CPU's `initialized` is set only on
+`core_reset`, and `core_reset` is produced only by a host `RESET` or the loader
+engine's request, so without one the CPU never fetches however the pause bit
+stands. Set, this owner issues exactly one reset from `IDLE` through the same
+`RESET_WAIT`/`RESET_ASSERT`/`INIT_WAIT` states the engine uses; host pause is still
+set at that point, so `RESET_WAIT` completes at once exactly as it does for the
+engine. A one-shot bit makes it happen once, so a later core reset is the host's or
+the engine's as usual.
+
+The second is host pause itself, which is [set at reset](#core-and-storage-integration)
+and cleared only by an accepted `RUN`, `STEP` or `RUN_DOTS` or by the copier's
+`boot_run`. Set, this owner clears it once the core reports itself initialized —
+the same condition and the same point `boot_run` clears it under, so nothing is
+released during initialization.
+
+Default `1'b0` leaves every existing composition exactly as it was: no extra reset,
+and host pause released only the two ways it always was. The parameter is only
+meaningful with no host, because while it is set a `HALT` issued during
+initialization would be released again when initialization completed. The
+[composition](../system/MAS_system.md#host-free-composition) owns which boards set
+it, and the [host-free execution check](../../dv/integration/SPEC.md) is what proves
+a board with it set reaches its first fetch.
+
 ## Power-up profile and input source
 
 `CARRIED_PROFILE` states the profile of an image the fitted memory already holds.
