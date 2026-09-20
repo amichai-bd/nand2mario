@@ -3455,7 +3455,7 @@ family changes. Four things do:
 Everything else is shared because it was measured identical: the wrapper and
 instance hierarchy, the solved `M=104, N=8, C=26` and `M=63, N=5, C=25` counters
 with their 650 MHz and 630 MHz VCOs, both PLLs on `Dedicated Pin`, the analysed
-three-clock inventory at 20.000 ns, 40.000 ns and 39.683 ns, the 176127 merge
+three-clock inventory at 20.000 ns, 40.000 ns and 39.682 ns, the 176127 merge
 refusal, the reset chain, and the whole parallel lock topology down to the LUT,
 clock-enable and register parameter sets. The definition is only the parallel one,
 so the single-PLL lock checker, which recognizes MAX 10 primitives only, is
