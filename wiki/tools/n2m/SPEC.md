@@ -1508,9 +1508,36 @@ and `WALL_CEILING` is the only wall `check` enforces. All three averages, becaus
 the one-minute figure alone reads a lull as a quiet host: it has been seen at 1.86
 with the five-minute average at 4.27 and the load back at 5.68 immediately
 after. The CPU time is the suite's own; only the wall shrinks to the slowest
-group. No single test may cost tens of seconds: the real-clone reports of the
-[conservativeness proof](#conservativeness-proof) run under the opt-in
-`tests mutations --confirm` instead.
+group. About twenty seconds is the practical ceiling for one unit, and three
+reach it: [`test_catalogue.py`](../../../tools/n2m/tests/test_catalogue.py)
+walks every test file,
+[`test_affected_mutations.py`](../../../tools/n2m/tests/test_affected_mutations.py)
+derives a closure for each recorded mutation, and
+[`test_standalone_imports.py`](../../../tools/n2m/tests/test_standalone_imports.py)
+imports every module of the suite once each. Anything costlier runs opt-in
+instead: the real-clone reports of the
+[conservativeness proof](#conservativeness-proof) run under
+`tests mutations --confirm`.
+
+Every module under `tools/n2m/tests` imports on its own. A group is one
+interpreter, so the first module to insert the repository's `tools/`
+directory into `sys.path` repairs it for every module imported after it: a
+module that never does so of its own accord still passes inside its group,
+and fails the moment someone runs it alone to look at a failure, or if the
+group ranges are rebalanced so that module leads. A module that imports a
+package under `tools/`, or loads a file that does, therefore makes that
+insertion itself.
+[`test_standalone_imports.py`](../../../tools/n2m/tests/test_standalone_imports.py)
+is what keeps that true: it loads every `test_*.py` in that directory in a
+fresh interpreter with no inherited `PYTHONPATH`, exactly as
+`unittest discover` would, and names each module that needs another
+imported first. Its list is the directory rather than a table, so a module
+added tomorrow is covered without being enrolled, and a second test proves
+the probe fails a module written without the insertion. It probes twice the
+core count at a time and spends 13 to 21 s of wall for 25 to 40 s of CPU on a
+four-core host, almost all of it importing the modules. The probes run `-B` like
+the rest of the suite, so a worktree holding no bytecode caches recompiles every
+module and pays the upper figure.
 
 The budget measures user plus system CPU time for the group's subprocess and
 every descendant it waits for, read from `os.wait4` on that one pid as the
@@ -4111,7 +4138,13 @@ fallback. Reads under the global-fallback prefixes are not misses for the
 same reason. The full trace of every declared unit takes several minutes,
 so it is opt-in and recorded when declarations change; a single unit takes
 its own run time plus about five seconds of catalogue validation. Each
-trace's log and record are kept under the tag.
+trace's log and record are kept under the tag. An unmodified checkout reports no
+miss: every declared unit's reads fall inside its closure, so a reported miss
+belongs to the change under test. The command's overall status carries no such
+guarantee. A unit whose 300-second wall a contended host stretches past, or one
+whose pinned environment a fresh worktree has not installed, fails the run while
+nothing in the tree reads outside its closure, so read the per-unit misses rather
+than the status.
 
 Limits: the proof covers the recorded rows, not every input; a detector is
 recorded as failing under that one mutation, not under every defect in the

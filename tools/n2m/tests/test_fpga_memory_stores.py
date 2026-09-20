@@ -1,8 +1,10 @@
 """Original fit fragments check rejection of broken storage evidence."""
 import unittest
 from pathlib import Path
+import sys
 import tempfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.fpga_memory_stores import verify_netlist, verify_rows, verify, FIT_ENCODING
 
 # Quartus writes the junction temperature rows with a degree sign, so a real fit

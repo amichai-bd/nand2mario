@@ -622,11 +622,11 @@ units:
   tools/n2m/tests/test_columns.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.15, inputs: [src/sw/springtrail]}
   tools/n2m/tests/test_core_art.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 1.01, inputs: [src/sw/springtrail/assets, wiki/src/sw/springtrail/core-art]}
   tools/n2m/tests/test_crc_proof.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.19, inputs: [tools/sw/opcodes.json]}
-  tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.50, inputs: [src/dv/builder/builder_smoke.sv, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.50, inputs: [src/dv/builder/builder_smoke.sv, src/fpga/de10_lite/targets.json, src/fpga/de10_nano/targets.json, src/fpga/de2_115/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 1.84, inputs: [tools/n2m/dependencies.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.01, inputs: [cfg, src/dv, src/rtl, src/sw, tools/sw/opcodes.json]}
   tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 3.32, inputs: [cfg/interfaces.json, src/fpga/de10_lite/library.json, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.01, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.01, inputs: [src/dv/builder/fpga_smoke.sv, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.18, inputs: [tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.21, inputs: [tools, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: []}
@@ -638,7 +638,7 @@ units:
   tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.10, inputs: []}
   tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.24, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.15, inputs: []}
-  tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.95, inputs: [tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.95, inputs: [src/fpga/de10_lite/targets.json, src/fpga/de10_nano/targets.json, src/fpga/de2_115/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_rom_image.py: {kind: unit, level: 0, labels: [builder, fpga, memory], duration_seconds: 3.16, inputs: [cfg/interfaces.json, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_uart_cyclonev.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.13, inputs: [tools/sw/opcodes.json]}
@@ -660,7 +660,7 @@ units:
   tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.26, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.30, inputs: [src/fpga/de10_lite/library.json, src/sw/targets.json, tools/build.py, tools/n2m/dependencies.json, tools/wiki/board_frames]}
   tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 2.17, inputs: [cfg, src/sw, tools]}
-  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 6.02, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_lint.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 6.02, inputs: [src/dv/builder, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 7.09, inputs: [src/sw/generated/interfaces.inc, src/sw/springtrail, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_menu_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.70, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, wiki/src/sw/menu/previews]}
   tools/n2m/tests/test_menu_v2.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 1.58, inputs: [src/dv/menu/reference.py, src/sw/menu/assets, tools/sw/menu_art, tools/sw/menu_v2, wiki/src/sw/menu/previews]}
@@ -689,6 +689,7 @@ units:
   tools/n2m/tests/test_stackdrop_finish.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.16, inputs: [src/sw/stackdrop/layout.json, src/sw/stackdrop/main.asm, tools/stackdrop_player.py]}
   tools/n2m/tests/test_stackdrop_player.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.81, inputs: [src/dv/stackdrop/cases.py, src/dv/stackdrop/reference.py, src/dv/stackdrop/screen.py]}
   tools/n2m/tests/test_stackdrop_session.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.35, inputs: [src/dv/stackdrop/cases.py, src/dv/stackdrop/reference.py, src/dv/stackdrop/screen.py]}
+  tools/n2m/tests/test_standalone_imports.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 20.94, inputs: [tools]}
   tools/n2m/tests/test_startup202.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_startup204.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.14, inputs: [src/sw/generated/interfaces.inc, tools/sw/opcodes.json]}
   tools/n2m/tests/test_test_budget.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 8.24, inputs: [src/dv/builder/targets.json, src/dv/python, tools/sw/opcodes.json]}
