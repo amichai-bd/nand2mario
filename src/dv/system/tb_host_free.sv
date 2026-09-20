@@ -22,14 +22,19 @@ module tb_host_free;
     import n2m_interfaces_pkg::*;
     localparam int unsigned SETTLE_EDGES = 60000;   // > the stores' clearing sweep
     localparam int unsigned OBSERVE_EDGES = 40000;
-    logic clk_sys = 0, clk_pix = 0, reset_sys = 1, reset_pix = 1;
+    logic clk_sys;
+    logic clk_pix;
+    logic reset_sys;
+    logic reset_pix;
     always #20.0 clk_sys = !clk_sys;                // 25.0 MHz
     always #19.841 clk_pix = !clk_pix;              // 25.2 MHz
 
     // Everything a host-free board drives. No mask is committed here: the point
     // is that the core starts, and the input owner's own suites cover commits.
-    logic [7:0] buttons = 8'h0;
-    logic commit = 1'b0;
+    logic [7:0] buttons;
+    logic commit;
+    assign buttons = 8'h0;
+    assign commit = 1'b0;
 
     logic free_tick, free_paused, free_fault, free_commit, free_retire;
     logic [15:0] free_address;
@@ -103,6 +108,7 @@ module tb_host_free;
     end
 
     initial begin : run
+        clk_sys = 1'b0; clk_pix = 1'b0; reset_sys = 1'b1; reset_pix = 1'b1;
         free_ticked = 0; free_fetched = 0; free_retired = 0; hosted_ticked = 0;
         first_address = 16'hffff;
         repeat (8) @(posedge clk_sys);
