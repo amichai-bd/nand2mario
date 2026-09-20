@@ -274,8 +274,10 @@ checkout when the caller's license environment provides one and otherwise names
 the missing [runtime license](#questa-runtime-license). No acceptance
 criterion requires a licensed Questa run.
 
-One build tool serves two operating systems. Linux owns Verilator execution and
-Windows PowerShell owns `fpga program`. Questa runtime execution follows its
+One build tool serves two operating systems. Linux owns Verilator execution.
+`fpga program` names a missing programmer rather than a host, and writing to a
+board still needs the owner's explicit authorization for that run and serialized
+access to the board. Questa runtime execution follows its
 install and its license; in practice the licensed host is Windows.
 `fpga build` and the compile gate follow their installed tools on either host.
 Caches and fingerprints stay per backend and OS under `workdir/`.
