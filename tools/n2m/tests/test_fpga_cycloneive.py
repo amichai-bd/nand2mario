@@ -19,6 +19,7 @@ from tools.n2m.tests import vendor_support
 ROOT = Path(__file__).resolve().parents[3]
 TOP = "de2_clocking_proof"
 DAC_TOP = "de2_vga_proof"
+SYSTEM_TOP = "de2_system_proof"
 PIXEL_INSTANCE, SYSTEM_INSTANCE = ce.FIT_INSTANCES
 
 
@@ -90,8 +91,8 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(good[1:], bad[1:])
 
     def test_only_this_boards_own_tops_are_accepted(self):
-        """Two tops generate a clock here; every other board's top is refused."""
-        self.assertEqual(ce.SUPPORTED_TOPS, (TOP, DAC_TOP))
+        """Three tops generate a clock here; every other board's top is refused."""
+        self.assertEqual(ce.SUPPORTED_TOPS, (TOP, DAC_TOP, SYSTEM_TOP))
         for top in ce.SUPPORTED_TOPS:
             with self.subTest(supported=top):
                 self.assertEqual(ce.lock_event_count({"top": top, "pll": ce.DEFINITION}), 2)

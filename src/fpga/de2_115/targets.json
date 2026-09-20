@@ -655,7 +655,7 @@
         "output_delays": [
           {
             "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
-            "count": 58,
+            "count": 57,
             "ports": [
               "hex0_n[*]",
               "hex1_n[*]",
@@ -787,7 +787,7 @@
         "hex7_n[3]": "PIN_AH17",
         "hex7_n[4]": "PIN_AF17",
         "hex7_n[5]": "PIN_AG18",
-        "hex7_n[6]": "PIN_AA13"
+        "hex7_n[6]": "PIN_AA14"
       },
       "virtual_pins": [
         "paused",
