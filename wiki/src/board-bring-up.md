@@ -137,6 +137,16 @@ Programming the flash changes the board's power-up configuration: the next
 `fpga program --sof` still configures the device volatile for that power
 cycle, and the flash image returns at the next power-up.
 
+Only a flash-library attempt's `.pof` may be written here. An attempt that
+[carries a ROM image](../tools/n2m/SPEC.md#carried-rom-image) keeps an
+`output/design.pof` too, assembled in the `Single Comp Image with ERAM`
+configuration mode rather than this procedure's `Single Comp Image`, so its flash
+layout is not the one these steps and the `.pof` record rules describe. It is a
+capability fit, not a board image: `fpga program --pof` refuses it because its
+record carries no on-chip flash evidence, and the refusal is the boundary. Take
+the `--sof` path for such an attempt and do not call `quartus_pgm` on that file
+by hand.
+
 ## Heartbeat and VGA test-card proxies
 
 [`board_bringup.py`](../../src/dv/springtrail/board_bringup.py) proves both.

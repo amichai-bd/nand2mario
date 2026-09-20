@@ -139,7 +139,7 @@ def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, 
 
     The build verilates and compiles under compiler/obj_dir; the run executes
     from the attempt so waves, Python traces and the prepared preload files
-    ($readmemh and SIM_INIT_FILE paths are relative to it) land beside the record.
+    ($readmemh and INIT_FILE paths are relative to it) land beside the record.
     With prepare=False the attempt was already prepared and is left untouched.
     """
     tool = simulator.tools["verilator"]

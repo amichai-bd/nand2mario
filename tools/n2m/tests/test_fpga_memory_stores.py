@@ -3,14 +3,21 @@ import unittest
 from pathlib import Path
 import tempfile
 
-from n2m.fpga_memory_stores import verify_netlist, verify, FIT_ENCODING
+from n2m.fpga_memory_stores import verify_netlist, verify_rows, verify, FIT_ENCODING
 
 # Quartus writes the junction temperature rows with a degree sign, so a real fit
 # report is not ASCII; the fixture carries one byte of it.
 FIT_PROLOGUE = "; Low Junction Temperature ; 0 \N{DEGREE SIGN}C ;\n"
 
 
-def fixture():
+def fixture(init_files=None):
+    """Netlist atoms of the seven stores; a named owner carries its power-up image.
+
+    Quartus states either the power-up attribute or the initialization, so an
+    initialized owner's atoms drop power_up_uninitialized and carry the file, its
+    layout and the mem_init words.
+    """
+    init_files = init_files or {}
     chunks = []
     for owner, depth, starts in (("rom", 65536, list(range(8)) * 8),
                                  ("wram", 8192, range(8)), ("vram", 8192, range(8)),
@@ -24,8 +31,12 @@ def fixture():
                      "portaaddrstall": "gnd", "portbaddrstall": "gnd"}
             chunks.append(f"fiftyfivenm_ram_block \\{name} (" + ",".join(f".{key}({value})" for key, value in ports.items()) + ");")
             params = {"operation_mode": "bidir_dual_port", "ram_block_type": "M9K",
-                      "power_up_uninitialized": "true", "mixed_port_feed_through_mode": "old",
+                      "mixed_port_feed_through_mode": "old",
                       "port_b_address_clock": "clock0", "port_b_read_enable_clock": "clock0"}
+            if owner in init_files:
+                params.update({"init_file": init_files[owner], "init_file_layout": "port_a"})
+            else:
+                params["power_up_uninitialized"] = "true"
             for port in ("a", "b"):
                 params.update({f"port_{port}_logical_ram_depth": str(depth), f"port_{port}_logical_ram_width": "8",
                                f"port_{port}_data_out_clock": "none", f"port_{port}_address_clear": "none",
@@ -34,6 +45,8 @@ def fixture():
                                f"port_{port}_first_address": "0", f"port_{port}_first_bit_number": str(bit),
                                f"port_{port}_last_address": "8191" if depth >= 8192 else ("15" if depth == 16 else "127")})
             chunks += [f'defparam \\{name} .{key} = "{value}";' for key, value in params.items()]
+            if owner in init_files:
+                chunks += [f"defparam \\{name} .mem_init{word} = 2048'h{'0' * 512};" for word in range(4)]
     return "\n".join(chunks)
 
 
@@ -87,6 +100,70 @@ class StoreFitTests(unittest.TestCase):
         for index, changed in enumerate(mutations):
             with self.subTest(mutation=index), self.assertRaises(ValueError):
                 verify_netlist(changed)
+
+
+class CarriedImageTests(unittest.TestCase):
+    """The fitted evidence states which stores power up holding an image."""
+
+    FILES = {"rom": "preload-rom.mif"}
+
+    def test_an_initialized_store_drops_the_power_up_attribute_and_names_its_file(self):
+        evidence = verify_netlist(fixture(self.FILES), init_files=self.FILES)
+        self.assertEqual(len(evidence), 84)
+        initialized = [name for name, item in evidence.items() if "initialization" in item]
+        self.assertEqual(len(initialized), 64)
+        self.assertTrue(all(name.startswith("rom|ram|") for name in initialized))
+        for name in initialized:
+            item = evidence[name]
+            self.assertNotIn("power_up_uninitialized", item["parameters"])
+            self.assertEqual(item["initialization"]["init_file"], "preload-rom.mif")
+            self.assertEqual(len([k for k in item["initialization"] if k.startswith("mem_init")]), 4)
+        # The other twenty blocks keep the power-up they always had.
+        for name, item in evidence.items():
+            if "initialization" not in item:
+                self.assertEqual(item["parameters"]["power_up_uninitialized"], "true")
+
+    def test_a_declaration_and_the_netlist_must_agree(self):
+        # An image declared but not fitted, and one fitted but not declared.
+        with self.assertRaises(ValueError):
+            verify_netlist(fixture(), init_files=self.FILES)
+        with self.assertRaises(ValueError):
+            verify_netlist(fixture(self.FILES))
+        original = fixture(self.FILES)
+        mutations = [
+            original.replace('.init_file = "preload-rom.mif"', '.init_file = "other.mif"', 1),
+            original.replace('.init_file_layout = "port_a"', '.init_file_layout = "port_b"', 1),
+            # A block with no power-up words at all. One missing word of several
+            # is the image owner's completeness check, not this inventory's.
+            "\n".join(line for line in original.splitlines()
+                       if not (line.startswith("defparam \\rom|ram|auto_generated|ram_block0 .mem_init")
+                               and " .mem_init" in line)),
+            original + '\ndefparam \\rom|ram|auto_generated|ram_block0 .power_up_uninitialized = "true";',
+        ]
+        for index, changed in enumerate(mutations):
+            with self.subTest(mutation=index), self.assertRaises(ValueError):
+                verify_netlist(changed, init_files=self.FILES)
+
+    def test_the_fitted_row_names_the_initialization_file(self):
+        rows = []
+        for owner, depth, blocks in (("rom", 65536, 64), ("wram", 8192, 8), ("vram", 8192, 8),
+                                     ("hram", 127, 1), ("oam_low", 80, 1), ("oam_high", 80, 1),
+                                     ("wave_ram", 16, 1)):
+            initialization = self.FILES.get(owner, "None")
+            fields = [f"n2m_intel_ram:{owner}|altsyncram:ram|ALTSYNCRAM", "M9K", "True Dual Port", "Single Clock",
+                      str(depth), "8", str(depth), "8", "yes", "no", "yes", "no", str(depth * 8),
+                      str(depth), "8", str(depth), "8", str(depth * 8), str(blocks), initialization, "location",
+                      "Old data", "New data with NBE Read", "New data with NBE Read"]
+            rows.append("; " + " ; ".join(fields) + " ;")
+        fit = FIT_PROLOGUE + "\n".join(rows)
+        evidence = verify_rows(fit, init_files=self.FILES)
+        self.assertEqual(evidence["rom"]["initialization"], "preload-rom.mif")
+        self.assertNotIn("initialization", evidence["wram"])
+        # The same rows without the declaration, and the uninitialized rows with it.
+        with self.assertRaises(ValueError):
+            verify_rows(fit)
+        with self.assertRaises(ValueError):
+            verify_rows(fit.replace("64 ; preload-rom.mif", "64 ; None"), init_files=self.FILES)
 
 
 class StoreTargetTests(unittest.TestCase):

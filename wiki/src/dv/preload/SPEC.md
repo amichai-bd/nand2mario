@@ -58,11 +58,13 @@ actual failing case. Real-UART evidence remains separately identified.
 `driver.preload` flag requires a fresh file/hash check before launch.
 `integration-smoke` retains the full real load and readback path.
 
-A new simulation composition selects `SIM_INIT_FILE` on its ROM and presence
+A new simulation composition selects `INIT_FILE` on its ROM and presence
 wrapper instances and `SIM_PRELOAD` on the load owner. These are declared module
 parameters, not access to vendor internals. All three must refer to the same
-prepared image/configuration. Other memory instances retain `UNUSED`, and all
-synthesized instances ignore simulation initialization.
+prepared image/configuration. Other memory instances retain `UNUSED`. A fit may
+name the same `preload-rom.mif` on one store instance so a board runs with no
+host connection; the [builder contract](../../../tools/n2m/SPEC.md#carried-rom-image)
+owns that path and this one is unchanged by it.
 
 The focused `preload-lifecycle` and `preload-crc-fault` targets check the load
 boundary with the same installed Intel model. `preload-fixture` checks the

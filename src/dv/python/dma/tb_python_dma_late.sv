@@ -117,7 +117,7 @@ module tb_python_dma_late;
         .wave_rdata(unused_wave), .wave_valid(unused_wave_valid),
         .core_paused(1'b0), .oam_sequence_active(oam_sequence_active), .peek_ready(), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
         .peek_rdata(), .peek_valid());
-    defparam stores.rom.SIM_INIT_FILE = "preload-rom.mif";
+    defparam stores.rom.INIT_FILE = "preload-rom.mif";
     assign store_request = inspection_enable ? inspection_request : oam_request;
     assign inspection_response = oam_response;
     assign lcdc_observe = ppu.lcdc;
