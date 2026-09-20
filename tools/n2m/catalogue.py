@@ -43,15 +43,18 @@ MINIMUM_CHILD_SECONDS = 13
 # unit put 170 of the 178 that ran under 30 s of CPU, seven between 33 and 88, and one at
 # 162; a single bound has to clear the largest, and at that size it bounds nothing else.
 # 240 covers the ordinary population against the worst case rather than one load: the
-# worst unit outside that one spent 77.1 s of CPU at its quietest, and 2.31 times that,
-# the measured SMT ceiling, is 178. It is below the 300 it replaces, on a stricter
-# quantity.
+# worst unit outside that one measured 78.6 s of CPU at its quietest, and 2.31 times that
+# for the SMT ceiling and 1.08 for frequency is 196. It is below the 300 it replaces, on
+# a stricter quantity. The ceiling is a property of the victim's instruction mix, not of
+# the machine, so it holds for interpreter-bound work and must be re-measured for work
+# that contends for memory bandwidth; the SPEC records where it does not hold.
 UNIT_CPU_BUDGET = 240
 # A unit whose recorded conditions name the CPU it spent is bounded against that instead.
-# 3 clears the measured worst case: contention inflates a serial unit's CPU to about 2.3
-# times its solo cost and then stops, the SMT limit of this two-core host. It stays above
-# DRIFT_FACTOR too, so a unit that grows is named by a drift report before its budget
-# fails it.
+# 3 clears the measured worst case, 2.31 for contention times 1.08 for frequency, and it
+# stays above DRIFT_FACTOR, so a unit that grows is named by a drift report before its
+# budget fails it. A CPU recorded on a saturated host loosens the bound by at most that
+# same ceiling rather than without limit, which is what a recorded wall would have done,
+# so record an expensive unit on the quietest host available.
 UNIT_CPU_FACTOR = 3
 # A liveness guard, not a performance budget, so a unit that stops computing still ends.
 # Five times the budget, as a group's ceiling is five times its own: the worst honest wall

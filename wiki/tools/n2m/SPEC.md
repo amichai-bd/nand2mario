@@ -1791,8 +1791,9 @@ second of the burners starting and is gone within a second of their death: 2.10 
 2.11 s quiet, then 4.74, 4.73 and 4.70 loaded, then **2.14 in the first quiet sample
 after the load stops**. Nothing thermal switches state that fast in both directions.
 Frequency is bounded separately and small: all four logical processors sat at 2496 MHz
-of the 2700 maximum under load, so frequency can account for at most about **1.08
-times** of any CPU spread on this host, not 1.6 and not 2.
+under load, in mean and in minimum, against a 2700 MHz maximum. 2700 over 2496 is
+**1.08**, and that is the whole of what frequency can contribute on this host — not
+1.6 and not 2.
 
 Both figures are what the budgets below are judged against: worst case is a unit's
 quietest measured CPU times 2.31 for contention times 1.08 for frequency. Separating
@@ -1884,11 +1885,12 @@ which is the row the whole mechanism rests on, and it agrees with the 1.01 measu
 independently on a four-way parallel workload.
 
 **240** is the default, sized against the worst case rather than a load level. The
-worst unit outside `test_state_play.py` spent 77.1 s of CPU at its quietest, and
-77.1 x 2.31 x 1.08 = **192 s** covers full contention and everything frequency can
-add, so 240 is **1.25 times** that. Under four burners it actually measured 148.8 s,
-1.61 times inside the budget. 240 is also below the 300 it replaces, so it tightens
-the bound for every unit but the one it cannot.
+worst unit outside `test_state_play.py` is `test_endurance.py`, whose quietest sample
+in the table above is 78.60 s of CPU, and 78.60 x 2.31 x 1.08 = **196 s** covers full
+contention and everything frequency can add, so 240 is **1.22 times** that. Under
+four burners it actually measured 148.6 s, 1.61 times inside the budget. 240 is also
+below the 300 it replaces, so it tightens the bound for every unit but the one it
+cannot.
 
 **3** is the factor, and the same ceiling is what sizes it: a unit cannot spend more
 than about 2.31 x 1.08 = 2.5 times its recorded CPU without doing more work, so 3
@@ -1901,14 +1903,50 @@ budget fails it.
 wall measured for an ordinary unit is 670.6 s against this 240, 2.8 times.
 
 **The residual risk, stated rather than left to a reader.** Every margin above is
-about 1.2 to 1.25 times, which is thinner than the headline multiples of the budgets
-over their solo costs. It is also the honest figure, and it does **not** depend on any
-claim about how far identical work varies between sittings — that was the weak point
-of every earlier derivation here. The two mechanisms measured on this host are bounded
-separately, contention at 2.31 and frequency at 1.08, so whatever a cross-sitting
-spread turns out to be, it is made of those. What the margin does depend on is the
-ceiling holding for other instruction mixes, which is the limit recorded
-[above](#contention-has-a-ceiling-in-cpu-and-none-in-wall).
+about 1.2 times, which is thinner than the headline multiples of the budgets over
+their solo costs, and it is the honest figure. Two things bound it and one does not.
+
+The margin depends on the
+[ceiling](#contention-has-a-ceiling-in-cpu-and-none-in-wall) holding for the work it
+is applied to. It does hold there: an interpreter-bound victim, which is what every
+host unit and every check group is, measured 2.18 times against ALU rivals and 1.80
+against memory-heavy ones, and the six units tabulated above sit at 1.73 to 1.93. It
+does not hold universally — a bandwidth-bound victim against bandwidth-bound rivals
+reached **3.30 times** — so 2.31 is a property of the victim's instruction mix and not
+of the machine. A unit costing what the worst ordinary unit costs, in that regime,
+would reach 78.60 x 3.30 x 1.08 = **280 s** against this 240. Re-measure the ceiling
+before applying it to work of a different shape, and treat a unit that starts
+contending for memory bandwidth as a reason to re-derive rather than to trust the
+margin.
+
+The 1.08 is weaker still, and deliberately kept separate for that reason. It is the
+clock ratio 2700 over 2496: the most a quiet anchor taken at turbo can understate the
+same work at the clock this host sustains under load. That makes it an observation of
+what this host sustained — 2496 MHz at 78 °C against a 105 °C limit, on hardware whose
+range is 500 to 2700 — and not an architectural bound the way the SMT ceiling is. A
+host that thermally throttled further would need it re-measured.
+
+What the margin no longer depends on is a claim about how far identical work varies
+between sittings, which is what every earlier derivation here rested on and none could
+establish. That variance is now accounted for by mechanisms that can be re-measured
+rather than by a spread taken on trust. The risk moved from unboundable to measured
+and re-measurable, which is the whole of the improvement and not more than it.
+
+**Multiplying the two is not double counting.** Every loaded sample behind the 2.31
+sat at 2496 MHz, in mean and in minimum, so the ceiling was measured with both sides
+of that comparison at one clock and contains no frequency component at all. What the
+1.08 covers is a different thing: an anchor measured on a quiet host may have run at
+turbo, above the 2496 the loaded case sustains, which makes the anchor smaller than
+the same work would be at that clock. The two factors act on different steps of the
+derivation and in the same direction, so they compose rather than overlap.
+
+**A recorded CPU on a busy host still loosens the bound, but no longer without
+limit.** The factor multiplies whatever CPU the recording sitting measured, and that
+sitting could have been saturated: recording `test_state_play.py` under four burners
+would write about 319 s and set its budget near 957 rather than 478. The ceiling is
+what bounds that — at most 2.5 times too generous, where a wall anchor had no bound at
+all — and `tests record` names the conditions beside every figure so a reader can see
+which sitting produced one. Record an expensive unit on the quietest host available.
 
 **What a solo measurement is worth, and what reads it.** A unit's solo CPU varies
 across sittings — 1.03 to 1.24 times over the table above — and where it varies it
