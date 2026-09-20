@@ -111,6 +111,10 @@ the command line that holds it and not any other process, and it still exits at
 once, reporting success, for a command that never started. A marker and its status
 answer the question that was asked, whatever the process table holds.
 
+If the work writes no completion marker, do not poll at all: run it in the
+foreground and read its exit code, or make it write a marker you control. Both
+remove the pattern, which is the only thing this page can promise.
+
 ## Bound the wait
 
 Both forms above carry a deadline and report reaching it as a failure. Give every
