@@ -203,11 +203,15 @@ single-quoted, with embedded quotes escaped.
 A failed build may name a produced `.sof` only as an unverified artifact; it
 never labels that file checked or offers it to the programmer.
 A comparison-only result produced with `--build-id` prints no programming
-handoff, matching the programmer's existing refusal of that image. A fit on a
-host that does not own programming writes a `<Quartus-bin>` placeholder in place
-of its own Quartus directory, which would not exist on the programming host; the
-`.sof` keeps its repository-relative path, so that image must reach the
-programming host's own checkout before the printed command can run.
+handoff, matching the programmer's existing refusal of that image. Every other
+fit prints that handoff for the host that ran it, in that host's own shell and
+with the Quartus directory it was given, because programming follows its
+installed programmer rather than a host. The `.sof` keeps its repository-relative
+path, so programming it from a different checkout needs that image in place
+there first. Writing to a board still needs the owner's explicit authorization
+for that run and serialized access to the board. The simulation's own
+`v05-board` handoff above is the one that writes a `<Quartus-bin>` placeholder,
+because a simulation has no Quartus directory of its own to name.
 
 Programming checks the attempt record before JTAG discovery. An early refusal
 writes `failure.log` in the program operation directory and names that retained
