@@ -63,3 +63,60 @@ The reviewer posts its own report as a PR comment. Same-account agents use
 comments, not GitHub approval. The author fixes findings and obtains a fresh
 ready verdict before undrafting and merging. Reviewers do not edit, push, or
 merge the branch.
+
+## When the head moves after a verdict
+
+A verdict covers the SHA it names and nothing later. Three ordinary things move
+the head between a `ready` verdict and the merge: the author applies a reviewer
+finding, the author applies something root asked for, or `main` moves and the
+base branch requires an up-to-date branch, which makes that rebase mandatory
+rather than a choice. A merge handoff cannot authorize a change and a merge in
+one breath; the change needs its disposition first. Classify each move, state its
+disposition in the PR, and merge only at a head a verdict covers.
+
+**A content change goes back to the reviewer, who decides.** Any commit that
+alters content the reviewer read returns the PR to that reviewer, whatever its
+size: an applied finding, a wording correction, a re-measurement, a new file.
+The reviewer re-reviews the changed material and posts a verdict naming the new
+SHA. That pass may be scoped to what moved instead of a full pass, but the
+reviewer judges that, not the author. An author never rules its own edit too
+small to review.
+
+**A rebase that carries no content change keeps the verdict, and the author
+proves it.** The author decides this case, because the claim is mechanical: every
+path the PR changes holds at the new head the same content it held at the
+reviewed SHA. State that disposition in the PR with per-file evidence, not a
+patch summary:
+
+- each changed path's blob hash at the reviewed SHA and at the new head, from
+  `git rev-parse <sha>:<path>`, quoted as a matching pair. A path the PR deletes,
+  and a rename's old name, has no blob at either SHA and `git rev-parse` is fatal
+  on it; state the matching absence instead and pair the rename's new name;
+- the paths `main` gained since the base the reviewed SHA sat on, from
+  `git diff --name-only $(git merge-base <reviewed-sha> origin/main) origin/main`,
+  with none of them in the PR's own changed-path set.
+
+Take that second list before the rebase, or afterwards from the reviewed SHA's
+merge base exactly as written. The new head's own merge base is `origin/main`
+itself, so a list taken from it is empty and proves nothing; a list of the diff
+between the new head and its merge base is the PR's own paths and says nothing
+about what the rebase pulled in.
+
+An empty `git diff <reviewed-sha> <new-head> -- <path>` supports a blob pair but
+does not stand in for one, because the pair states the result per file and
+survives quoting into the PR body, which is where the next agent reads it. It is
+the evidence in its own right only for a path no blob exists on. Once stated with
+this evidence, the disposition makes the new head the reviewed head, and that SHA
+is the one the merge pins.
+
+**A path in both lists is a content change, whether or not its blob moved.**
+When `main` edited a path this branch also edits, the rebase combined two edits
+there, and a matching blob pair proves only that the branch's side survived —
+which is what reverting the incoming edit looks like too. Name that path, show
+the branch's own contribution and what became of the incoming edit, and send that
+path to the reviewer. A blob that differs between the two SHAs is a content
+change on its path as well, whichever commit moved it. The paths in neither case
+keep their verdict.
+
+The [merge step](../../../../worktrees/README.md#merge) checks the delivered head
+against the verdict rather than assuming they agree.

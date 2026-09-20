@@ -26,8 +26,10 @@ Follow `agent-flow` and `wiki/agents/pull-requests.md`.
    then babysit the hosted policy check and independent review. When hosted
    checks are externally blocked,
    use the [standing fallback](../agent-flow/references/external-ci.md)
-   without repeating approval requests. If `main` moves, rebase, confirm the
-   reviewed diff survived, and update the body. Once the reviewer's posted
+   without repeating approval requests. If the head moves after a verdict, whether
+   for a mandatory rebase or an applied finding, follow the
+   [head-move disposition](../agent-flow/references/review.md#when-the-head-moves-after-a-verdict)
+   and update the body. Once the reviewer's posted
    verdict is ready for the current head, undraft with `gh pr ready <number>`,
    wait for the re-triggered required checks, then use the worktree guide's
    [merge method](../../../worktrees/README.md#merge).
