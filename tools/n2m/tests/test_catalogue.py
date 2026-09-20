@@ -1,9 +1,10 @@
-"""Catalogue contract tests: coverage, selection, validation and write-back."""
+"""Catalogue contract tests: coverage, selection, validation and deliberate recording."""
 import contextlib
 import importlib.util
 import io
 import json
 from pathlib import Path
+import platform
 import shutil
 import sys
 import tempfile
@@ -20,6 +21,9 @@ ROOT = Path(__file__).resolve().parents[3]
 TRACED_UNIT = "tools/n2m/tests/test_fpga_hold.py"
 
 ENTRY = {"kind": "sim", "level": 1, "labels": ["cpu"], "duration_seconds": None}
+# One sitting's conditions, in the form `tests record` writes them.
+MEASURED = {"at": "2026-09-20T14:29Z", "commit": "f70fb078b67b", "host": "Linux-x86_64",
+            "wall_cpu": 1.03}
 
 
 def model(units=None, labels=None, not_runnable=None):
@@ -60,10 +64,16 @@ class YamlSubset(unittest.TestCase):
 
     def test_format_document_round_trips_through_the_reader(self):
         original = model(units={"cpu-alu": dict(ENTRY, duration_seconds=1.5),
+                                "cpu-flags": dict(ENTRY, duration_seconds=17.61, measured=MEASURED),
+                                "cpu-halt": dict(ENTRY, duration_seconds=0.5,
+                                                 measured=dict(MEASURED, wall_cpu=None)),
                                 "tools/x/test_a.py": {"kind": "unit", "level": 0, "labels": [],
                                                       "duration_seconds": None}},
                          not_runnable={"tools/x/test_b.py": 'a "quoted" reason'})
         self.assertEqual(module.read_yaml(module.format_document(original)), original)
+        self.assertIn('measured: {at: "2026-09-20T14:29Z", commit: "f70fb078b67b", '
+                      'host: "Linux-x86_64", wall_cpu: 1.03}',
+                      module.format_document(original))
 
 
 class Validation(unittest.TestCase):
@@ -196,16 +206,38 @@ class Validation(unittest.TestCase):
                 ({"cpu-alu": dict(ENTRY, duration_seconds=-1)}, "duration_seconds must be"),
                 ({"Cpu Alu": dict(ENTRY)}, "not a valid sim identifier"),
                 ({"tools/n2m/tests/nope.txt": dict(ENTRY, kind="unit")},
-                 "not a valid unit identifier")):
+                 "not a valid unit identifier"),
+                # A wall is only usable with the sitting behind it, so the
+                # conditions are validated as strictly as the wall.
+                ({"cpu-alu": dict(ENTRY, measured=MEASURED)},
+                 "measured conditions without a duration_seconds"),
+                ({"cpu-alu": dict(ENTRY, duration_seconds=1.0, measured=dict(MEASURED, at="2026-09-20"))},
+                 "measured at must be a UTC minute"),
+                ({"cpu-alu": dict(ENTRY, duration_seconds=1.0, measured=dict(MEASURED, host="two words"))},
+                 "measured host must be a single token"),
+                ({"cpu-alu": dict(ENTRY, duration_seconds=1.0, measured=dict(MEASURED, wall_cpu=0))},
+                 "measured wall_cpu must be null or a positive ratio")):
             with self.subTest(message=message):
                 self.write(model(units=units))
                 with self.assertRaisesRegex(ValueError, message):
                     module.load(self.root)
-        (self.root / module.CATALOGUE).write_text(
-            'version: 1\nlabels:\n  cpu: "c"\nunits:\n  cpu-alu: {kind: sim, level: 1}\n'
-            'not_runnable: {}\n', encoding="utf-8", newline="\n")
-        with self.assertRaisesRegex(ValueError, "requires exactly"):
-            module.load(self.root)
+        # Shapes the canonical formatter cannot write are still refused when read.
+        for entry, message in (("{kind: sim, level: 1}", "requires exactly"),
+                               ("{kind: sim, level: 1, labels: [], duration_seconds: 1.0, "
+                                'measured: {at: "2026-09-20T14:29Z", commit: "abcdef123456"}}',
+                                "measured requires exactly at, commit, host, wall_cpu"),
+                               ("{kind: sim, level: 1, labels: [], duration_seconds: 1.0, measured: null}",
+                                "measured requires exactly at, commit, host, wall_cpu"),
+                               ("{kind: sim, level: 1, labels: [], duration_seconds: 1.0, "
+                                'measured: {at: "2026-09-20T14:29Z", commit: "abcdef123456", '
+                                'host: "Linux-x86_64", wall_cpu: 1.0, build: 2.0}}',
+                                "measured build must be a share of its own wall")):
+            with self.subTest(entry=entry):
+                (self.root / module.CATALOGUE).write_text(
+                    'version: 1\nlabels:\n  cpu: "c"\nunits:\n  cpu-alu: ' + entry + '\n'
+                    'not_runnable: {}\n', encoding="utf-8", newline="\n")
+                with self.assertRaisesRegex(ValueError, message):
+                    module.load(self.root)
 
     def test_a_test_in_the_tree_but_not_in_the_catalogue_is_a_coverage_failure(self):
         loaded, _ = module.load(self.root)
@@ -302,7 +334,7 @@ class Selection(unittest.TestCase):
             module.select(self.model)
 
 
-class WriteBack(unittest.TestCase):
+class Recording(unittest.TestCase):
     def setUp(self):
         base = ROOT / "workdir/builds/catalogue-unit-tests"
         base.mkdir(parents=True, exist_ok=True)
@@ -336,26 +368,119 @@ class WriteBack(unittest.TestCase):
         self.assertEqual(module.measured_duration(0.0001), 0.01)
         self.assertEqual(module.measured_duration(1.2345), 1.23)
 
-    def test_sim_test_writes_its_own_wall_back(self):
+    def test_conditions_are_replaced_with_the_wall_they_describe(self):
+        """Conditions describe one wall, so a new wall never keeps the old ones."""
+        self.assertEqual(module.record_durations(self.path, {"a": 4.0}, {"a": MEASURED}), 1)
+        self.assertEqual(module.read_yaml(self.path.read_text(encoding="utf-8"))["units"]["a"],
+                         dict(ENTRY, duration_seconds=4.0, measured=MEASURED))
+        self.assertEqual(module.record_durations(self.path, {"a": 5.0}), 1)
+        self.assertEqual(module.read_yaml(self.path.read_text(encoding="utf-8"))["units"]["a"],
+                         dict(ENTRY, duration_seconds=5.0))
+
+    def build(self, tag, relative, record):
+        """Write one retained run record under a build tag, as a run publishes it."""
         root = Path(self.temp.name)
-        (root / "src/dv/builder").mkdir(parents=True)
+        (root / "src/dv/builder").mkdir(parents=True, exist_ok=True)
         (root / module.CATALOGUE).write_text(module.format_document(self.model),
                                              encoding="utf-8", newline="\n")
-        passed = {"status": "PASS", "cache": "BUILT", "timing": {"locked_seconds": 74.567}}
-        self.assertEqual(module.record_simulation(root, "a", passed), 74.57)
-        written = module.read_yaml((root / module.CATALOGUE).read_text(encoding="utf-8"))
-        self.assertEqual(written["units"]["a"]["duration_seconds"], 74.57)
-        self.assertEqual(written["units"]["b"]["duration_seconds"], 9.0)
+        destination = root / "workdir/builds" / tag / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(json.dumps(record), encoding="utf-8")
+        return root
+
+    def entries(self, root):
+        return module.read_yaml((root / module.CATALOGUE).read_text(encoding="utf-8"))["units"]
+
+    def test_a_retained_sim_test_is_recorded_only_when_asked_and_carries_its_sitting(self):
+        passed = {"status": "PASS", "cache": "BUILT", "requested": {"target": "a"},
+                  "timing": {"locked_seconds": 74.567, "locked_cpu_seconds": 72.4,
+                             "build_seconds": 70.1},
+                  "finished": "2026-09-20T14:29:07.101010+00:00",
+                  "commit": "f70fb078b67bd8fd4675baafa3ac414f8e28cdf1", "os": "Linux"}
+        root = self.build("smoke", "manifest.json", passed)
+        report = module.record_from_run(root, "smoke")
+        self.assertEqual((report["status"], report["durations_written"]), ("PASS", 1))
+        recorded = self.entries(root)["a"]
+        self.assertEqual(recorded["duration_seconds"], 74.57)
+        # The sitting travels with the wall: its UTC minute, the commit it
+        # measured, the host family and how much of its wall was work.
+        # A simulation's wall is mostly its compile on a cold cache, so the
+        # compile travels with it and the next reader can see what it paid for.
+        self.assertEqual(recorded["measured"], {"at": "2026-09-20T14:29Z",
+                                                "commit": "f70fb078b67b",
+                                                "host": "Linux-" + platform.machine(),
+                                                "wall_cpu": 1.03, "build": 70.1})
+        self.assertEqual(self.entries(root)["b"]["duration_seconds"], 9.0)
         # A cache hit times the cache check, a failure has no trustworthy wall,
-        # and a target outside the catalogue has nowhere to write.
-        for record, name in (({**passed, "cache": "CACHED"}, "a"),
-                             ({**passed, "status": "FAIL"}, "a"),
-                             ({"status": "PASS", "cache": "BUILT"}, "a"),
-                             (passed, "absent")):
-            with self.subTest(record=record, name=name):
-                self.assertIsNone(module.record_simulation(root, name, record))
-        written = module.read_yaml((root / module.CATALOGUE).read_text(encoding="utf-8"))
-        self.assertEqual(written["units"]["a"]["duration_seconds"], 74.57)
+        # and a target outside the catalogue has nowhere to record one.
+        for record, reason in (({**passed, "cache": "CACHED"}, "no wall"),
+                               ({**passed, "status": "FAIL"}, "no wall"),
+                               ({**passed, "timing": {}}, "no wall"),
+                               ({**passed, "requested": {"target": "absent"}}, "not a unit")):
+            with self.subTest(reason=reason):
+                root = self.build("smoke", "manifest.json", record)
+                report = module.record_from_run(root, "smoke")
+                self.assertEqual(report["durations_written"], 0)
+                self.assertIsNone(self.entries(root)["a"]["duration_seconds"])
+
+    def test_a_wall_that_measures_waiting_is_refused_until_it_is_declared(self):
+        """Contention here adds wall and almost no CPU, so a wall far above its
+        own CPU measured a queue rather than the work, and a shared budget must
+        not inherit it by accident."""
+        record = {"status": "PASS", "measured_walls": {"a": {"wall": 60.0, "cpu": 20.0}},
+                  "finished": "2026-09-20T14:29:07+00:00", "commit": "abcdef123456", "os": "Linux"}
+        root = self.build("selection", "tests/summary.json", record)
+        report = module.record_from_run(root, "selection")
+        self.assertEqual(report["durations_written"], 0)
+        self.assertIn("3.00 times its own CPU", report["not_recorded"]["a"])
+        self.assertIsNone(self.entries(root)["a"]["duration_seconds"])
+        report = module.record_from_run(root, "selection", contended=True)
+        self.assertEqual(report["durations_written"], 1)
+        self.assertEqual(self.entries(root)["a"]["duration_seconds"], 60.0)
+        self.assertEqual(self.entries(root)["a"]["measured"]["wall_cpu"], 3.0)
+
+    def test_a_wall_far_from_the_recorded_figure_is_named_rather_than_written(self):
+        """The recorded figure has measured 1.4 to 7 times a fresh wall in either
+        direction, so a run names the gap and leaves the catalogue to a person."""
+        from n2m.cli import drift_lines
+        self.assertTrue(module.drifted(17.61, 48.20))
+        self.assertTrue(module.drifted(96.30, 4.20))
+        self.assertFalse(module.drifted(0.16, 0.13))
+        self.assertFalse(module.drifted(52.40, 21.51 * 2))
+        # A unit with no recorded wall at all has nothing to stand against.
+        self.assertTrue(module.drifted(1.0, None))
+        report = {"tag": "level0", "drift": ["a"], "measured_walls": {"a": {"wall": 17.61, "cpu": 17.2}},
+                  "units": {"a": {"recorded_seconds": 48.2}}}
+        self.assertEqual(drift_lines(report),
+                         ["a: measured 17.61s against 48.20s recorded, wall/CPU 1.02",
+                          f"{module.CATALOGUE} is unchanged. Record this sitting if the host was "
+                          "quiet: python tools/build.py tests record --tag level0"])
+        self.assertEqual(drift_lines({"drift": []}), [])
+
+    def test_a_short_wall_is_never_judged_contended(self):
+        """At sub-second scale the ratio measures fsync waits and the CPU
+        accounting tick, not a busy host, so it is recorded and not judged."""
+        record = {"status": "PASS", "measured_walls": {"a": {"wall": 0.18, "cpu": 0.08}},
+                  "finished": "2026-09-20T14:29:07+00:00", "commit": "abcdef123456", "os": "Linux"}
+        root = self.build("short", "tests/summary.json", record)
+        report = module.record_from_run(root, "short")
+        self.assertEqual((report["durations_written"], report["not_recorded"]), (1, {}))
+        self.assertEqual(self.entries(root)["a"]["measured"]["wall_cpu"], 2.25)
+
+    def test_a_host_without_per_child_cpu_records_an_unknown_ratio(self):
+        record = {"status": "PASS", "measured_walls": {"a": {"wall": 12.0, "cpu": None}},
+                  "finished": "2026-09-20T14:29:07+00:00", "commit": "abcdef123456", "os": "Windows"}
+        root = self.build("selection", "tests/summary.json", record)
+        self.assertEqual(module.record_from_run(root, "selection")["durations_written"], 1)
+        self.assertIsNone(self.entries(root)["a"]["measured"]["wall_cpu"])
+
+    def test_recording_a_tag_that_left_no_run_record_fails_by_name(self):
+        self.build("selection", "tests/summary.json", {"status": "PASS"})
+        with self.assertRaisesRegex(ValueError, "no retained run record for tag absent"):
+            module.record_from_run(Path(self.temp.name), "absent")
+        report = module.record_from_run(Path(self.temp.name), "selection")
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn("records no wall that describes actual work", report["error"])
 
 
 class UnmeasuredDuration(unittest.TestCase):
@@ -431,8 +556,10 @@ class SimulatorCapabilities(unittest.TestCase):
         self.assertEqual(record["units"]["tile-pixel"],
                          {"status": "SKIPPED", "reason": "unsupported-backend",
                           "error": "target tile-pixel does not support simulator questa; supported: verilator"})
-        # A skip never ran, so it writes no duration back to the catalogue.
-        self.assertEqual(record["durations_written"], 1)
+        # A skip never ran, so it leaves no wall in the run's record, and the
+        # run writes nothing into the catalogue whatever it measured.
+        self.assertEqual(sorted(record["measured_walls"]), ["builder-smoke"])
+        self.assertEqual(copy.read_bytes(), path.read_bytes())
 
     def test_a_cached_simulation_reports_its_cache_hit(self):
         args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": "/tools/bin",

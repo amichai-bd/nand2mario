@@ -99,7 +99,13 @@ def parser():
     mutations.add_argument("--verilator-bin")
     trace = tests.add_parser("closure-trace", help="run declared host units under a file tracer and fail any read outside the declared closure")
     trace.add_argument("--unit", action="append", default=[], help="only this declared host unit; repeatable")
-    runner = tests.add_parser("run", help="run one selection and write each measured wall back")
+    runner = tests.add_parser("run", help="run one selection under one aggregate budget; writes no tracked file")
+    recorder = tests.add_parser("record", help="write one retained run's measured walls into the catalogue, with the conditions that produced them")
+    recorder.add_argument("--tag", required=True,
+                          help="the retained run to record: its tests/summary.json or manifest.json")
+    recorder.add_argument("--contended", action="store_true",
+                          help="record a wall that took more than twice its own CPU; such a wall measures waiting, not work")
+    recorder.add_argument("--json", action="store_true")
     for leaf in (listing, runner):
         leaf.add_argument("--level", type=int, choices=catalogue.LEVELS,
                           help="run this level and every level below it")
@@ -274,6 +280,48 @@ def host_session_options(leaf):
     leaf.add_argument('--json', action='store_true')
 
 
+def measured_notices(root, target, report):
+    """Say what this run cost and against what the catalogue records for it.
+
+    An unasked-for measurement belongs in the run's own retained record, beside
+    the run that produced it, and in the author's eyes. It does not belong in a
+    tracked file nobody asked to change."""
+    walls = catalogue.measured_walls(report)
+    if target not in walls:
+        return []
+    wall, cpu = walls[target]["wall"], walls[target].get("cpu")
+    ratio = catalogue.wall_cpu_ratio(wall, cpu)
+    try:
+        recorded = (catalogue.load(root)[0]["units"].get(target) or {}).get("duration_seconds")
+    except (OSError, ValueError) as error:
+        return [f"Measured {target} {wall:.2f}s; {catalogue.CATALOGUE} could not be read: {error}"]
+    against = (f"{recorded:.2f}s recorded" if isinstance(recorded, (int, float))
+               else "no recorded wall")
+    load = "wall/CPU unknown on this host" if ratio is None else f"wall/CPU {ratio:.2f}"
+    lines = [f"Measured {target} {wall:.2f}s against {against} ({load}); no tracked file changed."]
+    if catalogue.drifted(catalogue.measured_duration(wall), recorded):
+        lines.append("Record this sitting if the host was quiet: "
+                     f"python tools/build.py tests record --tag {report.get('tag')}")
+    return lines
+
+
+def drift_lines(report):
+    """Name every unit whose measured wall no longer matches the recorded one."""
+    lines = []
+    for name in report.get("drift", []):
+        wall = report["measured_walls"][name]
+        recorded = report["units"][name].get("recorded_seconds")
+        against = (f"{recorded:.2f}s recorded" if isinstance(recorded, (int, float))
+                   else "no recorded wall")
+        ratio = catalogue.wall_cpu_ratio(wall["wall"], wall.get("cpu"))
+        load = "" if ratio is None else f", wall/CPU {ratio:.2f}"
+        lines.append(f"{name}: measured {wall['wall']:.2f}s against {against}{load}")
+    if lines:
+        lines.append(f"{catalogue.CATALOGUE} is unchanged. Record this sitting if the host was "
+                     f"quiet: python tools/build.py tests record --tag {report.get('tag')}")
+    return lines
+
+
 def tagged(root, args, header, publish, progress=None):
     """Run one command inside its exclusive tagged workspace."""
     progress = progress or Progress(False)
@@ -281,6 +329,7 @@ def tagged(root, args, header, publish, progress=None):
     operation_folder = None
     with workspace(root, args.tag, reclaimed) as build:
         locked_at = time.monotonic()
+        cpu_at = catalogue.cpu_seconds()
         report = header(build.name)
         if reclaimed:
             report["stale_lock_reclaimed"] = reclaimed[0].relative_to(root).as_posix()
@@ -370,21 +419,13 @@ def tagged(root, args, header, publish, progress=None):
                     simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
                                           questa_bin=args.questa_bin, root=root)
                 report.update(simulate(root, build, args, simulator, provenance, progress=progress, locked_at=locked_at))
-                # A target measured only here keeps its catalogue duration
-                # current, in the same canonical form `tests run` writes. The
-                # write happens before the tag is published, so the retained
-                # manifest names it. A catalogue the write cannot read is
-                # reported beside the run, never as its result.
-                try:
-                    written = catalogue.record_simulation(root, args.target, report)
-                    if written is not None:
-                        report["duration_recorded"] = written
-                        report.setdefault("notices", []).append(
-                            f"Recorded duration: {args.target} {written:.2f}s in {catalogue.CATALOGUE}")
-                except (OSError, ValueError) as error:
-                    report["duration_record_error"] = str(error)
-                    report.setdefault("notices", []).append(
-                        f"Duration not recorded in {catalogue.CATALOGUE}: {error}")
+                if cpu_at is not None and isinstance(report.get("timing"), dict):
+                    report["timing"]["locked_cpu_seconds"] = round(catalogue.cpu_seconds() - cpu_at, 3)
+                # The measured wall stays in this run's retained record and is
+                # reported here, so an author reads what its run cost without a
+                # tracked file changing under it. Writing it into the catalogue
+                # is `tests record`, which names this tag.
+                report.setdefault("notices", []).extend(measured_notices(root, args.target, report))
         except Exception as error:
             report.update(status="FAIL", error=str(error))
             if isinstance(error, AssemblyError):
@@ -718,6 +759,17 @@ def main(argv=None, root=None):
             print(f"{report['selector']}: {report['selected']} selected, "
                   f"{len(report.get('failed', []))} failed, {len(report.get('skipped', []))} skipped")
             print(f"Elapsed: {report.get('elapsed_seconds', 0):.1f}s of {report.get('budget_seconds')}s budget")
+            for line in drift_lines(report):
+                print(line)
+        if args.command == "tests" and args.action == "record":
+            for name, wall in (report.get("recorded") or {}).items():
+                print(f"Recorded {name} {wall:.2f}s")
+            for name, reason in (report.get("not_recorded") or {}).items():
+                print(f"Not recorded {name}: {reason}")
+            if "measured" in report:
+                sitting = report["measured"]
+                print(f"{report['durations_written']} written in {catalogue.CATALOGUE}, measured "
+                      f"{sitting['at']} at commit {sitting['commit']} on {sitting['host']}")
         if args.command == "tests" and "tests" in report:
             for name in report["tests"]:
                 print(name)

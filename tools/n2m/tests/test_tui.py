@@ -419,6 +419,7 @@ class TuiTests(unittest.TestCase):
             ("tests", "mutations"): ["tests", "mutations"],
             ("tests", "closure-trace"): ["tests", "closure-trace"],
             ("tests", "run"): ["tests", "run", "--label", "agents", "--sim", "verilator"],
+            ("tests", "record"): ["tests", "record", "--tag", "level0"],
             ("sw", "oracle"): ["sw", "oracle"],
             ("sw", "assemble"): ["sw", "assemble", "assembler-basic"],
             ("sw", "build"): ["sw", "build", "springtrail"],

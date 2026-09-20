@@ -343,32 +343,45 @@ class BuilderTests(unittest.TestCase):
             self.assertEqual(latest.read_text(), "other-success\n")
             self.assertEqual(read_json(self.root / "workdir/builds/cli/manifest.json")["status"], "FAIL")
 
-    def test_cli_records_the_measured_duration_in_the_catalogue_and_the_receipt(self):
-        """The wall reaches the catalogue, the retained manifest and the text
-        output; a cache hit times the check, so it records nothing."""
+    def test_cli_reports_its_measured_wall_and_records_it_only_when_asked(self):
+        """A run reports what it cost and leaves the tracked catalogue byte for
+        byte as it found it; `tests record` writes that wall, with the sitting
+        behind it. A cache hit times the check, so it measures nothing."""
         from n2m import catalogue
-        entries = lambda: catalogue.read_yaml(
-            (self.root / catalogue.CATALOGUE).read_text(encoding="utf-8"))["units"]
-        before = entries()["builder-smoke"]["duration_seconds"]
+        catalogue_file = self.root / catalogue.CATALOGUE
+        entries = lambda: catalogue.read_yaml(catalogue_file.read_text(encoding="utf-8"))["units"]
+        before = catalogue_file.read_bytes()
         with patch("n2m.cli.Simulator", return_value=self.sim), \
                 patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             command = ["sim", "test", "builder-smoke", "--tag", "duration"]
             self.assertEqual(main(command, self.root), 0)
-        recorded = entries()["builder-smoke"]["duration_seconds"]
-        self.assertNotEqual(recorded, before)
-        self.assertGreaterEqual(recorded, catalogue.MINIMUM_DURATION)
+        # The defect this replaces: running a declared check dirtied the tree.
+        self.assertEqual(catalogue_file.read_bytes(), before)
         manifest = read_json(self.root / "workdir/builds/duration/manifest.json")
-        self.assertEqual(manifest["duration_recorded"], recorded)
-        self.assertIn(f"Recorded duration: builder-smoke {recorded:.2f}s", output.getvalue())
+        wall = manifest["timing"]["locked_seconds"]
+        self.assertGreater(wall, 0)
+        self.assertIn(f"Measured builder-smoke {wall:.2f}s", output.getvalue())
+        self.assertIn("no tracked file changed", output.getvalue())
+        with patch("n2m.cli.git_state", return_value={"commit": "test"}), \
+                contextlib.redirect_stdout(io.StringIO()) as recorded:
+            self.assertEqual(main(["tests", "record", "--tag", "duration"], self.root), 0)
+        self.assertIn("Recorded builder-smoke", recorded.getvalue())
+        entry = entries()["builder-smoke"]
+        self.assertEqual(entry["duration_seconds"], catalogue.measured_duration(wall))
+        self.assertEqual(entry["measured"]["commit"], "test")
+        self.assertRegex(entry["measured"]["at"], r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z")
+        after = catalogue_file.read_bytes()
         with patch("n2m.cli.Simulator", return_value=self.sim), \
                 patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as cached:
             self.assertEqual(main(command, self.root), 0)
-        self.assertEqual(entries()["builder-smoke"]["duration_seconds"], recorded)
-        self.assertNotIn("Recorded duration", cached.getvalue())
-        self.assertNotIn("duration_recorded",
-                         json.dumps(read_json(self.root / "workdir/builds/duration/manifest.json")))
+        self.assertEqual(catalogue_file.read_bytes(), after)
+        self.assertNotIn("Measured builder-smoke", cached.getvalue())
+        # Nothing measured, so there is nothing to record and the command says so.
+        with contextlib.redirect_stdout(io.StringIO()) as empty:
+            self.assertEqual(main(["tests", "record", "--tag", "duration", "--json"], self.root), 1)
+        self.assertIn("records no wall that describes actual work", json.loads(empty.getvalue())["error"])
 
     def test_cli_text_guides_build_cache_and_failure(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \

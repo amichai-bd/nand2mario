@@ -41,6 +41,7 @@ python3 tools/build.py tests validate --json
 python3 tools/build.py tests list --level 0 --json
 python3 tools/build.py tests run --level 0 --tag level0 --json
 python3 tools/build.py tests run --label springtrail --tag springtrail --budget 600 --broader --json
+python3 tools/build.py tests record --tag level0 --json
 python3 tools/build.py tests mutations --tag mutations --json
 python3 tools/build.py tests mutations --confirm --tag mutations-confirm --json
 python3 tools/build.py tests closure-trace --unit tools/n2m/tests/test_baseline.py --tag closure-trace --json
@@ -108,7 +109,10 @@ argparse command tree and owning registries. Simulation targets are read from
 `src/dv/builder/targets.json` and filtered by the selected backend. Python
 preflight lists the registry's Python testbenches. FPGA and software targets,
 regression subsets, test levels and labels, external images, build tags, and
-peek stores come from their existing registries. Programming lists only
+peek stores come from their existing registries.
+[Recording a wall](#recording-a-measured-wall) lists only the retained runs whose
+record holds a measured wall, and asks for a typed tag when this checkout retains
+none. Programming lists only
 successful, unmodified, in-place `.sof` attempts accepted by the programmer's
 record check. Launcher identities come only from those checked `v05-board`
 attempts. Package loading lists only immutable attempts accepted by the package
@@ -443,12 +447,25 @@ Each unit declares exactly:
   thorough; level 2 is everything. Selecting a level runs every level below it.
 - `labels`: a set, orthogonal to level. Every label must be declared in the
   file's own `labels` vocabulary; an undeclared label fails validation.
-- `duration_seconds`: the wall of the last actual run, or `null` before the
-  first. `tests run` and a passing `sim test` write it back; it is not edited by
+- `duration_seconds`: the wall of one deliberate measurement, or `null` before
+  the first. Running a test never writes it; only
+  [`tests record`](#recording-a-measured-wall) does, and it is not edited by
   hand. A measured wall is recorded with two decimals and never below 0.01
   seconds, so `0.00` can only mean an entry nothing measured: `tests validate`
-  and `check` fail on it by name. A target selected by no label a run uses
-  keeps a measured wall this way, so budget planning never counts it as free.
+  and `check` fail on it by name.
+- `measured` (optional): the conditions the recorded wall was measured under, as
+  exactly `at`, `commit`, `host` and `wall_cpu`, plus `build` for a simulation.
+  `at` is the UTC minute of the run, so two entries sharing it were measured in
+  one sitting, which is the only span their walls are comparable over; `commit`
+  is the first twelve characters of the commit measured; `host` is the operating
+  system and machine, such as `Linux-x86_64`; `wall_cpu` is that run's wall
+  divided by its own CPU time, or `null` where the host reports no per-child CPU,
+  and below 1 where the work ran on more than one core. `build` is the compile
+  inside that wall, never more than the wall itself, because a cold compile cache
+  dominates a simulation's wall: `baseline-good` measured 20.48 s with 20.17 s of
+  compile against the 0.41 s it recorded from a warm cache. An entry may carry no
+  conditions, which says the sitting behind its wall is unknown. It may never
+  carry conditions without a wall.
 - `inputs` (host units only, optional): the repository files or directories the
   unit reads as data, sorted. Its module imports are never listed; they are
   [derived](#host-unit-closure). Declaring `inputs`, even `[]`, asserts that
@@ -478,8 +495,8 @@ The file is a strict YAML subset so the builder keeps its stdlib-only
 dependencies: block mappings, flow mappings, flow sequences, plain and quoted
 scalars, and whole-line comments. Inline comments are refused, because a `#`
 inside an unquoted value would otherwise be silently truncated. `tests validate`
-rewrites nothing, and `tests run` rewrites only the unit lines it measured, so
-comments and order survive.
+and `tests run` rewrite nothing, and `tests record` rewrites only the unit lines
+it records, so comments and order survive.
 
 ### Coverage is a build gate
 
@@ -559,20 +576,58 @@ Two failure modes are deliberately loud:
 
 ### Execution and contention
 
-A passing `sim test` writes its own wall, from taking the tag lock to its final
-record, back to the target's catalogue entry in that same canonical form, so a
-target measured only alone still carries a duration. A cache hit times the cache check rather than the work, and a failure
-has no trustworthy wall, so neither is recorded. The rule that flags `0.00` is
-reported by `tests validate` and `check` rather than by the coverage gate of
-`tests run`, so the run that measures such a unit is never blocked by the entry
-it is about to fix. The write lands before the tag is published, so the
-retained manifest names the duration it recorded, and the text output reports
-it as a notice.
+`src/dv/builder/catalogue.yaml` is tracked, so no run writes it. `sim test`,
+`tests run` and `regress` leave every tracked file exactly as they found it: a
+measured wall goes into that run's own retained record, beside the run that
+produced it, and into the command's text output. A `sim test` reports
+`Measured <target> <wall>s against <recorded>s recorded (wall/CPU <ratio>)`, a
+`tests run` names every unit whose wall stands more than twice from the recorded
+figure, and both name the command that would record it. The
+[wall budget](#test-wall-budget) record and `tests/summary.json` hold the figures
+themselves: a selection carries `measured_walls`, each unit's own
+`cpu_seconds` and `recorded_seconds`, and a `drift` list; a `sim test` manifest
+carries `timing.locked_seconds` and `timing.locked_cpu_seconds`.
 
-`src/dv/builder/catalogue.yaml` is tracked, so `sim test`, and therefore
-`regress` and `tests run` through their children, leave the checkout with a
-catalogue diff whenever a measured wall differs from the recorded one. That
-diff is the record of the last actual run and is committed, not reverted.
+The rule that flags `0.00` is reported by `tests validate` and `check` rather
+than by the coverage gate of `tests run`, so the run that measures such a unit is
+never blocked by the entry it is about to fix.
+
+### Recording a measured wall
+
+```bash
+python3 tools/build.py tests record --tag level0 --json
+```
+
+`tests record` is the only command that writes `duration_seconds`. It measures
+nothing itself: it reads one retained run record, either
+`workdir/builds/<tag>/tests/summary.json` from a selection or
+`workdir/builds/<tag>/manifest.json` from a `sim test`, and writes the walls that
+run actually measured, with the sitting that produced them. So the figure
+committed is the one the author saw, and a tag with no retained record fails by
+name. It creates no workspace; its output is a reviewed source change like any
+other.
+
+Only a wall that describes actual work is recorded. A cache hit times the cache
+check, a skipped unit never ran, a failure has no trustworthy wall, and a name
+outside the catalogue has nowhere to record one; each is reported under
+`not_recorded` rather than written. A wall that took more than twice its own CPU
+is refused the same way and names `--contended`, which records it anyway: on this
+host contention adds wall and almost no CPU, so such a wall measures waiting
+rather than the work, and the recorded figures size shared budgets. Below a
+10-second wall the ratio is not judged at all, because fsync waits and the 10 ms
+CPU accounting tick dominate there — a 0.18-second run measured 0.08 seconds of
+CPU, a ratio of 2.26, with nothing competing. The ratio is recorded either way.
+
+A `sim` unit's own child record travels into the selection as `units.<name>.timing`,
+so a recorded selection carries the same compile split a lone `sim test` does.
+
+A recorded wall is one sample. The same work has measured 1.4 to 7 times a
+recorded figure in either direction across sittings, and about 1.63 times itself
+on identical work, while staying within 1.07 times inside one sitting. What moves
+it is the host's thermal and frequency state, which lags in both directions; the
+load average is not the instrument, having read the idle 0.27 while six
+competitors were live. That is why `at` and `wall_cpu` travel with the wall, and
+why a reader compares figures only inside one sitting.
 
 A `sim` unit runs as the ordinary `sim test` worker under the run's tag, with
 the same backend, `--seed`, `--rebuild` and selected backend tool options, under the
@@ -1031,7 +1086,7 @@ with `preload_inputs` now does on the stage.
 
 Beyond the shared fields, a Verilator record carries `simulator`
 (`verilator`), `os`, `seed`, `waves` (`format: fst` and the retained path),
-`timing` with the four separately measured walls listed under
+`timing` with the four separately measured walls and the locked CPU listed under
 [prepared attempts](#prepared-attempts), so the preparation and compile cost
 against the wall budget are visible, `elapsed_seconds`,
 `exit_code` and `timeout_seconds` on each command, `preload` when the
@@ -1692,7 +1747,9 @@ immediately before launch still applies.
 Every simulation record splits the walls: `timing.prepare_seconds` (inline
 preparation under the lock, or the receipt's value for an adopted attempt),
 `build_seconds`, `run_seconds` and `locked_seconds` from tag lock acquisition
-to record completion; `lock_acquired` and, for an adopted attempt,
+to record completion, and `locked_cpu_seconds`, the CPU that same window spent in
+this process and every child it reaped, absent where the host reports no
+per-child CPU; `lock_acquired` and, for an adopted attempt,
 `prepared.prepared_started`/`prepared_finished` place the preparation against
 another run's lock window, so the overlap is measured from receipts rather
 than claimed. `prepared.mode` is `inline` or `adopted`.

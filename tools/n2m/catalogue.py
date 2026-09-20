@@ -15,13 +15,14 @@ import json
 import math
 import os
 from pathlib import Path
+import platform
 import re
 import subprocess
 import sys
 import time
 
 from . import host_closure
-from .records import atomic_json, atomic_text, file_hash, workspace
+from .records import atomic_json, atomic_text, file_hash, read_json, workspace
 from .simulation import UNSUPPORTED_REASON, simulator_problem, unsupported_backend
 from .test_budget import supervise
 
@@ -35,6 +36,32 @@ MINIMUM_CHILD_SECONDS = 13
 # The smallest wall a real run may record. Anything that measured faster still
 # ran, so it is recorded as 0.01 and 0.00 stays the mark of an unmeasured entry.
 MINIMUM_DURATION = 0.01
+# The conditions a recorded wall carries, in the order they are written: the UTC
+# minute of the run, the commit it measured, the host family, and the run's own
+# wall divided by its CPU time. Two entries sharing `at` were measured in one
+# sitting, which is the only span their walls are comparable over. A simulation
+# also carries `build`, the compile inside that wall, because a cold compile cache
+# dominates it: `baseline-good` measured 20.48 s here with 20.17 s of compile,
+# against the 0.41 s it records from a warm cache.
+MEASURED_KEYS = ("at", "commit", "host", "wall_cpu")
+MEASURED_OPTIONAL = ("build",)
+MEASURED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z")
+MEASURED_TOKEN = re.compile(r"[A-Za-z0-9._+-]+")
+# Contention on this host adds wall and almost no CPU: a measured 1.01 to 1.06
+# times from one competitor to six. A run that took more than twice its own CPU
+# therefore spent that time waiting rather than computing, and its wall does not
+# describe the work. `tests record` refuses such a wall unless it is declared.
+CONTENDED_RATIO = 2.0
+# Below this wall the ratio is not a contention measurement and is never judged:
+# a 0.18-second run measured here spent 0.08 seconds of CPU, a ratio of 2.26,
+# with nothing competing, because fsync waits and the 10 ms CPU accounting tick
+# dominate at that scale. The walls the ratio protects are the tens of seconds a
+# simulation takes. The ratio is still recorded, so a reader can weigh it.
+RATIO_FLOOR_SECONDS = 10.0
+# How far a measured wall may stand from the recorded one before the run names
+# it. The recorded figure has been seen 1.4 to 7 times a fresh measurement in
+# either direction, so anything past this is worth a reader's attention.
+DRIFT_FACTOR = 2.0
 LABEL = re.compile(r"[a-z0-9][a-z0-9-]*")
 TARGET = re.compile(r"[a-z0-9][a-z0-9_-]*")
 UNIT_FILE = re.compile(r"[A-Za-z0-9_./-]+\.py")
@@ -53,11 +80,14 @@ WIKI_CHECK = "tools/wiki/check.py"
 HEADER = ("# Catalogue of every runnable test unit: one entry per registry target and\n"
           "# per standalone test_*.py file. Levels are ordered, so selecting a level runs\n"
           "# every level below it. Labels are a set, validated against the vocabulary\n"
-          "# below. duration_seconds is the wall of the last actual run, written back by\n"
-          "# `tools/build.py tests run` and by a passing `sim test`; it is never edited by\n"
-          "# hand and 0.00 marks an entry nothing measured. A host unit's optional\n"
-          "# inputs list the data files or directories it reads; its module imports are\n"
-          "# derived, and external_imports names the packages outside the tree they reach.\n"
+          "# below. duration_seconds is the wall of one deliberate measurement and 0.00\n"
+          "# marks an entry nothing measured. Running a test never writes it: only\n"
+          "# `tools/build.py tests record --tag <run>` does, from that run's retained\n"
+          "# record, and it is never edited by hand. An entry's optional measured names\n"
+          "# the sitting behind the wall, because the same work costs a different wall\n"
+          "# from one sitting to the next. A host unit's optional inputs list the data\n"
+          "# files or directories it reads; its module imports are derived, and\n"
+          "# external_imports names the packages outside the tree they reach.\n"
           "#\n"
           "# Whole-line comments only; see tools/n2m/catalogue.py for the accepted subset.\n")
 
@@ -218,7 +248,21 @@ def format_unit(name, entry):
     if entry.get("inputs") is not None:
         inputs = f", inputs: [{', '.join(sorted(entry['inputs']))}]"
     return (f"  {name}: {{kind: {entry['kind']}, level: {entry['level']}, "
-            f"labels: [{labels}], duration_seconds: {_duration(entry['duration_seconds'])}{inputs}}}\n")
+            f"labels: [{labels}], duration_seconds: {_duration(entry['duration_seconds'])}"
+            f"{inputs}{format_measured(entry.get('measured'))}}}\n")
+
+
+def format_measured(measured):
+    """Render the optional conditions in MEASURED_KEYS order, or nothing."""
+    if not measured:
+        return ""
+    ratio = measured["wall_cpu"]
+    body = [f"at: {_quote(measured['at'])}", f"commit: {_quote(measured['commit'])}",
+            f"host: {_quote(measured['host'])}",
+            "wall_cpu: " + ("null" if ratio is None else f"{float(ratio):.2f}")]
+    if measured.get("build") is not None:
+        body.append(f"build: {float(measured['build']):.2f}")
+    return ", measured: {" + ", ".join(body) + "}"
 
 
 # ------------------------------------------------------------------ the model
@@ -245,9 +289,10 @@ def load(root):
     if not isinstance(units, dict) or not units:
         raise ValueError("catalogue requires a nonempty units mapping")
     for name, entry in units.items():
-        if not isinstance(entry, dict) or set(entry) - {"inputs"} != {"kind", "level", "labels", "duration_seconds"}:
+        if (not isinstance(entry, dict)
+                or set(entry) - {"inputs", "measured"} != {"kind", "level", "labels", "duration_seconds"}):
             raise ValueError(f"unit {name} requires exactly kind, level, labels and duration_seconds, "
-                             "plus optional host inputs")
+                             "plus optional host inputs and measured conditions")
         if entry["kind"] not in KINDS:
             raise ValueError(f"unit {name} kind must be one of {', '.join(KINDS)}")
         if "inputs" in entry:
@@ -274,6 +319,8 @@ def load(root):
         duration = entry["duration_seconds"]
         if duration is not None and (not isinstance(duration, (int, float)) or duration < 0):
             raise ValueError(f"unit {name} duration_seconds must be null or a nonnegative number")
+        if "measured" in entry:
+            check_measured(name, entry["measured"], duration)
     excluded = model["not_runnable"]
     if not isinstance(excluded, dict):
         raise ValueError("catalogue not_runnable must be a mapping of path to reason")
@@ -301,6 +348,32 @@ def load(root):
         if name in units:
             raise ValueError(f"{name} is both a unit and retired")
     return model, path
+
+
+def check_measured(name, measured, duration):
+    """Prove one entry's recorded conditions describe a real measurement.
+
+    A wall is only usable by the next reader with the sitting that produced it,
+    so the conditions are validated as strictly as the wall itself. An entry may
+    carry no conditions at all, which says the sitting behind its wall is
+    unknown; it may never carry conditions without a wall."""
+    if (not isinstance(measured, dict)
+            or set(measured) - set(MEASURED_OPTIONAL) != set(MEASURED_KEYS)):
+        raise ValueError(f"unit {name} measured requires exactly {', '.join(MEASURED_KEYS)}, "
+                         f"plus optional {', '.join(MEASURED_OPTIONAL)}")
+    if duration is None:
+        raise ValueError(f"unit {name} records measured conditions without a duration_seconds")
+    if not isinstance(measured["at"], str) or not MEASURED_AT.fullmatch(measured["at"]):
+        raise ValueError(f"unit {name} measured at must be a UTC minute like 2026-09-20T14:22Z")
+    for key in ("commit", "host"):
+        if not isinstance(measured[key], str) or not MEASURED_TOKEN.fullmatch(measured[key]):
+            raise ValueError(f"unit {name} measured {key} must be a single token")
+    ratio = measured["wall_cpu"]
+    if ratio is not None and (not isinstance(ratio, (int, float)) or ratio <= 0):
+        raise ValueError(f"unit {name} measured wall_cpu must be null or a positive ratio")
+    build = measured.get("build")
+    if "build" in measured and (not isinstance(build, (int, float)) or not 0 <= build <= duration):
+        raise ValueError(f"unit {name} measured build must be a share of its own wall")
 
 
 def unmeasured(model):
@@ -640,7 +713,7 @@ def run_simulation(root, tag, target, args, remaining):
             raise ValueError
     except ValueError:
         child = {"status": "FAIL", "error": "child result is not a JSON object"}
-    for key in ("cache", "error"):
+    for key in ("cache", "error", "timing"):
         if key in child:
             outcome[key] = child[key]
     if code == 0 and child.get("status") == "PASS":
@@ -662,10 +735,15 @@ def measured_duration(seconds):
     return max(round(float(seconds), 2), MINIMUM_DURATION)
 
 
-def record_durations(path, durations):
-    """Rewrite only the changed unit lines, so comments and order survive."""
+def record_durations(path, durations, measured=None):
+    """Rewrite only the recorded unit lines, so comments and order survive.
+
+    `measured` optionally carries each recorded unit's conditions; a unit it
+    names keeps them beside its wall, and a unit it omits loses whatever
+    conditions the entry held, because they described the previous wall."""
     if not durations:
         return 0
+    measured = measured or {}
     lines = Path(path).read_text(encoding="utf-8").splitlines(keepends=True)
     written, inside = 0, False
     for index, line in enumerate(lines):
@@ -678,32 +756,129 @@ def record_durations(path, durations):
         if inside and line.startswith("  ") and name in durations:
             entry = read_yaml(line.strip())[name]
             entry["duration_seconds"] = durations[name]
+            entry.pop("measured", None)
+            if name in measured:
+                entry["measured"] = measured[name]
             lines[index] = format_unit(name, entry)
             written += 1
     atomic_text(Path(path), "".join(lines))
     return written
 
 
-def record_simulation(root, target, record):
-    """Write one `sim test` wall back, exactly as `tests run` writes a selection.
+def cpu_seconds():
+    """This process and every child it has reaped, in CPU seconds, or None.
 
-    A single target measured only this way otherwise keeps its unmeasured
-    duration forever. Only a run that actually executed counts: a cache hit
-    reports the cache check and a failure has no trustworthy wall."""
-    if record.get("status") != "PASS" or record.get("cache") == "CACHED":
+    Windows reports no per-child CPU through `os.times`, so the whole idea of a
+    wall-to-CPU ratio is unavailable there rather than wrong: a sim test spends
+    its work in a child, and counting only this process would read as a host
+    stalled on nothing. Off Windows the four fields are the run's own CPU."""
+    if os.name == "nt":
         return None
-    elapsed = (record.get("timing") or {}).get("locked_seconds")
-    if not isinstance(elapsed, (int, float)):
+    spent = os.times()
+    return round(spent.user + spent.system + spent.children_user + spent.children_system, 3)
+
+
+def wall_cpu_ratio(wall, cpu):
+    """How much longer a run took than the CPU it spent, or None when unknown.
+
+    The ratio is the instrument, not the load average: this host has reported
+    the idle 0.27 while six competitors were live, while a run's own wall
+    against its own CPU says directly whether it computed or waited."""
+    if not isinstance(cpu, (int, float)) or cpu <= 0 or not isinstance(wall, (int, float)):
         return None
+    return round(wall / cpu, 2)
+
+
+def measured_walls(record):
+    """Every unit in one retained run record whose wall describes actual work.
+
+    Accepts either shape a run leaves behind: the `tests run` summary, which
+    already names its own measured units, and the `sim test` manifest, which
+    names one target and its locked wall. Only a run that actually executed
+    counts: a cache hit reports the cache check, a skipped unit never ran and a
+    failure has no trustworthy wall."""
+    if isinstance(record.get("measured_walls"), dict):
+        return record["measured_walls"]
+    target = (record.get("requested") or {}).get("target")
+    timing = record.get("timing") or {}
+    if (not isinstance(target, str) or record.get("status") != "PASS"
+            or record.get("cache") == "CACHED"
+            or not isinstance(timing.get("locked_seconds"), (int, float))):
+        return {}
+    return {target: {"wall": timing["locked_seconds"], "cpu": timing.get("locked_cpu_seconds"),
+                     "build": timing.get("build_seconds")}}
+
+
+def sitting(record):
+    """The conditions every wall in one run record shares: its minute, commit and host."""
+    stamp = record.get("finished") or record.get("created") or ""
+    minute = stamp[:16] + "Z" if MEASURED_AT.fullmatch(stamp[:16] + "Z") else (
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"))
+    # Twelve characters locate the commit in this repository and keep the entry
+    # readable; the run's own record holds the full SHA.
+    commit = str(record.get("commit") or "unknown")[:12]
+    host = str(record.get("os") or "unknown") + "-" + platform.machine()
+    return {"at": minute, "commit": commit, "host": host}
+
+
+def record_from_run(root, tag, contended=False):
+    """Write one retained run's measured walls into the catalogue, with conditions.
+
+    This is the only path that writes a duration. It reads a run that already
+    happened rather than measuring anything itself, so the figures it commits
+    are the ones the author saw, and the sitting that produced them travels with
+    them. A wall measured under contention is refused by name, because the
+    recorded figures size shared budgets."""
+    root = Path(root)
+    source = None
+    for candidate in (f"workdir/builds/{tag}/tests/summary.json", f"workdir/builds/{tag}/manifest.json"):
+        if (root / candidate).is_file():
+            source = candidate
+            break
+    if source is None:
+        raise ValueError(f"no retained run record for tag {tag}; expected "
+                         f"workdir/builds/{tag}/tests/summary.json or manifest.json")
+    run = read_json(root / source)
     model, path = load(root)
-    if target not in model["units"]:
-        return None
-    duration = measured_duration(elapsed)
-    return duration if record_durations(path, {target: duration}) else None
+    conditions = sitting(run)
+    durations, measured, refused = {}, {}, {}
+    for name, wall in sorted(measured_walls(run).items()):
+        if name not in model["units"]:
+            refused[name] = f"not a unit of {CATALOGUE}"
+            continue
+        ratio = wall_cpu_ratio(wall.get("wall"), wall.get("cpu"))
+        judged = ratio is not None and wall.get("wall", 0) >= RATIO_FLOOR_SECONDS
+        if judged and ratio > CONTENDED_RATIO and not contended:
+            refused[name] = (f"took {ratio:.2f} times its own CPU, above {CONTENDED_RATIO:.2f}; "
+                             "this wall measures waiting, not work. Pass --contended to record it")
+            continue
+        durations[name] = measured_duration(wall["wall"])
+        measured[name] = {**conditions, "wall_cpu": ratio}
+        # A simulation's wall is mostly its compile on a cold cache, so the
+        # compile travels with it; a host unit builds nothing and omits it.
+        if isinstance(wall.get("build"), (int, float)):
+            measured[name]["build"] = min(round(wall["build"], 2), durations[name])
+    written = record_durations(path, durations, measured)
+    report = {"source": source, "measured": conditions,
+              "recorded": {name: durations[name] for name in sorted(durations)},
+              "not_recorded": refused, "durations_written": written,
+              "catalogue": {"path": CATALOGUE, "sha256": file_hash(path)}}
+    if not measured_walls(run):
+        report.update(status="FAIL", error=f"{source} records no wall that describes actual work")
+    else:
+        report["status"] = "PASS"
+    return report
+
+
+def drifted(wall, recorded):
+    """Whether a measured wall stands far enough from the recorded one to say so."""
+    if not isinstance(recorded, (int, float)) or recorded <= 0:
+        return True
+    return not 1 / DRIFT_FACTOR <= wall / recorded <= DRIFT_FACTOR
 
 
 def run_selection(root, model, path, tag, args, budget, provenance):
-    """Run the selection under one aggregate budget and write the walls back."""
+    """Run the selection under one aggregate budget; the walls stay in its record."""
     chosen, selector = select(model, args.level, args.label)
     simulations = [name for name in chosen if model["units"][name]["kind"] == "sim"]
     # Validate every selected target before any simulator time is spent. A
@@ -727,9 +902,10 @@ def run_selection(root, model, path, tag, args, budget, provenance):
               "catalogue": {"path": CATALOGUE, "sha256": file_hash(path)},
               "seed": args.seed, "simulator": args.sim, "units": {}, "failed": [], "skipped": [],
               "preparation": preparation,
-              "provenance": provenance or {}, "started": datetime.now(timezone.utc).isoformat()}
+              "provenance": provenance or {}, "started": datetime.now(timezone.utc).isoformat(),
+              "measured_walls": {}, "drift": []}
     started = time.monotonic()
-    durations = {}
+    cpu_at = cpu_seconds()
     for name in chosen:
         entry = model["units"][name]
         remaining = budget - (time.monotonic() - started)
@@ -741,19 +917,33 @@ def run_selection(root, model, path, tag, args, budget, provenance):
             outcome = run_simulation(root, tag, name, args, remaining)
         else:
             outcome = run_unit(root, name, entry)
+        # Units run one after another, so the CPU this process and its children
+        # spent across two snapshots is this unit's own. A unit that never ran
+        # has no CPU worth naming, so only a measured one carries the figure.
+        now = cpu_seconds()
+        spent = None if cpu_at is None else round(now - cpu_at, 3)
+        cpu_at = now
         record["units"][name] = outcome
         if outcome["status"] == "SKIPPED":
             record["skipped"].append(name)
         elif outcome["status"] != "PASS":
             record["failed"].append(name)
-        # Only an actual run has a wall worth recording: a skipped unit never
-        # ran, and a CACHED simulation reports the cache check, not the work.
+        # Only an actual run has a wall worth keeping: a skipped unit never ran,
+        # and a CACHED simulation reports the cache check, not the work. The
+        # wall goes into this retained record and no further; writing it into
+        # the tracked catalogue is `tests record`, which a person asks for.
         if ("elapsed_seconds" in outcome and outcome["status"] != "SKIPPED"
                 and outcome.get("cache") != "CACHED"):
-            durations[name] = measured_duration(outcome["elapsed_seconds"])
+            wall = measured_duration(outcome["elapsed_seconds"])
+            outcome["recorded_seconds"] = entry["duration_seconds"]
+            if spent is not None:
+                outcome["cpu_seconds"] = spent
+            record["measured_walls"][name] = {"wall": wall, "cpu": spent,
+                                              "build": (outcome.get("timing") or {}).get("build_seconds")}
+            if drifted(wall, entry["duration_seconds"]):
+                record["drift"].append(name)
     record["elapsed_seconds"] = time.monotonic() - started
     record["finished"] = datetime.now(timezone.utc).isoformat()
-    record["durations_written"] = record_durations(path, durations)
     if record["failed"]:
         named = ", ".join(f"{name} {record['units'][name]['status']}" for name in record["failed"])
         record.update(status="FAIL", error=f"selection {selector} failed: {named}")
@@ -795,6 +985,13 @@ def command(root, args, header, publish):
             except Exception as error:
                 report.update(status="FAIL", error=str(error))
             publish(build, report)
+        return report
+    if args.action == "record":
+        # No workspace and no measurement: this reads a run that already
+        # happened and writes its walls into the tracked catalogue, which is a
+        # reviewed source change like any other.
+        report = header(args.tag)
+        report.update(record_from_run(root, args.tag, args.contended))
         return report
     if args.action in ("list", "validate"):
         report = header(args.tag or "-")
