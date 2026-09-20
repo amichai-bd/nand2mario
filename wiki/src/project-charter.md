@@ -152,10 +152,10 @@ section records the decisions they implement.
   operating point.
 - Workflow: all simulation under Verilator on Linux; a
   [Questa compile-only gate](../tools/n2m/SPEC.md#questa-compile-gate) for
-  `src/rtl` and `src/fpga` before every merge that touches them. That gate and
-  Quartus builds follow their installed tools rather than a host operating
-  system, and programming runs from Windows PowerShell. Board programming and
-  physical sessions are authorized per slice on request within the
+  `src/rtl` and `src/fpga` before every merge that touches them. That gate,
+  Quartus builds and programming follow their installed tools rather than a host
+  operating system. Board programming and physical sessions are authorized per
+  slice on request within the
   [hardware authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization).
 - Order: contracts, Questa gate, SDRAM bring-up (simulation, fit, board memory
   test), slot loader over UART, loader mapper and KEY1 return, menu software,
@@ -258,9 +258,11 @@ backend under the builder's
 [simulator policy](../tools/n2m/SPEC.md#simulator-policy): Verilator on Linux, or
 native Questa on a host holding its executables and a runtime license. License
 failure is a simulation failure, never a skip. Quartus builds follow their
-installed tools; `fpga program` runs from Windows PowerShell because Linux JTAG
-access is unverified, under the builder's
-[command ownership](../tools/n2m/SPEC.md#command-ownership).
+installed tools, and so does `fpga program`, which names a missing programmer
+rather than a host under the builder's
+[command ownership](../tools/n2m/SPEC.md#command-ownership). Writing to a board
+still needs the owner's explicit authorization for that run and serialized
+access to the board.
 Simulation cannot satisfy physical acceptance.
 Shared baseline evidence is recorded in
 [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).

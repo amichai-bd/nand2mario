@@ -57,8 +57,11 @@ Quartus and Questa are installed, on Linux or on Windows PowerShell; see
 [runtime license](#questa-runtime-license), which the gate does not.
 `vendor accept` records reviewed installed vendor bytes as accepted for an
 installation's platform; see [accepted vendor sources](#accepted-vendor-sources).
-`fpga program` still runs on Windows PowerShell,
-because only that JTAG path is verified:
+`fpga program` names a missing programmer rather than a host and chooses
+between its two backends inside the stage; see
+[programming backends](#programming-backends). Writing to a board still needs
+the owner's explicit authorization for that run and serialized access to the
+board:
 
 ```bash
 python3 tools/build.py lint questa --tag questa-gate --json
@@ -200,11 +203,15 @@ single-quoted, with embedded quotes escaped.
 A failed build may name a produced `.sof` only as an unverified artifact; it
 never labels that file checked or offers it to the programmer.
 A comparison-only result produced with `--build-id` prints no programming
-handoff, matching the programmer's existing refusal of that image. A fit on a
-host that does not own programming writes a `<Quartus-bin>` placeholder in place
-of its own Quartus directory, which would not exist on the programming host; the
-`.sof` keeps its repository-relative path, so that image must reach the
-programming host's own checkout before the printed command can run.
+handoff, matching the programmer's existing refusal of that image. Every other
+fit prints that handoff for the host that ran it, in that host's own shell and
+with the Quartus directory it was given, because programming follows its
+installed programmer rather than a host. The `.sof` keeps its repository-relative
+path, so programming it from a different checkout needs that image in place
+there first. Writing to a board still needs the owner's explicit authorization
+for that run and serialized access to the board. The simulation's own
+`v05-board` handoff above is the one that writes a `<Quartus-bin>` placeholder,
+because a simulation has no Quartus directory of its own to name.
 
 Programming checks the attempt record before JTAG discovery. An early refusal
 writes `failure.log` in the program operation directory and names that retained
@@ -223,12 +230,13 @@ check, the chain, the flash program and its success check the same way, then
 the measured time, the `.pof` hash and the power-cycle step; its dry run
 reports the record check and the written command only.
 
-These handoffs never execute their next command. Linux remains a Verilator host;
-Windows PowerShell remains the JTAG and launcher host. The `fpga build` handoff
+These handoffs never execute their next command. Linux remains a Verilator host
+and Windows PowerShell the launcher host. The `fpga build` handoff
 names the current host, because an installed Quartus runs it on either one, and
 so does a Questa simulation handoff, because Questa follows its executables and
-its [runtime license](#questa-runtime-license). No command silently crosses a
-host boundary. The ordinary
+its [runtime license](#questa-runtime-license), and so does the programming
+handoff, because `fpga program` discovers its own programmer. No command silently
+crosses a host boundary. The ordinary
 hardware safeguards still apply before a person runs the printed programming or
 launcher command.
 With `--json`, none of these human lines is written and stdout remains exactly
@@ -266,8 +274,10 @@ checkout when the caller's license environment provides one and otherwise names
 the missing [runtime license](#questa-runtime-license). No acceptance
 criterion requires a licensed Questa run.
 
-One build tool serves two operating systems. Linux owns Verilator execution and
-Windows PowerShell owns `fpga program`. Questa runtime execution follows its
+One build tool serves two operating systems. Linux owns Verilator execution.
+`fpga program` names a missing programmer rather than a host, and writing to a
+board still needs the owner's explicit authorization for that run and serialized
+access to the board. Questa runtime execution follows its
 install and its license; in practice the licensed host is Windows.
 `fpga build` and the compile gate follow their installed tools on either host.
 Caches and fingerprints stay per backend and OS under `workdir/`.
@@ -2546,6 +2556,53 @@ Every reported slack must be finite and nonnegative with zero TNS. The audit
 requires zero illegal/unconstrained clock/input/output setup and hold counts, no
 ignored SDC assignments, and no structural timing problems. Missing/malformed evidence fails rather than passing
 on the tool exit alone. Keep resource totals and all corner slack values.
+
+### Measured reach on Linux
+
+`fpga build` names a missing tool rather than an operating system, so which
+targets a host can build is a measurement and not a rule. All 39 registered
+targets of the three boards were built on the Linux development host at
+`9375432`, against Quartus Prime 25.1std.0 Build 1129 Lite with `--quartus-bin`
+naming that installation's `bin/` launcher directory, two builds at a time on its
+two physical cores except where noted below:
+
+| Board | Targets | Reached its intended result | Did not |
+| --- | --- | --- | --- |
+| DE10-Lite | 25 | 22 | `adc-early`, `controls-board`, `v05-controls-board` |
+| DE10-Nano | 6 | 6 | — |
+| DE2-115 | 8 | 8 | — |
+
+An `*-invalid` target's intended result is its refusal, and each of the eleven
+reached the one it names: an invalid clock period for `builder-invalid`,
+`nano-invalid` and `de2-invalid`, a filter matching no port for
+`de2-vga-invalid`, and a checked endpoint count mismatch for the rest. Every
+passing fit kept its `design.sof`, its fit summary and a finite nonnegative slack
+at each corner its board declares. No installed vendor file entered the
+[ledger](#accepted-vendor-sources) that this installation had not already
+accepted, so every result rests on recorded bytes.
+
+Three DE10-Lite targets refuse, and none of the three is a limit of this host or
+of Linux. Each cause is a mismatch between repository sources that every
+installation reads the same way — a count, a constraint and a port list — and
+not a property of any installed toolchain, so no host builds them. `adc-early`
+fails the
+structural timing audit on the one no-clock endpoint its own ADC check requires
+([#903](https://github.com/amichai-bd/nand2mario/issues/903)), `controls-board`
+fails on the SDRAM and KEY1 constraints its top declares no ports for
+([#904](https://github.com/amichai-bd/nand2mario/issues/904)), and
+`v05-controls-board` fails because the ADC diagnostic classifier also counts the
+On-Chip Flash IP's accepted warnings
+([#908](https://github.com/amichai-bd/nand2mario/issues/908)). None of the three
+is in a regression subset, a catalogue unit or a CI workflow, which is why each
+break went unmeasured.
+
+Per-target wall ran from 43 to 683 seconds, 6,487 seconds across the 39 results,
+so each one is an upper bound under that contention rather than a quiet cost.
+The contention is enough to matter: `v05-controls-board` exceeded the 600-second
+default per-tool timeout beside another fit, and reached its own refusal in 488
+seconds alone at `--timeout 1800`, so the largest images want an explicit
+`--timeout` on a host this size. Only that run and `builder-smoke` ran alone.
+A second build of the same target reports `CACHED` in seconds.
 
 ### Hold path audit
 
