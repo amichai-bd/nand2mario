@@ -1993,6 +1993,14 @@ precedence and its release is recorded as `pin_match` false and carried as a
 notice in the simulation record, printed with the run. `doctor` records the same
 `pin` and `pin_match` and fails only on the pinned tree's own mismatch.
 
+One installation runs at a time per host. Everything that writes the cache holds
+`<cache>/verilator/install.lock`, which records the holding pid; a second
+`tools verilator` is refused by name with that pid and whether it is still alive,
+rather than waited on, because a 26-minute silent wait hides the reason. Reuse
+never takes the lock, so one worktree's discovery is never blocked by another's
+build, and the reuse check runs again under the lock in case a concurrent
+installation finished meanwhile.
+
 A per-checkout installation an earlier run left at
 `workdir/tools/verilator/v<version>` is still discovered, and `tools verilator`
 adopts it: the tree is verified against the pin, moved into the cache, its

@@ -6,6 +6,7 @@ needs no operator-installed simulator and no worktree pays the build twice. An
 operator-supplied Verilator on PATH still wins: the pinned tree is the fallback,
 never a silent override.
 """
+import contextlib
 import hashlib
 import json
 import os
@@ -16,7 +17,8 @@ import shutil
 import subprocess
 import time
 
-from .records import atomic_json, atomic_text, file_hash
+from .records import (atomic_json, atomic_text, file_hash, lock_owner, pid_alive,
+                      release_held_lock, take_lock)
 
 # Relative to the repository root: the per-checkout prefix earlier runs filled.
 # It is still discovered and adopted, but nothing new installs there, because a
@@ -29,6 +31,8 @@ CACHE_FOLDER = ("nand2mario", "tools")
 TOOL_FOLDER = "verilator"
 WINDOWS = os.name == "nt"
 INSTALLATION = "installation.json"
+# One installation at a time per host, because the cache is shared.
+INSTALL_LOCK = "install.lock"
 # The official git-build prerequisites this installation needs on PATH.
 BUILD_TOOLS = ("git", "autoconf", "make", "g++", "flex", "bison", "perl", "help2man")
 # Verilator's own root must come from the built tree, never from the caller.
@@ -53,7 +57,7 @@ def cache_root(root, environment=None):
     under the platform cache folder. A relative variable is resolved against the
     checkout so a caller cannot land the cache on an unknown path. The location
     is deliberately not inside a checkout: a worktree is removed after delivery
-    and would take a 27-minute build with it.
+    and would take a 26-minute build with it.
     """
     environment = os.environ if environment is None else environment
     override = (environment.get(CACHE_VARIABLE) or "").strip()
@@ -158,6 +162,31 @@ def adopt(root, item, base):
     if (legacy_source / ".git").is_dir() and not source.exists():
         shutil.move(str(legacy_source), str(source))
     return True
+
+
+@contextlib.contextmanager
+def cache_lock(base):
+    """Hold the cache's install lock so two worktrees never build into one prefix.
+
+    The cache is shared, so a second `tools verilator` would otherwise clone and
+    `make` into the same source tree as a running one. A held lock is refused by
+    name with the pid holding it rather than waited on: a 26-minute silent wait
+    hides the reason. Reuse never takes it, so a discovery is never blocked.
+    """
+    lock = Path(base).parent / INSTALL_LOCK
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = take_lock(lock)
+    except FileExistsError:
+        pid = lock_owner(lock)
+        state = "is still running" if pid and pid_alive(pid) else "is gone; remove the lock"
+        raise ValueError(f"another pinned Verilator installation holds {lock}: "
+                         f"pid {pid} {state}") from None
+    try:
+        os.write(fd, f"pid={os.getpid()}\n".encode())
+        yield
+    finally:
+        release_held_lock(fd, lock)
 
 
 def installed(root=None, *, version=None):
@@ -270,9 +299,11 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
         return run(argv, cwd, folder / (name + ".log"), step_timeout or timeout, env)
 
     tool = base / "bin/verilator"
-    if not (tool.is_file() and (base / INSTALLATION).is_file()):
-        record["adopted"] = adopt(root, item, base)
-    if tool.is_file() and (base / INSTALLATION).is_file():
+
+    def reuse():
+        """The installed prefix's record and banner, or None when it is absent."""
+        if not (tool.is_file() and (base / INSTALLATION).is_file()):
+            return None
         installation = verify_installation(base, item)
         banner = step("reused-version", [tool, "--version"], folder, 60).strip()
         if banner_version(banner) != version:
@@ -280,49 +311,64 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
         record.update(reused=True, version=banner, installation=installation)
         return record
 
-    tools = prerequisites(which)
-    record["build_tools"] = tools
-    if not (source / ".git").is_dir():
-        if offline:
-            raise ValueError(f"offline: the pinned Verilator source is not present at {source}")
-        source.parent.mkdir(parents=True, exist_ok=True)
-        # The pinned tag is annotated, so a shallow clone reports
-        # "warning: refs/tags/<tag> <sha> is not a commit!": the tag object is
-        # fetched, its target commit is not a ref. It is upstream git describing
-        # the tag object, not a defect. The `rev-parse HEAD` below is what the
-        # pin is checked against, so a wrong tree still fails here.
-        step("clone", [tools["git"], "clone", "--depth", "1", "--branch", tag, item["url"], source],
-             source.parent)
-    resolved = step("commit", [tools["git"], "-C", source, "rev-parse", "HEAD"], folder, 60).strip()
-    if resolved != commit:
-        raise ValueError(f"pinned Verilator commit mismatch: {resolved} != {commit}")
-    record["commit"] = resolved
-    jobs = jobs or os.cpu_count() or 1
-    record["jobs"] = jobs
-    started = time.monotonic()
-    step("autoconf", [tools["autoconf"]], source)
-    step("configure", [source / "configure", "--prefix", base], source)
-    step("make", [tools["make"], "-j", str(jobs)], source)
-    step("install", [tools["make"], "install"], source)
-    record["elapsed_seconds"] = round(time.monotonic() - started, 3)
-    banner = step("version", [tool, "--version"], folder, 60).strip()
-    if banner_version(banner) != version:
-        raise ValueError(f"installed Verilator is {banner!r}, expected {version}")
-    record["version"] = banner
-    provenance = {"kind": "unmodified upstream source build", "pin": item, "commit": resolved,
-                  "version": banner, "prefix": str(base),
-                  "tools": {name: file_hash(base / "bin" / name)
-                            for name in ("verilator", "verilator_bin")
-                            if (base / "bin" / name).is_file()},
-                  "build_tools": {name: _tool_identity(path) for name, path in tools.items()},
-                  "host": platform.platform(), "python": platform.python_version(),
-                  "jobs": jobs, "elapsed_seconds": record["elapsed_seconds"],
-                  "local_changes": "none",
-                  "redistribution": "No Verilator source or binary is committed; the build stays "
-                                    "in the shared host tool cache outside every checkout"}
-    atomic_json(base / INSTALLATION, provenance)
-    record["installation"] = provenance
-    return record
+    def adopt_or_build():
+        """Everything that writes the shared cache; the caller holds its lock."""
+        record["adopted"] = adopt(root, item, base)
+        # A concurrent installation may have finished between the unlocked reuse
+        # check and this lock, so the check runs once more before any build.
+        if reuse() is not None:
+            return record
+        tools = prerequisites(which)
+        record["build_tools"] = tools
+        if not (source / ".git").is_dir():
+            if offline:
+                raise ValueError(f"offline: the pinned Verilator source is not present at {source}")
+            source.parent.mkdir(parents=True, exist_ok=True)
+            # The pinned tag is annotated, so a shallow clone reports
+            # "warning: refs/tags/<tag> <sha> is not a commit!": the tag object is
+            # fetched, its target commit is not a ref. It is upstream git describing
+            # the tag object, not a defect. The `rev-parse HEAD` below is what the
+            # pin is checked against, so a wrong tree still fails here.
+            step("clone", [tools["git"], "clone", "--depth", "1", "--branch", tag, item["url"], source],
+                 source.parent)
+        resolved = step("commit", [tools["git"], "-C", source, "rev-parse", "HEAD"], folder, 60).strip()
+        if resolved != commit:
+            raise ValueError(f"pinned Verilator commit mismatch: {resolved} != {commit}")
+        record["commit"] = resolved
+        parallel = jobs or os.cpu_count() or 1
+        record["jobs"] = parallel
+        started = time.monotonic()
+        step("autoconf", [tools["autoconf"]], source)
+        step("configure", [source / "configure", "--prefix", base], source)
+        step("make", [tools["make"], "-j", str(parallel)], source)
+        step("install", [tools["make"], "install"], source)
+        record["elapsed_seconds"] = round(time.monotonic() - started, 3)
+        banner = step("version", [tool, "--version"], folder, 60).strip()
+        if banner_version(banner) != version:
+            raise ValueError(f"installed Verilator is {banner!r}, expected {version}")
+        record["version"] = banner
+        provenance = {"kind": "unmodified upstream source build", "pin": item, "commit": resolved,
+                      "version": banner, "prefix": str(base),
+                      "tools": {name: file_hash(base / "bin" / name)
+                                for name in ("verilator", "verilator_bin")
+                                if (base / "bin" / name).is_file()},
+                      "build_tools": {name: _tool_identity(path) for name, path in tools.items()},
+                      "host": platform.platform(), "python": platform.python_version(),
+                      "jobs": parallel, "elapsed_seconds": record["elapsed_seconds"],
+                      "local_changes": "none",
+                      "redistribution": "No Verilator source or binary is committed; the build "
+                                        "stays in the shared host tool cache outside every checkout"}
+        atomic_json(base / INSTALLATION, provenance)
+        record["installation"] = provenance
+        return record
+
+    # An installed prefix is reused without the lock, so one worktree's discovery
+    # never waits on another's 26-minute build. Everything that writes the shared
+    # cache runs inside it.
+    if reuse() is not None:
+        return record
+    with cache_lock(base):
+        return adopt_or_build()
 
 
 def _tool_identity(path):

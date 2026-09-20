@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import tempfile
 from types import SimpleNamespace
@@ -187,6 +188,29 @@ class PinnedInstallationTests(unittest.TestCase):
         # The retained clone follows it out, so `--offline` stays a host property.
         self.assertTrue((verilator_install.source_root(self.root, item["version"]) / ".git").is_dir())
         self.assertFalse(source.exists())
+
+    def test_a_second_installation_is_refused_while_one_holds_the_cache(self):
+        """The cache is shared, so two builds into one prefix must not overlap.
+
+        A held lock is refused by name with the pid holding it, never waited on.
+        An installed prefix is still reused while the lock is held, so one
+        worktree's discovery never blocks on another's build."""
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        lock = base.parent / verilator_install.INSTALL_LOCK
+        with verilator_install.cache_lock(base):
+            self.assertEqual(lock.read_text(encoding="utf-8"), f"pid={os.getpid()}\n")
+            with self.assertRaisesRegex(ValueError, f"holds {re.escape(str(lock))}: pid {os.getpid()} is still running"):
+                with verilator_install.cache_lock(base):
+                    pass
+            with self.assertRaisesRegex(ValueError, "is still running"):
+                self.install(item["commit"])
+            # Reuse needs no lock: an installed prefix is still served.
+            self.write_tree(base, item)
+            _, _, calls, record = self.install(item["commit"])
+            self.assertTrue(record["reused"])
+            self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
+        self.assertFalse(lock.exists())
 
     def test_a_tree_that_is_not_this_pin_is_reported_rather_than_used(self):
         """The shared path is never trust: the record and the bytes are both checked.
