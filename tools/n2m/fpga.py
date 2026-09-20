@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_vga_dac, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, fpga_rom_image, flash_library, process_tree, vendor_sources
+from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_de2_system, fpga_vga, fpga_vga_dac, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, fpga_rom_image, flash_library, process_tree, vendor_sources
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
@@ -180,6 +180,8 @@ def target_definition(root, name):
         raise ValueError("unknown FPGA target, fields, or device")
     if name == "v05-board":
         fpga_v05.validate_board(target)
+    if fpga_de2_system.system_target(target):
+        fpga_de2_system.validate(target)
     if "pll" in target:
         # The family's clocking implementation is selected before anything else
         # reads the definition; a family without one refuses the build here.
@@ -233,7 +235,8 @@ def target_definition(root, name):
 
 def identity_target(target):
     """Return whether the live target carries a configurable build identity."""
-    return target.get("top") in ("controls_proof", "sdram_proof", NANO_UART_TOP) or fpga_v05.board_target(target)
+    return (target.get("top") in ("controls_proof", "sdram_proof", NANO_UART_TOP, fpga_de2_system.TOP)
+            or fpga_v05.board_target(target))
 
 
 # The SDRAM bring-up image: physical UART/reset/LED pins plus the DRAM pins,
@@ -290,6 +293,16 @@ def prepare(root, folder, target, build_id=None):
             raise ValueError("physical v05 build requires a nonzero fingerprint identity")
         lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_V05_BUILD_ID=128'h" + build_id))
         lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
+    if fpga_de2_system.system_target(target):
+        fpga_de2_system.validate(target)
+        if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
+            raise ValueError("physical DE2-115 system build requires a nonzero fingerprint identity")
+        lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word(f"{fpga_de2_system.IDENTITY_MACRO}=128'h" + build_id))
+        # This image carries its own program and drives no bus of its own, so
+        # every package pin it does not place stays a tri-stated input and the
+        # board's SDRAM, SRAM, flash and Ethernet devices meet high impedance.
+        lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
+        lines.extend(fpga_de2_system.assignments(folder))
     if target["top"] == SDRAM_TOP:
         if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
             raise ValueError("physical SDRAM build requires a nonzero fingerprint identity")
@@ -337,6 +350,13 @@ def prepare(root, folder, target, build_id=None):
         # the drive strength and nothing else (OUTPUT_IO_COMPLETION).
         if fpga_vga_dac.dac_target(target) and port in fpga_vga_dac.DRIVE_PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+        # The system image drives the same DAC pins and, on this board, 56
+        # readout pins across two supply voltages. Each one takes the settings
+        # its own declared standard needs (OUTPUT_IO_COMPLETION), so the 2.5 V
+        # digits state a slew rate the 3.3-V LVTTL digits do not.
+        if fpga_de2_system.system_target(target) and port in fpga_de2_system.DRIVE_PORTS:
+            for setting in OUTPUT_IO_COMPLETION.get((target["family"], target["io_standards"][port]), ()):
+                lines.append(f'set_instance_assignment -name {setting} -to {tcl_word(port)}')
         if (target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         # A fitter that needs more on an output pin states it here, so the
@@ -373,6 +393,8 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word) + "project_close")
     if target.get("top") in ("v05_proof", "v05_controls_proof"):
         audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target), controls=fpga_v05.control_target(target)) + "project_close")
+    if fpga_de2_system.system_target(target):
+        audit = audit.replace("project_close", fpga_de2_system.audit(tcl_word) + "project_close")
     if target["top"] == SDRAM_TOP:
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word, chains=SDRAM_CHAINS) + "project_close")
     if target["top"] == NANO_UART_TOP:
@@ -391,6 +413,8 @@ def checked_constraints(target):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
     if fpga_vga_dac.dac_target(target):
         text += fpga_vga.constraints(tcl_word, outputs=fpga_vga_dac.DAC)
+    if fpga_de2_system.system_target(target):
+        text += fpga_de2_system.constraints(tcl_word)
     if target["top"] == "controls_proof":
         text += fpga_controls.constraints(tcl_word)
     if target["top"] == SDRAM_TOP:
@@ -487,6 +511,9 @@ def execute(argv, folder, log, timeout, record, build):
         explained = [*explained, *clocking.explained_diagnostics(text, folder, record["definition"]["pll"])]
     if log.name == "compile.log" and fpga_vga_dac.dac_target(record.get("definition", {})):
         explained = [*explained, *fpga_vga_dac.explained_diagnostics(text, folder, fpga_pll.MERGE_PAIR[0])]
+    if log.name == "compile.log" and fpga_de2_system.system_target(record.get("definition", {})):
+        explained = [*explained, *fpga_vga_dac.explained_diagnostics(text, folder, fpga_pll.MERGE_PAIR[0],
+                                                                    top=fpga_de2_system.TOP)]
     if log.name == "compile.log" and record.get("target") == "v05-board":
         explained = [*explained, *generated_design_diagnostics(text, folder)]
     if log.name == "compile.log" and sdram_target(record.get("definition", {})):
@@ -689,6 +716,12 @@ def timing_evidence(folder, target, *, build_id=None):
     if target.get("top") == "controls_proof":
         evidence["controls"] = fpga_controls.verify(folder, **system_profile)
         evidence["controls"]["build_id"] = fpga_controls.verify_identity(folder, build_id)
+    if fpga_de2_system.system_target(target):
+        evidence["board"] = fpga_de2_system.verify(folder, **system_profile)
+        evidence["board_build_id"] = fpga_controls.verify_identity(
+            folder, build_id, macro=fpga_de2_system.IDENTITY_MACRO,
+            instances=fpga_de2_system.IDENTITY_INSTANCES)
+        evidence["board"]["rom_crc32"] = fpga_de2_system.verify_rom_crc(folder)
     if fpga_v05.board_target(target):
         evidence["intel_memory"] = fpga_v05.verify_memory(folder, system_net=fpga_pll.SYSTEM_NET, top=target["top"])
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
@@ -757,6 +790,8 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             required.append(folder / "output/intel_memory_inputs.rpt")
         if target.get("top") in ("v05_proof", "v05_controls_proof"):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=True)]
+        if fpga_de2_system.system_target(target):
+            required += [folder / "output" / name for name in fpga_de2_system.required_reports()]
         if fpga_v05.board_target(target):
             required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.chains(target))]
         if target.get("top") == NANO_UART_TOP:

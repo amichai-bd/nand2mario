@@ -181,7 +181,18 @@ parameter-compatible and empty, beside the other five.
 ### Boot copier
 
 [`n2m_boot_copier`](../../../../src/rtl/storage/n2m_boot_copier.sv) owns the
-flash reader instance (`u_reader`) and one pending SDRAM write. Clock 0 is
+flash reader instance (`u_reader`) and one pending SDRAM write. `FLASH_LIBRARY`
+places that instance and defaults to 1, so every target that reads a library is
+unchanged, down to the fitted instance path every check here pins: the conditional
+holds one unnamed item, which Quartus flattens, where a named generate block would
+have moved the reader to `g_reader.u_reader` and broken each of them. A composition selecting 0 omits the reader and the
+[On-Chip Flash IP](#on-chip-flash-ip-boundary) beneath it, and the copier's line
+interface reads as never ready with no data: it reaches `WAIT_SDRAM` and stays
+there, because a board with no library also has no storage to copy into. That is a
+compile-time choice rather than a runtime one because the IP names the MAX 10 part
+it belongs to, so a device without that internal flash cannot elaborate the reader
+at all; [the composition](../system/MAS_system.md#host-free-composition) owns
+which boards select it. Clock 0 is
 the first clock after `reset_sys` release, as in the
 [SDRAM initialization](MAS_sdram.md#initialization). From release the copier
 performs, in order:

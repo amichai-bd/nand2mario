@@ -335,6 +335,69 @@ exactly one command at a time. It is deliberately the opposite of SNAPSHOT's own
 rule, which forbids a fresh capture during readback because a capture would
 overwrite the bank being read.
 
+## Host-free start
+
+`HOST_FREE_RUN` states that this composition has no host and no boot copier that
+can reach `BOOT`, so two things a running core needs never happen and this owner
+issues both.
+
+The first is the power-up core reset. The CPU's `initialized` is set only on
+`core_reset`, and `core_reset` is produced only by a host `RESET` or the loader
+engine's request, so without one the CPU never fetches however the pause bit
+stands. Set, this owner issues exactly one reset from `IDLE` through the same
+`RESET_WAIT`/`RESET_ASSERT`/`INIT_WAIT` states the engine uses; host pause is still
+set at that point, so `RESET_WAIT` completes at once exactly as it does for the
+engine. A one-shot bit makes it happen once, so a later core reset is the host's or
+the engine's as usual.
+
+The second is host pause itself, which is [set at reset](#core-and-storage-integration)
+and cleared only by an accepted `RUN`, `STEP` or `RUN_DOTS` or by the copier's
+`boot_run`. Set, this owner clears it once the core reports itself initialized —
+the same condition and the same point `boot_run` clears it under, so nothing is
+released during initialization.
+
+Default `1'b0` leaves every existing composition exactly as it was: no extra reset,
+and host pause released only the two ways it always was.
+
+**The clear is unconditional while the parameter is set, and that is why the
+parameter means "no host" rather than "no host yet".** It is the last statement of
+this owner's combinational block, after the command and run-state case, so while
+`HOST_FREE_RUN` is set and the core is initialized it erases every pause the case
+writes on that cycle: the `HALT` and `RESET` commands, and all four pause writes of
+`STEP_RUN` and `DOTS_RUN` — the budget-exhausted `stop_step` and `stop_dots` paths
+and both `engine_stop` paths. With a host attached a `HALT` would therefore never
+pause at any time, and a `STEP` or `RUN_DOTS` budget could never stop the core. A
+program's own `STOP` still works, because that withholds ticks through
+`cpu_stopped` and not through this bit. A composition wanting both a carried image
+and a host link — a board whose host arrives later, which this bench already has in
+the DE10-Nano's USB gadget — needs a narrower clear, and this owner is where it
+would go.
+
+The [composition](../system/MAS_system.md#host-free-composition) owns which boards
+set it, and the [host-free execution check](../../dv/integration/SPEC.md) is what proves
+a board with it set reaches its first fetch.
+
+## Power-up profile and input source
+
+`CARRIED_PROFILE` states the profile of an image the fitted memory already holds.
+It defaults to `8'h0`, the host-loaded endpoint: `PROFILE` and `IMAGE_VALID` reset
+to no image, and the [input owner](../input/MAS_input.md#reset-and-power) resets
+to the host's own mask. A nonzero value resets `PROFILE` to it, resets
+`IMAGE_VALID` set, and selects the physical input source, because on a board with
+no host link nothing would ever establish any of the three and the DMA owner's
+`init_done` would never assert.
+
+Nothing else changes. Both registers still move only on an accepted command or an
+image the loader engine publishes, both still clear on a `LOAD_BEGIN` and on the
+engine's invalidate, and the validation rules that read `PROFILE` are unchanged.
+This is a reset value, not a bypass: an image carrying a profile it does not hold
+is a build error, and [the builder](../../../tools/n2m/SPEC.md#carried-rom-image)
+is what binds the two together.
+
+This is not the [simulation preload](#simulation-preload) below. That adopts bytes
+inside a real host session and is `` `ifdef SYNTHESIS ``-disabled; this is a reset
+value that reaches synthesis and never adopts anything.
+
 ## Simulation preload
 
 The explicit [preload mode](../../dv/preload/SPEC.md) initializes the same Intel

@@ -3,7 +3,38 @@
 `include "src/rtl/common/macros.svh"
 
 // Host transitions use the existing timebase. They never manufacture dots.
-module n2m_uart_core_control (
+// HOST_FREE_RUN states that this composition has no host and no boot copier
+// that can reach BOOT. Two things then never happen that a running core needs,
+// and both are this owner's to issue:
+//
+//   the power-up core reset, without which the CPU is never initialized at all,
+//   because `initialized` is set only on `core_reset` and only a host RESET or
+//   the loader engine's request produces one; and
+//
+//   the clear of host pause, which is set at reset and cleared only by an
+//   accepted RUN/STEP/RUN_DOTS or the copier's `boot_run`.
+//
+// Set, this owner issues exactly one reset from IDLE through the same
+// RESET_WAIT/RESET_ASSERT/INIT_WAIT states the engine uses — host pause is still
+// set, so RESET_WAIT completes at once, as it does for the engine — and then
+// clears host pause once the core reports itself initialized, which is the point
+// and the condition `boot_run` clears it under. `host_free_done` makes the reset
+// a one-shot, so a later core reset is the host's or the engine's as usual.
+//
+// It is only meaningful with no host, and the reason is broader than a corner
+// case. The clear is the final statement of this always_comb, after `endcase`, so
+// while HOST_FREE_RUN is set and the core is initialized it erases every
+// `host_pause_next = 1` the case writes on that cycle: the HALT and RESET
+// commands, and all four pause writes of STEP_RUN and DOTS_RUN — both the
+// budget-exhausted `stop_step`/`stop_dots` paths and both `engine_stop` paths. So
+// with a host attached a HALT would never pause at any time, not only during
+// initialization, and a STEP or RUN_DOTS budget could never stop the core. A
+// program's own STOP is unaffected: that withholds ticks through `cpu_stopped`
+// rather than through this bit. A composition wanting both a carried image and a
+// host link needs a narrower clear than this one, and this is where it would go.
+module n2m_uart_core_control #(
+    parameter bit HOST_FREE_RUN = 1'b0
+) (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic start,
@@ -44,6 +75,7 @@ module n2m_uart_core_control (
     } state_t;
     state_t state, state_next;
     logic host_pause, host_pause_next;
+    logic host_free_done, host_free_done_next, host_free_start;
     logic [31:0] remaining, remaining_next;
     logic [7:0] status_next;
     n2m_input_pkg::input_write_t pending_input, pending_input_next;
@@ -68,6 +100,8 @@ module n2m_uart_core_control (
     assign done = state == COMPLETE && !engine_owned;
     // The host command wins an IDLE edge; the engine request waits one edge.
     assign engine_reset_accept = state == IDLE && !start && engine_reset_request && !reset_sys;
+    assign host_free_start = HOST_FREE_RUN && !host_free_done && state == IDLE
+        && !start && !engine_reset_accept && !reset_sys;
     assign engine_reset_done = state == COMPLETE && engine_owned;
     assign core_reset = state == RESET_ASSERT && !reset_sys;
     assign stop_step = state == STEP_RUN && gb_tick && (instruction_complete || remaining == 1);
@@ -92,10 +126,15 @@ module n2m_uart_core_control (
         status_next = status;
         completed_dot_next = completed_dot;
         engine_owned_next = engine_owned;
+        host_free_done_next = host_free_done;
         case (state)
             IDLE: if (engine_reset_accept) begin
                 // The engine holds engine_pause, so RESET_WAIT completes at once.
                 engine_owned_next = 1;
+                state_next = RESET_WAIT;
+            end else if (host_free_start) begin
+                // Host pause is still set, so RESET_WAIT completes at once too.
+                host_free_done_next = 1;
                 state_next = RESET_WAIT;
             end else if (start) begin
                 status_next = n2m_interfaces_pkg::STATUS_OK;
@@ -191,10 +230,11 @@ module n2m_uart_core_control (
             COMPLETE: begin engine_owned_next = 0; state_next = IDLE; end
             default: state_next = IDLE;
         endcase
-        if (boot_run) host_pause_next = 0;
+        if (boot_run || (HOST_FREE_RUN && core_initialized)) host_pause_next = 0;
     end
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, IDLE)
     `DFF_ARST_VAL(engine_owned, engine_owned_next, clk_sys, reset_sys, 1'b0)
+    `DFF_ARST_VAL(host_free_done, host_free_done_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(host_pause, host_pause_next, clk_sys, reset_sys, 1'b1)
     `DFF_ARST_VAL(remaining, remaining_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(executed, executed_next, clk_sys, reset_sys, '0)

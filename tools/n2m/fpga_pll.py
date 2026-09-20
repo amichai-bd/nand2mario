@@ -214,12 +214,17 @@ def pin_clocks(target):
     A pin clock is declared in the target's own SDC as its source clock inverted
     at that port, so the clock inventory below both expects the row and binds it
     to the port. Two exist: the SDRAM contract's inverted system clock, and the
-    DE2-115 video DAC's inverted pixel clock.
+    DE2-115 video DAC's inverted pixel clock. Each is recognized by the port it
+    leaves on rather than by a list of tops, because more than one image drives
+    the same pin: the DE2-115's standalone DAC fixture and its system image both
+    carry `vga_clk`, and a top that places the port and does not declare the clock
+    fails this inventory rather than passing with a clock missing.
     """
     clocks = {}
-    if target.get("top") == "sdram_proof" or "DRAM_CLK" in target.get("pins", {}):
+    pins = target.get("pins", {})
+    if target.get("top") == "sdram_proof" or "DRAM_CLK" in pins:
         clocks[SDRAM_CLOCK] = ("DRAM_CLK", SYSTEM_CLOCK, 2)
-    if target.get("top") == fpga_vga_dac.TOP:
+    if target.get("top") == fpga_vga_dac.TOP or fpga_vga_dac.CLOCK_PORT in pins:
         clocks[fpga_vga_dac.CLOCK_NAME] = (fpga_vga_dac.CLOCK_PORT, PIXEL_CLOCK, 125 / 63)
     return clocks
 

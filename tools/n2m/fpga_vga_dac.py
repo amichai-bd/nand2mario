@@ -56,8 +56,14 @@ STUCK_LEVEL = {1: "VCC", 0: "GND"}
 # The registered source that declares this top's ports, as the attempt's own
 # project file names it. Reading it from the project file keeps the check exact
 # without this module knowing the checkout's path.
-TOP_SOURCE = re.compile(r'(?m)^set_global_assignment -name SYSTEMVERILOG_FILE "(\S+/'
-                        + TOP + r'\.sv)"$')
+def top_source(top=TOP):
+    """The project file's own name for the registered source declaring this top.
+
+    Two tops write the same two documented constants to the same two pins, so the
+    pattern follows the top being built rather than naming one.
+    """
+    return re.compile(r'(?m)^set_global_assignment -name SYSTEMVERILOG_FILE "(\S+/'
+                      + top + r'\.sv)"$')
 STUCK_REASON = (
     "Both ADV7123 control pins are documented constants: BLANK stays at Logic 1 because a Logic 0 "
     "makes the DAC ignore the pixel inputs, and SYNC is tied to Logic 0, the datasheet's value when "
@@ -86,11 +92,16 @@ def dac_target(target):
     return target.get("top") == TOP
 
 
-def stuck_diagnostics(text, folder):
-    """Classify the stuck-pin heading and one line per constant DAC control pin."""
+def stuck_diagnostics(text, folder, top=TOP):
+    """Classify the stuck-pin heading and one line per constant DAC control pin.
+
+    `top` names the registered source the constants are written in, because the
+    same two documented constants reach the same two pins from the system image's
+    own top as well as from the standalone fixture's.
+    """
     lines = [line.strip() for line in text.splitlines()
              if line.strip().startswith(("Warning (13024):", "Warning (13410):"))]
-    source = TOP_SOURCE.findall((folder / "design.qsf").read_text(encoding="utf-8"))
+    source = top_source(top).findall((folder / "design.qsf").read_text(encoding="utf-8"))
     expected = {port: STUCK_LEVEL[value] for port, value in CONTROLS.items()}
     if len(lines) != 1 + len(expected) or lines[0] != STUCK or len(source) != 1:
         raise ValueError("DAC control pin constant identity/count differs")
@@ -120,9 +131,9 @@ def clock_routing_diagnostics(text, folder, pll):
     return [{"code": "15064", "text": lines[0], "reason": CLOCK_ROUTING_REASON}]
 
 
-def explained_diagnostics(text, folder, pll):
+def explained_diagnostics(text, folder, pll, top=TOP):
     """Every diagnostic the DAC adds, in the order the fitter reports them."""
-    return [*stuck_diagnostics(text, folder), *clock_routing_diagnostics(text, folder, pll)]
+    return [*stuck_diagnostics(text, folder, top), *clock_routing_diagnostics(text, folder, pll)]
 
 
 def verify(folder, *, system_clock, system_net):
