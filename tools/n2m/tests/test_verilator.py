@@ -4,7 +4,11 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
+import subprocess
+import sys
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -12,7 +16,7 @@ from unittest.mock import patch
 import test_builder
 from n2m import doctor, verilator, verilator_install
 from n2m.cli import TOOLS_HOST, VERILATOR_HOST, main
-from n2m.records import read_json
+from n2m.records import atomic_json, file_hash, read_json
 from n2m.simulation import load_target
 from n2m.simulator import Simulator, ToolError, verilator_executable
 
@@ -89,18 +93,48 @@ class DiscoveryTests(unittest.TestCase):
 
 class PinnedInstallationTests(unittest.TestCase):
     """The repository's own Verilator: where it lands, how it is found, how it is built."""
-    setUp = test_builder.BuilderTests.setUp
+
+    def setUp(self):
+        test_builder.BuilderTests.setUp(self)
+        # The shared cache is outside every checkout in use; the fixture points the
+        # variable at its own directory so no test reads or writes the real one.
+        cache = tempfile.TemporaryDirectory(prefix="host cache ",
+                                            dir=Path(self.root).parent)
+        self.addCleanup(cache.cleanup)
+        self.cache = Path(cache.name)
+        patcher = patch.dict(os.environ, {verilator_install.CACHE_VARIABLE: str(self.cache)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def write_tree(self, base, item, *, record=True):
+        """An installation double: the tree a real build installs and its provenance.
+
+        It carries a `share/verilator/include` header and an uncovered debug
+        binary, because those are what the record's scope turns on."""
+        base = Path(base)
+        (base / "bin").mkdir(parents=True, exist_ok=True)
+        (base / "share/verilator/include").mkdir(parents=True, exist_ok=True)
+        (base / "share/verilator/bin").mkdir(parents=True, exist_ok=True)
+        tool = base / "bin/verilator"
+        tool.write_text("#!/bin/sh\n", encoding="utf-8")
+        tool.chmod(0o755)
+        (base / "share/verilator/include/verilated.cpp").write_text("// runtime\n", encoding="utf-8")
+        (base / "bin/verilator_bin_dbg").write_text("debug build\n", encoding="utf-8")
+        # A real install puts a redirector of the same name here. It is covered; only
+        # the two paths in UNCOVERED are not.
+        (base / "share/verilator/bin/verilator_bin_dbg").write_text("redirector\n", encoding="utf-8")
+        if record:
+            atomic_json(base / verilator_install.INSTALLATION,
+                        {"pin": item, "commit": item["commit"], "version": VERSION,
+                         "prefix": str(base), "tools": {"verilator": file_hash(tool)},
+                         "tree": verilator_install.tree_digests(base),
+                         "uncovered": list(verilator_install.UNCOVERED)})
+        return tool
 
     def pinned_tree(self, *, record=True):
         item = verilator_install.pin(self.root)
         base = verilator_install.prefix(self.root, item["version"])
-        (base / "bin").mkdir(parents=True, exist_ok=True)
-        tool = base / "bin/verilator"
-        tool.write_text("#!/bin/sh\n", encoding="utf-8")
-        tool.chmod(0o755)
-        if record:
-            (base / verilator_install.INSTALLATION).write_text("{}", encoding="utf-8")
-        return item, base, tool
+        return item, base, self.write_tree(base, item, record=record)
 
     @staticmethod
     def present(candidate):
@@ -112,9 +146,12 @@ class PinnedInstallationTests(unittest.TestCase):
         item, base, tool = self.pinned_tree(record=False)
         # A tree without its provenance record is not an installation.
         self.assertIsNone(verilator_install.installed(self.root))
-        (base / verilator_install.INSTALLATION).write_text("{}", encoding="utf-8")
+        self.write_tree(base, item)
         self.assertEqual(verilator_install.installed(self.root), base / "bin")
-        self.assertEqual(base, self.root / verilator_install.RELATIVE_PREFIX / ("v" + item["version"]))
+        # It lands in the shared host cache, outside the checkout, so removing the
+        # worktree after delivery cannot take the build with it.
+        self.assertEqual(base, self.cache / verilator_install.TOOL_FOLDER / ("v" + item["version"]))
+        self.assertNotIn(self.root.resolve(), base.resolve().parents)
         self.assertEqual(verilator_executable(None, self.root, which=self.present), (str(tool), "pinned"))
         # An operator's PATH tool keeps precedence; the pin never overrides it.
         operator = self.root / "operator/verilator"
@@ -125,6 +162,275 @@ class PinnedInstallationTests(unittest.TestCase):
                          (str(tool), "explicit"))
         with self.assertRaisesRegex(ToolError, "must name an existing tool directory"):
             verilator_executable(str(base / "absent"), self.root)
+
+    def test_cache_root_prefers_the_variable_then_the_per_user_default(self):
+        root = self.root
+        self.assertEqual(verilator_install.cache_root(root, {verilator_install.CACHE_VARIABLE: str(self.cache)}),
+                         self.cache)
+        # A relative override lands inside the checkout rather than on an unknown path.
+        self.assertEqual(verilator_install.cache_root(root, {verilator_install.CACHE_VARIABLE: "host tools"}),
+                         Path(root).resolve() / "host tools")
+        default = verilator_install.cache_root(root, {"HOME": "/home/agent", "XDG_CACHE_HOME": ""})
+        self.assertEqual(default, Path("/home/agent/.cache").joinpath(*verilator_install.CACHE_FOLDER))
+        self.assertEqual(verilator_install.cache_root(root, {"XDG_CACHE_HOME": "/xdg"}),
+                         Path("/xdg").joinpath(*verilator_install.CACHE_FOLDER))
+        # Nothing about the default is inside a checkout.
+        self.assertNotIn(Path(root).resolve(), default.parents)
+
+    def test_a_per_checkout_installation_is_still_found_and_then_adopted(self):
+        """An earlier worktree build keeps its value: discovered, then published.
+
+        The installed wrapper resolves its own root from its directory, so the
+        prefix relocates; adoption moves the verified tree into the shared cache
+        and restates the prefix it now occupies rather than rebuilding it."""
+        item = verilator_install.pin(self.root)
+        legacy = verilator_install.legacy_prefix(self.root, item["version"])
+        tool = self.write_tree(legacy, item)
+        self.assertEqual(verilator_install.installed(self.root), legacy / "bin")
+        self.assertEqual(verilator_executable(None, self.root, which=self.present), (str(tool), "pinned"))
+        source = verilator_install.legacy_source_root(self.root, item["version"])
+        (source / ".git").mkdir(parents=True)
+        item, base, calls, record = self.install(item["commit"])
+        self.assertEqual(record["adopted"], {"prefix": True, "source": True})
+        self.assertTrue(record["reused"])
+        # Adopted, not rebuilt: the only step run is the reuse banner check.
+        self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
+        self.assertFalse(legacy.exists())
+        self.assertEqual(verilator_install.installed(self.root), base / "bin")
+        provenance = read_json(base / verilator_install.INSTALLATION)
+        self.assertEqual((provenance["prefix"], provenance["adopted_from"]), (str(base), str(legacy)))
+        # The retained clone follows it out, so `--offline` stays a host property.
+        self.assertTrue((verilator_install.source_root(self.root, item["version"]) / ".git").is_dir())
+        self.assertFalse(source.exists())
+
+    def test_an_orphaned_clone_is_adopted_although_the_cache_already_has_the_build(self):
+        """The ordinary case, and the one a prefix-gated adoption silently skipped.
+
+        The cache usually already holds the installation while the clone is still
+        in whichever worktree fetched it. Tying the clone's rescue to the prefix's
+        made the documented pre-removal step a no-op and left 1.8 GB to die with
+        that worktree, taking `--offline` on this host with it."""
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        self.write_tree(base, item)
+        legacy_source = verilator_install.legacy_source_root(self.root, item["version"])
+        (legacy_source / ".git").mkdir(parents=True)
+        (legacy_source / "configure").write_text("#!/bin/sh\n", encoding="utf-8")
+        self.assertTrue(verilator_install.adoptable_source(self.root, item))
+        self.assertFalse(verilator_install.adoptable_prefix(self.root, item, base))
+        _, _, calls, record = self.install(item["commit"])
+        self.assertEqual(record["adopted"], {"prefix": False, "source": True})
+        self.assertTrue(record["reused"])
+        # Still no build: the reuse banner check is the only step.
+        self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
+        source = verilator_install.source_root(self.root, item["version"])
+        self.assertTrue((source / ".git").is_dir())
+        self.assertTrue((source / "configure").is_file())
+        self.assertFalse(legacy_source.exists())
+        # Nothing left to adopt, and a second run moves nothing.
+        self.assertFalse(verilator_install.adoptable_source(self.root, item))
+        _, _, _, record = self.install(item["commit"])
+        self.assertEqual(record["adopted"], {"prefix": False, "source": False})
+
+    def test_a_second_installation_is_refused_while_one_holds_the_cache(self):
+        """The cache is shared, so two builds into one prefix must not overlap.
+
+        A held lock is refused by name with the pid holding it, never waited on.
+        An installed prefix is still reused while the lock is held, so one
+        worktree's discovery never blocks on another's build."""
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        lock = base.parent / verilator_install.INSTALL_LOCK
+        with verilator_install.cache_lock(base):
+            self.assertEqual(lock.read_text(encoding="utf-8"), f"pid={os.getpid()}\n")
+            for call in (lambda: verilator_install.cache_lock(base).__enter__(),
+                         lambda: self.install(item["commit"])):
+                with self.assertRaisesRegex(ValueError, f"by live pid {os.getpid()}; confirm its "
+                                            f"writer stopped before removing {re.escape(str(lock))}"):
+                    call()
+            # Reuse needs no lock: an installed prefix is still served.
+            self.write_tree(base, item)
+            _, _, calls, record = self.install(item["commit"])
+            self.assertTrue(record["reused"])
+            self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
+        self.assertFalse(lock.exists())
+
+    def test_an_unreadable_lock_owner_counts_as_live_and_a_dead_one_is_reclaimed(self):
+        """The repository's tag-lock rule, not advice to delete a running build.
+
+        A lock whose recorded writer is dead is reclaimed once and out loud. A
+        lock whose owner cannot be read counts as live, because the empty window
+        between the exclusive create and the pid write is reachable, and telling a
+        reader to delete that file would destroy a running 26-minute build."""
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        lock = base.parent / verilator_install.INSTALL_LOCK
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        for unreadable in (b"", b"not a pid\n"):
+            lock.write_bytes(unreadable)
+            self.assertIsNone(verilator_install.lock_owner(lock))
+            with self.assertRaisesRegex(ValueError, "is being installed into; confirm its writer "
+                                        f"stopped before removing {re.escape(str(lock))}"):
+                with verilator_install.cache_lock(base):
+                    pass
+            # Never removed on an owner that could not be read.
+            self.assertTrue(lock.exists())
+        # A dead writer's lock is reclaimed once, out loud, and the caller proceeds.
+        lock.write_bytes(b"pid=%d\n" % self.dead_pid())
+        with contextlib.redirect_stderr(io.StringIO()) as noticed:
+            with verilator_install.cache_lock(base):
+                self.assertEqual(lock.read_text(encoding="utf-8"), f"pid={os.getpid()}\n")
+        self.assertIn("reclaimed stale lock", noticed.getvalue())
+        self.assertFalse(lock.exists())
+
+    @staticmethod
+    def dead_pid():
+        """A pid no process holds: a child this test has waited for."""
+        child = subprocess.Popen([sys.executable, "-c", ""])
+        child.wait()
+        return child.pid
+
+    def test_a_tree_that_is_not_this_pin_is_reported_rather_than_used(self):
+        """The shared path is never trust: the record and the bytes are both checked.
+
+        A cache another pin filled, a hand-made directory and a damaged tree all
+        arrive as a prefix that claims to hold the pin, so each is refused by name
+        instead of becoming a silent fallback for `regress pre-merge`."""
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        self.write_tree(base, dict(item, commit="0" * 40))
+        for call in (lambda: verilator_install.installed(self.root),
+                     lambda: verilator_executable(None, self.root, which=self.present)):
+            with self.assertRaisesRegex((ValueError, ToolError), "built from a different pin"):
+                call()
+        self.write_tree(base, dict(item, tag="v9.999"))
+        with self.assertRaisesRegex(ValueError, "tag 'v9.999' is not"):
+            verilator_install.installed(self.root)
+        # The recorded hash is what the installed bytes are held to.
+        self.write_tree(base, item)
+        (base / "bin/verilator").write_text("#!/bin/sh\nexec /usr/bin/verilator\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "does not match its provenance record"):
+            verilator_install.installed(self.root)
+        # The scope is the whole installation, not just the executables: a header
+        # compiled into every simulation binary changes what runs.
+        self.write_tree(base, item)
+        runtime = base / "share/verilator/include/verilated.cpp"
+        runtime.write_text("// runtime\n// appended\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,
+                                    r"share/verilator/include/verilated\.cpp does not match"):
+            verilator_install.installed(self.root)
+        # A covered file the record never mentioned is refused, not ignored.
+        self.write_tree(base, item)
+        (base / "share/verilator/include/extra.h").write_text("// smuggled\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "unrecorded file share/verilator/include/extra.h"):
+            verilator_install.installed(self.root)
+        (base / "share/verilator/include/extra.h").unlink()
+        # A missing covered file is named by its own path.
+        runtime.unlink()
+        with self.assertRaisesRegex(ValueError, r"missing share/verilator/include/verilated\.cpp"):
+            verilator_install.installed(self.root)
+        # The debug binaries are the declared exception: no run reaches them, so
+        # changing one does not refuse the installation.
+        self.write_tree(base, item)
+        (base / "bin/verilator_bin_dbg").write_text("another debug build\n", encoding="utf-8")
+        self.assertEqual(verilator_install.installed(self.root), base / "bin")
+        # The exemption is the path, not the name. A basename match would exempt the
+        # redirector of the same name, and would let a planted file skip the check by
+        # choosing that name -- defeating the check with the name it is keyed on.
+        self.assertEqual(verilator_install.UNCOVERED,
+                         ("bin/verilator_bin_dbg", "bin/verilator_coverage_bin_dbg"))
+        covered = {path.relative_to(base).as_posix()
+                   for path in verilator_install.covered_files(base)}
+        self.assertIn("share/verilator/bin/verilator_bin_dbg", covered)
+        self.assertNotIn("bin/verilator_bin_dbg", covered)
+        self.write_tree(base, item)
+        (base / "share/verilator/bin/verilator_bin_dbg").write_text("swapped\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,
+                                    r"share/verilator/bin/verilator_bin_dbg does not match"):
+            verilator_install.installed(self.root)
+        self.write_tree(base, item)
+        (base / "share/verilator/include/verilator_coverage_bin_dbg").write_text("x\n", encoding="utf-8")
+        with self.assertRaisesRegex(
+                ValueError, "unrecorded file share/verilator/include/verilator_coverage_bin_dbg"):
+            verilator_install.installed(self.root)
+        (base / "share/verilator/include/verilator_coverage_bin_dbg").unlink()
+        # The record excludes itself by path too. Keyed on the basename, any file
+        # called installation.json deeper in the tree skipped the check by its name,
+        # one expression away from the exemption above -- the same defect class, and
+        # two adjacent exclusions keyed differently is how it arose.
+        planted = base / "share/verilator/include" / verilator_install.INSTALLATION
+        planted.write_text('{"smuggled": true}', encoding="utf-8")
+        with self.assertRaisesRegex(
+                ValueError, f"unrecorded file share/verilator/include/{verilator_install.INSTALLATION}"):
+            verilator_install.installed(self.root)
+        planted.unlink()
+        # The real record, at the prefix root, is still excluded and still read.
+        self.assertNotIn(verilator_install.INSTALLATION,
+                         {path.name for path in verilator_install.covered_files(base)})
+        self.assertEqual(verilator_install.installed(self.root), base / "bin")
+        # A record that covers no tree proves nothing about what would run.
+        self.write_tree(base, item)
+        record = read_json(base / verilator_install.INSTALLATION)
+        atomic_json(base / verilator_install.INSTALLATION,
+                    {k: v for k, v in record.items() if k != "tree"})
+        with self.assertRaisesRegex(ValueError, f"covers no installed tree.*remove {re.escape(str(base))} "
+                                    "and reinstall"):
+            verilator_install.installed(self.root)
+        # `tools verilator` reuses an installed prefix, so it cannot replace one this
+        # check refuses; the remedy has to name the removal or it does not work.
+        record = read_json(base / verilator_install.INSTALLATION)
+        atomic_json(base / verilator_install.INSTALLATION,
+                    {k: v for k, v in record.items() if k != "tree"})
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["tools", "verilator", "--tag", "stale-schema", "--json"], self.root), 1)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn(f"remove {base} and reinstall", report["error"])
+        # `tools` is a second view of bytes the tree already covers, so a record that
+        # disagrees with itself is refused without hashing anything twice.
+        self.write_tree(base, item)
+        record = read_json(base / verilator_install.INSTALLATION)
+        record["tools"]["verilator"] = "0" * 64
+        atomic_json(base / verilator_install.INSTALLATION, record)
+        with self.assertRaisesRegex(ValueError, "disagrees with itself about bin/verilator"):
+            verilator_install.installed(self.root)
+        self.write_tree(base, item)
+        # A record with no installed tool hash proves nothing and is refused.
+        atomic_json(base / verilator_install.INSTALLATION, {"pin": item, "tools": {}})
+        with self.assertRaisesRegex(ValueError, "names no installed tool hash"):
+            verilator_install.installed(self.root)
+        (base / verilator_install.INSTALLATION).write_text("not json", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "unreadable Verilator provenance record"):
+            verilator_install.installed(self.root)
+
+    def test_a_running_verilator_that_is_not_the_pin_is_reported(self):
+        """The banner is the last word, so the pin is held against what will run.
+
+        The pinned tree claims to be the pin, so a mismatch there refuses the run.
+        An operator's own tool keeps its precedence and is carried as a notice into
+        the simulation record instead of passing unremarked."""
+        self.assertEqual(verilator_install.pinned_release(self.root), "5.052")
+        stale = "Verilator 5.020 2025-01-01 rev v5.020"
+
+        def banner(argv, **_):
+            return SimpleNamespace(returncode=0, stdout=stale if argv[0].endswith("verilator")
+                                   else "g++ (GCC) 13.3.0\n")
+        item, base, tool = self.pinned_tree()
+        with patch("n2m.simulator.shutil.which", side_effect=self.operator_which), \
+                patch.object(Simulator, "run", side_effect=banner):
+            with self.assertRaisesRegex(ToolError, "Verilator 5.020 from pinned discovery is not the pinned 5.052"):
+                Simulator("verilator", root=self.root)
+            simulator = Simulator("verilator", verilator_bin=str(base / "bin"), root=self.root)
+        identity = simulator.info["tools"]["verilator"]
+        self.assertEqual((identity["pin"], identity["pin_match"]), ("5.052", False))
+        self.assertEqual(len(simulator.notices), 1)
+        self.assertIn("is not the pinned 5.052", simulator.notices[0])
+
+    def operator_which(self, candidate):
+        """PATH holds no verilator; g++ is present, as on the recorded host."""
+        if candidate == "verilator":
+            return None
+        return candidate if Path(candidate).is_file() else "/usr/bin/g++" if candidate == "g++" else None
 
     def fake_build(self, commit, *, banner=VERSION):
         """A build double: it records the steps and installs the expected tool."""
@@ -250,9 +556,7 @@ class PinnedInstallationTests(unittest.TestCase):
         base = verilator_install.prefix(self.root, item["version"])
 
         def install(root, folder, pin, **kwargs):
-            (base / "bin").mkdir(parents=True)
-            (base / "bin/verilator").write_text("", encoding="utf-8")
-            (base / verilator_install.INSTALLATION).write_text("{}", encoding="utf-8")
+            self.write_tree(base, pin)
             return {"pin": pin, "reused": False, "version": VERSION, "commands": []}
 
         with patch("n2m.verilator_install.install", side_effect=install), \

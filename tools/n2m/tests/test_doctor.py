@@ -57,6 +57,45 @@ class DoctorTests(unittest.TestCase):
             return SimpleNamespace(returncode=run_code, stdout=run_output)
         return run
 
+    def test_operator_tool_off_the_pin_is_noticed_and_the_pinned_tree_refused(self):
+        """The doctor says the same thing a simulation says, on the same channel.
+
+        An operator's own tool keeps precedence, so the check still passes with it;
+        recording `pin_match` false and printing nothing would be exactly the
+        silence the pin exists to prevent. The pinned tree claims to be the pin,
+        so a mismatch there fails instead."""
+        good = SMOKE_SIGNATURE + "\n- builder_smoke.sv:37: Verilog $finish\n"
+        fault = ("[40000] %Fatal: builder_smoke.sv:31: Assertion failed in builder_smoke: " + SMOKE_FAULT
+                 + "\n%Error: builder_smoke.sv:31: Verilog $stop\nAborting...\n")
+
+        def stale(argv, **kwargs):
+            if "--version" in argv:
+                return SimpleNamespace(returncode=0, stdout="Verilator 5.020 2025-01-01 rev v5.020\n")
+            return self.runner([], run_output=good, fault_output=fault)(argv, **kwargs)
+
+        for discovery in ("explicit", "path"):
+            with self.subTest(discovery=discovery), \
+                    patch("n2m.doctor.verilator_executable",
+                          side_effect=lambda d, r, s=discovery: (str(self.folder / "verilator"), s)), \
+                    patch("n2m.doctor.subprocess.run", side_effect=stale):
+                result = verilator(ROOT, self.folder, str(self.folder))
+            self.assertEqual((result["pin"], result["pin_match"]), ("5.052", False))
+            self.assertIn(f"Verilator 5.020 from {discovery} discovery is not the pinned 5.052",
+                          result["notice"])
+        with patch("n2m.doctor.verilator_executable",
+                   side_effect=lambda d, r: (str(self.folder / "verilator"), "pinned")), \
+                patch("n2m.doctor.subprocess.run", side_effect=stale):
+            with self.assertRaisesRegex(RuntimeError, "from pinned discovery is not the pinned 5.052"):
+                verilator(ROOT, self.folder, str(self.folder))
+        # A tool that is the pin carries no notice at all.
+        with patch("n2m.doctor.verilator_executable",
+                   side_effect=lambda d, r: (str(self.folder / "verilator"), "pinned")), \
+                patch("n2m.doctor.subprocess.run",
+                      side_effect=self.runner([], run_output=good, fault_output=fault)):
+            result = verilator(ROOT, self.folder, str(self.folder))
+        self.assertEqual(result["pin_match"], True)
+        self.assertNotIn("notice", result)
+
     def test_verilator_elaboration_runtime_and_signature_failure(self):
         good = SMOKE_SIGNATURE + "\n- builder_smoke.sv:37: Verilog $finish\n"
         fault = ("[40000] %Fatal: builder_smoke.sv:31: Assertion failed in builder_smoke: " + SMOKE_FAULT

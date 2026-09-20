@@ -31,6 +31,7 @@ class FakeSimulator:
     def __init__(self):
         self.info = {"backend": "verilator", "tools": {"verilator": {"path": "/tools/verilator", "version": "Verilator 5.052"}}}
         self.tools = {"verilator": "verilator", "cxx": "g++"}
+        self.notices = []
         self.calls = []
         self.fail = False
         self.warning = False

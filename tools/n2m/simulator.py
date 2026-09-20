@@ -8,7 +8,7 @@ import subprocess
 
 from .verilator import diagnostic as verilator_diagnostic
 from .questa import diagnostic as questa_diagnostic
-from .verilator_install import discovery_note, installed as installed_verilator
+from .verilator_install import discovery_note, installed as installed_verilator, pinned_release
 
 
 QUESTA_SIMULATION_TOOLS = ("vlib", "vmap", "vlog", "vsim")
@@ -171,8 +171,10 @@ def verilator_executable(directory, root=None, which=None):
     """Resolve verilator and say where it came from.
 
     Order: the explicit directory, then PATH, then the repository's own pinned
-    installation under workdir/tools. An operator's PATH tool keeps precedence;
-    the pin only removes the need for a PATH edit on a host without one.
+    installation in the shared host tool cache. An operator's PATH tool keeps
+    precedence; the pin only removes the need for a PATH edit on a host without
+    one. A pinned tree that fails its provenance check is reported here rather
+    than skipped, so a stale or foreign cache never becomes a silent fallback.
     """
     which = which or shutil.which
     if directory is not None:
@@ -182,7 +184,10 @@ def verilator_executable(directory, root=None, which=None):
     found = which("verilator")
     if found:
         return found, "path"
-    pinned = installed_verilator(root)
+    try:
+        pinned = installed_verilator(root)
+    except ValueError as error:
+        raise ToolError(str(error)) from error
     return (which(str(pinned / "verilator")) if pinned else None), "pinned"
 
 
@@ -196,6 +201,8 @@ class Simulator:
         if backend == "questa" and verilator_bin is not None:
             raise ToolError("--verilator-bin applies only to --sim verilator")
         self.backend = backend
+        # Discovery findings a caller must see but that do not refuse the tool.
+        self.notices = []
         if backend == "verilator":
             self.discover_verilator(verilator_bin, root)
         else:
@@ -216,9 +223,23 @@ class Simulator:
         if result.returncode or not match or verilator_diagnostic(result.stdout):
             raise ToolError(f"could not identify Verilator: {result.stdout.strip()}", result.stdout)
         self.tools["verilator"] = path
-        self.info["tools"]["verilator"] = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
-                                           "version": result.stdout.strip(), "release": match[1],
-                                           "source": source}
+        identity = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
+                    "version": result.stdout.strip(), "release": match[1], "source": source}
+        self.info["tools"]["verilator"] = identity
+        # The banner is the last word on what will run, so the pin is checked
+        # against it and never only against a provenance record. The pinned tree
+        # claims to be the pin, so a mismatch there fails; an operator's own tool
+        # keeps its precedence and is reported instead of refused.
+        pinned = pinned_release(root)
+        if pinned:
+            identity["pin"] = pinned
+            identity["pin_match"] = match[1] == pinned
+            if not identity["pin_match"]:
+                message = (f"Verilator {match[1]} from {source} discovery is not the pinned "
+                           f"{pinned}: {path}")
+                if source == "pinned":
+                    raise ToolError(message, result.stdout)
+                self.notices.append(message + "; the pin is the version this repository validates")
         # Verilator's generated makefile calls this compiler; its identity is
         # part of the binary the run executes, so it enters the fingerprint.
         compiler = shutil.which(os.environ.get("CXX", "g++"))
