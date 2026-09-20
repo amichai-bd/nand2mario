@@ -530,9 +530,13 @@ def timed_clocks(target):
     return ("clk_reference", SYSTEM_CLOCK, PIXEL_CLOCK)
 
 
-def lock_event_count(target):
+def no_clock_rows(target):
     """Cyclone V has no vendor lock latch, so no register may lack a clock."""
-    return 0
+    return []
+
+
+def lock_event_count(target):
+    return len(no_clock_rows(target))
 
 
 def verify_lock_event(folder, checks, top="nano_clocking_proof", *, parallel=False, extra_rows=()):

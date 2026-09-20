@@ -3955,10 +3955,12 @@ wrapper has exactly two. The ADC composition adds its separately checked vendor
 row, and an ADC proof that generates no PLL of its own reports that row alone.
 The audited count is the sum of the rows each owner names: the family's clocking
 module for the instances the target generates, the ADC backend for its own
-dedicated PLL, the On-Chip Flash IP for its strobe pair. Because both statements
-come from the registry and those modules, a host check compares them for every
-registered target without a fit. The builder explains these rows only after checking
-the generated functional netlist: latch input/reset/initial state, the lock gate
+dedicated PLL, the On-Chip Flash IP for its strobe pair. Each clocking family's
+count is the length of the rows it names, so the two cannot state different
+things. Because both statements come from the registry and those modules, a host
+check compares them for every registered target without a fit, and ties the ADC
+top set to the targets that compile the backend. The builder explains these rows
+only after checking the generated functional netlist: latch input/reset/initial state, the lock gate
 truth table, and all downstream buffers/fanout through the two lock sampling reset
 pins. For parallel PLLs, all 32 combinations of raw locks, event latches and
 reference reset release must propagate either lock loss to reset. Bootstrap

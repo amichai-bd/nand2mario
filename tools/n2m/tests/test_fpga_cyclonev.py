@@ -10,7 +10,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.n2m import fpga, fpga_adc, fpga_clocking, fpga_lock_cyclonev, fpga_pll, fpga_pll_cyclonev as cv
+from tools.n2m import (fpga, fpga_adc, fpga_clocking, fpga_lock, fpga_lock_cyclonev, fpga_pll,
+                        fpga_pll_cyclonev as cv)
 
 ROOT = Path(__file__).resolve().parents[3]
 LITE_DEFINITION = {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125, "system_divide": 2}
@@ -34,8 +35,8 @@ class FamilyRefusalTests(unittest.TestCase):
     def test_implemented_families_expose_the_whole_surface(self):
         surface = ("TOOLS_KEY", "SUPPORTED_TOPS", "SYSTEM_CLOCK", "PIXEL_CLOCK", "SYSTEM_NET", "validate",
                    "identity", "generate", "verify", "verify_fit", "verify_lock_event", "generated_sources",
-                   "assignments", "cache_files", "timed_clocks", "corner_slacks", "lock_event_count",
-                   "explained_diagnostics")
+                   "assignments", "cache_files", "timed_clocks", "corner_slacks", "no_clock_rows",
+                   "lock_event_count", "explained_diagnostics")
         for family in fpga_clocking.IMPLEMENTATIONS:
             module = fpga_clocking.implementation(family)
             for name in surface:
@@ -709,14 +710,18 @@ class Max10ParityTests(unittest.TestCase):
         self.assertEqual(fpga_pll.timed_clocks({"pll": LITE_DEFINITION}),
                          ("clk_reference", fpga_pll.SYSTEM_CLOCK, fpga_pll.PIXEL_CLOCK))
         self.assertEqual(fpga_pll.corner_slacks({"pll": LITE_DEFINITION}, "Slow 1200mV 85C"), [])
-        self.assertEqual(fpga_pll.lock_event_count({"top": "clocking_proof", "pll": LITE_DEFINITION}), 2)
-        # One per generated instance, and the same two for the composition that
-        # also carries the ADC: `fpga_adc` states that third row, so this count
-        # holds for a top whose ADC backend brings its own PLL and for one
-        # without it.
-        self.assertEqual(fpga_pll.lock_event_count({"top": "controls_proof", "pll": LITE_DEFINITION}), 2)
+        # One row per generated instance, and the count is their length, so the
+        # two cannot state different things. The same two serve the composition
+        # that also carries the ADC: `fpga_adc` states that third row.
+        self.assertEqual(fpga_pll.no_clock_rows({"pll": LITE_DEFINITION}),
+                         [fpga_lock.ROW, fpga_lock.SYSTEM_ROW])
+        self.assertEqual(fpga_pll.no_clock_rows({"pll": {k: v for k, v in LITE_DEFINITION.items()
+                                                         if k != "system_divide"}}), [fpga_lock.ROW])
+        for top in ("clocking_proof", "controls_proof"):
+            self.assertEqual(fpga_pll.lock_event_count({"top": top, "pll": LITE_DEFINITION}), 2)
         self.assertEqual(fpga_adc.lock_event_count("controls_proof"), 1)
         self.assertEqual(fpga_adc.lock_event_count("clocking_proof"), 0)
+        self.assertEqual(cv.no_clock_rows({"top": "nano_clocking_proof"}), [])
 
     def test_reset_chain_audit_and_reports_are_shared_and_unchanged(self):
         self.assertIs(fpga_pll.chain_audit, fpga_clocking.chain_audit)

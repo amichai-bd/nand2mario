@@ -86,14 +86,21 @@ def corner_slacks(target, corner):
     return []
 
 
-def lock_event_count(target):
-    """The documented ALTPLL lock event latches this target generates itself.
+def no_clock_rows(target):
+    """The no-clock rows this target's own generated ALTPLL instances report.
 
-    One per generated instance. The ADC backend's lock latch is not counted
-    here even though the controls compositions contain it: `fpga_adc` owns that
-    row, because a target can place the backend without generating a PLL.
+    One documented lock event latch per instance, named as `check_timing`
+    reports it. The ADC backend's latch is not named here even though the
+    controls compositions contain it: `fpga_adc` owns that row, because a target
+    can place the backend without generating a PLL of its own.
     """
-    return 1 + int(target.get("pll", {}).get("system_divide") == 2)
+    rows = [fpga_lock.ROW]
+    return rows + [fpga_lock.SYSTEM_ROW] if target.get("pll", {}).get("system_divide") == 2 else rows
+
+
+def lock_event_count(target):
+    """How many of them, so the count and the rows cannot state different things."""
+    return len(no_clock_rows(target))
 
 
 def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, extra_rows=(),

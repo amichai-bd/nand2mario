@@ -8,11 +8,15 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from tools.n2m import fpga, fpga_adc, fpga_flash, fpga_lock, fpga_pll
+from tools.n2m import fpga, fpga_adc, fpga_clocking, fpga_flash, fpga_lock, fpga_pll
+from tools.n2m.hdl import dependencies
 from tools.n2m.tests import vendor_support
 
 CONTROL = "ip/altera/altera_modular_adc/control/"
 ROOT = Path(__file__).resolve().parents[3]
+# The ADC backend itself: which designs compile it is the registry's statement,
+# and `fpga_adc.TOPS` must name the same ones.
+ADC_BACKEND = "src/rtl/input/n2m_adc_backend.sv"
 
 
 class AdcDiagnosticsTests(unittest.TestCase):
@@ -96,61 +100,92 @@ class AdcNoClockInventoryTests(unittest.TestCase):
     rows failed the gate.
 
     That was decidable from the registry and these modules alone, so the guard is
-    a host test and needs no Quartus. It reads the three target registries, which
-    is why this unit declares them as inputs.
+    a host test over every registered target and needs no Quartus. It reads the
+    three registries and each target's sources, which is why this unit declares
+    them as inputs.
     """
 
-    def registered(self):
-        """Every registered target with its declared top, read from the registries."""
-        for registry in fpga.REGISTRIES:
-            for name, entry in json.loads((ROOT / registry).read_text(encoding="utf-8"))["targets"].items():
-                yield name, entry["top"]
+    definitions = None
+
+    def targets(self):
+        """Every registered target's name and resolved definition, resolved once."""
+        if AdcNoClockInventoryTests.definitions is None:
+            resolved = []
+            for registry in fpga.REGISTRIES:
+                for name in json.loads((ROOT / registry).read_text(encoding="utf-8"))["targets"]:
+                    resolved.append((name, fpga.target_definition(ROOT, name)))
+            AdcNoClockInventoryTests.definitions = resolved
+        return AdcNoClockInventoryTests.definitions
 
     def adc_targets(self):
-        """Resolved definitions of the registered targets that place the ADC backend."""
-        return [(name, fpga.target_definition(ROOT, name))
-                for name, top in self.registered() if top in fpga_adc.TOPS]
+        """The registered targets that place the ADC backend."""
+        return [(name, target) for name, target in self.targets() if target["top"] in fpga_adc.TOPS]
 
     def rows(self, target):
         """Every no-clock row the audit accounts for, from the owners that name them."""
-        parallel = target.get("pll", {}).get("system_divide") == 2
-        rows = list(fpga_adc.no_clock_rows(target["top"], parallel=parallel))
+        rows = []
+        if "pll" in target:
+            rows += list(fpga_clocking.implementation(target["family"]).no_clock_rows(target))
+        if target["top"] in fpga_adc.TOPS:
+            rows.append(fpga_adc.lock_row(target["top"]))
         if fpga_flash.flash_target(target):
             rows += list(fpga_flash.no_clock_rows(target["top"]))
         return rows
 
     def agree(self, target):
-        """The one assertion: the audit counts exactly the rows the gates require."""
-        self.assertEqual(fpga.expected_no_clock_count(target), len(self.rows(target)))
-        self.assertIn(fpga_adc.lock_row(target["top"]), self.rows(target))
+        """The one assertion: the audit counts exactly the rows its owners name."""
+        rows = self.rows(target)
+        self.assertEqual(len(set(rows)), len(rows))
+        self.assertEqual(fpga.expected_no_clock_count(target), len(rows))
 
-    def test_the_audited_count_is_exactly_the_rows_its_owners_name(self):
-        for name, target in self.adc_targets():
+    def test_every_registered_target_audits_exactly_the_rows_its_owners_name(self):
+        """All 39, not only the ADC ones: the same arithmetic serves every target."""
+        for name, target in self.targets():
             with self.subTest(target=name):
                 self.agree(target)
-        for name, top in self.registered():
-            if top not in fpga_adc.TOPS:
-                with self.subTest(target=name):
-                    self.assertEqual(fpga_adc.lock_event_count(top), 0)
+        self.assertEqual(len(self.targets()), 39)
+
+    def test_the_adc_gate_requires_only_rows_the_audit_accounts_for(self):
+        """The rows the netlist gate demands are rows the count already allows.
+
+        `v05-controls-board` is why this is a subset and not an equality for every
+        target: its fit reports one further register row, the On-Chip Flash IP's
+        atom register, which `fpga_lock` accepts through `extra_rows` while the
+        ADC gate accounts for no row but its own
+        ([#914](https://github.com/amichai-bd/nand2mario/issues/914)). Where the
+        ADC gate is the only owner of register rows, the two are equal.
+        """
+        for name, target in self.adc_targets():
+            top = target["top"]
+            gate = fpga_adc.no_clock_rows(top, parallel=target.get("pll", {}).get("system_divide") == 2)
+            with self.subTest(target=name):
+                self.assertIn(fpga_adc.lock_row(top), gate)
+                self.assertLessEqual(set(gate), set(self.rows(target)))
+                if not fpga_flash.flash_target(target):
+                    self.assertEqual(sorted(gate), sorted(self.rows(target)))
+
+    def test_the_adc_top_set_is_exactly_the_targets_that_compile_the_backend(self):
+        """`TOPS` is a literal, so tie it to the source the registry actually places.
+
+        A new ADC top, or the backend added to a target on another top, would
+        otherwise pass the checks above by being filtered out of them. Both cases
+        fail closed at fit time; this makes them fail here instead.
+        """
+        placed = [name for name, target in self.targets()
+                  if ADC_BACKEND in dependencies(ROOT, target["sources"], synthesis=True)]
+        self.assertEqual(placed, [name for name, _ in self.adc_targets()])
+        self.assertEqual(placed, ["adc-early", "controls-board", "v05-controls-board"])
 
     def test_the_adc_top_without_a_generated_pll_is_still_the_only_one(self):
         """The scope the fix rests on, as a check: one such target, and it is counted."""
         alone = [name for name, target in self.adc_targets() if "pll" not in target]
         self.assertEqual(alone, ["adc-early"])
-        target = fpga.target_definition(ROOT, "adc-early")
+        target = dict(self.adc_targets())["adc-early"]
         self.assertEqual(fpga.expected_no_clock_count(target), 1)
         self.assertEqual(self.rows(target), [fpga_adc.lock_row("adc_proof")])
 
     def test_one_reported_inventory_satisfies_both_gates(self):
-        """The rows the audit counts are the rows each netlist gate accepts.
-
-        `v05-controls-board` is left out of this gate check and covered by the
-        count check above. Its fit reports one further register row, the On-Chip
-        Flash IP's atom register, which `fpga_lock` accepts through `extra_rows`
-        while the ADC gate accounts for no row but its own. That is a second
-        disagreement, in the flash/ADC composition, and not the count this unit
-        guards.
-        """
+        """One report of the accounted rows passes the ADC gate and the clocking gate."""
         for name, target in self.adc_targets():
             if fpga_flash.flash_target(target):
                 continue
@@ -177,7 +212,7 @@ class AdcNoClockInventoryTests(unittest.TestCase):
         to zero reproduces the refusal exactly, and both directions of the
         contradiction are shown: one row fails the count, zero fails the gate.
         """
-        target = fpga.target_definition(ROOT, "adc-early")
+        target = dict(self.adc_targets())["adc-early"]
         rows = self.rows(target)
         with patch.object(fpga_adc, "lock_event_count", return_value=0):
             self.assertEqual(fpga.expected_no_clock_count(target), 0)

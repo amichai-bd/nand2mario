@@ -504,7 +504,7 @@ def execute(argv, folder, log, timeout, record, build):
     if process.returncode:
         raise RuntimeError(f"Quartus exit {process.returncode}; see {log.name}")
     explained = ()
-    if log.name == "compile.log" and record.get("definition", {}).get("top") in ("adc_proof", "controls_proof", "v05_controls_proof"):
+    if log.name == "compile.log" and record.get("definition", {}).get("top") in fpga_adc.TOPS:
         explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"], record["definition"]["top"])
     if log.name == "compile.log" and "pll" in record.get("definition", {}):
         clocking = fpga_clocking.implementation(record["definition"]["family"])
@@ -700,7 +700,7 @@ def timing_evidence(folder, target, *, build_id=None):
         lock_event = clocking.verify_lock_event(folder, checks, target["top"], parallel=parallel, extra_rows=flash_rows[1:])
         clocking.verify_fit(folder, target)
     adc_evidence = None
-    if target["top"] in ("adc_proof", "controls_proof", "v05_controls_proof"):
+    if target["top"] in fpga_adc.TOPS:
         adc_evidence = fpga_adc.verify(folder, target["top"], **({"parallel": True, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}))
         if target["top"] == "adc_proof":
             lock_event = adc_evidence["lock_event"]

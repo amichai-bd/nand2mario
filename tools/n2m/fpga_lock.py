@@ -11,6 +11,7 @@ import re
 PLL = "u_clocking|u_pll|altpll_component|auto_generated|"
 RESET = "u_clocking|u_reset|"
 ROW = "n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll_lock_sync"
+SYSTEM_ROW = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
 # One back-annotation directive opens the EDA netlist of a family whose
 # simulation model carries delays, which Cyclone IV E's does and MAX 10's cannot
 # (Quartus 10905: a MAX 10 device gets the functional netlist only). A system
@@ -247,7 +248,7 @@ def verify_parallel(text, checks, top, *, extra_rows=(), primitives=MAX10):
     outputs = primitives.outputs
     from .fpga_pll import SYSTEM_NET
     system = "u_clocking|u_system_pll|altpll_component|auto_generated|"
-    system_row = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
+    system_row = SYSTEM_ROW
     expected_rows = [ROW, system_row, *extra_rows]
     if top in ("controls_proof", "v05_controls_proof"):
         expected_rows.append(("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
