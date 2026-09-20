@@ -1498,8 +1498,11 @@ first failing test; a stalled group is never a partial pass. `check.log` carries
 each group's status, wall, CPU and the host's one, five and fifteen minute load
 averages before its output, and the record's `groups`, `wall_seconds` and
 `cpu_seconds` keep them. Nothing decides anything from load; it is recorded so a
-reader can see what the machine was doing. All three averages, because the
-one-minute figure alone reads a lull as a quiet host: it has been seen at 1.86
+reader can see what the machine was doing. The 300-second aggregate above is a
+target on wall time, and a contended host takes this suite past it — 311.4 and
+337.7 s wall have both passed — while the CPU budget is what decides the verdict
+and `WALL_CEILING` is the only wall `check` enforces. All three averages, because
+the one-minute figure alone reads a lull as a quiet host: it has been seen at 1.86
 with the five-minute average at 4.27 and the load back at 5.68 immediately
 after. The CPU time is the suite's own; only the wall shrinks to the slowest
 group. No single test may cost tens of seconds: the real-clone reports of the
@@ -1517,12 +1520,18 @@ The `test_[f-l]*.py` group over an unchanged tree measured 149.1 s of CPU in
 groups at load 7.0 to 9.7, and 144.3 s in 461.0 s under six added CPU burners at
 load 10.8: a 5% spread in CPU against a 77% spread in wall. Contention is not
 free in CPU either, because a contended process pays more system time and more
-cache misses; the same group spends about 112 s on a host at load 3, so heavy
-load inflates its CPU by about a third and then stops. It inflates the wall
-without limit. The strongest single comparison is between a healthy group and a
-grown one: the healthy group above passed at 151.3 s of CPU in 337.7 s of wall,
-and a group given 90 s of deliberate extra work failed at 201.7 s of CPU in
-230.5 s of wall. Ranked by wall the healthy group looks the worse of the two.
+cache misses: the same group spends about 112 s on a host at load 3, so a busy
+host can cost it about a third more. Beyond that the figure is noisy in both
+directions rather than monotone in load, and independent runs have put it at
+127.9 s under load 9.4 and 146.4 s under load 8.2. Read it as a quantity that
+moves tens of percent with the machine, not as one that rises with load. The wall
+has no such bound: healthy groups have been measured from 171.1 s up to 345.5 s,
+which is why a group's wall carries no information about whether that group is
+slow. One pair of runs showed the consequence directly, though reproducing it
+needs a quiet host and has not been repeated: a healthy group passed at 151.3 s of
+CPU in 337.7 s of wall while a group given 90 s of deliberate extra work failed at
+201.7 s of CPU in 230.5 s of wall, so ranked by wall the healthy group was the
+worse of the two.
 
 180 remains the number, on the quantity the change under test owns. A group's CPU
 is never more than its wall, so no run that passed the wall budget fails the CPU
@@ -1534,19 +1543,24 @@ A CPU budget does not catch a group that grows slow by blocking instead of by
 computing. A test that sleeps, waits on a socket or waits for a lock spends wall
 and no CPU, and stays inside the budget however long it takes. The budget also
 does not charge a group for a descendant it abandons rather than waits for.
-`WALL_CEILING`, five times the CPU budget, guards only against a group that has
-stopped making progress: the worst contention measured here stretched a group's
-wall to 3.2 times its CPU, so a group spending the whole budget would take about
-574 s, and 900 s leaves margin above that. It is not a performance budget, and its
-failure names the CPU the group had spent. A host that reports no per-child CPU
-time, Windows among them, judges the wall against the same 180 seconds and says
-so in the failure.
+[#881](https://github.com/amichai-bd/nand2mario/issues/881) tracks enforcing this
+at the level of the test, which is where a blocking check can name the test that
+blocks. `WALL_CEILING`, five times the CPU budget, guards only against a group
+that has stopped making progress: the worst contention measured here stretched a
+group's wall to 3.2 times its CPU, so a group spending the whole budget would
+take about 574 s, and 900 s leaves margin above that. It is not a performance
+budget, and its failure names the CPU the group had spent. A host that reports no
+per-child CPU time, Windows among them, judges the wall against the same
+180 seconds and says so in the failure. It reaches that verdict later than a wall
+budget did, because the group runs to completion, or to the ceiling, and is judged
+afterwards, where a `subprocess.run` timeout killed it at 180 s.
 
-Measured on the 4-CPU Linux development host (913 tests, load average 7.0 to 9.7
-from two other agents, one of them compiling with Quartus; a quiet host was not
-available): PASS in 337.7 s wall, with groups spending 121.5, 151.3 and 93.2 s of
-CPU over 290.6, 337.7 and 240.3 s of wall; and at load 5.6 to 7.7, PASS in 227.9 s
-wall, with 107.7, 124.9 and 87.0 s of CPU over 202.6, 227.9 and 185.1 s of wall.
+Measured on the 4-CPU Linux development host (1157 tests then present, load
+average 7.0 to 9.7 from two other agents, one of them compiling with Quartus; a
+quiet host was not available): PASS in 337.7 s wall, with groups spending 121.5,
+151.3 and 93.2 s of CPU over 290.6, 337.7 and 240.3 s of wall; and at load 5.6 to
+7.7, PASS in 227.9 s wall, with 107.7, 124.9 and 87.0 s of CPU over 202.6, 227.9
+and 185.1 s of wall.
 Every group wall in both runs would have failed the 180-second wall budget, which
 on this host failed a passing suite whether the machine was busy or merely in
 use. Earlier, on the shared Linux WSL2 host

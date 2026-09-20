@@ -25,11 +25,13 @@ from . import catalogue
 
 TESTS = "tools/n2m/tests"
 # One group's own user plus system CPU time, its subprocess and every descendant it waits for.
-# The f-l group of today's 913 tests measured about 112 s of CPU at load average 3, 149.1 s at 6.3,
-# 151.3 s beside its two sibling groups at 7.0 to 9.7 and 144.3 s under six added CPU burners at
-# 10.8, while its wall went 231, 260, 338 and 461 s. Contention costs some CPU and stops there; it
-# stretches the wall without limit. 180 is the wall budget this replaced, kept as the number because
-# a group's CPU never exceeds its wall, so nothing that passed before fails now.
+# The f-l group, 586 of the 1157 tests present when this was measured, spent about 112 s of CPU at
+# load average 3, 149.1 s at 6.3, 151.3 s beside its two sibling groups at 7.0 to 9.7 and 144.3 s
+# under six added CPU burners at 10.8, while its wall went 231, 260, 338 and 461 s. A busy host can
+# cost a group about a third more CPU, noisily and not in step with load; it stretches the wall
+# without bound.
+# 180 is the wall budget this replaced, kept as the number because a group's CPU never exceeds its
+# wall, so nothing that passed before fails now.
 CPU_BUDGET = 180
 # A liveness guard, not a performance budget. The worst contention measured here stretched a
 # group's wall to 3.2 times its CPU, so a group spending the whole CPU budget would take 574 s;
