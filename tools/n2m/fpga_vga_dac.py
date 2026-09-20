@@ -57,12 +57,13 @@ STUCK_LEVEL = {1: "VCC", 0: "GND"}
 # project file names it. Reading it from the project file keeps the check exact
 # without this module knowing the checkout's path.
 def top_source(top=TOP):
-    """The project file's own name for the registered source declaring this top."""
+    """The project file's own name for the registered source declaring this top.
+
+    Two tops write the same two documented constants to the same two pins, so the
+    pattern follows the top being built rather than naming one.
+    """
     return re.compile(r'(?m)^set_global_assignment -name SYSTEMVERILOG_FILE "(\S+/'
                       + top + r'\.sv)"$')
-
-
-TOP_SOURCE = top_source()
 STUCK_REASON = (
     "Both ADV7123 control pins are documented constants: BLANK stays at Logic 1 because a Logic 0 "
     "makes the DAC ignore the pixel inputs, and SYNC is tied to Logic 0, the datasheet's value when "
