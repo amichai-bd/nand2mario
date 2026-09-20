@@ -200,17 +200,26 @@ class ComposedClassifierScopeTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "unexpected ADC unused-feature diagnostic"):
                     self.classify(target["top"], self.compile_log(target["top"]))
 
-    def test_neither_classifier_selects_the_other_owner_s_lines(self):
-        """The scope itself: the ADC predicate claims no flash line, and vice versa."""
+    def test_neither_classifier_claims_the_other_owner_s_lines(self):
+        """The scope itself: the ADC predicate takes no flash line, and each set is its own.
+
+        The second half is behavioral rather than a copy of the flash predicate,
+        so it still holds if that module scopes itself differently later.
+        """
         for name, target in self.both():
             top = target["top"]
             prefix = fpga_adc.node_prefix(top)
             with self.subTest(target=name):
                 for line in self.flash_lines(top):
                     self.assertFalse(fpga_adc.owned_diagnostic(line, prefix), line)
-                for line in self.adc_lines(top):
-                    self.assertFalse(re.match(r"Warning \((10036|332060)\):", line)
-                                     and fpga_flash.CONTROLLER in line, line)
+                text = self.compile_log(top)
+                adc = {item["text"] for item in
+                       fpga_adc.explained_diagnostics(text, self.folder, self.adc_sources, top)}
+                flash = {item["text"] for item in fpga_flash.explained_diagnostics(
+                    text, self.folder, self.flash_sources, top, "compile.log")}
+                self.assertEqual(adc, set(self.adc_lines(top)))
+                self.assertEqual(flash, set(self.flash_lines(top)))
+                self.assertEqual(adc & flash, set())
 
     def test_a_warning_outside_both_scopes_still_fails_the_build(self):
         """Scoping accepts nothing: an unowned line of either shared code still fails.
