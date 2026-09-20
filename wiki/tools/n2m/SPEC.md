@@ -2998,14 +2998,24 @@ accepted, so every result rests on recorded bytes.
 
 Two DE10-Lite targets still refuse, and neither is a limit of this host or of
 Linux. Each cause is a mismatch between repository sources that every
-installation reads the same way — a constraint and a warning count — and not a
+installation reads the same way — a constraint and a row inventory — and not a
 property of any installed toolchain, so no host builds them. `controls-board`
 fails on the SDRAM and KEY1 constraints its top declares no ports for
 ([#904](https://github.com/amichai-bd/nand2mario/issues/904)), and
-`v05-controls-board` fails because the ADC diagnostic classifier also counts the
-On-Chip Flash IP's accepted warnings
-([#908](https://github.com/amichai-bd/nand2mario/issues/908)). Neither is in a
-regression subset, a catalogue unit or a CI workflow, which is why each break
+`v05-controls-board` fails because the ADC netlist gate and the On-Chip Flash IP
+disagree about which no-clock rows its fit may report
+([#914](https://github.com/amichai-bd/nand2mario/issues/914)). That image's
+compilation itself is sound: measured at 640 seconds of wall and 663 of CPU
+beside another build, it maps, fits, assembles and times with a nonnegative slack
+at every corner, 13,400 logic elements, one UFM block, one ADC block and three
+PLLs, and every one of its 54 diagnostics is classified, including both the ADC
+control's and the flash IP's. It refused in the sweep for a second such mismatch,
+an unscoped warning-code match that counted the flash IP's accepted warnings
+against the ADC's own fifteen; each classifier now
+[judges only the warnings its own sources produce](#diagnostic-classification),
+and a host unit composes the log both owners predict and requires both
+inventories, without a fit. Neither refusal is in a regression subset or a CI
+workflow, and a subset cannot hold an FPGA target at all, which is why each break
 went unmeasured. `adc-early` refused for a third such mismatch, an accepted
 no-clock count that omitted the ADC backend's own lock row; that count is now
 summed from the modules that name the rows and is compared with them for every

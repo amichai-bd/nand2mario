@@ -112,9 +112,9 @@ class ComposedClassifierScopeTests(unittest.TestCase):
     the whole compile log and demand exactly fifteen, so the flash IP's twenty
     accepted 10036 warnings made it refuse a log in which every warning was
     already explained by one owner or the other, and no host could build the
-    target ([#908](https://github.com/amichai-bd/nand2mario/issues/908)).
+    target.
 
-    The flash reader entered this image in #689 and nothing measured the break: a
+    Nothing measured that break when the flash reader entered this image: a
     MAX 10 fit of it costs minutes of CPU, it is in no workflow, and a
     [regression subset](../../../wiki/tools/n2m/SPEC.md#regression-subsets) takes
     catalogue simulation targets only, so no subset can hold an FPGA target at
