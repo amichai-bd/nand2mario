@@ -39,9 +39,10 @@ checks that the head it is about to merge is the head the verdict names:
 gh pr view <number> --json headRefOid
 ```
 
-The reviewed SHA is the one the reviewer's posted verdict names, and it is the
-SHA `--match-head-commit` takes below. When the two differ, the head moved after
-the verdict: apply
+The head a verdict covers is the SHA the posted verdict names, or the new head a
+recorded rebase-only disposition carried that verdict to, and it is the SHA
+`--match-head-commit` takes below. When the current head is neither, it moved
+after the verdict: apply
 [its disposition](../.agents/skills/agent-flow/references/review.md#when-the-head-moves-after-a-verdict)
 and record it in the PR before merging. This check is a required step, not a
 courtesy audit afterwards. Then run:

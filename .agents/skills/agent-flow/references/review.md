@@ -89,20 +89,34 @@ reviewed SHA. State that disposition in the PR with per-file evidence, not a
 patch summary:
 
 - each changed path's blob hash at the reviewed SHA and at the new head, from
-  `git rev-parse <sha>:<path>`, quoted as a matching pair;
-- the merge-base diff file list against current `origin/main`, showing that the
-  commits the rebase pulled in touch none of those paths.
+  `git rev-parse <sha>:<path>`, quoted as a matching pair. A path the PR deletes,
+  and a rename's old name, has no blob at either SHA and `git rev-parse` is fatal
+  on it; state the matching absence instead and pair the rename's new name;
+- the paths `main` gained since the base the reviewed SHA sat on, from
+  `git diff --name-only $(git merge-base <reviewed-sha> origin/main) origin/main`,
+  with none of them in the PR's own changed-path set.
 
-An empty `git diff <reviewed-sha> <new-head> -- <path>` supports the claim but
-does not replace it. The blob pair states the result per file and survives
-quoting into the PR body, which is where the next agent reads it. Once stated
-with that evidence, the disposition makes the new head the reviewed head, and
-that SHA is the one the merge pins.
+Take that second list before the rebase, or afterwards from the reviewed SHA's
+merge base exactly as written. The new head's own merge base is `origin/main`
+itself, so a list taken from it is empty and proves nothing; a list of the diff
+between the new head and its merge base is the PR's own paths and says nothing
+about what the rebase pulled in.
 
-**A blob that moved is a content change on its path**, whichever commit moved
-it. When `main` edited a path this branch also edits, the rebase combined two
-edits there: name that path, show the branch's own contribution to it, and send
-that path to the reviewer. The paths whose blobs match keep their verdict.
+An empty `git diff <reviewed-sha> <new-head> -- <path>` supports a blob pair but
+does not stand in for one, because the pair states the result per file and
+survives quoting into the PR body, which is where the next agent reads it. It is
+the evidence in its own right only for a path no blob exists on. Once stated with
+this evidence, the disposition makes the new head the reviewed head, and that SHA
+is the one the merge pins.
+
+**A path in both lists is a content change, whether or not its blob moved.**
+When `main` edited a path this branch also edits, the rebase combined two edits
+there, and a matching blob pair proves only that the branch's side survived —
+which is what reverting the incoming edit looks like too. Name that path, show
+the branch's own contribution and what became of the incoming edit, and send that
+path to the reviewer. A blob that differs between the two SHAs is a content
+change on its path as well, whichever commit moved it. The paths in neither case
+keep their verdict.
 
 The [merge step](../../../../worktrees/README.md#merge) checks the delivered head
 against the verdict rather than assuming they agree.

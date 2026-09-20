@@ -56,7 +56,7 @@ Follow [AGENTS](../../../AGENTS.md#work):
    hosted failures, apply the [standing fallback](references/external-ci.md).
 4. With a ready verdict on the current head and required validation satisfied,
    the author undrafts, waits for the re-triggered required checks, confirms the
-   head still matches the verdict, and performs the exact-head squash merge using
+   head is one a verdict covers, and performs the exact-head squash merge using
    the [merge method](../../../worktrees/README.md#merge).
    Merge promptly without waiting for unrelated work. Report the outcome to root.
 5. Root performs [verification and cleanup](../../../worktrees/README.md#clean-up-after-merge).

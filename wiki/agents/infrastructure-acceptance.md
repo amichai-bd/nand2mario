@@ -21,7 +21,8 @@ artifacts. This checklist is not a new CI gate.
   required [PR checks](pull-requests.md#policy-and-protection) pass.
 - [ ] Obtain an [independent review](../../.agents/skills/agent-flow/references/review.md)
   of the complete diff in a separate detached checkout. Retain the report and
-  alignment assessment; confirm its ready verdict names the current head SHA.
+  alignment assessment; confirm the head it merges is one a ready verdict covers,
+  under the [head-move disposition](../../.agents/skills/agent-flow/references/review.md#when-the-head-moves-after-a-verdict).
 - [ ] Reviewer posts the review. Author resolves findings, babysits checks,
   undrafts, and uses the [squash merge method](../../worktrees/README.md#merge).
 - [ ] Root verifies the merge, issue closure, and successful main
