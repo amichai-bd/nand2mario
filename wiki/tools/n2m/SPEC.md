@@ -2178,7 +2178,7 @@ target metadata and so invalidates that target's cache fingerprint.
 ```bash
 python3 tools/build.py doctor --json
 python3 tools/build.py doctor --verilator-bin <directory> --json
-python3 tools/build.py doctor --profile environment --sim verilator --json
+python3 tools/build.py doctor --profile environment --sim verilator --quartus-bin <directory> --json
 ```
 
 ```powershell
@@ -2254,8 +2254,11 @@ adds the remaining tools:
   position and the reason every rejected attempt was rejected.
   `--jtag-cable <cable>` selects one cable, `--programmer` one backend,
   `--openfpgaloader-bin` and `--probe-firmware` its tool directory and cable
-  firmware. A programmer this host does not have is named under `unreadable`,
-  because one programmer answering does not mean the other's cables were read.
+  firmware. A programmer discovery does not find, and a probe cable inside the
+  selected backend that reported no device, are both named under `unreadable`:
+  one programmer and one cable answering does not mean the others were read.
+  `not found on this host` is what discovery establishes: nothing at the given
+  directory and nothing on `PATH`. It is not evidence the tool is absent.
   Nothing is written: both programmers only read. This is reported
   identity, not wiring, voltage, or programming proof.
 - UART: Windows and Linux enumerate serial ports into the same records, so one
@@ -2297,10 +2300,11 @@ driver database: `ConfigManagerErrorCode` is 0 when the node is a character devi
 this user can read and write, 1 when the node the link names is unavailable, 2
 when it is not a character device and 3 when it cannot be read and written, each
 with its own `Detail`. The enumerated records are retained as `ports.log`, with
-`by_id_present`. udev creates `/dev/serial/by-id` with the first USB serial device
-it names, so a host that has never had one has no directory. That is not the same
-fact as a host whose device is unplugged, and an empty port list states neither,
-so the absent directory is named under `unreadable` instead.
+`by_id_present`. udev creates `/dev/serial/by-id` with the first name it puts there
+and removes it again with the last, so an absent directory establishes that udev's
+by-id naming produced no name, and not why: an unplugged device and a host whose
+rules never ran leave the same absence. That much is named under `unreadable`,
+because an empty port list does not establish even that.
 
 The doctor never opens UART, drives modem lines, sends bytes, programs FPGA memory,
 changes JTAG configuration, or proves physical operation. Those follow the
@@ -2308,11 +2312,15 @@ changes JTAG configuration, or proves physical operation. Those follow the
 and hardware workflow. No extra Python packages are required.
 
 Every profile also reports `unreadable`: one entry per failed check, naming its
-own reason, plus every probe a check answered without running, each named by the
-tool or inventory it needed. The human result prints them as `Not read:` lines
-before readiness. An empty list is the claim that nothing was skipped, so a
-result that passed over a probe can never read as evidence that the probe found
-nothing.
+own reason, plus each probe a check answered or failed without reading. Three are
+named: a programmer discovery did not find, a probe cable inside the selected
+backend that reported no device, and an absent udev by-id directory. A check that
+fails keeps the gaps its probe found, because naming the expected UART is the only
+way the serial check reaches PASS, so the failing path is the one where its gap is
+needed. The human result prints them as `Not read:` lines before readiness. A
+`PASS` beside one of these entries is a check that answered from less than the
+whole host, and says so rather than letting the result stand for the part it did
+not read.
 
 `PASS`/exit 0 means all applicable checks in the selected profile passed;
 `NOT_APPLICABLE` entries are informational and excluded. `WARNING`/exit 2

@@ -245,11 +245,14 @@ def jtag(root, folder, args):
             "chain_position": chain["position"], "devices": chain["devices"],
             "command": chain["command"], "rejected": chain["rejected"],
             "probe_firmware": chain["probe_firmware"], "selected": chain, "chains": chain["chains"],
-            # One programmer answering is not the whole chain read. The absent
-            # one's cables were never enumerated, so it is named here rather
-            # than left implied by a PASS.
-            "unreadable": [f"{name}: not installed, so its cables were not read"
-                           for name in chain["missing"]],
+            # One programmer and one cable answering is not the host read. A
+            # programmer discovery did not find never enumerated its cables, and
+            # a cable inside the selected backend that reported no device was not
+            # read either. Both are named rather than left implied by a PASS.
+            # `not found on this host` is what `locate` establishes: nothing at
+            # the given directory and nothing on PATH. It is not absence.
+            "unreadable": [f"{name}: not found on this host, so its cables were not read"
+                           for name in chain["missing"]] + chain["unread"],
             "scope": chain["scope"]}
 
 
@@ -296,10 +299,11 @@ def windows_ports(folder):
 # udev's stable serial naming and the sysfs USB attributes behind it. Both are
 # read; nothing is opened, and no device node is written.
 SERIAL_BY_ID = Path("/dev/serial/by-id")
-# udev creates the by-id directory with the first USB serial device it names, so
-# a host that has never had one has no directory at all. That is a different
-# fact from a host whose device is unplugged, and an empty port list states
-# neither. The message says which one this is.
+# udev creates the by-id directory with the first name it puts there and removes
+# it again with the last, so an absent directory says that no udev name is there
+# now. It does not say why, and nothing here can: an unplugged device and a host
+# where the rules never ran leave the same absence. What it does establish is
+# worth naming, because an empty port list does not establish even that.
 BY_ID_ABSENT = "{path}: absent, so udev has named no USB serial port on this host"
 UNSUPPORTED_UART_HOST = "serial port enumeration: this host is neither Windows nor Linux"
 TTY_CLASS = Path("/sys/class/tty")
@@ -394,6 +398,21 @@ def linux_ports(folder):
     return ports
 
 
+class Incomplete(RuntimeError):
+    """A check's failure that still carries what its probe could not read.
+
+    `check` keeps only the message from an ordinary exception, so a gap attached
+    to a successful return is lost on every raising path. The gap describes the
+    probe, not the outcome, and naming the expected UART is the only way the
+    serial check reaches PASS, so the failing path is exactly where the gap is
+    needed and must not be the path that drops it.
+    """
+
+    def __init__(self, error, unreadable=()):
+        super().__init__(str(error))
+        self.unreadable = list(unreadable)
+
+
 def uart(folder, args):
     """Enumerate serial ports on this host and apply the one selection rule.
 
@@ -404,7 +423,10 @@ def uart(folder, args):
         return select_uart(windows_ports(folder), args)
     if sys.platform.startswith("linux"):
         gaps = [] if SERIAL_BY_ID.is_dir() else [BY_ID_ABSENT.format(path=SERIAL_BY_ID)]
-        return {**select_uart(linux_ports(folder), args), "unreadable": gaps}
+        try:
+            return {**select_uart(linux_ports(folder), args), "unreadable": gaps}
+        except RuntimeError as error:
+            raise Incomplete(error, gaps) from error
     return {"status": "WARNING", "unreadable": [UNSUPPORTED_UART_HOST],
             "detail": "UART enumeration supported on Windows and Linux only"}
 
@@ -436,7 +458,10 @@ def doctor(root, build, args, provenance):
         try:
             checks[name] = {"status": "PASS", **action(folder)}
         except Exception as error:
-            checks[name] = {"status": "FAIL", "error": str(error)}
+            # A failure that carries gaps keeps them: the reason a check could
+            # not read something outlives the attempt that raised.
+            checks[name] = {"status": "FAIL", "error": str(error),
+                            "unreadable": list(getattr(error, "unreadable", ()))}
         checks[name]["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p)
                                      for p in folder.rglob("*") if p.is_file()}
 
