@@ -87,9 +87,13 @@ def corner_slacks(target, corner):
 
 
 def lock_event_count(target):
-    """The documented ALTPLL lock event latches this composition contains."""
-    count = 2 if target["top"] in ("controls_proof", "v05_controls_proof") else 1
-    return count + int(target.get("pll", {}).get("system_divide") == 2)
+    """The documented ALTPLL lock event latches this target generates itself.
+
+    One per generated instance. The ADC backend's lock latch is not counted
+    here even though the controls compositions contain it: `fpga_adc` owns that
+    row, because a target can place the backend without generating a PLL.
+    """
+    return 1 + int(target.get("pll", {}).get("system_divide") == 2)
 
 
 def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, extra_rows=(),

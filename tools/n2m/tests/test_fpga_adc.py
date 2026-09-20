@@ -1,5 +1,6 @@
 """Sensitivity of the exact explained vendor-warning boundary, and the ADC host facts."""
 import hashlib
+import json
 from pathlib import Path
 import re
 import tempfile
@@ -7,10 +8,11 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from tools.n2m import fpga, fpga_adc, fpga_pll
+from tools.n2m import fpga, fpga_adc, fpga_flash, fpga_lock, fpga_pll
 from tools.n2m.tests import vendor_support
 
 CONTROL = "ip/altera/altera_modular_adc/control/"
+ROOT = Path(__file__).resolve().parents[3]
 
 
 class AdcDiagnosticsTests(unittest.TestCase):
@@ -75,6 +77,115 @@ class AdcDiagnosticsTests(unittest.TestCase):
     def test_no_global_warning_code_waiver(self):
         with self.assertRaisesRegex(ValueError, "unexplained"):
             fpga.diagnostics(self.text)
+
+
+def no_clock_report(rows):
+    """A `check_timing.rpt` fragment reporting exactly these registers as unclocked."""
+    return "".join(f"; {row} ; No clock feeds this register's clock port. ;\n" for row in rows)
+
+
+class AdcNoClockInventoryTests(unittest.TestCase):
+    """The audited no-clock count and the rows the netlist gates require are one sum.
+
+    They were two statements and they disagreed. `fpga.timing_evidence` counted
+    the accepted rows from the target's own `pll` field, while
+    `fpga_adc.verify_netlist` required the ADC backend's lock synchronizer
+    whether or not the target generated a PLL. For the one registered target
+    with an ADC top and no `pll` field, `adc-early`, the two differed by exactly
+    that row, so no fit could satisfy both: one row failed the count and zero
+    rows failed the gate.
+
+    That was decidable from the registry and these modules alone, so the guard is
+    a host test and needs no Quartus. It reads the three target registries, which
+    is why this unit declares them as inputs.
+    """
+
+    def registered(self):
+        """Every registered target with its declared top, read from the registries."""
+        for registry in fpga.REGISTRIES:
+            for name, entry in json.loads((ROOT / registry).read_text(encoding="utf-8"))["targets"].items():
+                yield name, entry["top"]
+
+    def adc_targets(self):
+        """Resolved definitions of the registered targets that place the ADC backend."""
+        return [(name, fpga.target_definition(ROOT, name))
+                for name, top in self.registered() if top in fpga_adc.TOPS]
+
+    def rows(self, target):
+        """Every no-clock row the audit accounts for, from the owners that name them."""
+        parallel = target.get("pll", {}).get("system_divide") == 2
+        rows = list(fpga_adc.no_clock_rows(target["top"], parallel=parallel))
+        if fpga_flash.flash_target(target):
+            rows += list(fpga_flash.no_clock_rows(target["top"]))
+        return rows
+
+    def agree(self, target):
+        """The one assertion: the audit counts exactly the rows the gates require."""
+        self.assertEqual(fpga.expected_no_clock_count(target), len(self.rows(target)))
+        self.assertIn(fpga_adc.lock_row(target["top"]), self.rows(target))
+
+    def test_the_audited_count_is_exactly_the_rows_its_owners_name(self):
+        for name, target in self.adc_targets():
+            with self.subTest(target=name):
+                self.agree(target)
+        for name, top in self.registered():
+            if top not in fpga_adc.TOPS:
+                with self.subTest(target=name):
+                    self.assertEqual(fpga_adc.lock_event_count(top), 0)
+
+    def test_the_adc_top_without_a_generated_pll_is_still_the_only_one(self):
+        """The scope the fix rests on, as a check: one such target, and it is counted."""
+        alone = [name for name, target in self.adc_targets() if "pll" not in target]
+        self.assertEqual(alone, ["adc-early"])
+        target = fpga.target_definition(ROOT, "adc-early")
+        self.assertEqual(fpga.expected_no_clock_count(target), 1)
+        self.assertEqual(self.rows(target), [fpga_adc.lock_row("adc_proof")])
+
+    def test_one_reported_inventory_satisfies_both_gates(self):
+        """The rows the audit counts are the rows each netlist gate accepts.
+
+        `v05-controls-board` is left out of this gate check and covered by the
+        count check above. Its fit reports one further register row, the On-Chip
+        Flash IP's atom register, which `fpga_lock` accepts through `extra_rows`
+        while the ADC gate accounts for no row but its own. That is a second
+        disagreement, in the flash/ADC composition, and not the count this unit
+        guards.
+        """
+        for name, target in self.adc_targets():
+            if fpga_flash.flash_target(target):
+                continue
+            top, parallel = target["top"], target.get("pll", {}).get("system_divide") == 2
+            checks = no_clock_report(self.rows(target))
+            with self.subTest(target=name, gate="adc"):
+                with self.assertRaises(ValueError) as caught:
+                    fpga_adc.verify_netlist("", checks, top, parallel=parallel)
+                self.assertNotIn("unexpected ADC no-clock endpoint", str(caught.exception))
+            if top not in fpga_adc.COMPOSED:
+                continue
+            with self.subTest(target=name, gate="clocking"):
+                verify = fpga_lock.verify_parallel if parallel else fpga_lock.verify
+                with self.assertRaises(ValueError) as caught:
+                    verify("", checks, top)
+                self.assertNotIn("inventory differs", str(caught.exception))
+                self.assertNotIn("unrecognized no-clock endpoint", str(caught.exception))
+
+    def test_an_audit_that_drops_the_adc_row_fails_this_guard(self):
+        """Proof the guard fails: the pre-fix arithmetic, restated, still disagrees.
+
+        Keying the count on the `pll` field is the same as counting no ADC row at
+        all for a target that generates no PLL, so patching the ADC's own count
+        to zero reproduces the refusal exactly, and both directions of the
+        contradiction are shown: one row fails the count, zero fails the gate.
+        """
+        target = fpga.target_definition(ROOT, "adc-early")
+        rows = self.rows(target)
+        with patch.object(fpga_adc, "lock_event_count", return_value=0):
+            self.assertEqual(fpga.expected_no_clock_count(target), 0)
+            self.assertNotEqual(fpga.expected_no_clock_count(target), len(rows))
+            with self.assertRaises(AssertionError):
+                self.agree(target)
+        with self.assertRaisesRegex(ValueError, "unexpected ADC no-clock endpoint"):
+            fpga_adc.verify_netlist("", no_clock_report([]), "adc_proof")
 
 
 # A minimal MAX 10 fit report shaped like the one `adc-early` produces: the

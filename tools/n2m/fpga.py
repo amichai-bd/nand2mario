@@ -615,6 +615,21 @@ def tools(directory, folder, record, build, timeout):
     return identities
 
 
+def expected_no_clock_count(target):
+    """Every no-clock row this target's fit may report, summed from its owners.
+
+    Each vendor block that latches a lock event states its own rows: the
+    target-generated PLLs through the family's clocking module, the ADC
+    backend's own generated PLL through `fpga_adc`, and the On-Chip Flash IP's
+    sense-enable strobe pair through `fpga_flash`. The ADC's row is summed
+    separately rather than keyed on the `pll` field, because `adc-early` places
+    the backend and generates no PLL of its own.
+    """
+    count = fpga_clocking.implementation(target["family"]).lock_event_count(target) if "pll" in target else 0
+    count += fpga_adc.lock_event_count(target["top"])
+    return count + len(fpga_flash.no_clock_rows(target["top"]) if fpga_flash.flash_target(target) else ())
+
+
 def timing_evidence(folder, target, *, build_id=None):
     parallel = target.get("pll", {}).get("system_divide") == 2
     clocking = fpga_clocking.implementation(target["family"]) if "pll" in target else None
@@ -673,11 +688,10 @@ def timing_evidence(folder, target, *, build_id=None):
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     lock_event = None
-    expected_lock_events = clocking.lock_event_count(target) if "pll" in target else 0
+    expected_lock_events = expected_no_clock_count(target)
     # The flash IP's sense-enable strobe and the atom register it clocks are
     # two more no-clock rows; both must be named exactly.
     flash_rows = fpga_flash.no_clock_rows(target["top"]) if fpga_flash.flash_target(target) else ()
-    expected_lock_events += len(flash_rows)
     if any(row not in checks for row in flash_rows):
         raise ValueError("On-Chip Flash IP strobe no-clock rows differ")
     if "pll" in target:

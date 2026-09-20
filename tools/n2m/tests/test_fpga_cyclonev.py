@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.n2m import fpga, fpga_clocking, fpga_lock_cyclonev, fpga_pll, fpga_pll_cyclonev as cv
+from tools.n2m import fpga, fpga_adc, fpga_clocking, fpga_lock_cyclonev, fpga_pll, fpga_pll_cyclonev as cv
 
 ROOT = Path(__file__).resolve().parents[3]
 LITE_DEFINITION = {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125, "system_divide": 2}
@@ -710,7 +710,13 @@ class Max10ParityTests(unittest.TestCase):
                          ("clk_reference", fpga_pll.SYSTEM_CLOCK, fpga_pll.PIXEL_CLOCK))
         self.assertEqual(fpga_pll.corner_slacks({"pll": LITE_DEFINITION}, "Slow 1200mV 85C"), [])
         self.assertEqual(fpga_pll.lock_event_count({"top": "clocking_proof", "pll": LITE_DEFINITION}), 2)
-        self.assertEqual(fpga_pll.lock_event_count({"top": "controls_proof", "pll": LITE_DEFINITION}), 3)
+        # One per generated instance, and the same two for the composition that
+        # also carries the ADC: `fpga_adc` states that third row, so this count
+        # holds for a top whose ADC backend brings its own PLL and for one
+        # without it.
+        self.assertEqual(fpga_pll.lock_event_count({"top": "controls_proof", "pll": LITE_DEFINITION}), 2)
+        self.assertEqual(fpga_adc.lock_event_count("controls_proof"), 1)
+        self.assertEqual(fpga_adc.lock_event_count("clocking_proof"), 0)
 
     def test_reset_chain_audit_and_reports_are_shared_and_unchanged(self):
         self.assertIs(fpga_pll.chain_audit, fpga_clocking.chain_audit)

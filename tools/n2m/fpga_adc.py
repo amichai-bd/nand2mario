@@ -6,24 +6,53 @@ import re
 from .records import file_hash
 from . import fpga_pll, vendor_sources
 from .fpga_clocking import FIT_ENCODING
-from .fpga_lock import parse_netlist, OUTPUTS
+from .fpga_lock import parse_netlist, OUTPUTS, ROW
 
 PLL = "u_adc|u_pll|altpll_component|auto_generated|"
 FSM = "u_adc|u_control|u_control_fsm|"
 SYS = r"\clk_sys~inputclkctrl_outclk"
+# The tops that place the ADC backend, and the two that compose it under a
+# controls system with a target-generated PLL of their own.
+TOPS = ("adc_proof", "controls_proof", "v05_controls_proof")
+COMPOSED = ("controls_proof", "v05_controls_proof")
+SYSTEM_ROW = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
+
+
+def lock_row(top="adc_proof"):
+    """The ADC backend's lock synchronizer, named as the fit's no-clock row."""
+    if top not in TOPS:
+        raise ValueError("unsupported ADC proof top")
+    return (("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "")
+            + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|"
+              "n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
+
+
+def lock_event_count(top):
+    """No-clock rows the ADC backend itself contributes: its one lock synchronizer.
+
+    The ADC generates its own dedicated PLL, so a design that places the backend
+    holds this row whether or not the target also generates a PLL. `adc-early`
+    generates none, and this row is then its whole no-clock inventory; the
+    audit in `fpga.expected_no_clock_count` therefore sums this separately from
+    the clocking module's own count instead of keying on the `pll` field.
+    """
+    return 1 if top in TOPS else 0
+
+
+def no_clock_rows(top="adc_proof", *, parallel=False):
+    """Every no-clock row an ADC proof's fit reports: the ADC's and any target PLL's."""
+    rows = [ROW, lock_row(top)] if top in COMPOSED else [lock_row(top)]
+    return rows + [SYSTEM_ROW] if parallel else rows
 
 
 def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=SYS):
-    from .fpga_lock import ROW
     hierarchy_prefix = "u_controls|" if top == "v05_controls_proof" else ""
     pll_path, fsm_path = hierarchy_prefix + PLL, hierarchy_prefix + FSM
-    if top not in ("adc_proof", "controls_proof", "v05_controls_proof"):
+    if top not in TOPS:
         raise ValueError("unsupported ADC proof top")
-    reset = hierarchy_prefix + "u_adc_reset|" if top in ("controls_proof", "v05_controls_proof") else "u_reset|"
-    row = ("n2m_controls_system:u_controls|" if hierarchy_prefix else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
-    expected_rows = [ROW, row] if top in ("controls_proof", "v05_controls_proof") else [row]
-    if parallel:
-        expected_rows.append("n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync")
+    reset = hierarchy_prefix + "u_adc_reset|" if top in COMPOSED else "u_reset|"
+    row = lock_row(top)
+    expected_rows = no_clock_rows(top, parallel=parallel)
     actual_rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
     if sorted(actual_rows) != sorted(expected_rows):
         raise ValueError("unexpected ADC no-clock endpoint")
