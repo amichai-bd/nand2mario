@@ -1906,7 +1906,10 @@ tests use the standard library. Physical UART commands have an explicit optional
 [pinned serial dependency](../../../tools/n2m/host/THIRD_PARTY.md).
 
 A fresh Linux machine, native or WSL Ubuntu 24.04, needs the repository, the
-build prerequisites and two commands. The prerequisites are the upstream
+build prerequisites and two commands. The first is paid once per host, not once
+per worktree: it installs into the
+[shared host tool cache](#shared-host-tool-cache) outside every checkout. The
+prerequisites are the upstream
 Verilator git-build set recorded under `verilator.install` in the dependency
 definition, including `liblz4-dev` because Verilator 5.052 compiles its FST
 writer against the system `lz4.h` and links `-llz4` for every `--trace-fst`
@@ -1931,9 +1934,11 @@ python3 tools/build.py tools verilator --tag pinned-verilator --json
 
 `tools verilator` builds the pinned tag from
 [`dependencies.json`](../../../tools/n2m/dependencies.json) and installs it into
-`workdir/tools/verilator/v<version>`, outside `workdir/builds` so no build tag
-owns it and `clean --tag` never removes it. The source is cloned at the pinned
-tag into `v<version>.source` and its `HEAD` must equal the pinned commit; any
+the [shared host tool cache](#shared-host-tool-cache),
+`<cache>/verilator/v<version>`, outside every checkout so no build tag owns it,
+`clean --tag` never removes it and removing a delivered worktree cannot take it.
+The source is cloned at the pinned tag into `v<version>.source` and its `HEAD`
+must equal the pinned commit; any
 other commit fails before anything is built. The build runs `autoconf`,
 `configure --prefix`, `make -j<jobs>` and `make install` as argv, with
 Verilator's own `VERILATOR_ROOT` and `VERILATOR_BIN` removed from the child
@@ -1952,15 +1957,65 @@ from an already fetched source. Each of the first two must be at least 1: zero
 is refused by name before anything is cloned rather than folded into the host
 CPU count or the default bound.
 Running it again with that record in place reuses the installation and builds
-nothing. The clone is kept at `v<version>.source`, about 1.3 GB, which is what
-lets `--offline` rebuild without the network; no build tag owns it and no command
-reclaims it, so remove that directory by hand when the space is wanted.
+nothing. The clone is kept beside it at `v<version>.source`, about 1.8 GB, which
+is what lets `--offline` rebuild without the network; no build tag owns it and no
+command reclaims it, so remove that directory by hand when the space is wanted.
 
 Discovery reads the record: an installation counts only with `installation.json`
 beside it, so a partially removed tree is never used. `--verilator-bin` wins,
 then PATH, then the pinned installation, so an operator-supplied Verilator keeps
 working and a host with none needs no PATH edit. No Verilator source or binary is
-committed; the prefix is ignored build output.
+committed; the cache is outside the repository and the legacy prefix is ignored
+build output.
+
+#### Shared host tool cache
+
+The installation lives in one cache per host, so every worktree runs the same
+verified build and a fresh worktree never rebuilds it.
+[`verilator_install.py`](../../../tools/n2m/verilator_install.py) `cache_root`
+resolves it: `N2M_TOOL_CACHE` wins when it names a path (a relative value is
+taken against the checkout), otherwise the per-user default outside every
+checkout, `$XDG_CACHE_HOME/nand2mario/tools`, on Windows
+`%LOCALAPPDATA%\nand2mario\tools`, else `~/.cache/nand2mario/tools`. The
+installation is at `<cache>/verilator/v<version>` and the retained clone at
+`<cache>/verilator/v<version>.source`. The build child's environment never
+selects the cache; a stripped child environment cannot redirect the
+installation.
+
+The path is never trust. On every discovery the record beside the tree must name
+this pin's `version`, `tag` and `commit`, and each installed tool it recorded
+must still hash to the recorded digest, so a stale, foreign, hand-made or
+damaged tree is refused by name rather than becoming a silent fallback. The
+`verilator --version` banner is checked against the pinned release as well,
+because the banner is what says which compiler will run: a pinned tree that
+disagrees fails, while an operator's `--verilator-bin` or PATH tool keeps its
+precedence and its release is recorded as `pin_match` false and carried as a
+notice in the simulation record, printed with the run. `doctor` records the same
+`pin` and `pin_match` and fails only on the pinned tree's own mismatch.
+
+A per-checkout installation an earlier run left at
+`workdir/tools/verilator/v<version>` is still discovered, and `tools verilator`
+adopts it: the tree is verified against the pin, moved into the cache, its
+record's `prefix` restated with the `adopted_from` it came from, and verified
+again where it lands. Nothing is rebuilt, because the installed `bin/verilator`
+resolves its own `VERILATOR_ROOT` relative to that wrapper's directory, so the
+prefix relocates. A tree that fails the check is left where it is for the caller
+to inspect.
+
+#### This host builds the pin
+
+The pinned Verilator builds on the recorded development host, so a missing
+binary means an unbuilt tool and never an unavailable simulator. The
+installation record measured `1599.05` seconds, 26.6 minutes, at `jobs=4` on
+`Linux-7.2.5-3-omarchy-x86_64-with-glibc2.44` under Python 3.14.7, producing
+`Verilator 5.052 2026-09-05 rev v5.052`, while other work ran concurrently.
+There was no compiler failure, no out-of-memory kill and no retry; it needed
+neither `-j1` nor a quiet window. The installed prefix is 248 MB and the
+retained clone 1.8 GB. Every prerequisite was already present: `git`,
+`autoconf`, `make`, `g++`, `flex`, `bison`, `perl` and `help2man` on PATH, plus
+the `lz4.h` and `zlib.h` development headers the FST writer compiles against.
+Only `ccache` is absent, and it is optional. Because one host build now serves
+every worktree, an author pays that time at most once on this machine.
 
 Native Questa expects `vlib`, `vmap`, `vlog` and `vsim` on PATH or
 `--questa-bin <directory>` and uses the caller's license environment. Questa

@@ -14,7 +14,7 @@ from .records import file_hash
 from .questa import diagnostic as questa_diagnostic, write_macro
 from .simulator import (QUESTA_COMPILE_TOOLS, ToolError, questa_license, questa_tools,
                         run_tool, verilator_executable)
-from .verilator_install import discovery_note
+from .verilator_install import discovery_note, pinned_release
 
 SMOKE = "src/dv/builder/builder_smoke.sv"
 SMOKE_SIGNATURE = "PASS builder-smoke seed=1 checks=22"
@@ -101,6 +101,12 @@ def verilator(root, folder, directory):
     match = re.match(r"Verilator (\d+\.\d+)", version.strip())
     if not match or verilator_diagnostic(version):
         raise RuntimeError("unrecognized Verilator version or diagnostic; see version.log")
+    # The banner names what would run, so the pin is held against it here too.
+    # The pinned tree claims to be the pin, so a mismatch there is a failure; an
+    # operator's own tool keeps precedence and is recorded as not the pin.
+    pinned = pinned_release(root)
+    if pinned and match[1] != pinned and source == "pinned":
+        raise RuntimeError(f"Verilator {match[1]} from {source} discovery is not the pinned {pinned}: {tool}")
     # --binary compiles and elaborates the smoke into obj_dir/smoke; lint warnings fail the build.
     compiled = execute([tool, "--binary", "--timing", "--trace-vcd", "--x-initial", "unique",
                         "-j", "0", "--Mdir", "obj_dir", "-o", "smoke", str(root / SMOKE)],
@@ -118,7 +124,7 @@ def verilator(root, folder, directory):
     if SMOKE_FAULT not in fault or SMOKE_SIGNATURE in fault:
         raise RuntimeError("injected fault was not reported; see fault.log")
     return {"version": version.strip(), "release": match[1], "tools": {"verilator": tool},
-            "discovery": source,
+            "discovery": source, "pin": pinned, "pin_match": None if not pinned else match[1] == pinned,
             "license": "none consulted; " + ", ".join(LICENSE_VARIABLES) + " removed from the check environment",
             "fault": {"expected": SMOKE_FAULT, "detected": True}}
 

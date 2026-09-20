@@ -110,6 +110,22 @@ path is the intended author or reviewer directory inside this repository's
 Remove eligible worktrees with `git worktree remove`. Delete their known build
 artifacts and temporary drafts with the worktree; follow the linked recovery
 procedure if ignored output prevents removal. Do not move that output elsewhere.
+
+One path is exempt, and only this one: an installed pinned host tool. Build
+output is a product of the change under review and is reproducible from the
+merged source in minutes, so deleting it costs nothing. The pinned Verilator is
+neither: it is an unmodified upstream build that takes 26 minutes on this host
+and says nothing about the change, so deleting it charges the next author for
+work already done and, when they decline to pay it, leaves `regress pre-merge`
+unrun. It therefore installs into the
+[shared host tool cache](../wiki/tools/n2m/SPEC.md#shared-host-tool-cache)
+outside every checkout, where worktree removal cannot reach it, and its
+provenance is reverified against the pin on every discovery rather than trusted
+because it survived. A worktree that still holds the earlier per-checkout prefix
+`workdir/tools/verilator/` is the one case to look at before removal: run
+`python3 tools/build.py tools verilator` there first, which adopts that verified
+tree into the cache in seconds, then remove the worktree as usual.
+
 Delete the verified merged local branch with `git branch -D 42-fix-timer`
 (squash merges do not retain branch ancestry). Delete its remote branch if still
 present, fetch with prune, and fast-forward root `main`, preserving user changes.

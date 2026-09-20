@@ -194,7 +194,9 @@ def plan(root, args, simulator):
     # Questa path is visible rather than passing as if it had been checked.
     return {"target": target, "driver": driver, "python_runtime": python_runtime, "peer_config": peer_config,
             "vendor_model": vendor_model, "hashes": hashes, "options": options,
-            "notices": vendor_sources.notices(vendor_model),
+            # A discovery finding that does not refuse the tool still has to be
+            # seen, so it rides the same notice channel as a first vendor sighting.
+            "notices": vendor_sources.notices(vendor_model) + list(simulator.notices),
             "fixture_tools": fixture_tools, "fingerprint": fingerprint}
 
 

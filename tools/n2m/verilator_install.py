@@ -1,9 +1,10 @@
-"""The repository's own pinned Verilator: source build under workdir/tools, and its discovery.
+"""The repository's own pinned Verilator: one source build per host, and its discovery.
 
-`tools verilator` builds the pinned tag into `workdir/tools/verilator/v<version>`
-and records its provenance. Discovery then finds it without a PATH edit, so a
-host needs no operator-installed simulator. An operator-supplied Verilator on
-PATH still wins: the pinned tree is the fallback, never a silent override.
+`tools verilator` builds the pinned tag into the shared host tool cache and
+records its provenance. Discovery then finds it without a PATH edit, so a host
+needs no operator-installed simulator and no worktree pays the build twice. An
+operator-supplied Verilator on PATH still wins: the pinned tree is the fallback,
+never a silent override.
 """
 import hashlib
 import json
@@ -17,9 +18,16 @@ import time
 
 from .records import atomic_json, atomic_text, file_hash
 
-# Relative to the repository root, outside workdir/builds so `clean --tag`
-# never removes an installed tool and no tag rebuilds one.
+# Relative to the repository root: the per-checkout prefix earlier runs filled.
+# It is still discovered and adopted, but nothing new installs there, because a
+# worktree's removal after delivery would take the tool with it.
 RELATIVE_PREFIX = "workdir/tools/verilator"
+# The shared installation lives outside every checkout, so one build serves every
+# worktree on the host and post-merge cleanup cannot reach it.
+CACHE_VARIABLE = "N2M_TOOL_CACHE"
+CACHE_FOLDER = ("nand2mario", "tools")
+TOOL_FOLDER = "verilator"
+WINDOWS = os.name == "nt"
 INSTALLATION = "installation.json"
 # The official git-build prerequisites this installation needs on PATH.
 BUILD_TOOLS = ("git", "autoconf", "make", "g++", "flex", "bison", "perl", "help2man")
@@ -38,28 +46,140 @@ def pin(root):
     return json.loads(text)["verilator"]
 
 
+def cache_root(root, environment=None):
+    """Where this host keeps its installed pinned tools, outside every checkout.
+
+    ``N2M_TOOL_CACHE`` wins when it names a path; otherwise the per-user default
+    under the platform cache folder. A relative variable is resolved against the
+    checkout so a caller cannot land the cache on an unknown path. The location
+    is deliberately not inside a checkout: a worktree is removed after delivery
+    and would take a 27-minute build with it.
+    """
+    environment = os.environ if environment is None else environment
+    override = (environment.get(CACHE_VARIABLE) or "").strip()
+    if override:
+        path = Path(override).expanduser()
+        return path if path.is_absolute() else Path(root).resolve() / path
+    base = (environment.get("XDG_CACHE_HOME") or "").strip()
+    if not base and WINDOWS:
+        base = (environment.get("LOCALAPPDATA") or "").strip()
+    base = (Path(base).expanduser() if base
+            else Path(environment.get("HOME") or Path.home()).expanduser() / ".cache")
+    return base.joinpath(*CACHE_FOLDER)
+
+
 def prefix(root, version):
-    return Path(root) / RELATIVE_PREFIX / ("v" + version)
+    return cache_root(root) / TOOL_FOLDER / ("v" + version)
 
 
 def source_root(root, version):
+    return cache_root(root) / TOOL_FOLDER / ("v" + version + ".source")
+
+
+def legacy_prefix(root, version):
+    return Path(root) / RELATIVE_PREFIX / ("v" + version)
+
+
+def legacy_source_root(root, version):
     return Path(root) / RELATIVE_PREFIX / ("v" + version + ".source")
+
+
+def pinned_release(root=None):
+    """The release this repository pins, or None when the pin cannot be read."""
+    try:
+        return pin(Path(root or repository_root()))["version"]
+    except (OSError, TypeError, ValueError, KeyError):
+        return None
+
+
+def verify_installation(base, item):
+    """Prove a tree is this pin's build and return its record; a path is never trust.
+
+    A shared cache, an operator-set `N2M_TOOL_CACHE` and an adopted per-checkout
+    tree all arrive as a directory that claims to hold the pin. The record beside
+    it must name this pin's version, tag and commit, and the installed tool bytes
+    must still hash to what it recorded, so a stale, foreign or damaged tree is
+    refused by name rather than silently simulated with.
+    """
+    base = Path(base)
+    record_path = base / INSTALLATION
+    try:
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ValueError(f"unreadable Verilator provenance record: {record_path}: {error}") from error
+    recorded = record.get("pin") if isinstance(record, dict) else None
+    recorded = recorded if isinstance(recorded, dict) else {}
+    for field in ("version", "tag", "commit"):
+        if recorded.get(field) != item[field]:
+            raise ValueError(f"installed Verilator was built from a different pin: {base}: "
+                             f"{field} {recorded.get(field)!r} is not {item[field]!r}")
+    tools = record.get("tools")
+    tools = tools if isinstance(tools, dict) else {}
+    if "verilator" not in tools:
+        raise ValueError(f"Verilator provenance record names no installed tool hash: {record_path}")
+    for name, digest in sorted(tools.items()):
+        tool = base / "bin" / name
+        if not tool.is_file():
+            raise ValueError(f"installed Verilator is missing {name}: {base}")
+        if file_hash(tool) != digest:
+            raise ValueError(f"installed Verilator {name} does not match its provenance record: {base}")
+    return record
+
+
+def adopt(root, item, base):
+    """Publish a verified per-checkout installation into the shared host cache.
+
+    An earlier run that installed into a checkout keeps its value: the tree is
+    verified against the pin before it moves and again where it lands. The
+    installed `bin/verilator` resolves its own root relative to its directory, so
+    the prefix relocates without a rebuild; only the record's own `prefix` is
+    restated. A tree that fails the check is left alone for the caller to
+    inspect, never overwritten or silently rebuilt over.
+    """
+    legacy = legacy_prefix(root, item["version"])
+    base = Path(base)
+    if base.exists() or legacy.resolve() == base.resolve() or not (legacy / "bin/verilator").is_file():
+        return False
+    verify_installation(legacy, item)
+    base.parent.mkdir(parents=True, exist_ok=True)
+    staged = base.with_name(base.name + ".adopting")
+    if staged.exists():
+        shutil.rmtree(staged)
+    shutil.move(str(legacy), str(staged))
+    record = json.loads((staged / INSTALLATION).read_text(encoding="utf-8"))
+    record.update(prefix=str(base), adopted_from=str(legacy))
+    atomic_json(staged / INSTALLATION, record)
+    os.replace(staged, base)
+    verify_installation(base, item)
+    # The retained clone is what `--offline` rebuilds from, so it follows the
+    # installation out of the checkout rather than being orphaned by it.
+    source = source_root(root, item["version"])
+    legacy_source = legacy_source_root(root, item["version"])
+    if (legacy_source / ".git").is_dir() and not source.exists():
+        shutil.move(str(legacy_source), str(source))
+    return True
 
 
 def installed(root=None, *, version=None):
     """The pinned installation's bin directory, or None when it is not installed.
 
-    An installation counts only with its provenance record beside it, so a
-    partially removed or half-written tree is never discovered.
+    The shared host cache is searched first, then the per-checkout prefix an
+    earlier run may have filled, so a worktree that already holds a build keeps
+    working. An installation counts only with its provenance record beside it, so
+    a partially removed or half-written tree is never discovered, and the record
+    must still match the pin, so a tree from another version is reported rather
+    than used.
     """
     root = Path(root or repository_root())
     try:
-        version = version or pin(root)["version"]
+        item = pin(root)
+        version = version or item["version"]
     except (OSError, ValueError, KeyError):
         return None
-    base = prefix(root, version)
-    if (base / "bin/verilator").is_file() and (base / INSTALLATION).is_file():
-        return base / "bin"
+    for base in (prefix(root, version), legacy_prefix(root, version)):
+        if (base / "bin/verilator").is_file() and (base / INSTALLATION).is_file():
+            verify_installation(base, item)
+            return base / "bin"
     return None
 
 
@@ -67,7 +187,8 @@ def discovery_note(root=None):
     """The hint a missing-Verilator failure carries; never a fallback of its own.
 
     It states the whole remedy once, so a caller prefixes it rather than
-    repeating either half.
+    repeating either half. The build is kept per host, so the remedy is paid once
+    on this machine rather than once per worktree.
     """
     del root
     return ("install the repository-pinned Verilator with "
@@ -133,11 +254,15 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
     if timeout is not None and timeout < 1:
         raise ValueError(f"--timeout must be at least 1 second, not {timeout}")
     version, tag, commit = item["version"], item["tag"], item["commit"]
+    # `environ` is the build child's environment, not this host's: the cache is
+    # resolved from the process environment so a stripped child environment can
+    # never redirect the installation.
     base, source = prefix(root, version), source_root(root, version)
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     env = build_environment(environ)
     record = {"pin": item, "prefix": str(base), "source": str(source),
+              "cache_root": str(cache_root(root)), "adopted": False,
               "reused": False, "commands": []}
 
     def step(name, argv, cwd, step_timeout=None):
@@ -145,12 +270,14 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
         return run(argv, cwd, folder / (name + ".log"), step_timeout or timeout, env)
 
     tool = base / "bin/verilator"
+    if not (tool.is_file() and (base / INSTALLATION).is_file()):
+        record["adopted"] = adopt(root, item, base)
     if tool.is_file() and (base / INSTALLATION).is_file():
+        installation = verify_installation(base, item)
         banner = step("reused-version", [tool, "--version"], folder, 60).strip()
         if banner_version(banner) != version:
             raise ValueError(f"installed Verilator is {banner!r}, expected {version}: {base}")
-        record.update(reused=True, version=banner,
-                      installation=json.loads((base / INSTALLATION).read_text(encoding="utf-8")))
+        record.update(reused=True, version=banner, installation=installation)
         return record
 
     tools = prerequisites(which)
@@ -192,7 +319,7 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
                   "jobs": jobs, "elapsed_seconds": record["elapsed_seconds"],
                   "local_changes": "none",
                   "redistribution": "No Verilator source or binary is committed; the build stays "
-                                    "under the ignored workdir/tools prefix"}
+                                    "in the shared host tool cache outside every checkout"}
     atomic_json(base / INSTALLATION, provenance)
     record["installation"] = provenance
     return record

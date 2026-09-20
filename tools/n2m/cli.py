@@ -118,7 +118,7 @@ def parser():
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true")
     tools = commands.add_parser("tools", help="install the host tools this repository pins for itself").add_subparsers(dest="action", required=True)
-    pinned_verilator = tools.add_parser("verilator", help="build and install the pinned Verilator under workdir/tools; discovery then needs no PATH edit")
+    pinned_verilator = tools.add_parser("verilator", help="build and install the pinned Verilator into the shared host tool cache (N2M_TOOL_CACHE, else the per-user default); discovery then needs no PATH edit and no worktree rebuilds it")
     pinned_verilator.add_argument("--jobs", type=int, help="parallel build jobs; defaults to the host CPU count")
     pinned_verilator.add_argument("--timeout", type=int, default=verilator_install.STEP_TIMEOUT,
                                   help="per-step timeout in seconds")
@@ -353,7 +353,7 @@ def tagged(root, args, header, publish, progress=None):
                               else assemble_target(root, build, args, provenance))
             elif args.command == "tools":
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
-                progress.line("Install the pinned Verilator under workdir/tools; no simulation")
+                progress.line("Install the pinned Verilator into the shared host tool cache; no simulation")
                 report.update(verilator_install.command(root, build, args, provenance))
             elif args.command == "sim" and args.action == "preflight":
                 from .fixture_preflight import run
