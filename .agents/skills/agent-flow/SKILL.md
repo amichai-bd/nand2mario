@@ -79,6 +79,10 @@ optimizing a correct harness solely to meet the default cap. Required checks
 still follow their current owner; planned affected selection is not permission
 to skip them.
 
+Before writing a loop that waits for a long command, read
+[waiting](references/waiting.md): a `pgrep -f` wait matches the waiting shell's
+own command line and never finishes.
+
 For interruptions, follow [recovery](references/recovery.md). Review handoffs
 use [the report template](templates/review.md); see
 [scenarios](examples/scenarios.md) when needed.
