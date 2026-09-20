@@ -631,6 +631,7 @@ units:
   tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: []}
   tools/n2m/tests/test_fpga_cycloneive.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_cyclonev.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_de2_system.py: {kind: unit, level: 0, labels: [builder, fpga, memory], duration_seconds: 1.50, inputs: [cfg/interfaces.json, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_flash.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 4.39, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_hold.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.10, inputs: []}
