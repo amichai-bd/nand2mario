@@ -456,6 +456,69 @@
         "oam_response.data[*]"
       ]
     },
+    "memory-stores-preloaded": {
+      "device": "10M50DAF484C7G",
+      "top": "n2m_memory_stores",
+      "rom_image": "springtrail",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/memory/n2m_memory_pkg.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/memory/n2m_memory_stores.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/memory_stores.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11"
+      },
+      "virtual_pins": [
+        "reset_sys",
+        "core_reset",
+        "init_done",
+        "access_read",
+        "access_write",
+        "access_store[*]",
+        "access_address[*]",
+        "access_wdata[*]",
+        "access_rdata[*]",
+        "access_valid",
+        "host_read",
+        "host_write",
+        "host_offset[*]",
+        "host_wdata[*]",
+        "host_rdata[*]",
+        "host_valid",
+        "ppu_vram_read",
+        "ppu_vram_address[*]",
+        "ppu_vram_rdata[*]",
+        "ppu_vram_valid",
+        "ppu_oam_read",
+        "ppu_oam_pair[*]",
+        "ppu_oam_rdata[*]",
+        "ppu_oam_valid",
+        "wave_read",
+        "wave_write",
+        "wave_address[*]",
+        "wave_wdata[*]",
+        "wave_rdata[*]",
+        "wave_valid",
+        "core_paused",
+        "oam_sequence_active",
+        "peek_ready",
+        "peek_read",
+        "peek_select[*]",
+        "peek_offset[*]",
+        "peek_rdata[*]",
+        "peek_valid",
+        "oam_request.read",
+        "oam_request.write_enable[*]",
+        "oam_request.pair[*]",
+        "oam_request.data[*]",
+        "oam_response.valid",
+        "oam_response.data[*]"
+      ]
+    },
     "ppu-invalid": {
       "device": "10M50DAF484C7G",
       "top": "ppu_proof",

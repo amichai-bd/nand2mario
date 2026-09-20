@@ -4,7 +4,7 @@
 
 // Contract: wiki/src/rtl/common/MAS_memory_primitives.md.
 // MAX 10 synthesis sees the vendor altsyncram instance. Verilator predefines
-// VERILATOR and selects the repository double with the same shape and rules.
+// VERILATOR and selects the repository double. INIT_FILE reaches both models.
 
 // The vendor family and its block type are the only device-dependent values in
 // this wrapper. The builder defines N2M_RAM_CYCLONEV for a Cyclone V target
@@ -25,7 +25,7 @@ module n2m_intel_ram #(
     parameter integer ADDRESS_BITS = $clog2(DEPTH),
     parameter integer BYTE_LANES = 1,
     parameter bit DUAL_CLOCK = 0,
-    parameter string SIM_INIT_FILE = "UNUSED"
+    parameter string INIT_FILE = "UNUSED"
 ) (
     input var logic clk_a,
     input var logic clk_b,
@@ -44,11 +44,11 @@ module n2m_intel_ram #(
     output logic b_valid
 );
     localparam integer PRIMITIVE_LANES = (DATA_BITS + 7) / 8;
-`ifdef SYNTHESIS
-    localparam string INIT_FILE = "UNUSED";
-`else
-    localparam string INIT_FILE = SIM_INIT_FILE;
-`endif
+    // A declared image must survive power-up, so the vendor initialization is
+    // suppressed only for a store that declares none. One declaration reaches
+    // both backing models, so the same file and shape serve simulation and
+    // synthesis (wiki/src/rtl/common/MAS_memory_primitives.md).
+    localparam string POWER_UP_UNINITIALIZED = INIT_FILE == "UNUSED" ? "TRUE" : "FALSE";
     logic read_a, write_a, read_b;
     logic primitive_write;
     logic valid_a, valid_b;
@@ -112,7 +112,7 @@ module n2m_intel_ram #(
         // Different-clock collisions have no defined device result. The pinned
         // Intel model's coercion diagnostic is recorded by the builder.
         .read_during_write_mode_mixed_ports(DUAL_CLOCK ? "DONT_CARE" : "OLD_DATA"),
-        .power_up_uninitialized("TRUE"), .init_file(INIT_FILE)
+        .power_up_uninitialized(POWER_UP_UNINITIALIZED), .init_file(INIT_FILE)
     ) ram (
         .clock0(clk_a), .clock1(DUAL_CLOCK ? clk_b : 1'b1),
         .clocken0(1'b1), .clocken1(1'b1), .clocken2(1'b1), .clocken3(1'b1),

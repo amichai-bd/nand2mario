@@ -20,9 +20,9 @@ module tb_preload_load;
     string line;
     bit crc_fault;
     n2m_uart_load #(.SIM_PRELOAD(1)) dut (.*);
-    defparam dut.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
+    defparam dut.u_presence.u_presence.INIT_FILE = "preload-presence.mif";
     // The store depth, as the memory owner's ROM store; the image fills its low half.
-    n2m_intel_ram #(.DEPTH(65536),.ADDRESS_BITS(16),.SIM_INIT_FILE("preload-rom.mif")) rom (
+    n2m_intel_ram #(.DEPTH(65536),.ADDRESS_BITS(16),.INIT_FILE("preload-rom.mif")) rom (
         .clk_a(clk_sys),.clk_b(clk_sys),.reset_a(reset_sys),.reset_b(reset_sys),
         .a_read(rom_read),.a_write(rom_write),.a_address(rom_address),
         .a_wdata(rom_write_data),.a_byte_enable(1'b1),.a_rdata(rom_read_data),.a_valid(rom_read_valid),

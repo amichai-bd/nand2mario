@@ -38,7 +38,7 @@ module sim_ram_wrapper_case #(
     bit have_a, have_b, corrupt, collision, partial_lanes;
     integer index, lane, distinct;
     n2m_intel_ram #(.DEPTH(DEPTH), .DATA_BITS(DATA_BITS), .ADDRESS_BITS(ADDRESS_BITS),
-        .BYTE_LANES(LANES), .DUAL_CLOCK(DUAL_CLOCK), .SIM_INIT_FILE(INIT_FILE)) dut (.*);
+        .BYTE_LANES(LANES), .DUAL_CLOCK(DUAL_CLOCK), .INIT_FILE(INIT_FILE)) dut (.*);
 
     function automatic logic [DATA_BITS-1:0] preload_value(input integer at);
         if (DATA_BITS == 8) return DATA_BITS'(sim_ram_double_pkg::byte_image(at));
@@ -99,7 +99,9 @@ module sim_ram_wrapper_case #(
         a_read = 0; a_write = 0; reset_a = 0; reset_b = 0; cycle();
         if (INIT_FILE == "UNUSED") begin
             // Power-up words come from the seeded random fill: read every word
-            // and require more than one distinct value across the array.
+            // and require more than one distinct value across the array. The
+            // vendor attribute this instance states must leave them so.
+            if (dut.POWER_UP_UNINITIALIZED != "TRUE") fail("SIM_RAM_POWER_UP_ATTRIBUTE");
             a_read = 1;
             for (index = 0; index <= DEPTH; index = index + 1) begin
                 if (index < DEPTH) a_address = ADDRESS_BITS'(index);
@@ -116,7 +118,9 @@ module sim_ram_wrapper_case #(
             a_read = 0;
             if (distinct == 0) fail("SIM_RAM_POWER_UP_UNIFORM");
         end else begin
-            // Preload: every word matches the image the top wrote to the file.
+            // Preload: every word matches the image the top wrote to the file,
+            // and the instance must not state the power-up that would discard it.
+            if (dut.POWER_UP_UNINITIALIZED != "FALSE") fail("SIM_RAM_POWER_UP_ATTRIBUTE");
             for (index = 0; index < DEPTH; index = index + 1) expected[index] = preload_value(index);
             a_read = 1; b_read = 1;
             for (index = 0; index < DEPTH; index = index + 1) begin

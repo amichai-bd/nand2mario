@@ -14,7 +14,7 @@ public ports:
   every rule on this page: one request edge of latency with unregistered
   output, per-lane enables for the supported shapes, `NEW_DATA_NO_NBE_READ`
   same-port behavior, `OLD_DATA` single-clock and unspecified dual-clock
-  mixed-port behavior, seeded random power-up contents and `SIM_INIT_FILE`
+  mixed-port behavior, seeded random power-up contents and `INIT_FILE`
   preload. It uses an `n2m_sim_` name; no repository HDL defines `altsyncram`.
 
 [`tb_sim_ram_double`](../../../../src/dv/common/tb_sim_ram_double.sv) is the
@@ -56,11 +56,24 @@ The wrapper's valid bits are ordinary shared-macro registers.
 `reset_a/b` immediately mask the corresponding valid output and inhibit that
 port's accesses; reset does not clear the array or data output. Each domain's
 owner must release reset synchronously. Owners initialize through real clear
-or load writes and prevent reads until their data is initialized. Default and
-synthesized memory has `power_up_uninitialized=TRUE` and `init_file=UNUSED`;
-the double fills every word from `$urandom` at time zero. The explicit
-[simulation preload](../../dv/preload/SPEC.md) may select an initialization
-file through `SIM_INIT_FILE`; synthesis ignores it. The double supports `.mif`
+or load writes and prevent reads until their data is initialized. A store that
+declares no image has `init_file=UNUSED` and `power_up_uninitialized=TRUE`, and
+the double fills every word from `$urandom` at time zero.
+
+`INIT_FILE` names one memory initialization file for both backing models, so one
+declaration serves a simulation and a fit. It is a declared module parameter, not
+access to vendor internals: the
+[simulation preload](../../dv/preload/SPEC.md) sets it by `defparam` and a board
+image names it on one store instance through its
+[generated project](../../../tools/n2m/SPEC.md#carried-rom-image).
+`power_up_uninitialized` follows from that declaration rather than being fixed:
+`TRUE` with no file, `FALSE` with one, because a store that powers up
+uninitialized cannot also power up holding a program. Both states are checked in
+[the wrapper's own unit](../../../../src/dv/common/tb_sim_ram_double.sv) and in
+fitted MAX 10 evidence, where Quartus states either the attribute or the
+initialization: an initialized block carries `init_file`, `init_file_layout` and
+its `mem_init` words and no `power_up_uninitialized`, and an uninitialized one
+carries `power_up_uninitialized=true` and none of them. The double supports `.mif`
 (the `DEPTH`/`WIDTH`/radix header and `address : value;` or
 `[first..last] : value;` rows written by `tools/n2m/preload.py`) through its own
 parser; any other name is read as plain `$readmemh` text, one hex word per

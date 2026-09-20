@@ -879,7 +879,7 @@ every emitted file hash; a mismatch fails the attempt without launching. The
 verified manifest is retained in the record as `preload` (`image_sha256`,
 `image_crc32`, `files` hashes and `fixture` when one is named). The run
 executes from the attempt directory, so `$readmemh("preload-crc.hex")` under
-`SIM_PRELOAD` and `SIM_INIT_FILE("preload-rom.mif")` resolve to the prepared
+`SIM_PRELOAD` and `INIT_FILE("preload-rom.mif")` resolve to the prepared
 files, as they did under Questa. A driver target that sets `driver.preload`
 instead prepares through its Python peer, and the same recheck runs after the
 peer is ready and before the run launches.
@@ -1292,6 +1292,9 @@ physical bit inventory, and absent primitive reset/initialization. The ordinary
 timing and diagnostic gates still apply. This proves the raw storage slice;
 CPU routing, arbitration and full-system initialization require their own
 composition evidence in the [memory contract](../../src/rtl/memory/MAS_memory.md).
+`memory-stores-preloaded` is the same target with a
+[carried ROM image](#carried-rom-image); the two together are the fitted evidence
+for both power-up states.
 
 ### Registered target execution
 
@@ -2439,6 +2442,68 @@ no threshold.
 [`test_fpga_hold.py`](../../../tools/n2m/tests/test_fpga_hold.py) covers the
 script, parsing, the record shape and the summary lines with synthetic reports.
 
+### Carried ROM image
+
+A target may declare `rom_image`, a `src/sw/targets.json` package name, and the
+fitted memory then powers up holding that program, so a board with no host
+connection runs it. A target that declares none is unchanged: the declaration
+reaches one store instance through a QSF parameter rather than a macro, so every
+other target's generated project files and RTL preprocessing are byte-identical.
+
+[`fpga_rom_image.py`](../../../tools/n2m/fpga_rom_image.py) owns the path. Before
+the cache check it runs that package's software build, which is the packager, and
+hands the image and the digest that build recorded to
+[`preload.prepare`](#preloaded-execution-target), the same packager the simulation
+preload uses. That rechecks the exact profile length, the digest and the header
+and checksums, so an image failing any of them refuses the build rather than
+warning. The attempt then holds `preload-rom.mif`, `preload-presence.mif`,
+`preload-crc.hex`, `preload.json` and `program.gb`, the file digests enter the
+fingerprint (a changed program is a new attempt), and the record names the
+carried image under `rom_image` with its package, profile, length, SHA256 and
+CRC-32.
+
+The generated project carries
+`set_parameter -name INIT_FILE "preload-rom.mif" -to "<store instance>"`
+(`fpga_rom_image.rom_path`, one instance path per registered top; a top absent
+from that table refuses the declaration by name). Only the
+`dmg-direct-v1` profile is carried, whose whole image is the store's lower half;
+the loader profile and its [flash library](#flash-library-image) remain the other
+way to reach a program, and a target declaring both is refused because both want
+one MAX 10 internal configuration mode.
+
+A MAX 10 configures from its own flash, and without ERAM the fitter refuses
+memory initialization outright (Quartus 16031), so an image-carrying MAX 10
+target also states `INTERNAL_FLASH_UPDATE_MODE "Single Comp Image with ERAM"`,
+the mode the Quartus libraries also name `Single Compressed Image with Memory
+Initialization`. A family that configures from an external device states nothing
+extra. The assembler still writes an `output/design.pof` for such an attempt, in
+that mode rather than the flash library's; it is not a board image and
+[`--pof` programming refuses it](#flash-programming). The
+packager's file addresses the whole 65,536-byte store and defines the image's own
+32,768 bytes, so Quartus reports the remaining addresses and the zero it writes
+there (113028 and 113027); both lines are classified against the recorded image
+length, and a different length changes the required text rather than passing
+quietly.
+
+The evidence checks that the QSF carries both assignments once, that every
+prepared file still matches `preload.json`, that the fitted RAM summary row names
+`preload-rom.mif` on that store, and that the fitted blocks hold the image
+itself: each one-bit M9K holds one bit plane of one window of consecutive
+addresses, and the multiset of the 64 blocks' `mem_init` words must be the
+multiset the declared image requires, so a different, altered or wrongly sized
+image fails, down to one bit. Which window a block holds is a fitter decision
+recorded in the address decode rather than in the block, so the comparison is a
+multiset and does not distinguish a permutation of the eight whole windows from
+the image itself; every change inside a window is caught. Quartus states either the power-up attribute or the initialization, so the
+initialized blocks carry no `power_up_uninitialized` and the other stores keep
+`power_up_uninitialized=true`. The parameters the wrapper actually passed are
+read back from the generated `db/altsyncram_*.tdf` of each memory shape: exactly
+one must name the carried file and state `POWER_UP_UNINITIALIZED="FALSE"`, and
+every other must state `"TRUE"` with no file, so one attempt witnesses both
+states of the rule the
+[memory primitives contract](../../src/rtl/common/MAS_memory_primitives.md)
+gives that parameter.
+
 ### Flash library image
 
 The [flash library contract](../../src/rtl/storage/MAS_flash_library.md#flash-layout)
@@ -2766,6 +2831,14 @@ follow: the record's `status` is `PASS`, `evidence.onchip_flash` exists, its
 `user_range_match` true with a `sha256` equal to the file's current hash. Any
 refusal writes `failure.log` before JTAG discovery and names it, as for the
 `.sof`.
+
+An attempt that [carries a ROM image](#carried-rom-image) also retains a
+`output/design.pof`, and it is the one DE10-Lite `.pof` assembled in a different
+configuration mode: `Single Comp Image with ERAM`, whose flash layout is not the
+one the flash library's `.pof` evidence describes. It is not a board image and
+`--pof` refuses it by name, because its record carries no `evidence.onchip_flash`
+at all; the volatile `--sof` load is the only reachable path for such an attempt.
+Do not reach past that refusal to `quartus_pgm` by hand.
 
 `--dry-run`, valid only with `--pof`, stops after those checks: it writes
 the exact programmer command to `dry-run.log` with `<cable>` in place of the

@@ -1,4 +1,5 @@
 """Check the seven direct-profile stores in retained MAX 10 fit evidence."""
+import hashlib
 import re
 
 from .fpga_clocking import FIT_ENCODING
@@ -12,7 +13,16 @@ STORES = {"rom": (65536, 64), "wram": (8192, 8), "vram": (8192, 8),
           "wave_ram": (16, 1)}
 
 
-def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False):
+# Parameters that carry a fitted block's power-up contents. Quartus states
+# either the power-up attribute or the initialization, never both: a block
+# initialized from a file carries init_file, its layout and the mem_init words
+# and drops power_up_uninitialized, which is how the declaration is observable
+# in the fitted netlist.
+INIT_PARAMETERS = ("mem_init", "init_file")
+INIT_LAYOUT = "port_a"
+
+
+def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False, init_files=None):
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
     if scoped:
         atoms = [(name, body) for name, body in atoms if any(name.startswith(owner + "|ram|") for owner in stores)]
@@ -33,9 +43,12 @@ def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False)
             raise ValueError("duplicate memory store physical parameter")
         depth, blocks = stores[owner]
         wide = blocks == 1
+        initialized = owner in (init_files or {})
         expected = {"operation_mode": "bidir_dual_port", "ram_block_type": "M9K",
-                    "power_up_uninitialized": "true", "mixed_port_feed_through_mode": "old",
+                    "mixed_port_feed_through_mode": "old",
                     "port_b_address_clock": "clock0", "port_b_read_enable_clock": "clock0"}
+        if not initialized:
+            expected["power_up_uninitialized"] = "true"
         for port in ("a", "b"):
             expected.update({f"port_{port}_logical_ram_depth": str(depth),
                              f"port_{port}_logical_ram_width": "8",
@@ -46,10 +59,16 @@ def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False)
                              f"port_{port}_data_width": "18" if wide else "1",
                              f"port_{port}_first_address": "0",
                              f"port_{port}_last_address": str((1 << (depth - 1).bit_length()) - 1 if wide else 8191)})
+        contents = {key: params.pop(key) for key in sorted(params) if key.startswith(INIT_PARAMETERS)}
         if any(params.get(key) != value for key, value in expected.items()):
             raise ValueError(f"memory store physical parameter differs: {name}")
-        if any(key.startswith(("mem_init", "init_file")) for key in params):
-            raise ValueError("memory store initialization unexpectedly present")
+        if not initialized:
+            if contents:
+                raise ValueError("memory store initialization unexpectedly present")
+        elif ("power_up_uninitialized" in params or contents.get("init_file") != init_files[owner]
+                or contents.get("init_file_layout") != INIT_LAYOUT
+                or not any(key.startswith("mem_init") for key in contents)):
+            raise ValueError(f"memory store initialization differs or is suppressed: {name}")
         required_ports = {"clk0": system_clock, "clk1": "gnd", "clr0": "gnd", "clr1": "gnd",
                           "portbwe": "gnd", "portabyteenamasks": "1'b1", "portbbyteenamasks": "1'b1",
                           "portaaddrstall": "gnd", "portbaddrstall": "gnd"}
@@ -60,6 +79,12 @@ def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False)
             raise ValueError("memory store A/B bit partition differs")
         partitions[owner].append(first)
         evidence[name] = {"ports": ports, "parameters": params}
+        if contents:
+            # The mem_init values are whole block images; the evidence keeps
+            # their digests and the image owner checks the bits themselves.
+            evidence[name]["initialization"] = {
+                key: value if not key.startswith("mem_init") else hashlib.sha256(value.encode("ascii")).hexdigest()
+                for key, value in contents.items()}
     for owner, (depth, count) in stores.items():
         expected = [0] if count == 1 else [bit for bit in range(8) for _ in range(count // 8)]
         if sorted(partitions[owner]) != expected:
@@ -67,20 +92,20 @@ def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False)
     return evidence
 
 
-def verify(folder):
+def verify(folder, *, init_files=None):
     fit = (folder / "output/design.fit.rpt").read_text(encoding=FIT_ENCODING)
-    evidence = verify_rows(fit)
+    evidence = verify_rows(fit, init_files=init_files)
     totals = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
     if len(totals) != 1 or not totals[0].startswith("657,784 /"):
         raise ValueError("memory store total capacity differs")
     text = (folder / "simulation/questa/design.vo").read_text()
     if re.search(r"(?i)black.?box", text):
         raise ValueError("memory store black box present")
-    evidence["physical_atoms"] = verify_netlist(text)
+    evidence["physical_atoms"] = verify_netlist(text, init_files=init_files)
     return evidence
 
 
-def verify_rows(fit, *, stores=STORES, scoped=False):
+def verify_rows(fit, *, stores=STORES, scoped=False, init_files=None):
     memories = [row for row in rows(fit) if len(row) >= 24 and row[1] == "M9K"]
     if scoped:
         memories = [row for row in memories if any(node(row[0]).startswith(owner + "|ram|") for owner in stores)]
@@ -92,9 +117,13 @@ def verify_rows(fit, *, stores=STORES, scoped=False):
         if len(matches) != 1:
             raise ValueError(f"memory store missing or duplicated: {owner}")
         row = matches[0]
+        # The fitted row names the store's initialization file, or None.
+        initialization = (init_files or {}).get(owner, "None")
         if (row[2:12] != ["True Dual Port", "Single Clock", str(depth), "8", str(depth), "8", "yes", "no", "yes", "no"]
-                or row[12] != str(depth * 8) or row[18:20] != [str(blocks), "None"]
+                or row[12] != str(depth * 8) or row[18:20] != [str(blocks), initialization]
                 or row[21:24] != ["Old data", "New data with NBE Read", "New data with NBE Read"]):
             raise ValueError(f"memory store fitted service differs: {owner}")
         evidence[owner] = {"depth": depth, "width": 8, "m9ks": blocks, "row": row}
+        if initialization != "None":
+            evidence[owner]["initialization"] = initialization
     return evidence

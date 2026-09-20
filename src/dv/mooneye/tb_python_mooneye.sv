@@ -22,8 +22,8 @@ module tb_python_mooneye;
     logic [116:0] pixel_sample;
 
     n2m_smoke_system dut (.*);
-    defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
-    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
+    defparam dut.u_stores.rom.INIT_FILE = "preload-rom.mif";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.INIT_FILE = "preload-presence.mif";
     defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
     always #20 clk_sys = !clk_sys;
 

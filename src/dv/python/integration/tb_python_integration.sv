@@ -43,8 +43,8 @@ module tb_python_integration;
     // +define+PRELOADED selects the prepared image. Verilator resolves a
     // defparam value in the target instance, so a wrapper parameter cannot.
 `ifdef PRELOADED
-    defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
-    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
+    defparam dut.u_stores.rom.INIT_FILE = "preload-rom.mif";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.INIT_FILE = "preload-presence.mif";
     defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
 `endif
     always #20 clk_sys = !clk_sys;

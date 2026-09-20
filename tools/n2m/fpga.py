@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_vga_dac, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree, vendor_sources
+from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_vga_dac, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, fpga_rom_image, flash_library, process_tree, vendor_sources
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
@@ -176,7 +176,7 @@ def target_definition(root, name):
         raise ValueError("unknown FPGA target, fields, or device")
     _, board, target = entry
     fields = {"device", "top", "sources", "constraints", "pins", "virtual_pins"}
-    if not isinstance(target, dict) or not fields.issubset(target) or set(target) - fields - {"pll", "timing"} or target["device"] != board["device"]:
+    if not isinstance(target, dict) or not fields.issubset(target) or set(target) - fields - {"pll", "timing", "rom_image"} or target["device"] != board["device"]:
         raise ValueError("unknown FPGA target, fields, or device")
     if name == "v05-board":
         fpga_v05.validate_board(target)
@@ -191,6 +191,10 @@ def target_definition(root, name):
         fpga_constraints.validate(target["timing"])
     if not isinstance(target["top"], str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("invalid FPGA top")
+    # A declared image is checked before any tool runs; the packager checks the
+    # bytes when the build assembles them.
+    if fpga_rom_image.declared(target) is not None:
+        fpga_rom_image.validate(root, target)
     for field, suffix in (("sources", ".sv"), ("constraints", ".sdc")):
         paths = target[field]
         if not isinstance(paths, list) or not paths or any(not isinstance(p, str) for p in paths) or len(set(paths)) != len(paths):
@@ -315,6 +319,10 @@ def prepare(root, folder, target, build_id=None):
         lines.extend(fpga_adc.assignments())
     if fpga_flash.flash_target(target):
         lines.extend(fpga_flash.assignments(target["top"]))
+    # The store's initialization file is named on that one instance, so no other
+    # target's project files or preprocessing change.
+    if fpga_rom_image.declared(target) is not None:
+        lines.extend(fpga_rom_image.assignments(target))
     if "timing" in target or target["top"] in ("v05_proof", "v05_controls_proof"):
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
@@ -483,6 +491,8 @@ def execute(argv, folder, log, timeout, record, build):
         explained = [*explained, *generated_design_diagnostics(text, folder)]
     if log.name == "compile.log" and sdram_target(record.get("definition", {})):
         explained = [*explained, *sdram_clock_diagnostics(text, folder)]
+    if log.name == "compile.log" and fpga_rom_image.declared(record.get("definition", {})) is not None:
+        explained = [*explained, *fpga_rom_image.explained_diagnostics(text, folder)]
     if log.name in fpga_flash.STROBE_LOGS and fpga_flash.flash_target(record.get("definition", {})):
         explained = [*explained, *fpga_flash.explained_diagnostics(text, folder, record["tools"]["onchip_flash"],
                                                                    record["definition"]["top"], log.name)]
@@ -658,7 +668,7 @@ def timing_evidence(folder, target, *, build_id=None):
         vga_evidence = fpga_vga_dac.verify(folder, **system_profile)
     memory_evidence = fpga_intel_memory.verify(folder, **{"system_clock": fpga_pll.SYSTEM_NET} if parallel else {}) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
-        memory_evidence = fpga_memory_stores.verify(folder)
+        memory_evidence = fpga_memory_stores.verify(folder, init_files=fpga_rom_image.store_init_files(target))
     for name, count in rows:
         if name == "no_clock" and int(count) == expected_lock_events and ("pll" in target or adc_evidence is not None):
             continue
@@ -699,6 +709,8 @@ def timing_evidence(folder, target, *, build_id=None):
             folder, build_id, macro="N2M_NANO_UART_BUILD_ID", instances=1)
     if fpga_flash.flash_target(target):
         evidence["onchip_flash"] = fpga_flash.verify(folder, target["top"])
+    if fpga_rom_image.declared(target) is not None:
+        evidence["rom_image"] = fpga_rom_image.verify(folder, target)
     if sdram_target(target):
         evidence["hold_paths"] = fpga_hold.verify(folder)
     return evidence
@@ -728,6 +740,8 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             required += [folder / name for name in (*fpga_adc.CONTROL, "n2m_adc_pll.v", "generate-adc-pll.log")]
         if fpga_flash.flash_target(target):
             required += [folder / name for name in (*fpga_flash.SOURCES, flash_library.HEX_NAME, flash_library.DAT_NAME)]
+        if fpga_rom_image.declared(target) is not None:
+            required += fpga_rom_image.cache_paths(folder)
         if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
@@ -785,6 +799,8 @@ def build_fpga(root, build, args, provenance=None, progress=None):
                   *dependencies(root, target["sources"], synthesis=True), *target["constraints"]]
         if fpga_flash.flash_target(target):
             inputs.append(flash_library.REGISTRY)
+        if fpga_rom_image.declared(target) is not None:
+            inputs.append(fpga_rom_image.SW_REGISTRY)
         inputs += [p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")]
         record["inputs"] = {p: file_hash(root / p) for p in inputs}
         with progress.stage("Discover Quartus tools", f"logs: {display_path(root, folder)}"):
@@ -814,6 +830,14 @@ def build_fpga(root, build, args, provenance=None, progress=None):
                 hashes = flash_library.write(folder, assembled)
                 record["library"] = flash_library.summary(registry, assembled, hashes, folder, root)
             fingerprint_inputs["library"] = hashes
+        if fpga_rom_image.declared(target) is not None:
+            # The carried image is a build input: its digests enter the
+            # fingerprint before the cache check, so a changed program forces a
+            # new attempt rather than reusing a bitstream of the old one.
+            with progress.stage("Package carried ROM image", f"folder: {display_path(root, folder)}"):
+                record["rom_image"] = fpga_rom_image.stage(root, build, folder, fpga_rom_image.declared(target),
+                                                          provenance or {}, rebuild=args.rebuild)
+            fingerprint_inputs["rom_image"] = record["rom_image"]["files"]
         override = getattr(args, "build_id", None)
         has_identity = identity_target(target)
         if override is not None:
