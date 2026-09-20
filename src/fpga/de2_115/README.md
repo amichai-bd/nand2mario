@@ -34,6 +34,20 @@ and constraint names, which is what the Cyclone V wrapper costs. `de2-clocking-i
 PLL's system clock as a checked endpoint, which no Cyclone IV E netlist contains,
 so it must fail.
 
+`de2-vga` puts the existing pixel path on the board's ADV7123 video DAC through
+[`de2_vga_proof.sv`](de2_vga_proof.sv), under [`de2_vga.sdc`](de2_vga.sdc). It
+instantiates the same `u_clocking`, `u_timebase` and `u_bridge` the MAX 10
+`vga_proof` fits, in the same hierarchy, so every clocking and frame-bridge check
+is that board's; what this top owns is the board side. The four-to-eight bit
+alignment and the values the DAC's clock, blank and sync inputs are held at, with
+the vendor sources for each, are on the
+[board specification](../../../wiki/src/de2-115-board.md#driving-the-vga-dac); the
+[builder contract](../../../wiki/tools/n2m/SPEC.md#de2-115-video-dac) owns what
+the fit checks. `de2-vga-invalid` shares every source and pin and sources the
+generated DAC clock from the Cyclone V Altera PLL's output counter, which no
+Cyclone IV E netlist contains, so it must fail. Neither target has been
+programmed onto a board and no picture has been observed.
+
 This board reuses what the DE10-Nano had to replace: ALTPLL serves Cyclone IV E
 and `altsyncram` places M9K, so there is no `n2m_clocking_*` wrapper and no
 memory branch here.

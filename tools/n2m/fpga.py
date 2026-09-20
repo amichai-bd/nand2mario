@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree, vendor_sources
+from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_vga, fpga_vga_dac, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, flash_library, process_tree, vendor_sources
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
@@ -324,6 +324,11 @@ def prepare(root, folder, target, build_id=None):
                       f'set_instance_assignment -name IO_STANDARD "{target["io_standards"][port]}" -to {tcl_word(port)}'])
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof", "v05_controls_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+        # The video DAC's data, sync, control and clock pins, on the same 8 mA the
+        # resistor ladder's pins state; this family's 3.3-V LVTTL fitter asks for
+        # the drive strength and nothing else (OUTPUT_IO_COMPLETION).
+        if fpga_vga_dac.dac_target(target) and port in fpga_vga_dac.DRIVE_PORTS:
+            lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         if (target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         # A fitter that needs more on an output pin states it here, so the
@@ -352,6 +357,8 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", "report_metastability -file output/metastability.rpt\nreport_clock_transfers -file output/clock_transfers.rpt\n" + fpga_clocking.chain_audit(tcl_word) + "project_close")
     if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         audit = audit.replace("project_close", fpga_vga.audit(tcl_word, lcd=target["top"] == "ppu_proof") + "project_close")
+    if fpga_vga_dac.dac_target(target):
+        audit = audit.replace("project_close", fpga_vga.audit(tcl_word, outputs=fpga_vga_dac.DAC) + "project_close")
     if target.get("top") == "intel_memory_proof":
         audit = audit.replace("project_close", fpga_intel_memory.audit(tcl_word) + "project_close")
     if target["top"] == "controls_proof":
@@ -374,6 +381,8 @@ def checked_constraints(target):
     text = fpga_constraints.generate(target["timing"], tcl_word)
     if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
+    if fpga_vga_dac.dac_target(target):
+        text += fpga_vga.constraints(tcl_word, outputs=fpga_vga_dac.DAC)
     if target["top"] == "controls_proof":
         text += fpga_controls.constraints(tcl_word)
     if target["top"] == SDRAM_TOP:
@@ -468,6 +477,8 @@ def execute(argv, folder, log, timeout, record, build):
     if log.name == "compile.log" and "pll" in record.get("definition", {}):
         clocking = fpga_clocking.implementation(record["definition"]["family"])
         explained = [*explained, *clocking.explained_diagnostics(text, folder, record["definition"]["pll"])]
+    if log.name == "compile.log" and fpga_vga_dac.dac_target(record.get("definition", {})):
+        explained = [*explained, *fpga_vga_dac.explained_diagnostics(text, folder, fpga_pll.MERGE_PAIR[0])]
     if log.name == "compile.log" and record.get("target") == "v05-board":
         explained = [*explained, *generated_design_diagnostics(text, folder)]
     if log.name == "compile.log" and sdram_target(record.get("definition", {})):
@@ -479,14 +490,21 @@ def execute(argv, folder, log, timeout, record, build):
     return text
 
 
-def accepted_clock_port_entry(name, count, target, checks):
-    """The one check_timing exception of the SDRAM image: DRAM_CLK without an output delay.
+CLOCK_PORT_ROW = (r";\s*{port}\s*;\s*No output delay was set on output port\."
+                  r" This port has clock assignments\.\s*;")
 
-    Only for sdram_proof, only the no_output_delay row, only a count of one,
-    and only when the report names exactly that port with its clock note.
+
+def accepted_clock_port_entry(name, count, target, checks):
+    """The check_timing exception of a port that carries a clock instead of data.
+
+    Only the no_output_delay row, only as many endpoints as the target declares
+    pin clocks, and only when the report names exactly those ports with the clock
+    note. A target with no pin clock accepts nothing. Two targets have one each:
+    the SDRAM image's DRAM_CLK and the DE2-115 video DAC's clock pin.
     """
-    return (name == "no_output_delay" and count == 1 and sdram_target(target)
-            and re.search(r";\s*DRAM_CLK\s*;\s*No output delay was set on output port\. This port has clock assignments\.\s*;", checks) is not None)
+    ports = [port for port, _, _ in fpga_pll.pin_clocks(target).values()]
+    return (name == "no_output_delay" and len(ports) == count and count > 0
+            and all(re.search(CLOCK_PORT_ROW.format(port=re.escape(port)), checks) for port in ports))
 
 
 SDRAM_CLOCK_WARNING = ('Warning (15064): PLL "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|'
@@ -636,6 +654,8 @@ def timing_evidence(folder, target, *, build_id=None):
         if target["top"] == "adc_proof":
             lock_event = adc_evidence["lock_event"]
     vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof", **system_profile) if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
+    if fpga_vga_dac.dac_target(target):
+        vga_evidence = fpga_vga_dac.verify(folder, **system_profile)
     memory_evidence = fpga_intel_memory.verify(folder, **{"system_clock": fpga_pll.SYSTEM_NET} if parallel else {}) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
@@ -715,6 +735,8 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             required.append(folder / "checked.sdc")
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=target["top"] == "ppu_proof")]
+        if fpga_vga_dac.dac_target(target):
+            required += [folder / "output" / name for name in fpga_vga.required_reports(outputs=fpga_vga_dac.DAC)]
         if target.get("top") == "controls_proof":
             required += [folder / "output" / name for name in fpga_controls.required_reports()]
         if target.get("top") == "intel_memory_proof":

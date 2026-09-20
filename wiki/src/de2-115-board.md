@@ -74,6 +74,9 @@ the DE10-Nano lacks and the DE10-Lite has only in a reduced form:
 - A VGA connector driven by an Analog Devices ADV7123 video DAC, with `VGA_R`,
   `VGA_G` and `VGA_B` eight bits wide each, against the DE10-Lite's four-bit
   resistor ladder. The DE10-Nano has no VGA connector at all.
+  [`de2-vga`](#targets) places the existing pixel path on it; how four bits of
+  shade reach eight DAC bits, and what the DAC's own controls are held at, is
+  [below](#driving-the-vga-dac).
 - FPGA-side SDRAM: 128 MB as 32M x 32 bit over two devices, so `DRAM_DQ` is 32
   bits wide, where the DE10-Lite's is 16 bits and the DE10-Nano has none on the
   fabric side.
@@ -224,7 +227,9 @@ exactly that, grouping this board's package pins by the standard it supplies, an
 [`fpga.py`](../../tools/n2m/fpga.py) takes each assignment from that record, so
 `de2-smoke` declares `2.5 V` on those nine pins and `3.3-V LVTTL` only on
 `CLOCK_50`. A pin no board record names refuses the build and names itself;
-nothing defaults.
+nothing defaults. The [29 VGA pins](#vga) are the other entry: the vendor table
+gives the whole group 3.3 V, so [`de2-vga`](#targets) declares `3.3-V LVTTL` on
+every one of them and its fit needs no 2.5 V bank.
 
 The [fit](#targets) reports those banks accordingly: `I/O Bank Usage` gives bank
 2 at 3.3 V for `CLOCK_50`, bank 6 at 2.5 V for `KEY[0]` and bank 7 at 2.5 V for
@@ -305,6 +310,191 @@ why the flow proof drives `LEDR[7:0]` and not the green bank.
 | `LEDR[4]` | `PIN_F18` | `LEDR[10]` | `PIN_J15` | `LEDR[16]` | `PIN_G16` |
 | `LEDR[5]` | `PIN_E18` | `LEDR[11]` | `PIN_H16` | `LEDR[17]` | `PIN_H15` |
 
+### VGA
+
+All 29 signals of the board's video path, from the
+[vendor pin table](#vendor-pin-table) and the sources that agree with it. Twenty
+seven carry four independent transcriptions and the two sync pins carry five;
+none disagrees with the vendor table or with another source. The whole group is
+3.3 V.
+
+| Signal | Pin | Sources | Attesting groups | Signal | Pin | Sources | Attesting groups |
+|---|---|---|---|---|---|---|---|
+| `VGA_R[0]` | `PIN_E12` | 4 | `T`, `B`, `C`, `F` | `VGA_B[0]` | `PIN_B10` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_R[1]` | `PIN_E11` | 4 | `T`, `B`, `C`, `F` | `VGA_B[1]` | `PIN_A10` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_R[2]` | `PIN_D10` | 4 | `T`, `B`, `C`, `F` | `VGA_B[2]` | `PIN_C11` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_R[3]` | `PIN_F12` | 4 | `T`, `B`, `C`, `F` | `VGA_B[3]` | `PIN_B11` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_R[4]` | `PIN_G10` | 4 | `T`, `B`, `C`, `F` | `VGA_B[4]` | `PIN_A11` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_R[5]` | `PIN_J12` | 4 | `T`, `B`, `C`, `F` | `VGA_B[5]` | `PIN_C12` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_R[6]` | `PIN_H8` | 4 | `T`, `B`, `C`, `F` | `VGA_B[6]` | `PIN_D11` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_R[7]` | `PIN_H10` | 4 | `T`, `B`, `C`, `F` | `VGA_B[7]` | `PIN_D12` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_G[0]` | `PIN_G8` | 4 | `T`, `B`, `C`, `F` | `VGA_CLK` | `PIN_A12` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_G[1]` | `PIN_G11` | 4 | `T`, `B`, `C`, `F` | `VGA_BLANK_N` | `PIN_F11` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_G[2]` | `PIN_F8` | 4 | `T`, `B`, `C`, `F` | `VGA_SYNC_N` | `PIN_C10` | 4 | `T`, `B`, `C`, `F` |
+| `VGA_G[3]` | `PIN_H12` | 4 | `T`, `B`, `C`, `F` | `VGA_HS` | `PIN_G13` | 5 | `T`, `B`, `C`, `D`, `F` |
+| `VGA_G[4]` | `PIN_C8` | 4 | `T`, `B`, `C`, `F` | `VGA_VS` | `PIN_C13` | 5 | `T`, `B`, `C`, `D`, `F` |
+| `VGA_G[5]` | `PIN_B8` | 4 | `T`, `B`, `C`, `F` | | | | |
+| `VGA_G[6]` | `PIN_F10` | 4 | `T`, `B`, `C`, `F` | | | | |
+| `VGA_G[7]` | `PIN_C9` | 4 | `T`, `B`, `C`, `F` | | | | |
+
+`VGA_R[0]` is the least significant of the eight bits the board wires, and the
+ADV7123's own `R0` is the least significant of its ten; the manual states that
+only the higher eight of those ten are used, so the wired eight are the DAC's
+eight most significant bits. What the remaining two are fixed at on the board is
+not stated in the manual's text, and no source here establishes it.
+
+The [flow proof's caveat](#pin-data) is unchanged: four transcriptions agreeing
+with the vendor table is strong evidence against a transcription error and no
+evidence of measurement. No pin in this group is verified against hardware.
+
+## Driving the VGA DAC
+
+The pixel path is board-independent: [`n2m_vga_scan`](../../src/rtl/vga/n2m_vga_scan.sv)
+produces four bits per channel plus active-low horizontal and vertical sync, and
+the [frame bridge contract](rtl/vga/MAS_vga.md) owns its geometry, its shades and
+its timing. Nothing on this board changes any of that. What this board decides is
+how those four bits reach eight DAC bits, and what the DAC's own control inputs
+are held at. [`de2_vga_proof.sv`](../../src/fpga/de2_115/de2_vga_proof.sv) is
+where both decisions are implemented, and this section is why they are those.
+
+### Four bits of shade on eight DAC bits
+
+**The byte is the nibble repeated: `vga_r = {red, red}`.** So `4'h0` becomes
+`8'h00` and `4'hf` becomes `8'hff`.
+
+That is the only alignment that meets all three requirements at once, and it is
+forced rather than chosen:
+
+- Black must be zero: `b(0) = 0`.
+- Full range must reach full range: `b(15) = 255`, so the brightest shade the
+  pixel path can express drives every wired DAC bit.
+- Equal steps must stay equal, or a mid shade lands at the wrong voltage: `b` is
+  linear.
+
+A linear map through `(0, 0)` and `(15, 255)` is `b(v) = 255v/15 = 17v`, and
+`17v = 16v + v`, which is `v` in the high nibble plus `v` in the low nibble —
+`{v, v}`. Because 255/15 is exactly 17, the map is exact for all sixteen
+four-bit codes; there is no rounding term to argue about.
+
+It is also the same rule one level down. The scan builds each four-bit channel by
+repeating the two-bit shade pair, so `{red, red}` makes the byte that pair
+repeated four times, and the four DMG shades reach the DAC as:
+
+| Shade | Scan's four bits | DAC byte | Share of the wired range |
+|---|---|---|---|
+| 0, lightest | `4'hf` | `8'hff` | 255/255 |
+| 1 | `4'ha` | `8'haa` | 170/255 |
+| 2 | `4'h5` | `8'h55` | 85/255 |
+| 3, darkest | `4'h0` | `8'h00` | 0/255 |
+
+Those are exact thirds of full scale, which is what the four-level ladder was
+already producing on the DE10-Lite: this board reproduces the same picture at a
+finer code resolution it does not need, not a different one.
+
+The near alternatives are defects, which is why the choice is stated here rather
+than left to the reader of the RTL:
+
+- Left-shift and zero-fill, `{v, 4'h0}`: white becomes `8'hf0`, 94.1% of the
+  range, so nothing on screen is ever white and every shade is 16/17 of its
+  value. This is the common mistake, and a fit accepts it silently.
+- Right-align, `{4'h0, v}`: white becomes `8'h0f`, 5.9%, and the whole picture
+  is nearly black.
+- Any constant low fill other than a copy of the value, such as `{v, 4'hf}`,
+  moves black off zero.
+
+**What "full range" means on this board.** `8'hff` drives the eight bits the
+board wires to all ones, which is the maximum this board can present. The DAC has
+two further low bits the board fixes, so what appears at the connector also
+depends on their level, which the [pin table](#vga) records as not established
+from a citable source. Nothing here has been measured on a monitor; that is a
+bring-up result, not a fit result.
+
+### The DAC's clock, blank and sync inputs
+
+Three signals are the DAC's own controls rather than picture data. Each value
+below comes from the [ADV7123 data sheet](#references), which the DE2-115 manual
+itself defers to for the DAC ("Detailed information for using the ADV7123 video
+DAC is available in its datasheet", section 4.10).
+
+| Signal | Held at | Source |
+|---|---|---|
+| `VGA_BLANK_N` | `1'b1` | "A Logic 0 on this control input drives the analog outputs, IOR, IOB, and IOG, to the blanking level ... While BLANK is a Logic 0, the R0 to R9, G0 to G9, and B0 to B9 pixel inputs are ignored." |
+| `VGA_SYNC_N` | `1'b0` | "If sync information is not required on the green channel, the SYNC input should be tied to Logic 0." |
+| `VGA_CLK` | `~clk_pix` | "The rising edge of CLOCK latches the R0 to R9, G0 to G9, B0 to B9, SYNC, and BLANK pixel and control inputs. It is typically the pixel clock rate of the video system." |
+
+**SYNC is tied low, and that is not merely permitted.** This board sends
+horizontal and vertical sync to the connector on their own pins, so no sync has
+to be encoded on green. The data sheet's own `RSET` relations say what tying SYNC
+low buys: `IOG = 11,445 x VREF/RSET` while SYNC is asserted and
+`IOR, IOB = 7989.6 x VREF/RSET`, and "The equation for IOG is the same as that
+for IOR and IOB when SYNC is not being used, that is, SYNC tied permanently
+low." Those are the `Rev. D` figures and wording, from the copy this page
+records; `Rev. A` and `Rev. B` state the same relation with `12,081` and `8,627`
+and the older phrasing. Held high instead, green would carry a 40 IRE pedestal that red and blue do
+not, so equal codes on the three channels would not produce equal light and grey
+would not be grey. Tying it low is what keeps the shade table above true of all
+three channels.
+
+**BLANK is held high, and the scan does the blanking.** A Logic 0 makes the DAC
+ignore the pixel inputs, so it has to be high for any picture at all. The data
+sheet's output truth table settles whether it also has to fall during the
+blanking interval: with SYNC already low, `BLACK to BLANK` (SYNC 0, BLANK 1, data
+`0x000`) and `SYNC Level` (SYNC 0, BLANK 0, data don't care) both put all three
+outputs at the same current, 0 mA on IOG and IOR/IOB. The scan already drives all
+three channels to zero outside its active window, so asserting BLANK would
+reproduce a level the pixel data already produces. Holding it high keeps the
+board side a pure mapping with no second source of blanking to keep in step with
+the qualified scan. Driving it from the scan's active region is the alternative,
+and it would be a change to what the pixel path exports rather than a board
+mapping.
+
+**CLOCK is the pixel clock inverted.** The DAC latches data and both controls on
+the rising edge of CLOCK, and the fabric drives that data on the rising edge of
+`clk_pix`. Sending `clk_pix` itself would ask the DAC to sample exactly when the
+data changes. Inverting it puts the DAC's sampling edge half a pixel period
+later, 19.841 ns at 25.2 MHz, before either pin's own delay. The part asks for
+0.5 ns of setup and 1.5 ns of hold at 5 V, 0.2 ns and 1.5 ns at 3.3 V (`t1`,
+`t2`, Rev. D; Rev. A states the older 1.5 ns and 2.5 ns, which the same margin
+also covers).
+
+Write `d_data` for a data pin's clock-to-out and `d_clk` for the clock pin's, and
+the two sides are not symmetric:
+
+- setup at the DAC is `19.841 + d_clk − d_data`. `d_clk` is never negative, so
+  bounding `d_data` bounds setup from below and nothing else is needed.
+- hold is `19.841 + d_data − d_clk`, which needs `d_clk` bounded from above.
+
+Only the first is bounded here. The
+[VGA proof profile](../tools/n2m/SPEC.md#vga-proof-profile) bounds every data and
+sync pin's delay to 10 ns and their spread to 2 ns whatever the fit does, so setup
+is at least 19.841 − 10 = 9.8 ns by constraint, and the
+[`de2-vga` fit](#targets) measures `d_data` between 1.507 ns and 2.732 ns across
+all three corners, so this fit presents at least 17.1 ns. `VGA_CLK` carries a
+clock rather than data and is deliberately the one output with no output delay, so
+no retained report bounds `d_clk` and the hold side is a measurement of this fit
+rather than a bound on every fit: around 18 ns once a few nanoseconds of clock-pin
+delay are subtracted from 21.3. Either way both sides stay an order of magnitude
+above what the part asks for, and neither number is an observation of a picture.
+
+`de2_vga.sdc` declares that inversion to the Timing Analyzer as a generated clock
+on the pin, `vga_dac_clk`, sourced from the pixel PLL's `clk[0]` with `-invert`,
+the same way the [SDRAM contract](rtl/storage/MAS_sdram.md#clock-relationship-and-constraints)
+declares its inverted pin clock. So the relationship the paragraph above reasons
+about is a checked clock in the analysis rather than a claim about the RTL, and
+the [builder contract](../tools/n2m/SPEC.md#fpga-build) states what it requires
+of that row.
+
+Also 25.2 MHz is inside the part's clock range whichever speed grade the board
+carries: `fCLK` is 0.5 MHz to 50 MHz on the slowest grade, and the manual's
+"bandwidth of 100MHz" puts this board above that. A 50% duty 25.2 MHz clock holds
+CLOCK high and low for 19.84 ns each, against the 8.0 ns minimum pulse width the
+slowest grade states.
+
+**None of this has been observed.** These are the documented values and the
+analysis that supports them. No image has been programmed onto a DE2-115 and no
+monitor has been connected; that belongs to a bring-up record with its own
+authorization.
+
 ## Targets
 
 [`src/fpga/de2_115/targets.json`](../../src/fpga/de2_115/targets.json) registers
@@ -362,6 +552,51 @@ output-delay clock instead of ALTPLL's, so `read_sdc` finds no such clock, repor
 line, and the Fitter exits nonzero. A passing `de2-clocking` fit is therefore
 evidence rather than an absent check.
 
+`de2-vga` puts the existing pixel path on the video DAC:
+[`de2_vga_proof.sv`](../../src/fpga/de2_115/de2_vga_proof.sv) instantiates the
+same `u_clocking`, `u_timebase` and `u_bridge` the MAX 10 `vga_proof` fits, in the
+same hierarchy, with the [alignment and control values above](#driving-the-vga-dac)
+on the board side and everything else on virtual ports. It uses 30 pins:
+`CLOCK_50` and all 29 [`VGA_*` signals](#vga). The fit places 1,048 logic
+elements, 707 registers, 138,240 memory bits in 18 M9K blocks as the frame
+bridge's three dual-clock banks, 2 of 4 PLLs, those 30 pins and 309 virtual pins,
+with positive slack for setup, hold, recovery, removal and minimum pulse width on
+all four analysed clocks at all three corners. Its worst slack is 0.181 ns, on
+`clk_reference` hold at `Fast 1200mV 0C`, the same path and value
+[`de2-clocking`](#targets) reports. `I/O Bank Usage` gives bank 8 at 3.3 V for the
+29 VGA pins and bank 2 at 3.3 V for `CLOCK_50`, and the per-pin table gives
+`3.3-V LVTTL` with `8mA` on every one of the 29.
+
+The fourth analysed clock is the DAC's: `vga_dac_clk`, the pixel clock inverted at
+`VGA_CLK`, which the fit reports as a generated clock of period 39.682 ns at unit
+ratio from the pixel PLL, inverted, targeting that port. The retained per-corner
+output reports bound every DAC data and sync pin's delay to 2.732 ns at worst
+(`Slow 1200mV 85C`) and 1.507 ns at best (`Fast 1200mV 0C`), with at most 0.250 ns
+of skew across the group. Half a pixel period is 19.841 ns, so the DAC sees at
+least 19.841 − 2.732 = 17.1 ns of setup, against the 0.5 ns the part asks for.
+The hold side carries no "at least": `VGA_CLK` is the one output with no output
+delay, so no retained report bounds its own delay, and
+[the derivation above](#the-dacs-clock-blank-and-sync-inputs) explains why that
+makes the roughly 18 ns of hold a measurement of this fit rather than a bound. The checked netlist shows
+`VGA_CLK`'s output buffer taking the complement of the fitted pixel clock net, and
+`VGA_BLANK_N` and `VGA_SYNC_N` taking `vcc` and `gnd`, so the documented values
+reached their pins.
+
+Two diagnostics are this target's own and are classified with their reason: the
+`Warning (13024)` heading with one `Warning (13410)` line per deliberately
+constant control pin, and one `Warning (15064)` for the pixel clock reaching
+`VGA_CLK` through the fabric rather than a dedicated PLL output pin. It also
+carries the same LogicLock notice, AN 447 caution, 176127 merge refusal and
+176598 compensation caution `de2-clocking` does.
+
+`de2-vga-invalid` is that pair's negative control. It shares every source and pin
+and sources the generated DAC clock from the Cyclone V Altera PLL's output
+counter, which no Cyclone IV E netlist contains, so the Fitter reports
+`Warning (332174): Ignored filter at de2_vga_invalid.sdc(9):
+u_clocking|u_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk could
+not be matched with a pin` and the build fails on it. A passing `de2-vga` fit is
+therefore evidence rather than an absent check.
+
 Quartus analyses this commercial device at three corners, `Slow 1200mV 85C`,
 `Slow 1200mV 0C` and `Fast 1200mV 0C`, and the builder requires setup, hold and
 minimum-pulse-width slack at each. It also requires a drive strength and a slew
@@ -401,10 +636,19 @@ image must not be.
   HDL, fit, timing, lock, metastability, reset-chain and clock-transfer evidence
   retained; `de2-clocking-invalid` must FAIL. Both are recorded in the
   [builder contract](../tools/n2m/SPEC.md#fpga-build).
+- `python3 tools/build.py fpga build de2-vga` must PASS with the whole
+  [VGA proof profile](../tools/n2m/SPEC.md#vga-proof-profile)'s evidence on this
+  board's eight-bit profile, the DAC's pin clock and control levels checked in the
+  fitted netlist, and positive slack at all three corners; `de2-vga-invalid` must
+  FAIL. Both are recorded in the
+  [builder contract](../tools/n2m/SPEC.md#de2-115-video-dac).
 - [`test_fpga_cycloneive.py`](../../tools/n2m/tests/test_fpga_cycloneive.py) covers
   what this family changes against MAX 10 and what it still refuses.
-- The Questa compile gate elaborates `de2_smoke` and `de2_clocking_proof` with
-  every other registered top.
+- [`test_fpga_vga_dac.py`](../../tools/n2m/tests/test_fpga_vga_dac.py) covers the
+  bit alignment against the RTL, the output profile's register-to-pin map, the DAC
+  control levels in a netlist fixture, and the bounds of both DAC diagnostics.
+- The Questa compile gate elaborates `de2_smoke`, `de2_clocking_proof` and
+  `de2_vga_proof` with every other registered top.
 
 Physical verification of this board is not done. It needs explicit hardware
 authorization, and it is not part of the flow proof.
@@ -424,6 +668,36 @@ authorization, and it is not part of the flow proof.
   record of what was read rather than a second reader's confirmation, and a
   mirror is not the vendor's own copy. Vendor documentation is a reference, not
   redistributed source, and no copy is committed.
+- ADV7123 data sheet, Analog Devices: the source of every
+  [DAC control value](#the-dacs-clock-blank-and-sync-inputs), its output truth
+  table and its `t1`/`t2` setup and hold figures. The DE2-115 manual defers to it
+  for the DAC rather than restating any of this. Analog Devices' own host
+  `www.analog.com` could not be reached from the host this page was written on:
+  `curl` to
+  `www.analog.com/media/en/technical-documentation/data-sheets/adv7123.pdf`
+  returned zero bytes in 180 seconds and a page-fetching tool timed out as well.
+  The copy read is that same vendor URL retrieved through the Internet Archive,
+  `Rev. D`, SHA-256
+  `f59c27bf7a0ed5a57da53955d50458714b67376412ff407cd4f75f93a7dfbfb2`. Two
+  third-party mirrors of the earlier `Rev. A` were read as a cross-check and hash
+  identically to each other,
+  `85271b8635a7476cb2ca1ffc595f37c4e96c2a9b14b4eebe1595289d8fe64e7c`
+  (`eecg.utoronto.ca/~tm4/ADV7123_a.pdf` and
+  `cs.columbia.edu/~sedwards/classes/2009/4840/Analog-Devices-ADV7123-video-DAC.pdf`),
+  and so does Digi-Key's `Rev. B`,
+  `7fec6a41419c95a1a76f8972f45f523ece135c263f37889a591789da5ad93bb4`, whose host
+  returns `403` to a second reader, so that one digest rests on this reader alone
+  while the archived `Rev. D` and both `Rev. A` mirrors have been re-fetched
+  independently. All three revisions state the same BLANK, SYNC and CLOCK pin
+  descriptions and the same SYNC/BLANK columns of the output truth table;
+  `Rev. B` and `Rev. D` agree on `t1` and `t2`, and `Rev. A` states the older,
+  looser 1.5 ns and 2.5 ns. `Rev. D` restates the full-scale current relations
+  with different constants and wording, which is why
+  [the SYNC decision](#the-dacs-clock-blank-and-sync-inputs) quotes `Rev. D` and
+  labels the earlier figures as the earlier revisions'. These are records of what
+  was read, not second readers' confirmations. Vendor
+  documentation is a reference, not redistributed source, and no copy is
+  committed.
 - [Cyclone IV device handbook](https://www.intel.com/content/www/us/en/docs/programmable/683375/current/device-datasheet-for-devices.html),
   Intel document `CYIV-53001`. Vendor documentation is a reference, not
   redistributed source.
