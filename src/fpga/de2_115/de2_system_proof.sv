@@ -57,8 +57,9 @@ module de2_system_proof #(
     );
 
     // ---- Controls: this board's own buttons and switches -------------------
-    // Every asynchronous board input reaches the system through the shared
-    // button filter: two forced synchronizer stages and the same 5 ms stable
+    // Every asynchronous control input reaches the system through the shared
+    // button filter, and KEY[0] reaches the reset controller's own checked
+    // stages instead: two forced synchronizer stages and the same 5 ms stable
     // window the physical control producer requires. The vendor states these
     // slide switches "are not debounced" and the FPGA pin is the contact, so
     // without that window a switch's bounce would present half-formed masks to
