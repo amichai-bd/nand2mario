@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -105,16 +107,24 @@ class PinnedInstallationTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def write_tree(self, base, item, *, record=True):
-        """An installation double: the wrapper plus the provenance a real build writes."""
+        """An installation double: the tree a real build installs and its provenance.
+
+        It carries a `share/verilator/include` header and an uncovered debug
+        binary, because those are what the record's scope turns on."""
         base = Path(base)
         (base / "bin").mkdir(parents=True, exist_ok=True)
+        (base / "share/verilator/include").mkdir(parents=True, exist_ok=True)
         tool = base / "bin/verilator"
         tool.write_text("#!/bin/sh\n", encoding="utf-8")
         tool.chmod(0o755)
+        (base / "share/verilator/include/verilated.cpp").write_text("// runtime\n", encoding="utf-8")
+        (base / "bin/verilator_bin_dbg").write_text("debug build\n", encoding="utf-8")
         if record:
             atomic_json(base / verilator_install.INSTALLATION,
                         {"pin": item, "commit": item["commit"], "version": VERSION,
-                         "prefix": str(base), "tools": {"verilator": file_hash(tool)}})
+                         "prefix": str(base), "tools": {"verilator": file_hash(tool)},
+                         "tree": verilator_install.tree_digests(base),
+                         "uncovered": list(verilator_install.UNCOVERED)})
         return tool
 
     def pinned_tree(self, *, record=True):
@@ -177,7 +187,7 @@ class PinnedInstallationTests(unittest.TestCase):
         source = verilator_install.legacy_source_root(self.root, item["version"])
         (source / ".git").mkdir(parents=True)
         item, base, calls, record = self.install(item["commit"])
-        self.assertTrue(record["adopted"])
+        self.assertEqual(record["adopted"], {"prefix": True, "source": True})
         self.assertTrue(record["reused"])
         # Adopted, not rebuilt: the only step run is the reuse banner check.
         self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
@@ -188,6 +198,35 @@ class PinnedInstallationTests(unittest.TestCase):
         # The retained clone follows it out, so `--offline` stays a host property.
         self.assertTrue((verilator_install.source_root(self.root, item["version"]) / ".git").is_dir())
         self.assertFalse(source.exists())
+
+    def test_an_orphaned_clone_is_adopted_although_the_cache_already_has_the_build(self):
+        """The ordinary case, and the one a prefix-gated adoption silently skipped.
+
+        The cache usually already holds the installation while the clone is still
+        in whichever worktree fetched it. Tying the clone's rescue to the prefix's
+        made the documented pre-removal step a no-op and left 1.8 GB to die with
+        that worktree, taking `--offline` on this host with it."""
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        self.write_tree(base, item)
+        legacy_source = verilator_install.legacy_source_root(self.root, item["version"])
+        (legacy_source / ".git").mkdir(parents=True)
+        (legacy_source / "configure").write_text("#!/bin/sh\n", encoding="utf-8")
+        self.assertTrue(verilator_install.adoptable_source(self.root, item))
+        self.assertFalse(verilator_install.adoptable_prefix(self.root, item, base))
+        _, _, calls, record = self.install(item["commit"])
+        self.assertEqual(record["adopted"], {"prefix": False, "source": True})
+        self.assertTrue(record["reused"])
+        # Still no build: the reuse banner check is the only step.
+        self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
+        source = verilator_install.source_root(self.root, item["version"])
+        self.assertTrue((source / ".git").is_dir())
+        self.assertTrue((source / "configure").is_file())
+        self.assertFalse(legacy_source.exists())
+        # Nothing left to adopt, and a second run moves nothing.
+        self.assertFalse(verilator_install.adoptable_source(self.root, item))
+        _, _, _, record = self.install(item["commit"])
+        self.assertEqual(record["adopted"], {"prefix": False, "source": False})
 
     def test_a_second_installation_is_refused_while_one_holds_the_cache(self):
         """The cache is shared, so two builds into one prefix must not overlap.
@@ -200,17 +239,52 @@ class PinnedInstallationTests(unittest.TestCase):
         lock = base.parent / verilator_install.INSTALL_LOCK
         with verilator_install.cache_lock(base):
             self.assertEqual(lock.read_text(encoding="utf-8"), f"pid={os.getpid()}\n")
-            with self.assertRaisesRegex(ValueError, f"holds {re.escape(str(lock))}: pid {os.getpid()} is still running"):
-                with verilator_install.cache_lock(base):
-                    pass
-            with self.assertRaisesRegex(ValueError, "is still running"):
-                self.install(item["commit"])
+            for call in (lambda: verilator_install.cache_lock(base).__enter__(),
+                         lambda: self.install(item["commit"])):
+                with self.assertRaisesRegex(ValueError, f"by live pid {os.getpid()}; confirm its "
+                                            f"writer stopped before removing {re.escape(str(lock))}"):
+                    call()
             # Reuse needs no lock: an installed prefix is still served.
             self.write_tree(base, item)
             _, _, calls, record = self.install(item["commit"])
             self.assertTrue(record["reused"])
             self.assertEqual([Path(argv[0]).name for argv in calls], ["verilator"])
         self.assertFalse(lock.exists())
+
+    def test_an_unreadable_lock_owner_counts_as_live_and_a_dead_one_is_reclaimed(self):
+        """The repository's tag-lock rule, not advice to delete a running build.
+
+        A lock whose recorded writer is dead is reclaimed once and out loud. A
+        lock whose owner cannot be read counts as live, because the empty window
+        between the exclusive create and the pid write is reachable, and telling a
+        reader to delete that file would destroy a running 26-minute build."""
+        item = verilator_install.pin(self.root)
+        base = verilator_install.prefix(self.root, item["version"])
+        lock = base.parent / verilator_install.INSTALL_LOCK
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        for unreadable in (b"", b"not a pid\n"):
+            lock.write_bytes(unreadable)
+            self.assertIsNone(verilator_install.lock_owner(lock))
+            with self.assertRaisesRegex(ValueError, "is being installed into; confirm its writer "
+                                        f"stopped before removing {re.escape(str(lock))}"):
+                with verilator_install.cache_lock(base):
+                    pass
+            # Never removed on an owner that could not be read.
+            self.assertTrue(lock.exists())
+        # A dead writer's lock is reclaimed once, out loud, and the caller proceeds.
+        lock.write_bytes(b"pid=%d\n" % self.dead_pid())
+        with contextlib.redirect_stderr(io.StringIO()) as noticed:
+            with verilator_install.cache_lock(base):
+                self.assertEqual(lock.read_text(encoding="utf-8"), f"pid={os.getpid()}\n")
+        self.assertIn("reclaimed stale lock", noticed.getvalue())
+        self.assertFalse(lock.exists())
+
+    @staticmethod
+    def dead_pid():
+        """A pid no process holds: a child this test has waited for."""
+        child = subprocess.Popen([sys.executable, "-c", ""])
+        child.wait()
+        return child.pid
 
     def test_a_tree_that_is_not_this_pin_is_reported_rather_than_used(self):
         """The shared path is never trust: the record and the bytes are both checked.
@@ -233,6 +307,37 @@ class PinnedInstallationTests(unittest.TestCase):
         (base / "bin/verilator").write_text("#!/bin/sh\nexec /usr/bin/verilator\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "does not match its provenance record"):
             verilator_install.installed(self.root)
+        # The scope is the whole installation, not just the executables: a header
+        # compiled into every simulation binary changes what runs.
+        self.write_tree(base, item)
+        runtime = base / "share/verilator/include/verilated.cpp"
+        runtime.write_text("// runtime\n// appended\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,
+                                    r"share/verilator/include/verilated\.cpp does not match"):
+            verilator_install.installed(self.root)
+        # A covered file the record never mentioned is refused, not ignored.
+        self.write_tree(base, item)
+        (base / "share/verilator/include/extra.h").write_text("// smuggled\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "unrecorded file share/verilator/include/extra.h"):
+            verilator_install.installed(self.root)
+        (base / "share/verilator/include/extra.h").unlink()
+        # A missing covered file is named by its own path.
+        runtime.unlink()
+        with self.assertRaisesRegex(ValueError, r"missing share/verilator/include/verilated\.cpp"):
+            verilator_install.installed(self.root)
+        # The debug binaries are the declared exception: no run reaches them, so
+        # changing one does not refuse the installation.
+        self.write_tree(base, item)
+        (base / "bin/verilator_bin_dbg").write_text("another debug build\n", encoding="utf-8")
+        self.assertEqual(verilator_install.installed(self.root), base / "bin")
+        # A record that covers no tree proves nothing about what would run.
+        self.write_tree(base, item)
+        record = read_json(base / verilator_install.INSTALLATION)
+        atomic_json(base / verilator_install.INSTALLATION,
+                    {k: v for k, v in record.items() if k != "tree"})
+        with self.assertRaisesRegex(ValueError, "covers no installed tree"):
+            verilator_install.installed(self.root)
+        self.write_tree(base, item)
         # A record with no installed tool hash proves nothing and is refused.
         atomic_json(base / verilator_install.INSTALLATION, {"pin": item, "tools": {}})
         with self.assertRaisesRegex(ValueError, "names no installed tool hash"):

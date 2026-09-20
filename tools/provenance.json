@@ -74,7 +74,7 @@
       "notices": "sim/THIRD_PARTY.md",
       "purpose": "Supported Linux RTL simulator, built from the pinned tag by `tools verilator`",
       "local_changes": "none",
-      "storage": "Ignored workdir/tools/verilator/v<version> inside the checkout, carrying its own installation.json provenance, or any operator prefix on PATH; the cloned source stays beside it under workdir/tools and reaches about 1.3 GB; no source or binary is committed"
+      "storage": "Built into the host's shared tool cache named by N2M_TOOL_CACHE, else the per-user default outside every checkout, at <cache>/verilator/v<version>, carrying its own installation.json provenance, or any operator prefix on PATH; the cloned source stays beside it, about 215 MB and reaching about 1.8 GB once make has built in tree; adoption publishes an earlier ignored workdir/tools/verilator/v<version> checkout prefix into that cache; no source or binary is committed"
     },
     {
       "name": "External Game Boy images for host load",

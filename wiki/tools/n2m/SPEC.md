@@ -1950,16 +1950,20 @@ object it fetched, and the `rev-parse HEAD` check that follows is what the pin i
 actually held to. A missing prerequisite is named rather than guessed. The
 installed `verilator --version` must report the pinned release. The command then
 writes `installation.json` beside the prefix: the pin, the resolved commit, the
-banner, the installed tool hashes, the resolved build tools with their hashes,
-the host, the interpreter, the job count and the elapsed build. `--jobs` sets
+banner, the installed tool hashes, the covered `tree` of every installed file
+with its digest, the `uncovered` names, the resolved build tools with their
+hashes, the host, the interpreter, the job count and the elapsed build. `--jobs` sets
 the parallel build, `--timeout` the per-step bound and `--offline` builds only
 from an already fetched source. Each of the first two must be at least 1: zero
 is refused by name before anything is cloned rather than folded into the host
 CPU count or the default bound.
 Running it again with that record in place reuses the installation and builds
-nothing. The clone is kept beside it at `v<version>.source`, about 1.8 GB, which
-is what lets `--offline` rebuild without the network; no build tag owns it and no
-command reclaims it, so remove that directory by hand when the space is wanted.
+nothing. The clone is kept beside it at `v<version>.source`, which is what lets
+`--offline` rebuild without the network; no build tag owns it and no command
+reclaims it, so remove that directory by hand when the space is wanted. The clone
+itself is about 215 MB, of which 8 MB is `.git`; the directory reaches about
+1.8 GB because `make` builds in tree, so most of that is object files a rebuild
+would replace rather than source it needs to keep.
 
 Discovery reads the record: an installation counts only with `installation.json`
 beside it, so a partially removed tree is never used. `--verilator-bin` wins,
@@ -1983,9 +1987,28 @@ selects the cache; a stripped child environment cannot redirect the
 installation.
 
 The path is never trust. On every discovery the record beside the tree must name
-this pin's `version`, `tag` and `commit`, and each installed tool it recorded
-must still hash to the recorded digest, so a stale, foreign, hand-made or
-damaged tree is refused by name rather than becoming a silent fallback. The
+this pin's `version`, `tag` and `commit`, and every covered installed file must
+still hash to the digest the record holds for it, so a stale, foreign, hand-made
+or damaged tree is refused by name rather than becoming a silent fallback. A
+covered file that is missing, changed, or present but absent from the record is
+refused, each by its own path, and a record carrying no `tree` at all proves
+nothing and is refused with the command that rewrites it.
+
+A cached installation that fails this check refuses the command; discovery does
+not fall through to a per-checkout tree or to PATH behind it. Falling through
+would let one worktree's surviving copy mask a poisoned host cache that every
+other worktree is about to fail on, so the first bad candidate is reported where
+it is found.
+
+The covered set is the whole installation except `verilator_bin_dbg` and
+`verilator_coverage_bin_dbg`, which the record names in `uncovered`. The scope is
+deliberately wider than the executables: `share/verilator/include` is compiled
+into every simulation binary, so a tampered header there changes what runs
+exactly as a tampered compiler would. The two debug binaries are excluded because
+no command here passes `--debug`, so no run reaches them, and they are 236 MB of
+the 259 MB installed: covering them would add about four seconds to every
+discovery for bytes no simulation touches. Checking the rest costs about 0.2
+seconds. The
 `verilator --version` banner is checked against the pinned release as well,
 because the banner is what says which compiler will run: a pinned tree that
 disagrees fails, while an operator's `--verilator-bin` or PATH tool keeps its
@@ -1994,32 +2017,47 @@ notice in the simulation record, printed with the run. `doctor` records the same
 `pin` and `pin_match` and fails only on the pinned tree's own mismatch.
 
 One installation runs at a time per host. Everything that writes the cache holds
-`<cache>/verilator/install.lock`, which records the holding pid; a second
-`tools verilator` is refused by name with that pid and whether it is still alive,
-rather than waited on, because a 26-minute silent wait hides the reason. Reuse
-never takes the lock, so one worktree's discovery is never blocked by another's
-build, and the reuse check runs again under the lock in case a concurrent
-installation finished meanwhile.
+`<cache>/verilator/install.lock`, which records the holding pid, and it follows
+the [tag lock's](#cache-rules) rule exactly: a lock whose recorded writer is dead
+is the leftover of a killed process, reclaimed once with a stderr notice, while a
+live owner keeps the cache and nothing steals by age. An owner that cannot be
+read counts as live, so the refusal never advises removing the lock of a running
+26-minute build and the empty window between the exclusive create and the pid
+write is not mistaken for an abandoned one. Reuse never takes the lock, so one
+worktree's discovery is never blocked by another's build, and the reuse check runs
+again under the lock in case a concurrent installation finished meanwhile.
 
-A per-checkout installation an earlier run left at
-`workdir/tools/verilator/v<version>` is still discovered, and `tools verilator`
-adopts it: the tree is verified against the pin, moved into the cache, its
-record's `prefix` restated with the `adopted_from` it came from, and verified
-again where it lands. Nothing is rebuilt, because the installed `bin/verilator`
-resolves its own `VERILATOR_ROOT` relative to that wrapper's directory, so the
-prefix relocates. A tree that fails the check is left where it is for the caller
-to inspect.
+`tools verilator` adopts two per-checkout trees an earlier run may have left, and
+adopts them independently, because they are separate directories with separate
+lifetimes. An installation at `workdir/tools/verilator/v<version>` is verified
+against the pin, moved into the cache, its record's `prefix` restated with the
+`adopted_from` it came from, and verified again where it lands. Nothing is
+rebuilt, because the installed `bin/verilator` resolves its own `VERILATOR_ROOT`
+relative to that wrapper's directory, so the prefix relocates. A tree that fails
+the check is left where it is for the caller to inspect.
+
+A clone at `workdir/tools/verilator/v<version>.source` is published even when the
+cache already holds the installation, which is the ordinary case: gating the
+clone's rescue on the prefix's would lose the clone exactly when the prefix is
+already safe, and with it `--offline` as a property of this host. A clone is never
+a trusted build input wherever it came from: `install` holds its `HEAD` against
+the pinned commit and refuses by name before `autoconf` runs, so adoption does
+not re-run that gate. `tools verilator` reports both moves as
+`adopted: {prefix, source}`.
 
 #### This host builds the pin
 
 The pinned Verilator builds on the recorded development host, so a missing
 binary means an unbuilt tool and never an unavailable simulator. The
-installation record measured `1599.05` seconds, 26.6 minutes, at `jobs=4` on
-`Linux-7.2.5-3-omarchy-x86_64-with-glibc2.44` under Python 3.14.7, producing
-`Verilator 5.052 2026-09-05 rev v5.052`, while other work ran concurrently.
+installation record measured `1599.05` seconds, 26.6 minutes, at `jobs=4`,
+producing `Verilator 5.052 2026-09-05 rev v5.052`, while other work ran
+concurrently.
 There was no compiler failure, no out-of-memory kill and no retry; it needed
-neither `-j1` nor a quiet window. The installed prefix is 248 MB and the
-retained clone 1.8 GB. Every prerequisite was already present: `git`,
+neither `-j1` nor a quiet window. A second clean build at the same `jobs=4` on a
+busier host measured `2301.22` seconds, 38.4 minutes, so expect the cost to track
+the load rather than a fixed figure. The installed prefix is 248 MB, of which the
+two `uncovered` debug binaries are 236 MB. Every prerequisite was already
+present: `git`,
 `autoconf`, `make`, `g++`, `flex`, `bison`, `perl` and `help2man` on PATH, plus
 the `lz4.h` and `zlib.h` development headers the FST writer compiles against.
 Only `ccache` is absent, and it is optional. Because one host build now serves
@@ -3169,7 +3207,9 @@ observed.
 ## Source and workspace boundary
 
 - Root `tools/` contains checked-in project automation.
-- `workdir/tools/` contains downloaded or provisioned external tools.
+- `workdir/tools/` contains downloaded or provisioned external tools, except
+  those a [host cache](#shared-host-tool-cache) holds outside every checkout
+  so one provisioning serves every worktree.
 - `workdir/cache/` contains reusable downloads and immutable cached data.
 - `workdir/builds/` contains tagged build state and results.
 - `workdir/logs/` contains bootstrap and doctor logs that have no build tag.

@@ -123,10 +123,19 @@ def verilator(root, folder, directory):
                     folder, "fault.log", env=env, expect_failure=True)
     if SMOKE_FAULT not in fault or SMOKE_SIGNATURE in fault:
         raise RuntimeError("injected fault was not reported; see fault.log")
-    return {"version": version.strip(), "release": match[1], "tools": {"verilator": tool},
-            "discovery": source, "pin": pinned, "pin_match": None if not pinned else match[1] == pinned,
-            "license": "none consulted; " + ", ".join(LICENSE_VARIABLES) + " removed from the check environment",
-            "fault": {"expected": SMOKE_FAULT, "detected": True}}
+    record = {"version": version.strip(), "release": match[1], "tools": {"verilator": tool},
+              "discovery": source, "pin": pinned,
+              "pin_match": None if not pinned else match[1] == pinned,
+              "license": "none consulted; " + ", ".join(LICENSE_VARIABLES) + " removed from the check environment",
+              "fault": {"expected": SMOKE_FAULT, "detected": True}}
+    # An operator's own tool keeps precedence, so this check still passes with it.
+    # It says so out loud on the same `notice` channel a simulation uses, because a
+    # doctor that records the mismatch and prints nothing is the silence this pin
+    # exists to prevent.
+    if record["pin_match"] is False:
+        record["notice"] = (f"Verilator {match[1]} from {source} discovery is not the pinned "
+                            f"{pinned}: {tool}; the pin is the version this repository validates")
+    return record
 
 
 def questa(root, folder, directory):

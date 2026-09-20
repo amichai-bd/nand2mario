@@ -18,7 +18,7 @@ import subprocess
 import time
 
 from .records import (atomic_json, atomic_text, file_hash, lock_owner, pid_alive,
-                      release_held_lock, take_lock)
+                      reclaim_stale_lock, release_held_lock, take_lock)
 
 # Relative to the repository root: the per-checkout prefix earlier runs filled.
 # It is still discovered and adopted, but nothing new installs there, because a
@@ -33,6 +33,12 @@ WINDOWS = os.name == "nt"
 INSTALLATION = "installation.json"
 # One installation at a time per host, because the cache is shared.
 INSTALL_LOCK = "install.lock"
+# The only installed files a run never reaches. Nothing in this repository passes
+# `--debug`, so these two are never executed, and they are 236 MB of the 259 MB
+# installed: covering them would add about four seconds to every discovery for a
+# tree no simulation touches. Everything else, including the `share/verilator`
+# headers compiled into every simulation binary, is covered.
+UNCOVERED = ("verilator_bin_dbg", "verilator_coverage_bin_dbg")
 # The official git-build prerequisites this installation needs on PATH.
 BUILD_TOOLS = ("git", "autoconf", "make", "g++", "flex", "bison", "perl", "help2man")
 # Verilator's own root must come from the built tree, never from the caller.
@@ -96,14 +102,34 @@ def pinned_release(root=None):
         return None
 
 
+def covered_files(base):
+    """Every installed file a simulation can execute or compile against, in order."""
+    base = Path(base)
+    return [path for path in sorted(base.rglob("*"))
+            if path.is_file() and path.name != INSTALLATION and path.name not in UNCOVERED]
+
+
+def tree_digests(base):
+    """The covered installation as {path relative to the prefix: sha256}."""
+    base = Path(base)
+    return {path.relative_to(base).as_posix(): file_hash(path) for path in covered_files(base)}
+
+
 def verify_installation(base, item):
     """Prove a tree is this pin's build and return its record; a path is never trust.
 
     A shared cache, an operator-set `N2M_TOOL_CACHE` and an adopted per-checkout
     tree all arrive as a directory that claims to hold the pin. The record beside
-    it must name this pin's version, tag and commit, and the installed tool bytes
-    must still hash to what it recorded, so a stale, foreign or damaged tree is
-    refused by name rather than silently simulated with.
+    it must name this pin's version, tag and commit, and every covered installed
+    file must still hash to what it recorded, so a stale, foreign or damaged tree
+    is refused by name rather than silently simulated with.
+
+    The check covers the whole installation apart from `UNCOVERED`, not only the
+    executables: `share/verilator/include` is compiled into every simulation
+    binary, so a tampered header there changes what runs exactly as a tampered
+    compiler would. A covered file that is missing, changed or not in the record
+    at all is refused; `tools` is checked as well, so a record whose two views of
+    the same executables disagree is refused rather than half-believed.
     """
     base = Path(base)
     record_path = base / INSTALLATION
@@ -127,10 +153,37 @@ def verify_installation(base, item):
             raise ValueError(f"installed Verilator is missing {name}: {base}")
         if file_hash(tool) != digest:
             raise ValueError(f"installed Verilator {name} does not match its provenance record: {base}")
+    tree = record.get("tree")
+    if not isinstance(tree, dict) or not tree:
+        raise ValueError(f"Verilator provenance record covers no installed tree: {record_path}; "
+                         "reinstall with `python3 tools/build.py tools verilator`")
+    found = tree_digests(base)
+    for path in sorted(set(tree) | set(found)):
+        if path not in found:
+            raise ValueError(f"installed Verilator is missing {path}: {base}")
+        if path not in tree:
+            raise ValueError(f"installed Verilator carries the unrecorded file {path}: {base}")
+        if found[path] != tree[path]:
+            raise ValueError(f"installed Verilator {path} does not match its provenance record: {base}")
     return record
 
 
-def adopt(root, item, base):
+def adoptable_prefix(root, item, base):
+    """True while a per-checkout installation could still be published."""
+    legacy = legacy_prefix(root, item["version"])
+    base = Path(base)
+    return (not base.exists() and legacy.resolve() != base.resolve()
+            and (legacy / "bin/verilator").is_file())
+
+
+def adoptable_source(root, item):
+    """True while a per-checkout clone could still be published."""
+    source, legacy = source_root(root, item["version"]), legacy_source_root(root, item["version"])
+    return (not source.exists() and legacy.resolve() != source.resolve()
+            and (legacy / ".git").is_dir())
+
+
+def adopt_prefix(root, item, base):
     """Publish a verified per-checkout installation into the shared host cache.
 
     An earlier run that installed into a checkout keeps its value: the tree is
@@ -140,10 +193,9 @@ def adopt(root, item, base):
     restated. A tree that fails the check is left alone for the caller to
     inspect, never overwritten or silently rebuilt over.
     """
-    legacy = legacy_prefix(root, item["version"])
-    base = Path(base)
-    if base.exists() or legacy.resolve() == base.resolve() or not (legacy / "bin/verilator").is_file():
+    if not adoptable_prefix(root, item, base):
         return False
+    legacy, base = legacy_prefix(root, item["version"]), Path(base)
     verify_installation(legacy, item)
     base.parent.mkdir(parents=True, exist_ok=True)
     staged = base.with_name(base.name + ".adopting")
@@ -155,13 +207,34 @@ def adopt(root, item, base):
     atomic_json(staged / INSTALLATION, record)
     os.replace(staged, base)
     verify_installation(base, item)
-    # The retained clone is what `--offline` rebuilds from, so it follows the
-    # installation out of the checkout rather than being orphaned by it.
-    source = source_root(root, item["version"])
-    legacy_source = legacy_source_root(root, item["version"])
-    if (legacy_source / ".git").is_dir() and not source.exists():
-        shutil.move(str(legacy_source), str(source))
     return True
+
+
+def adopt_source(root, item):
+    """Publish a per-checkout clone into the shared cache, independently of the prefix.
+
+    The clone is what `--offline` rebuilds from, so it must outlive the worktree
+    that fetched it. It is adopted even when the cache already holds the
+    installation, which is the ordinary case: the two are separate directories
+    with separate lifetimes, and tying the clone's rescue to the prefix's would
+    lose it exactly when the prefix is already safe.
+
+    A clone is never a trusted build input: `install` holds its `HEAD` against the
+    pinned commit and refuses by name before `autoconf` runs, wherever the clone
+    came from. That one gate covers an adopted clone as it covers a fetched one,
+    so adoption does not re-run it here.
+    """
+    if not adoptable_source(root, item):
+        return False
+    source, legacy = source_root(root, item["version"]), legacy_source_root(root, item["version"])
+    source.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(legacy), str(source))
+    return True
+
+
+def adopt(root, item, base):
+    """Publish whichever per-checkout trees the cache does not already hold."""
+    return {"prefix": adopt_prefix(root, item, base), "source": adopt_source(root, item)}
 
 
 @contextlib.contextmanager
@@ -169,19 +242,32 @@ def cache_lock(base):
     """Hold the cache's install lock so two worktrees never build into one prefix.
 
     The cache is shared, so a second `tools verilator` would otherwise clone and
-    `make` into the same source tree as a running one. A held lock is refused by
-    name with the pid holding it rather than waited on: a 26-minute silent wait
-    hides the reason. Reuse never takes it, so a discovery is never blocked.
+    `make` into the same source tree as a running one. Reuse never takes the lock,
+    so a discovery is never blocked by another worktree's build.
+
+    A held lock follows the tag lock's rule exactly: a lock whose recorded writer
+    is dead is the leftover of a killed process, reclaimed once out loud; a live
+    or unreadable owner keeps the cache and nothing steals by age. Unreadable
+    counts as live, so the failure never advises removing the lock of a running
+    26-minute build, and the empty window between the exclusive create and the pid
+    write cannot be mistaken for an abandoned one.
     """
     lock = Path(base).parent / INSTALL_LOCK
     lock.parent.mkdir(parents=True, exist_ok=True)
     try:
         fd = take_lock(lock)
     except FileExistsError:
-        pid = lock_owner(lock)
-        state = "is still running" if pid and pid_alive(pid) else "is gone; remove the lock"
-        raise ValueError(f"another pinned Verilator installation holds {lock}: "
-                         f"pid {pid} {state}") from None
+        owner = lock_owner(lock)
+        if owner is None or pid_alive(owner):
+            raise ValueError(f"the pinned Verilator cache {lock.parent} is being installed into"
+                             + (f" by live pid {owner}" if owner else "")
+                             + f"; confirm its writer stopped before removing {lock}") from None
+        reclaim_stale_lock(lock, owner)
+        try:
+            fd = take_lock(lock)
+        except FileExistsError:
+            raise ValueError(f"the pinned Verilator cache {lock.parent} was taken by another "
+                             f"installer while its stale lock {lock} was reclaimed") from None
     try:
         os.write(fd, f"pid={os.getpid()}\n".encode())
         yield
@@ -291,7 +377,8 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
     folder.mkdir(parents=True, exist_ok=True)
     env = build_environment(environ)
     record = {"pin": item, "prefix": str(base), "source": str(source),
-              "cache_root": str(cache_root(root)), "adopted": False,
+              "cache_root": str(cache_root(root)),
+              "adopted": {"prefix": False, "source": False},
               "reused": False, "commands": []}
 
     def step(name, argv, cwd, step_timeout=None):
@@ -313,7 +400,7 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
 
     def adopt_or_build():
         """Everything that writes the shared cache; the caller holds its lock."""
-        record["adopted"] = adopt(root, item, base)
+        record["adopted"].update(adopt(root, item, base))
         # A concurrent installation may have finished between the unlocked reuse
         # check and this lock, so the check runs once more before any build.
         if reuse() is not None:
@@ -352,6 +439,7 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
                       "tools": {name: file_hash(base / "bin" / name)
                                 for name in ("verilator", "verilator_bin")
                                 if (base / "bin" / name).is_file()},
+                      "tree": tree_digests(base), "uncovered": list(UNCOVERED),
                       "build_tools": {name: _tool_identity(path) for name, path in tools.items()},
                       "host": platform.platform(), "python": platform.python_version(),
                       "jobs": parallel, "elapsed_seconds": record["elapsed_seconds"],
@@ -364,8 +452,14 @@ def install(root, folder, item, *, jobs=None, timeout=STEP_TIMEOUT, offline=Fals
 
     # An installed prefix is reused without the lock, so one worktree's discovery
     # never waits on another's 26-minute build. Everything that writes the shared
-    # cache runs inside it.
+    # cache runs inside it, including the one write a reuse still owes: a clone
+    # this checkout holds and the cache does not. Skipping that write because the
+    # installation was already cached is what would leave the clone to die with
+    # the worktree, and with it `--offline` as a property of this host.
     if reuse() is not None:
+        if adoptable_source(root, item):
+            with cache_lock(base):
+                record["adopted"]["source"] = adopt_source(root, item)
         return record
     with cache_lock(base):
         return adopt_or_build()

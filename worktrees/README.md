@@ -121,10 +121,14 @@ unrun. It therefore installs into the
 [shared host tool cache](../wiki/tools/n2m/SPEC.md#shared-host-tool-cache)
 outside every checkout, where worktree removal cannot reach it, and its
 provenance is reverified against the pin on every discovery rather than trusted
-because it survived. A worktree that still holds the earlier per-checkout prefix
+because it survived. A worktree that still holds anything under
 `workdir/tools/verilator/` is the one case to look at before removal: run
-`python3 tools/build.py tools verilator` there first, which adopts that verified
-tree into the cache in seconds, then remove the worktree as usual.
+`python3 tools/build.py tools verilator` there first, then remove the worktree as
+usual. That adopts both the installed prefix and the retained clone, each only if
+the cache does not already hold it, and reports which it moved as
+`adopted: {prefix, source}`. The clone is the case that matters in practice,
+because the cache usually already has the installation while the clone that
+`--offline` rebuilds from is still sitting in whichever worktree fetched it.
 
 Delete the verified merged local branch with `git branch -D 42-fix-timer`
 (squash merges do not retain branch ancestry). Delete its remote branch if still
