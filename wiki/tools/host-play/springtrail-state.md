@@ -95,7 +95,11 @@ The loop observes, chooses one complete eight-button mask from the observation,
 advances whole frames and observes again, from the title to WON. It declares its
 budget before it starts, reports a failed attempt instead of retrying past it,
 writes no game memory, and on ordinary completion releases the input and leaves
-the core paused. Every observation is retained as JSON; images are written at
+the core paused. `--wall-seconds` sets the loop's liveness ceiling; the budget
+that stops a loop for doing too much work is
+[its CPU budget](SPEC.md#what-each-budget-measures). Contention inflates that
+budget's quantity too, but much less than it inflates elapsed time, which is why
+the budget sits on it. Every observation is retained as JSON; images are written at
 `--image-stride` (60 by default). `actions.json` holds the mask, the reason, the
 completed dot and the observed position of every step, so a run can be reviewed
 or replayed by eye afterwards.

@@ -5,6 +5,7 @@ codecs, so the reader, decoder, renderer and strategy are exercised without a
 simulator or a board.
 """
 import sys
+import time
 import unittest
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from n2m.interface_codec import pack_pixels  # noqa: E402
 import state_support as support  # noqa: E402
 from state_fake import Endpoint  # noqa: E402
 
-BUDGET = {'wall_seconds': 240, 'frames': 1500, 'actions': 1500}
+BUDGET = {'cpu_seconds': 240, 'frames': 1500, 'actions': 1500}
 
 
 class Harness(unittest.TestCase):
@@ -308,6 +309,121 @@ class FailureTests(Harness):
         self.assertIn(result['reason'], ('STATE_BUDGET_FRAMES', 'STATE_BUDGET_ACTIONS'))
         self.assertLessEqual(result['frames'], 25)
         self.assertTrue(result['released'])
+
+    def test_a_loop_that_costs_more_per_frame_fails_on_the_work_it_spends(self):
+        """Genuine growth: the same frames, more work inside each one.
+
+        The budget is derived from this host's own measured cost rather than
+        written down, so the test proves the guard and not the machine.
+        """
+        _endpoint, client = self.endpoint()
+        bounded = dict(BUDGET, frames=8, actions=8)
+        base = play_module.play(client, self.image, self.binding,
+                                budget=dict(bounded, cpu_seconds=240))
+        self.assertIn(base['reason'], ('STATE_BUDGET_FRAMES', 'STATE_BUDGET_ACTIONS'))
+        per_step = base['cpu_seconds'] / len(base['actions'])
+        allowed = 2 * base['cpu_seconds']
+
+        class Costly(play_module.Strategy):
+            """Spends twice a step's current CPU before choosing, every step."""
+            def choose(self, observation):
+                deadline = time.process_time() + 2 * per_step
+                while time.process_time() < deadline:
+                    pass
+                return super().choose(observation)
+
+        _endpoint, client = self.endpoint()
+        # A ceiling this run cannot reach, so only the work budget can stop it.
+        grown = play_module.play(client, self.image, self.binding, Costly(),
+                                 budget=dict(bounded, cpu_seconds=allowed,
+                                             wall_seconds=900))
+        self.assertEqual(grown['status'], 'FAIL')
+        self.assertEqual(grown['reason'], 'STATE_BUDGET_CPU')
+        self.assertGreater(grown['cpu_seconds'], allowed)
+        # The work stopped it: no count was exhausted and no wall was reached.
+        self.assertLess(grown['frames'], bounded['frames'])
+        self.assertLess(grown['wall_seconds'], 900)
+        self.assertTrue(grown['released'])
+
+    def test_cpu_spent_after_the_last_loop_check_still_fails_the_run(self):
+        """The final judgement, which the loop's own check cannot make.
+
+        The loop checks CPU before an iteration, so whatever an iteration spends
+        on its way out is unchecked there. A run that completes its goal and
+        overspends doing it is still reported, by the judgement in `finally`.
+        """
+        _endpoint, client = self.endpoint()
+        bounded = dict(BUDGET, frames=40, actions=40, wall_seconds=900)
+        base = play_module.play(client, self.image, self.binding,
+                                budget=dict(bounded, frames=2, actions=2, cpu_seconds=240))
+        allowed = base['cpu_seconds'] + 2
+        reached = []
+        origin = time.process_time()
+
+        def complete_then_overspend(observation):
+            """Finish on the second observation, having overspent getting there."""
+            if not reached:
+                reached.append(observation)
+                return False
+            while time.process_time() - origin <= allowed + 0.5:
+                pass
+            reached.append(observation)
+            return True
+
+        _endpoint, client = self.endpoint()
+        result = play_module.play(client, self.image, self.binding,
+                                  budget=dict(bounded, cpu_seconds=allowed),
+                                  complete=complete_then_overspend)
+        # The goal was reached, so the loop broke on completion rather than on a
+        # budget: only the final judgement can have failed this run.
+        self.assertEqual(len(reached), 2)
+        self.assertEqual(result['status'], 'FAIL')
+        self.assertEqual(result['reason'], 'STATE_BUDGET_CPU')
+        self.assertGreater(result['cpu_seconds'], allowed)
+        self.assertLess(result['frames'], bounded['frames'])
+        self.assertTrue(result['released'])
+
+    def test_contention_that_only_stretches_the_wall_does_not_fail_a_run(self):
+        """A busy host multiplies elapsed time, never the CPU a run spends."""
+        _endpoint, client = self.endpoint()
+        real, origin = time.monotonic, time.monotonic()
+        # Ten times a quiet host's elapsed wall: worse than the 4.8x stretch
+        # measured here under ten deliberately competing processes.
+        def contended():
+            return origin + 10 * (real() - origin)
+        seen = []
+        def after_eight_frames(observation):
+            seen.append(observation)
+            return len(seen) >= 8
+        result = play_module.play(client, self.image, self.binding,
+                                  budget=dict(BUDGET, cpu_seconds=60),
+                                  complete=after_eight_frames, clock=contended)
+        self.assertEqual(result['status'], 'PASS', result.get('reason'))
+        self.assertGreater(result['wall_seconds'], 3.2 * result['cpu_seconds'])
+        self.assertLess(result['cpu_seconds'], result['budget']['cpu_seconds'])
+
+    def test_a_run_that_stops_computing_still_ends_on_the_wall_ceiling(self):
+        """The ceiling is liveness only, and it is derived from the CPU budget."""
+        _endpoint, client = self.endpoint()
+        real, origin = time.monotonic, time.monotonic()
+        def stalled():
+            return origin + 10000 * (real() - origin)
+        result = play_module.play(client, self.image, self.binding,
+                                  budget=dict(BUDGET, cpu_seconds=60, frames=400, actions=400),
+                                  clock=stalled)
+        self.assertEqual(result['budget']['wall_seconds'],
+                         play_module.WALL_CEILING_RATIO * 60)
+        self.assertEqual(result['status'], 'FAIL')
+        self.assertEqual(result['reason'], 'STATE_BUDGET_WALL')
+        self.assertLess(result['cpu_seconds'], 60)
+        self.assertTrue(result['released'])
+
+    def test_a_named_wall_ceiling_is_used_exactly_as_the_caller_gave_it(self):
+        _endpoint, client = self.endpoint()
+        result = play_module.play(client, self.image, self.binding,
+                                  budget=dict(BUDGET, frames=4, actions=4, wall_seconds=900))
+        self.assertEqual(result['budget']['wall_seconds'], 900)
+        self.assertEqual(result['budget']['cpu_seconds'], 240)
 
     def test_an_uncertain_reply_stops_the_session_and_sends_nothing_more(self):
         endpoint, client = self.endpoint(defect='short-peek')

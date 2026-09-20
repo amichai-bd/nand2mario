@@ -47,8 +47,22 @@ TITLE, PLAYING, RETRY, PAUSED, WON, TIMEUP, OVER = range(7)
 # The complete eight-button mask the endpoint takes, active high.
 RIGHT, LEFT, UP, DOWN, A, B, SELECT, START = 1, 2, 4, 8, 16, 32, 64, 128
 # Declared finite budget of one demonstration. Frames are emulated frames.
-BUDGET = {'frames': 1500, 'actions': 1500, 'wall_seconds': 240, 'retries': 0,
+# `frames` and `actions` count work items; `cpu_seconds` bounds what each one
+# costs, which is the dimension that catches a loop doing more per frame than it
+# used to. It is process CPU: a busy host inflates that by up to 1.9x where it
+# inflates wall by up to 9.2x, so a work budget can be set against it and a wall
+# budget cannot. It is not immune, only far less sensitive, and what moves it is
+# the machine's frequency state rather than the competition directly.
+# `wall_seconds` is only a liveness ceiling, so a run that stops
+# computing still ends; it is derived from `cpu_seconds` unless a caller names a
+# ceiling of its own. The measurements are in the SPEC.
+BUDGET = {'frames': 1500, 'actions': 1500, 'cpu_seconds': 240, 'retries': 0,
           'no_progress_frames': 480}
+# The worst wall-to-CPU stretch measured on this four-core host under ten
+# competing processes is 4.8x, so eight times the CPU budget stays above
+# contention and still bounds a run that has stopped computing. Nothing relies
+# on it for cost: a unit's own wall budget is far tighter than this ceiling.
+WALL_CEILING_RATIO = 8
 
 
 class PlayFailure(RuntimeError):
@@ -351,7 +365,7 @@ def finish(client, result):
 
 def play(client, image, binding, strategy=None, *, budget=None, record=None, retain=None,
          capture=None, require_title=True, start_delay_frames=0, complete=None,
-         clock=time.monotonic):
+         clock=time.monotonic, cpu=time.process_time):
     """Run from RESET and the title to WON within the declared budget.
 
     Returns a result record; a failed attempt is reported, never retried
@@ -365,15 +379,20 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
     the one drawn from `previous`.
     A supplied `complete` predicate checks a caller's explicit bounded goal;
     otherwise the existing goal remains WON. Predicate failures fail the run.
+
+    `cpu_seconds` is the budget on the work; `wall_seconds` is only the liveness
+    ceiling, and a caller that names neither gets `BUDGET`'s CPU budget and a
+    ceiling derived from it.
     """
     limits = dict(BUDGET, **(budget or {}))
+    limits.setdefault('wall_seconds', WALL_CEILING_RATIO * limits['cpu_seconds'])
     if (type(start_delay_frames) is not int or start_delay_frames < 0
             or start_delay_frames > min(limits['frames'], limits['actions'])):
         raise PlayFailure('STATE_START_DELAY')
     strategy = strategy or Strategy()
     log = record or (lambda entry: None)
     keep = retain or (lambda step, observation, provenance: None)
-    started = clock()
+    started, cpu_started = clock(), cpu()
     result = {'status': 'FAIL', 'budget': limits, 'actions': [], 'frames': 0, 'attempts': 1,
               'observations': 0}
     observation = provenance = None
@@ -405,6 +424,8 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
                 raise PlayFailure('STATE_BUDGET_ACTIONS')
             if result['frames'] >= limits['frames']:
                 raise PlayFailure('STATE_BUDGET_FRAMES')
+            if cpu() - cpu_started > limits['cpu_seconds']:
+                raise PlayFailure('STATE_BUDGET_CPU')
             if clock() - started > limits['wall_seconds']:
                 raise PlayFailure('STATE_BUDGET_WALL')
             loop_started = clock()
@@ -472,11 +493,17 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
             'mode': observation['mode_name'], 'timer': observation['timer'],
             'x': observation['player']['pixel_x'], 'dot': provenance['dot']}
         finish(client, result)
-        elapsed = clock() - started
+        elapsed, spent = clock() - started, cpu() - cpu_started
+        # The work is judged first, so a run that overspent both is reported for
+        # what it did rather than for how long the host made it wait.
+        if spent > limits['cpu_seconds']:
+            result['status'] = 'FAIL'
+            result.setdefault('reason', 'STATE_BUDGET_CPU')
         if elapsed > limits['wall_seconds']:
             result['status'] = 'FAIL'
             result.setdefault('reason', 'STATE_BUDGET_WALL')
         result['wall_seconds'] = round(elapsed, 3)
+        result['cpu_seconds'] = round(spent, 3)
     return result
 
 

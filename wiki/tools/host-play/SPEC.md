@@ -138,10 +138,10 @@ unchanged, the completed dot must have advanced by exactly the frames requested,
 the reset epoch must be unchanged and the game timer must advance once per frame
 while the game is playing. A drift in any of them stops the run.
 
-The loop declares its action, emulated-frame and wall budgets and its retry
-policy before it runs, and reports a failed attempt rather than retrying past
-them. It stops on bounded lack of progress. It writes no game memory: the only
-host writes are the input mask and the input-source selector. On ordinary
+The loop declares its action, emulated-frame and CPU budgets, its wall ceiling
+and its retry policy before it runs, and reports a failed attempt rather than
+retrying past them. It stops on bounded lack of progress. It writes no game
+memory: the only host writes are the input mask and the input-source selector. On ordinary
 completion it sends HALT, releases the input and verifies PAUSED and effective
 input zero. A rejected command, mismatched readback or uncertain reply makes
 the result FAIL, retaining any original failure beside the cleanup finding.
@@ -151,8 +151,64 @@ paused, neutral UART origin before acquiring its first coherent observation.
 `play` and `compare` accept `--start-delay-frames N` (default zero). After RESET
 and the first coherent TITLE observation, N neutral one-frame actions precede
 the strategy. They appear as `start-delay` actions and consume the existing
-action, frame, wall and no-progress budgets. The delay does not write game
+action, frame, CPU and no-progress budgets. The delay does not write game
 memory or alter the strategy; observe rejects a nonzero delay.
+
+#### What each budget measures
+
+`frames` and `actions` count work items. Neither bounds what one item costs, so
+neither sees a loop that does more per frame than it used to. `cpu_seconds` is
+that bound, and it is the budget that stops such a run: `STATE_BUDGET_CPU`. It
+measures the process CPU the loop spends, which is what the loop did rather than
+how long the host made it wait. `wall_seconds` is a liveness ceiling only,
+`STATE_BUDGET_WALL`, so a loop that stops computing still ends; it defaults to
+eight times the CPU budget and a caller may name its own. A run that overspends
+both is reported as `STATE_BUDGET_CPU`, because the work is what it did wrong.
+
+`cpu_seconds` is 240 by default, derived from measuring a complete `compare` on
+the current image five times across a contention range. The host is a four-core
+Linux machine: two physical cores with two threads each. A run's own wall/CPU
+ratio says how contended it was; the load average lags too far behind to say.
+
+| wall/CPU | load average | frames | CPU seconds | wall seconds |
+| --- | --- | --- | --- | --- |
+| 1.01 | 3.5 | 527 | 55.8 | 56.1 |
+| 1.02 | 5.6 | 527 | 66.6 | 67.5 |
+| 1.32 | 4.6 | 527 | 79.4 | 104.9 |
+| 1.77 | 7.7 | 527 | 105.9 | 187.5 |
+| 4.79 | 19.6 | 527 | 108.2 | 518.1 |
+
+Contention inflates CPU as well as wall, so the quantity is not immune, only far
+less sensitive. It is not sensitive to competition itself: on a fixed 60-frame
+workload CPU rose 1.2x where wall rose 2.7x, and across the `compare` series above
+CPU rose 1.9x where wall rose 9.2x. It is sensitive to the frequency and thermal
+state a busy machine produces, which is a slower and laggier thing than the
+competition that produces it. A measurement taken on a cool idle host therefore
+understates what the same work costs on a warm one. On this host the same module's
+CPU has been measured between 167 s and 272 s across separate sittings, a 1.6x
+spread, while repeats inside one sitting stay within 1.07x. Compare figures taken
+in one sitting, and read a single cool measurement as a floor.
+
+That is the whole difference: the same 240 leaves this comparison 4.3x headroom
+uncontended and 2.2x at the worst contention measured when it is spent on CPU, and
+4.3x uncontended but 2.2x overspent when it is spent on wall. A wall budget near a
+run's real cost is therefore decided by the host, and this one was.
+
+240 is the old wall number on the stricter quantity, so nothing that passed the
+wall budget fails this one: a run's CPU never exceeds its wall. A `compare` that
+exceeds it has at least doubled its cost per frame on the most contended host
+measured here and quadrupled it on an idle one, which `frames` at 1500 would not
+notice until the route itself grew 2.9x.
+
+The wall ceiling is derived rather than measured, because a ceiling is not a
+performance budget: eight times the CPU budget stays above the 4.8x stretch
+above. A unit's own
+[300-second wall budget](../n2m/SPEC.md#test-wall-budget) is far tighter than
+this ceiling and is what actually bounds the host checks; on a board the
+entrypoint's own `--cap` supervisor bounds the whole process the same way. A
+board run spends almost no CPU, because its time goes on the wire rather than in
+this host, so its elapsed time is bounded by those two and never by the work
+budget.
 
 ### Comparing against actual pixels, and measuring
 

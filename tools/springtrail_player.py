@@ -324,7 +324,8 @@ def main(argv=None):
     parser.add_argument('--snapshot', action='store_true',
                         help='observe: also take the aligned actual frame and compare it')
     parser.add_argument('--wall-seconds', type=int,
-                        help='declared wall budget for the play loop')
+                        help='liveness ceiling on the play loop in wall seconds; the loop is '
+                             'budgeted on the CPU it spends, not on how long it waits')
     parser.add_argument('--start-delay-frames', type=int, default=0,
                         help='play/compare: neutral frames after RESET and coherent TITLE, within existing budgets')
     parser.add_argument('--image-stride', type=int, default=60,
