@@ -179,20 +179,30 @@ ratio says how contended it was; the load average lags too far behind to say.
 | 4.79 | 19.6 | 527 | 108.2 | 518.1 |
 
 Contention inflates CPU as well as wall, so the quantity is not immune, only far
-less sensitive. It is not sensitive to competition itself: on a fixed 60-frame
-workload CPU rose 1.2x where wall rose 2.7x, and across the `compare` series above
-CPU rose 1.9x where wall rose 9.2x. It is sensitive to the frequency and thermal
-state a busy machine produces, which is a slower and laggier thing than the
-competition that produces it. A measurement taken on a cool idle host therefore
-understates what the same work costs on a warm one. On this host the same module's
-CPU has been measured between 167 s and 272 s across separate sittings, a 1.6x
-spread, while repeats inside one sitting stay within 1.07x. Compare figures taken
-in one sitting, and read a single cool measurement as a floor.
+less sensitive: across the `compare` series above CPU rose 1.9x where wall rose
+9.2x, and on a fixed 60-frame workload 1.2x against 2.7x. It is sensitive to
+competition itself, and that sensitivity has a measured ceiling rather than a
+thermal cause. The
+[contention ceiling](../n2m/SPEC.md#contention-has-a-ceiling-in-cpu-and-none-in-wall)
+owns both figures: an interpreter-bound run's CPU rises to about 2.3 times its solo
+cost and then stops however many competitors are added, and frequency on this host
+can account for at most about 1.08 times. The 1.94x this series measured, 55.8 s of
+CPU rising to 108.2, sits inside that ceiling.
+
+An earlier reading of the same numbers attributed them to the frequency and thermal
+state a busy machine produces, and said to treat a cool measurement as a floor of an
+unbounded spread. That is withdrawn. The inflation appears within a second of load
+starting and is gone within a second of its death, which no thermal soak does, and
+the 1.6x cross-sitting spread it rested on is partial contention, which the ceiling
+already bounds. Compare figures taken in one sitting, and read a cool measurement
+as a floor that the ceiling bounds from above.
 
 That is the whole difference: the same 240 leaves this comparison 4.3x headroom
 uncontended and 2.2x at the worst contention measured when it is spent on CPU, and
 4.3x uncontended but 2.2x overspent when it is spent on wall. A wall budget near a
-run's real cost is therefore decided by the host, and this one was.
+run's real cost is therefore decided by the host, and this one was. Against the
+ceiling rather than the worst load sampled, this comparison's quietest 55.8 s of CPU
+reaches 139 s, and 240 is 1.72 times that.
 
 240 is the old wall number on the stricter quantity, so nothing that passed the
 wall budget fails this one: a run's CPU never exceeds its wall. A `compare` that
@@ -203,7 +213,7 @@ notice until the route itself grew 2.9x.
 The wall ceiling is derived rather than measured, because a ceiling is not a
 performance budget: eight times the CPU budget stays above the 4.8x stretch
 above. A unit's own
-[300-second wall budget](../n2m/SPEC.md#test-wall-budget) is far tighter than
+[CPU budget](../n2m/SPEC.md#what-one-host-unit-may-spend) is far tighter than
 this ceiling and is what actually bounds the host checks; on a board the
 entrypoint's own `--cap` supervisor bounds the whole process the same way. A
 board run spends almost no CPU, because its time goes on the wire rather than in

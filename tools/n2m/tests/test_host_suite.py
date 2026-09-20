@@ -3,11 +3,12 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m import host_suite
+from n2m import cpu_budget, host_suite
 
 ROOT = Path(__file__).resolve().parents[3]
 SLEEP = 1.2
@@ -28,6 +29,11 @@ STARTUP = 0.6
 # Skipped, never degraded, where the OS reports no per-child CPU: a test that tolerates
 # `cpu_seconds` being None passes just as well when the reaping hook has stopped working.
 measures_cpu = unittest.skipUnless(hasattr(host_suite.os, "wait4"), "no per-child CPU time here")
+# Spends wall without CPU inside a child it waits for, so that child holds the group's
+# own stdout pipe: killing the group alone leaves the pipe open, which is the state a
+# liveness ceiling has to survive rather than wait on.
+WAIT_IN_CHILD = ("import subprocess, sys, time; "
+                 "subprocess.run([sys.executable, '-c', 'import time; time.sleep(' + sys.argv[1] + ')'])")
 
 
 def scripted(scripts):
@@ -118,7 +124,7 @@ class GroupTests(unittest.TestCase):
         # extends is what a Windows host without `os.wait4` gets, and what a CPython release
         # that renames the reaping hook would leave behind. Neither may pass silently.
         scripts = {"wait_a*": (WAIT_SCRIPT, str(2 * BURN)), "quick_b*": (WAIT_SCRIPT, "0")}
-        with workspace() as temp, patch.object(host_suite, "Child", subprocess.Popen):
+        with workspace() as temp, patch.object(cpu_budget, "Child", subprocess.Popen):
             fields, problems, log = suite(Path(temp), scripts, cpu_budget=1, wall_ceiling=60)
         self.assertEqual([g["cpu_seconds"] for g in fields["groups"]], [None, None])
         self.assertIsNone(fields["cpu_seconds"])
@@ -135,8 +141,9 @@ class GroupTests(unittest.TestCase):
     def test_the_reaping_hook_keeps_the_rusage_of_the_child_it_reaps(self):
         # The one assertion the whole budget rests on, at its smallest: the hook runs, and the
         # CPU it reports is the child's own work and not this process's.
-        child = host_suite.spawn(ROOT, [sys.executable, "-c", BURN_SCRIPT, str(BURN)])
-        self.assertIsInstance(child, host_suite.Child)
+        child = cpu_budget.spawn([sys.executable, "-c", BURN_SCRIPT, str(BURN)], cwd=str(ROOT),
+                                 text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertIsInstance(child, cpu_budget.Child)
         child.communicate(timeout=60)
         self.assertIsNotNone(child.rusage, "Popen no longer reaps through _try_wait")
         self.assertLessEqual(BURN, child.cpu_seconds)
@@ -153,6 +160,21 @@ class GroupTests(unittest.TestCase):
                                       r"1-second wall ceiling, for (\d+ s of|an unmeasured amount of) CPU$")
         self.assertIsNone(fields["groups"][0]["exit_code"])
         self.assertIn("== group wait_a*: FAIL in ", log)
+
+    def test_the_wall_ceiling_releases_a_group_whose_descendant_holds_its_pipe(self):
+        """The ceiling has to bound itself. Reading the pipe again after the kill cannot
+        finish while a surviving descendant holds the write end, which is the ordinary
+        shape of a group blocked inside a child it waits for."""
+        scripts = {"wait_a*": (WAIT_IN_CHILD, "60"), "ok_b*": (WAIT_SCRIPT, "0")}
+        started = time.monotonic()
+        with workspace() as temp:
+            fields, problems, _ = suite(Path(temp), scripts, cpu_budget=60, wall_ceiling=1)
+        elapsed = time.monotonic() - started
+        self.assertEqual({g["pattern"]: g["status"] for g in fields["groups"]},
+                         {"wait_a*": "FAIL", "ok_b*": "PASS"})
+        self.assertRegex(problems[0], r"^group wait_a\* made no progress: ")
+        # Well under the 60 s the abandoned descendant still has to run.
+        self.assertLess(elapsed, 30, f"the ceiling waited {elapsed:.1f} s on a held pipe")
 
     def test_a_failing_or_unmatched_group_fails_by_name(self):
         scripts = {"test_a*": ("print('ok')",),

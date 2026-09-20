@@ -17,10 +17,10 @@ import os
 from pathlib import Path
 import platform
 import re
-import subprocess
 import sys
 import time
 
+from . import cpu_budget
 from . import host_closure
 from .records import atomic_json, atomic_text, cpu_seconds, file_hash, read_json, workspace
 from .simulation import UNSUPPORTED_REASON, simulator_problem, unsupported_backend
@@ -33,6 +33,36 @@ LEVELS = (0, 1, 2)
 ORDINARY_BUDGET = 300
 # A child needs its 12 reserved cleanup seconds plus at least one to run.
 MINIMUM_CHILD_SECONDS = 13
+# What one host unit may spend, as the CPU its process and the descendants it waits
+# for used, read from `os.wait4` as the child is reaped. It replaced a 300-second bound
+# on the unit's wall, which failed honest units for occupying a shared machine. The
+# samples, the derivation and the limits are in
+# wiki/tools/n2m/SPEC.md#what-one-host-unit-may-spend.
+#
+# The bound is per unit rather than one number for all of them. One sweep of every host
+# unit put 170 of the 178 that ran under 30 s of CPU, seven between 33 and 88, and one at
+# 162; a single bound has to clear the largest, and at that size it bounds nothing else.
+# 240 covers the ordinary population against the worst case rather than one load: the
+# worst unit outside that one measured 78.6 s of CPU at its quietest, and 2.31 times that
+# for the SMT ceiling and 1.08 for frequency is 196. It is below the 300 it replaces, on
+# a stricter quantity. The ceiling is a property of the victim's instruction mix, not of
+# the machine, so it holds for interpreter-bound work and must be re-measured for work
+# that contends for memory bandwidth; the SPEC records where it does not hold.
+UNIT_CPU_BUDGET = 240
+# A unit whose recorded conditions name the CPU it spent is bounded against that instead.
+# 3 clears the measured worst case, 2.31 for contention times 1.08 for frequency, and it
+# stays above DRIFT_FACTOR, so a unit that grows is named by a drift report before its
+# budget fails it. A CPU recorded on a saturated host loosens the bound by at most that
+# same ceiling rather than without limit, which is what a recorded wall would have done,
+# so record an expensive unit on the quietest host available.
+UNIT_CPU_FACTOR = 3
+# A liveness guard, not a performance budget, so a unit that stops computing still ends.
+# Five times the budget, as a group's ceiling is five times its own: the worst honest wall
+# measured for an ordinary unit is 670.6 s against this 240, 2.8 times, and an honest wall
+# reaches several times its own CPU whenever the host is busy, so a ceiling that catches a
+# blocked unit quickly would fail a contended one. #881 owns catching that at the level of
+# the test that blocks, which is where the blocking test can be named.
+UNIT_WALL_STRETCH = 5
 # The smallest wall a real run may record. Anything that measured faster still
 # ran, so it is recorded as 0.01 and 0.00 stays the mark of an unmeasured entry.
 MINIMUM_DURATION = 0.01
@@ -59,9 +89,10 @@ MINIMUM_DURATION = 0.01
 # moves the wall far further than the CPU, so an honest wall can sit at any
 # ratio: this repository's own check groups reached ratios of 4.46, 3.99 and 3.01
 # beside another worktree's check, their walls up to 2.7 times and their CPU only
-# 1.10 to 1.18 times the same content's on a quieter host. Nor is CPU invariant:
-# four competing spinners moved a wall 1.96 times and its CPU 1.30 times, and the
-# same host unit measured 76.62 s then 195.28 s in one sitting with its CPU moving
+# 1.10 to 1.18 times the same content's on a quieter host. Nor is CPU invariant: four
+# competing spinners moved the CPU of every host unit costing over 5 s by 1.00 to 2.02
+# times, the low end being the units that already saturate the machine, and the same host
+# unit measured 76.62 s then 195.28 s in one sitting with its CPU moving
 # 71.9 to 124.4 s and nothing to compile. A simulation's parallel compile puts its
 # ratio below 1 whatever the load, 0.90 and 0.61 for the same target in one
 # sitting with its CPU steady. A unit that sleeps sits near 3.8 while computing
@@ -69,7 +100,7 @@ MINIMUM_DURATION = 0.01
 # six competitors were live. The conditions are therefore recorded for the reader
 # and never used as a gate.
 MEASURED_KEYS = ("at", "commit", "host", "wall_cpu")
-MEASURED_OPTIONAL = ("build",)
+MEASURED_OPTIONAL = ("build", "cpu")
 MEASURED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z")
 MEASURED_TOKEN = re.compile(r"[A-Za-z0-9._+-]+")
 # How far a measured wall may stand from the recorded one before a run or a
@@ -276,6 +307,8 @@ def format_measured(measured):
     body = [f"at: {_quote(measured['at'])}", f"commit: {_quote(measured['commit'])}",
             f"host: {_quote(measured['host'])}",
             "wall_cpu: " + ("null" if ratio is None else f"{float(ratio):.2f}")]
+    if measured.get("cpu") is not None:
+        body.append(f"cpu: {float(measured['cpu']):.2f}")
     if measured.get("build") is not None:
         body.append(f"build: {float(measured['build']):.2f}")
     return ", measured: {" + ", ".join(body) + "}"
@@ -387,6 +420,9 @@ def check_measured(name, measured, duration):
     ratio = measured["wall_cpu"]
     if ratio is not None and (not isinstance(ratio, (int, float)) or ratio <= 0):
         raise ValueError(f"unit {name} measured wall_cpu must be null or a positive ratio")
+    cpu = measured.get("cpu")
+    if "cpu" in measured and (not isinstance(cpu, (int, float)) or cpu <= 0):
+        raise ValueError(f"unit {name} measured cpu must be a positive number of seconds")
     build = measured.get("build")
     if "build" in measured and (not isinstance(build, (int, float)) or not 0 <= build <= duration):
         raise ValueError(f"unit {name} measured build must be a share of its own wall")
@@ -665,8 +701,28 @@ def unit_error(output):
     return lines[-1] if lines else "no output"
 
 
+def unit_cpu_budget(entry):
+    """What this one unit may spend in CPU: the default, or a multiple of its own measured CPU.
+
+    One number for every unit has to be sized by the slowest, which leaves every
+    cheaper unit free to grow by orders of magnitude inside it. A unit whose
+    recorded conditions name the CPU it spent is bounded against that instead, so
+    the protection stays proportional to the work.
+
+    The multiple is of CPU and never of `duration_seconds`. A wall has no worst
+    case in load, so a bound taken from one would rise with whatever else the host
+    was doing: the same `check` content has measured 229.8 and 637.8 s of wall for
+    141.6 and 160.0 s of CPU, and a wall recorded at the high end would have
+    carried that 2.8 times into the bound. Measuring CPU also covers the units
+    that spend more CPU than wall by running in parallel, which a wall understates
+    by up to 2.7 times here. An entry with no recorded CPU gets the default.
+    """
+    recorded = (entry.get("measured") or {}).get("cpu") or 0
+    return max(UNIT_CPU_BUDGET, UNIT_CPU_FACTOR * recorded)
+
+
 def run_unit(root, path, entry):
-    """Run one unittest file and return its outcome and measured wall."""
+    """Run one unittest file and return its outcome, its wall and the CPU it spent."""
     python = None
     if "needs-cocotb" in entry["labels"]:
         python = cocotb_python(root)
@@ -690,19 +746,31 @@ def run_unit(root, path, entry):
                              "not be built; see the run's preparation record, or build it "
                              "with python tools/wiki/check.py"}
     command = unit_command(root, path, entry, python)
-    started = time.monotonic()
-    try:
-        result = subprocess.run(command, cwd=str(root), env=unit_environment(root), text=True,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=300)
-    except subprocess.TimeoutExpired:
-        return {"status": "FAIL", "elapsed_seconds": time.monotonic() - started,
-                "error": "unit exceeded its 300-second wall budget", "command": command}
-    elapsed = time.monotonic() - started
-    outcome = {"command": command, "exit_code": result.returncode, "elapsed_seconds": elapsed,
-               "status": "PASS" if result.returncode == 0 else "FAIL"}
-    if result.returncode:
-        outcome["error"] = unit_error(result.stdout)
-        outcome["output"] = result.stdout
+    budget = unit_cpu_budget(entry)
+    ceiling = UNIT_WALL_STRETCH * budget
+    result = cpu_budget.bounded(command, ceiling, cwd=str(root), env=unit_environment(root))
+    wall, cpu = result["elapsed_seconds"], result["cpu_seconds"]
+    outcome = {"command": command, "exit_code": result["exit_code"], "elapsed_seconds": wall,
+               "cpu_budget_seconds": round(budget, 2),
+               "status": "PASS" if result["exit_code"] == 0 else "FAIL"}
+    if cpu is not None:
+        outcome["cpu_seconds"] = round(cpu, 3)
+    if result["stalled"]:
+        spent = f"{cpu:.0f} s of CPU" if cpu is not None else "an unmeasured amount of CPU"
+        outcome["error"] = (f"unit made no progress: it ran {wall:.0f} s, past the "
+                            f"{ceiling:.0f}-second wall ceiling, for {spent}")
+    elif result["exit_code"]:
+        outcome["error"] = unit_error(result["output"])
+        outcome["output"] = result["output"]
+    elif cpu is None and wall > budget:
+        # No per-child CPU on this OS, so the wall is all there is; say which it failed on.
+        outcome.update(status="FAIL",
+                       error=f"unit ran {wall:.0f} s, over its {budget:.0f}-second budget; this host "
+                             "reports no per-child CPU time, so a busy machine can fail it")
+    elif cpu is not None and cpu > budget:
+        outcome.update(status="FAIL",
+                       error=f"unit used {cpu:.0f} s of CPU, over its {budget:.0f}-second CPU "
+                             f"budget (wall {wall:.0f} s, {cpu_budget.ratio(cpu, wall)} its CPU)")
     return outcome
 
 
@@ -853,6 +921,11 @@ def record_from_run(root, tag):
             continue
         durations[name] = measured_duration(wall["wall"])
         measured[name] = {**conditions, "wall_cpu": wall_cpu_ratio(wall.get("wall"), wall.get("cpu"))}
+        # The CPU the run measured, which is what a host unit's budget is a multiple of.
+        # A wall would not serve: contention stretches it without bound, so a bound taken
+        # from one would grow with whatever else the host was doing.
+        if isinstance(wall.get("cpu"), (int, float)) and wall["cpu"] > 0:
+            measured[name]["cpu"] = round(wall["cpu"], 2)
         # A simulation's wall is nearly all compile, so the compile travels with
         # it; a host unit compiles nothing and omits it.
         if isinstance(wall.get("build"), (int, float)):
@@ -926,6 +999,11 @@ def run_selection(root, model, path, tag, args, budget, provenance):
         now = cpu_seconds()
         spent = None if cpu_at is None else round(now - cpu_at, 3)
         cpu_at = now
+        # A host unit's own reaped usage is the better figure of the two: it is
+        # that one child's, not this process's bookkeeping around it, and it is
+        # the quantity its budget judged. Snapshots remain the only source for a
+        # simulation, whose worker this process does not reap directly.
+        spent = outcome.get("cpu_seconds", spent)
         record["units"][name] = outcome
         if outcome["status"] == "SKIPPED":
             record["skipped"].append(name)

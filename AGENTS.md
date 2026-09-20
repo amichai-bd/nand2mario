@@ -155,7 +155,13 @@ Run the smallest useful test and required lower-level checks. Target at most
 120 seconds per simulation and 300 seconds for ordinary pre-merge aggregate
 checks. Every simulation must finish within the
 [total wall budget](wiki/tools/n2m/SPEC.md#test-wall-budget), normally 300 seconds,
-including setup, build, run, checking and cleanup. The user's bounded Mooneye
+including setup, build, run, checking and cleanup. One host unit and one `check`
+group are bounded on their own CPU time instead of their wall, because up to four
+crewmates share this machine and contention stretches a wall without bound while
+moving CPU by tens of percent; the values, their derivation and the limits of that
+quantity are in the
+[unit budget](wiki/tools/n2m/SPEC.md#what-one-host-unit-may-spend) and the
+[group budget](wiki/tools/n2m/SPEC.md#test-wall-budget). The user's bounded Mooneye
 authorization permits only `mooneye-reg-f`, `mooneye-corrupt` and
 `mooneye-missing` up to 1500 seconds total each. No other target inherits it. Declare
 broader milestone aggregates before execution. Use the

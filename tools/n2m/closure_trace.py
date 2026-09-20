@@ -12,10 +12,9 @@ Native tools such as Verilator read files the hook cannot see.
 """
 import os
 from pathlib import Path
-import subprocess
 import time
 
-from . import affected, catalogue, host_closure
+from . import affected, catalogue, cpu_budget, host_closure
 from .records import atomic_json
 
 FALLBACK_PREFIXES = ("tools/", "cfg/", ".github/")
@@ -100,16 +99,27 @@ def trace_unit(root, name, entry, tracer, log, python=None):
     environment["PYTHONPATH"] = os.pathsep.join([environment["PYTHONPATH"], str(tracer)])
     environment[LOG] = str(log)
     environment[TRACE_ROOT] = str(root)
-    started = time.monotonic()
-    try:
-        result = subprocess.run(command, cwd=str(root), env=environment, text=True,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=300)
-        outcome = {"exit_code": result.returncode, "status": "PASS" if result.returncode == 0 else "FAIL"}
-        if result.returncode:
-            outcome["error"] = catalogue.unit_error(result.stdout)
-    except subprocess.TimeoutExpired:
-        outcome = {"status": "FAIL", "error": "unit exceeded its 300-second wall budget"}
-    outcome.update(command=command, elapsed_seconds=time.monotonic() - started)
+    # The same bound the catalogue runner gives this unit, so a trace and a run
+    # agree about what the unit may spend. Tracing adds an audit hook to every
+    # interpreter the unit starts, so its CPU is the unit's plus that hook's.
+    budget = catalogue.unit_cpu_budget(entry)
+    result = cpu_budget.bounded(command, catalogue.UNIT_WALL_STRETCH * budget,
+                                cwd=str(root), env=environment)
+    cpu = result["cpu_seconds"]
+    if result["stalled"]:
+        outcome = {"status": "FAIL", "error": "unit made no progress past its wall ceiling"}
+    else:
+        outcome = {"exit_code": result["exit_code"],
+                   "status": "PASS" if result["exit_code"] == 0 else "FAIL"}
+        if result["exit_code"]:
+            outcome["error"] = catalogue.unit_error(result["output"])
+        elif cpu is not None and cpu > budget:
+            outcome.update(status="FAIL",
+                           error=f"unit used {cpu:.0f} s of CPU, over its "
+                                 f"{budget:.0f}-second CPU budget")
+    outcome.update(command=command, elapsed_seconds=result["elapsed_seconds"])
+    if cpu is not None:
+        outcome["cpu_seconds"] = round(cpu, 3)
     accessed, popen = {}, []
     for line in log.read_text(encoding="utf-8").splitlines():
         kind, _, path = line.partition("|")
