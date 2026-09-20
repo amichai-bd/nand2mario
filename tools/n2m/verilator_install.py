@@ -33,12 +33,17 @@ WINDOWS = os.name == "nt"
 INSTALLATION = "installation.json"
 # One installation at a time per host, because the cache is shared.
 INSTALL_LOCK = "install.lock"
-# The only installed files a run never reaches. Nothing in this repository passes
-# `--debug`, so these two are never executed, and they are 236 MB of the 259 MB
-# installed: covering them would add about four seconds to every discovery for a
-# tree no simulation touches. Everything else, including the `share/verilator`
-# headers compiled into every simulation binary, is covered.
-UNCOVERED = ("verilator_bin_dbg", "verilator_coverage_bin_dbg")
+# The only installed files a run never reaches, by exact path inside the prefix.
+# Nothing in this repository passes `--debug`, so neither is executed, and together
+# they are 236 MB of the 259 MB installed: covering them takes a discovery from
+# about 0.4 to about 4.4 seconds for bytes no simulation touches. Everything else,
+# including the `share/verilator` headers compiled into every simulation binary and
+# the `share/verilator/bin` redirectors of the same two names, is covered.
+#
+# The match is on the relative path, never the basename. An allow-list keyed on a
+# filename is defeated by choosing that filename, which would let a planted file
+# anywhere in the tree skip the very check that exists to catch it.
+UNCOVERED = ("bin/verilator_bin_dbg", "bin/verilator_coverage_bin_dbg")
 # The official git-build prerequisites this installation needs on PATH.
 BUILD_TOOLS = ("git", "autoconf", "make", "g++", "flex", "bison", "perl", "help2man")
 # Verilator's own root must come from the built tree, never from the caller.
@@ -103,10 +108,15 @@ def pinned_release(root=None):
 
 
 def covered_files(base):
-    """Every installed file a simulation can execute or compile against, in order."""
+    """Every installed file a simulation can execute or compile against, in order.
+
+    Keyed on each file's path relative to the prefix, so `UNCOVERED` exempts the
+    two paths it names and nothing else that happens to share a basename.
+    """
     base = Path(base)
     return [path for path in sorted(base.rglob("*"))
-            if path.is_file() and path.name != INSTALLATION and path.name not in UNCOVERED]
+            if path.is_file() and path.name != INSTALLATION
+            and path.relative_to(base).as_posix() not in UNCOVERED]
 
 
 def tree_digests(base):
@@ -128,8 +138,10 @@ def verify_installation(base, item):
     executables: `share/verilator/include` is compiled into every simulation
     binary, so a tampered header there changes what runs exactly as a tampered
     compiler would. A covered file that is missing, changed or not in the record
-    at all is refused; `tools` is checked as well, so a record whose two views of
-    the same executables disagree is refused rather than half-believed.
+    at all is refused. `tools` is checked too, but against the `tree` entry for the
+    same path rather than by reading the file again: it is a second view of bytes
+    the tree already covers, so a record whose two views disagree is still refused
+    while a 21 MB executable is hashed once per discovery instead of twice.
     """
     base = Path(base)
     record_path = base / INSTALLATION
@@ -147,16 +159,13 @@ def verify_installation(base, item):
     tools = tools if isinstance(tools, dict) else {}
     if "verilator" not in tools:
         raise ValueError(f"Verilator provenance record names no installed tool hash: {record_path}")
-    for name, digest in sorted(tools.items()):
-        tool = base / "bin" / name
-        if not tool.is_file():
-            raise ValueError(f"installed Verilator is missing {name}: {base}")
-        if file_hash(tool) != digest:
-            raise ValueError(f"installed Verilator {name} does not match its provenance record: {base}")
     tree = record.get("tree")
     if not isinstance(tree, dict) or not tree:
+        # The remedy names the removal too: `tools verilator` reuses an installed
+        # prefix, so it cannot replace one whose record this check refuses.
         raise ValueError(f"Verilator provenance record covers no installed tree: {record_path}; "
-                         "reinstall with `python3 tools/build.py tools verilator`")
+                         f"remove {base} and reinstall with "
+                         "`python3 tools/build.py tools verilator`")
     found = tree_digests(base)
     for path in sorted(set(tree) | set(found)):
         if path not in found:
@@ -165,6 +174,13 @@ def verify_installation(base, item):
             raise ValueError(f"installed Verilator carries the unrecorded file {path}: {base}")
         if found[path] != tree[path]:
             raise ValueError(f"installed Verilator {path} does not match its provenance record: {base}")
+    for name, digest in sorted(tools.items()):
+        path = "bin/" + name
+        if path not in tree:
+            raise ValueError(f"Verilator provenance record covers no tree entry for {path}: {record_path}")
+        if tree[path] != digest:
+            raise ValueError(f"Verilator provenance record disagrees with itself about {path}: "
+                             f"{record_path}")
     return record
 
 

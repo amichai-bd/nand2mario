@@ -114,11 +114,15 @@ class PinnedInstallationTests(unittest.TestCase):
         base = Path(base)
         (base / "bin").mkdir(parents=True, exist_ok=True)
         (base / "share/verilator/include").mkdir(parents=True, exist_ok=True)
+        (base / "share/verilator/bin").mkdir(parents=True, exist_ok=True)
         tool = base / "bin/verilator"
         tool.write_text("#!/bin/sh\n", encoding="utf-8")
         tool.chmod(0o755)
         (base / "share/verilator/include/verilated.cpp").write_text("// runtime\n", encoding="utf-8")
         (base / "bin/verilator_bin_dbg").write_text("debug build\n", encoding="utf-8")
+        # A real install puts a redirector of the same name here. It is covered; only
+        # the two paths in UNCOVERED are not.
+        (base / "share/verilator/bin/verilator_bin_dbg").write_text("redirector\n", encoding="utf-8")
         if record:
             atomic_json(base / verilator_install.INSTALLATION,
                         {"pin": item, "commit": item["commit"], "version": VERSION,
@@ -330,12 +334,51 @@ class PinnedInstallationTests(unittest.TestCase):
         self.write_tree(base, item)
         (base / "bin/verilator_bin_dbg").write_text("another debug build\n", encoding="utf-8")
         self.assertEqual(verilator_install.installed(self.root), base / "bin")
+        # The exemption is the path, not the name. A basename match would exempt the
+        # redirector of the same name, and would let a planted file skip the check by
+        # choosing that name -- defeating the check with the name it is keyed on.
+        self.assertEqual(verilator_install.UNCOVERED,
+                         ("bin/verilator_bin_dbg", "bin/verilator_coverage_bin_dbg"))
+        covered = {path.relative_to(base).as_posix()
+                   for path in verilator_install.covered_files(base)}
+        self.assertIn("share/verilator/bin/verilator_bin_dbg", covered)
+        self.assertNotIn("bin/verilator_bin_dbg", covered)
+        self.write_tree(base, item)
+        (base / "share/verilator/bin/verilator_bin_dbg").write_text("swapped\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,
+                                    r"share/verilator/bin/verilator_bin_dbg does not match"):
+            verilator_install.installed(self.root)
+        self.write_tree(base, item)
+        (base / "share/verilator/include/verilator_coverage_bin_dbg").write_text("x\n", encoding="utf-8")
+        with self.assertRaisesRegex(
+                ValueError, "unrecorded file share/verilator/include/verilator_coverage_bin_dbg"):
+            verilator_install.installed(self.root)
+        (base / "share/verilator/include/verilator_coverage_bin_dbg").unlink()
         # A record that covers no tree proves nothing about what would run.
         self.write_tree(base, item)
         record = read_json(base / verilator_install.INSTALLATION)
         atomic_json(base / verilator_install.INSTALLATION,
                     {k: v for k, v in record.items() if k != "tree"})
-        with self.assertRaisesRegex(ValueError, "covers no installed tree"):
+        with self.assertRaisesRegex(ValueError, f"covers no installed tree.*remove {re.escape(str(base))} "
+                                    "and reinstall"):
+            verilator_install.installed(self.root)
+        # `tools verilator` reuses an installed prefix, so it cannot replace one this
+        # check refuses; the remedy has to name the removal or it does not work.
+        record = read_json(base / verilator_install.INSTALLATION)
+        atomic_json(base / verilator_install.INSTALLATION,
+                    {k: v for k, v in record.items() if k != "tree"})
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["tools", "verilator", "--tag", "stale-schema", "--json"], self.root), 1)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn(f"remove {base} and reinstall", report["error"])
+        # `tools` is a second view of bytes the tree already covers, so a record that
+        # disagrees with itself is refused without hashing anything twice.
+        self.write_tree(base, item)
+        record = read_json(base / verilator_install.INSTALLATION)
+        record["tools"]["verilator"] = "0" * 64
+        atomic_json(base / verilator_install.INSTALLATION, record)
+        with self.assertRaisesRegex(ValueError, "disagrees with itself about bin/verilator"):
             verilator_install.installed(self.root)
         self.write_tree(base, item)
         # A record with no installed tool hash proves nothing and is refused.

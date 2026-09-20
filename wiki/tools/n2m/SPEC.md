@@ -1961,9 +1961,11 @@ Running it again with that record in place reuses the installation and builds
 nothing. The clone is kept beside it at `v<version>.source`, which is what lets
 `--offline` rebuild without the network; no build tag owns it and no command
 reclaims it, so remove that directory by hand when the space is wanted. The clone
-itself is about 215 MB, of which 8 MB is `.git`; the directory reaches about
-1.8 GB because `make` builds in tree, so most of that is object files a rebuild
-would replace rather than source it needs to keep.
+itself is about 65 MB: 54 MB across 10,295 tracked files plus an 8.3 MB `.git`
+whose pack is 7.2 MiB, or about 94 MB on disk once block rounding over that many
+small files is counted. The directory reaches about 1.8 GB because `make` builds
+in tree, so all but that 65 MB is object files a rebuild would replace rather
+than source it needs to keep.
 
 Discovery reads the record: an installation counts only with `installation.json`
 beside it, so a partially removed tree is never used. `--verilator-bin` wins,
@@ -2000,15 +2002,25 @@ would let one worktree's surviving copy mask a poisoned host cache that every
 other worktree is about to fail on, so the first bad candidate is reported where
 it is found.
 
-The covered set is the whole installation except `verilator_bin_dbg` and
-`verilator_coverage_bin_dbg`, which the record names in `uncovered`. The scope is
-deliberately wider than the executables: `share/verilator/include` is compiled
-into every simulation binary, so a tampered header there changes what runs
-exactly as a tampered compiler would. The two debug binaries are excluded because
-no command here passes `--debug`, so no run reaches them, and they are 236 MB of
-the 259 MB installed: covering them would add about four seconds to every
-discovery for bytes no simulation touches. Checking the rest costs about 0.2
-seconds. The
+The covered set is the whole installation except `bin/verilator_bin_dbg` and
+`bin/verilator_coverage_bin_dbg`, the two paths the record names in `uncovered`.
+The scope is deliberately wider than the executables: `share/verilator/include`
+is compiled into every simulation binary, so a tampered header there changes what
+runs exactly as a tampered compiler would. Those two are excluded because no
+command here passes `--debug`, so no run reaches them, and they are 236 MB of the
+259 MB installed: covering them takes every discovery from about 0.4 seconds to
+about 4.4 seconds, for bytes no simulation touches. Checking the other 125 files, 22.7 MB, costs
+about 0.4 seconds on the recorded host, which is one pass over those bytes:
+`tools` is compared against the `tree` entry for the same path rather than by
+reading the file again, so the 21 MB `verilator_bin` is hashed once per discovery
+rather than twice.
+
+The exemption matches the relative path, never the basename. A basename match
+would also exempt the `share/verilator/bin` redirectors of the same two names,
+whose 236 MB justification does not apply to them, and would let a file planted
+anywhere in the tree skip the check by being named after one of them. An
+allow-list keyed on a filename is defeated by choosing that filename, which is
+the opposite of what this check is for. The
 `verilator --version` banner is checked against the pinned release as well,
 because the banner is what says which compiler will run: a pinned tree that
 disagrees fails, while an operator's `--verilator-bin` or PATH tool keeps its
@@ -2053,9 +2065,9 @@ installation record measured `1599.05` seconds, 26.6 minutes, at `jobs=4`,
 producing `Verilator 5.052 2026-09-05 rev v5.052`, while other work ran
 concurrently.
 There was no compiler failure, no out-of-memory kill and no retry; it needed
-neither `-j1` nor a quiet window. A second clean build at the same `jobs=4` on a
-busier host measured `2301.22` seconds, 38.4 minutes, so expect the cost to track
-the load rather than a fixed figure. The installed prefix is 248 MB, of which the
+neither `-j1` nor a quiet window. A second clean build on the same host at the
+same `jobs=4`, under heavier load, measured `2301.22` seconds, 38.4 minutes, so
+expect the cost to track the load rather than a fixed figure. The installed prefix is 248 MB, of which the
 two `uncovered` debug binaries are 236 MB. Every prerequisite was already
 present: `git`,
 `autoconf`, `make`, `g++`, `flex`, `bison`, `perl` and `help2man` on PATH, plus
