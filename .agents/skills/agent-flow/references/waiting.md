@@ -61,6 +61,11 @@ grep -q '"status": "passed"' workdir/wiki/browser/quality-result.json \
   || { echo "gate did not pass" >&2; exit 1; }
 ```
 
+The loop is for the case where you no longer own the process: an agent's background
+starter is gone by its next tool call, so the marker is all that is left to read.
+While you do own it, `wait "$!"` and read the exit code instead. A loop cannot tell
+a crash from slow work, so an early failure costs the whole deadline in silence.
+
 Break the self-match with a bracket:
 
 ```text
@@ -98,7 +103,8 @@ gate runs.
 `{'status': 'failed'}` and writes the marker from a `finally:` block, so the file
 appears whether the stage passed or threw. Presence proves the work ended, which is
 all a marker written at the end can prove. Read the status; never infer it from the
-file being there.
+file being there. Wait for a positive conclusion, never for the absence of a bad
+word: a reply that means "no answer yet" contains no failure string either.
 
 **Not left over from last time.** `check.py` deletes `quality-result.json`,
 `quality-trace.zip`, `failure.png` and `trace.zip`, but only once a gate starts, so
@@ -118,7 +124,8 @@ remove the pattern, which is the only thing this page can promise.
 ## Bound the wait
 
 Both forms above carry a deadline and report reaching it as a failure. Give every
-wait one. They avoid bashisms, but only `bash` and `bash --posix` exist here to
-check that against, so read portability as unverified rather than proven. The orphans above were unbounded waits, left polling paths that had been
-removed under them. Stopping owned processes remains part of
+wait one. They avoid bashisms, but are not tested under a non-bash shell, so read
+portability as unverified rather than proven. The orphans above were unbounded
+waits, left polling paths that had been removed under them. Stopping owned
+processes remains part of
 [cleanup](../../../../worktrees/README.md#clean-up-after-merge).
