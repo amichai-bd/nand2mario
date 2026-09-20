@@ -146,6 +146,10 @@ locks; root need not approve each routine batch. Keep live inputs immutable.
 Serialize scarce resources such as the licensed simulator and board, not all
 isolated preparation; use actual headroom and contention to choose overlap.
 Follow the scheduling and feedback methods in [agent-flow](.agents/skills/agent-flow/SKILL.md).
+Bound every wait for a long command and end it on a marker the work writes when it
+finishes; a process-pattern wait matches any process holding the text, including the
+waiting shell itself. Follow
+[waiting](.agents/skills/agent-flow/references/waiting.md).
 
 Run the smallest useful test and required lower-level checks. Target at most
 120 seconds per simulation and 300 seconds for ordinary pre-merge aggregate

@@ -103,6 +103,8 @@ must wait until their other work is complete.
 
 Stop owned processes and verify their children ended before removal. For local
 previews, follow [preview cleanup](../.agents/skills/agent-flow/references/preview-cleanup.md).
+Waiting loops are a common survivor, and a check that looks for them by command
+line can match itself; see [waiting](../.agents/skills/agent-flow/references/waiting.md).
 Inspect tracked, untracked, and ignored content. Confirm each resolved absolute
 path is the intended author or reviewer directory inside this repository's
 `worktrees/`. Preserve user changes; do not force-remove a dirty worktree.
