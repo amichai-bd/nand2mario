@@ -120,8 +120,10 @@ follows the installed tools wherever it can: `fpga build` and the Questa
 compile gate run from a discovered Quartus or Questa on any host, and name a
 missing tool rather than an operating system. A Questa simulation does the same,
 naming the missing executable or the missing runtime license. Linux owns
-Verilator and Windows PowerShell owns `fpga program`, and
+Verilator, and `fpga program` names a missing programmer rather than a host;
 [command ownership](tools/n2m/SPEC.md#command-ownership) names each refusal.
+Writing to a board still needs the owner's explicit authorization for that run
+and serialized access to the board.
 
 **Risk**
 

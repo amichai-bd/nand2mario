@@ -57,8 +57,11 @@ Quartus and Questa are installed, on Linux or on Windows PowerShell; see
 [runtime license](#questa-runtime-license), which the gate does not.
 `vendor accept` records reviewed installed vendor bytes as accepted for an
 installation's platform; see [accepted vendor sources](#accepted-vendor-sources).
-`fpga program` still runs on Windows PowerShell,
-because only that JTAG path is verified:
+`fpga program` names a missing programmer rather than a host and chooses
+between its two backends inside the stage; see
+[programming backends](#programming-backends). Writing to a board still needs
+the owner's explicit authorization for that run and serialized access to the
+board:
 
 ```bash
 python3 tools/build.py lint questa --tag questa-gate --json
@@ -223,12 +226,13 @@ check, the chain, the flash program and its success check the same way, then
 the measured time, the `.pof` hash and the power-cycle step; its dry run
 reports the record check and the written command only.
 
-These handoffs never execute their next command. Linux remains a Verilator host;
-Windows PowerShell remains the JTAG and launcher host. The `fpga build` handoff
+These handoffs never execute their next command. Linux remains a Verilator host
+and Windows PowerShell the launcher host. The `fpga build` handoff
 names the current host, because an installed Quartus runs it on either one, and
 so does a Questa simulation handoff, because Questa follows its executables and
-its [runtime license](#questa-runtime-license). No command silently crosses a
-host boundary. The ordinary
+its [runtime license](#questa-runtime-license), and so does the programming
+handoff, because `fpga program` discovers its own programmer. No command silently
+crosses a host boundary. The ordinary
 hardware safeguards still apply before a person runs the printed programming or
 launcher command.
 With `--json`, none of these human lines is written and stdout remains exactly
@@ -2571,8 +2575,11 @@ at each corner its board declares. No installed vendor file entered the
 [ledger](#accepted-vendor-sources) that this installation had not already
 accepted, so every result rests on recorded bytes.
 
-Three DE10-Lite targets refuse for causes that live in repository sources rather
-than in this installation, so no host builds them: `adc-early` fails the
+Three DE10-Lite targets refuse, and none of the three is a limit of this host or
+of Linux. Each cause is a mismatch between repository sources that every
+installation reads the same way — a count, a constraint and a port list — and
+not a property of any installed toolchain, so no host builds them. `adc-early`
+fails the
 structural timing audit on the one no-clock endpoint its own ADC check requires
 ([#903](https://github.com/amichai-bd/nand2mario/issues/903)), `controls-board`
 fails on the SDRAM and KEY1 constraints its top declares no ports for
