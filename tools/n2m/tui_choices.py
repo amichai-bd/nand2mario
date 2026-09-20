@@ -79,6 +79,24 @@ def build_tags(root):
                    if path.is_dir() and not path.is_symlink() and valid_tag(path.name)), reverse=True)
 
 
+def measured_tags(root):
+    """Every retained build tag holding a run whose walls `tests record` can write."""
+    found = []
+    for tag in build_tags(root):
+        for relative in ("tests/summary.json", "manifest.json"):
+            record = root / "workdir/builds" / tag / relative
+            if not record.is_file():
+                continue
+            try:
+                walls = catalogue.measured_walls(read_object(record))
+            except (OSError, ValueError):
+                walls = {}
+            if walls:
+                found.append(tag)
+            break
+    return found
+
+
 def checked_sofs(root):
     found = []
     builds = root / "workdir/builds"

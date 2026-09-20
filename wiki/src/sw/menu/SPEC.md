@@ -760,9 +760,10 @@ without dropping what it proves. `menu-delayed` measured 119.14 seconds with
 the model already built, in a quiet window with the host load near two;
 `menu-delayed-worst` measured 156.77 in the same window, seven frames longer again and
 a declared wall allowance rather than a target of the ordinary budget. The
-[catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of
-each target's last run, so a run that rebuilt the model after an image change
-records the build with it. `menu-frame` and `menu-frame-fault` carry `menu`;
+[catalogue](../../../../src/dv/builder/catalogue.yaml) records the wall of one
+[deliberate measurement](../../../tools/n2m/SPEC.md#recording-a-measured-wall)
+rather than of the last run, and a simulation's wall is nearly all compile, so
+the figure there includes building the model. `menu-frame` and `menu-frame-fault` carry `menu`;
 `menu-select` and `menu-refused` carry `menu-library`, the selection paths;
 `menu-delayed` carries a label of its own, because `menu-library` cannot hold
 its wall as well - the three together exhausted the 300-second aggregate

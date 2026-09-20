@@ -20,7 +20,7 @@ from . import catalogue, interface_codec
 from .fpga import identity_target, target_definition
 from .progress import powershell_command
 from .tui_choices import (build_tags, checked_packages, checked_sofs, command_actions,
-                          external_images, fpga_targets, parser_at,
+                          external_images, fpga_targets, measured_tags, parser_at,
                           regression_subsets, retained_simulator_directory,
                           retained_values, simulation_targets,
                           selection_uses_vendor_model, software_targets,
@@ -287,6 +287,13 @@ def _test_selection(menu, root, backend=None):
                 return ["--level", str(level), "--label", label]
 
 
+def _measured_tag(menu, root):
+    tags = measured_tags(root)
+    if not tags:
+        return menu.text("Retained run tag whose walls to record")
+    return menu.choose("Select the retained run to record", _named(tags))
+
+
 def _tests_plan(menu, root):
     while True:
         action = menu.choose("Verification action", _named(command_actions(("tests",))))
@@ -310,6 +317,13 @@ def _tests_plan(menu, root):
             plan = _editable(menu, [("selector", lambda _: _test_selection(menu, root))], lambda answers: Plan(
                 ["tests", action, *answers["selector"]], ("tests", action), "Current host",
                 "List matching tests; no tests run"))
+        elif action == "record":
+            # Recording measures nothing: it names a run that already happened,
+            # so the menu offers exactly the retained runs that measured a wall,
+            # and falls back to a typed tag when this checkout retains none.
+            plan = _editable(menu, [("tag", lambda _: _measured_tag(menu, root))], lambda answers: Plan(
+                ["tests", action, "--tag", answers["tag"]], ("tests", action), "Current host",
+                f"WRITE the walls {answers['tag']} measured into {catalogue.CATALOGUE}"))
         else:
             steps = [("sim", lambda _: _backend(menu)),
                      ("selector", lambda a: _test_selection(menu, root, a["sim"]))]

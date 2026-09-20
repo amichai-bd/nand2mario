@@ -41,6 +41,7 @@ python3 tools/build.py tests validate --json
 python3 tools/build.py tests list --level 0 --json
 python3 tools/build.py tests run --level 0 --tag level0 --json
 python3 tools/build.py tests run --label springtrail --tag springtrail --budget 600 --broader --json
+python3 tools/build.py tests record --tag level0 --json
 python3 tools/build.py tests mutations --tag mutations --json
 python3 tools/build.py tests mutations --confirm --tag mutations-confirm --json
 python3 tools/build.py tests closure-trace --unit tools/n2m/tests/test_baseline.py --tag closure-trace --json
@@ -108,7 +109,10 @@ argparse command tree and owning registries. Simulation targets are read from
 `src/dv/builder/targets.json` and filtered by the selected backend. Python
 preflight lists the registry's Python testbenches. FPGA and software targets,
 regression subsets, test levels and labels, external images, build tags, and
-peek stores come from their existing registries. Programming lists only
+peek stores come from their existing registries.
+[Recording a wall](#recording-a-measured-wall) lists only the retained runs whose
+record holds a measured wall, and asks for a typed tag when this checkout retains
+none. Programming lists only
 successful, unmodified, in-place `.sof` attempts accepted by the programmer's
 record check. Launcher identities come only from those checked `v05-board`
 attempts. Package loading lists only immutable attempts accepted by the package
@@ -443,12 +447,32 @@ Each unit declares exactly:
   thorough; level 2 is everything. Selecting a level runs every level below it.
 - `labels`: a set, orthogonal to level. Every label must be declared in the
   file's own `labels` vocabulary; an undeclared label fails validation.
-- `duration_seconds`: the wall of the last actual run, or `null` before the
-  first. `tests run` and a passing `sim test` write it back; it is not edited by
+- `duration_seconds`: the wall of one deliberate measurement, or `null` before
+  the first. Running a test never writes it; only
+  [`tests record`](#recording-a-measured-wall) does, and it is not edited by
   hand. A measured wall is recorded with two decimals and never below 0.01
   seconds, so `0.00` can only mean an entry nothing measured: `tests validate`
-  and `check` fail on it by name. A target selected by no label a run uses
-  keeps a measured wall this way, so budget planning never counts it as free.
+  and `check` fail on it by name.
+- `measured` (optional): the conditions the recorded wall was measured under, as
+  exactly `at`, `commit`, `host` and `wall_cpu`, plus `build` for a simulation.
+  `at` is the UTC minute of the run, so two entries sharing it were measured in
+  one sitting, which is the only span their walls are comparable over; `commit`
+  is the first twelve characters of the commit measured; `host` is the operating
+  system and machine, such as `Linux-x86_64`; `wall_cpu` is that run's wall
+  divided by its own CPU time, or `null` where the host reports no per-child CPU,
+  and below 1 where the work ran on more than one core. `build` is the compile
+  inside that wall, never more than the wall itself, because a simulation's wall
+  is nearly all compile: `baseline-good` measured 44.71 s with 43.45 s of compile
+  and 0.02 s of run, and 29.88 s with 28.75 s of compile in the same sitting.
+  Every recorded simulation compiles, because the compile directory is keyed by a
+  fresh attempt id per run and the only compile-free outcome is a cache hit,
+  which is never recorded. An entry may carry no conditions, which says the
+  sitting behind its wall is unknown, which is the state of every figure the
+  catalogue carries today: `baseline-good` records `0.41` and nothing says what
+  produced it. Re-measuring those figures is tracked by
+  [#900](https://github.com/amichai-bd/nand2mario/issues/900) and
+  [#902](https://github.com/amichai-bd/nand2mario/issues/902). An entry may never
+  carry conditions without a wall.
 - `inputs` (host units only, optional): the repository files or directories the
   unit reads as data, sorted. Its module imports are never listed; they are
   [derived](#host-unit-closure). Declaring `inputs`, even `[]`, asserts that
@@ -478,8 +502,8 @@ The file is a strict YAML subset so the builder keeps its stdlib-only
 dependencies: block mappings, flow mappings, flow sequences, plain and quoted
 scalars, and whole-line comments. Inline comments are refused, because a `#`
 inside an unquoted value would otherwise be silently truncated. `tests validate`
-rewrites nothing, and `tests run` rewrites only the unit lines it measured, so
-comments and order survive.
+and `tests run` rewrite nothing, and `tests record` rewrites only the unit lines
+it records, so comments and order survive.
 
 ### Coverage is a build gate
 
@@ -559,20 +583,102 @@ Two failure modes are deliberately loud:
 
 ### Execution and contention
 
-A passing `sim test` writes its own wall, from taking the tag lock to its final
-record, back to the target's catalogue entry in that same canonical form, so a
-target measured only alone still carries a duration. A cache hit times the cache check rather than the work, and a failure
-has no trustworthy wall, so neither is recorded. The rule that flags `0.00` is
-reported by `tests validate` and `check` rather than by the coverage gate of
-`tests run`, so the run that measures such a unit is never blocked by the entry
-it is about to fix. The write lands before the tag is published, so the
-retained manifest names the duration it recorded, and the text output reports
-it as a notice.
+`src/dv/builder/catalogue.yaml` is tracked, so no run writes it. `sim test`,
+`tests run` and `regress` leave every tracked file exactly as they found it: a
+measured wall goes into that run's own retained record, beside the run that
+produced it, and into the command's text output. A `sim test` reports
+`Measured <target> <wall>s against <recorded>s recorded (wall/CPU <ratio>)`, a
+`tests run` names every unit whose wall stands more than twice from the recorded
+figure, and both name the command that would record it. The
+[wall budget](#test-wall-budget) record and `tests/summary.json` hold the figures
+themselves: a selection carries `measured_walls`, each unit's own
+`cpu_seconds` and `recorded_seconds`, and a `drift` list; a `sim test` manifest
+carries `timing.locked_seconds` and `timing.locked_cpu_seconds`.
 
-`src/dv/builder/catalogue.yaml` is tracked, so `sim test`, and therefore
-`regress` and `tests run` through their children, leave the checkout with a
-catalogue diff whenever a measured wall differs from the recorded one. That
-diff is the record of the last actual run and is committed, not reverted.
+The rule that flags `0.00` is reported by `tests validate` and `check` rather
+than by the coverage gate of `tests run`, so the run that measures such a unit is
+never blocked by the entry it is about to fix.
+
+### Recording a measured wall
+
+```bash
+python3 tools/build.py tests record --tag level0 --json
+```
+
+`tests record` is the only command that writes `duration_seconds`. It measures
+nothing itself: it reads one retained run record, either
+`workdir/builds/<tag>/tests/summary.json` from a selection or
+`workdir/builds/<tag>/manifest.json` from a `sim test`, and writes the walls that
+run actually measured, with the sitting that produced them. So the figure
+committed is the one the author saw, and a tag with no retained record fails by
+name. It creates no workspace; its output is a reviewed source change like any
+other.
+
+Only a wall that describes actual work is recorded. A cache hit times the cache
+check, a skipped unit never ran, a failure has no trustworthy wall, and a name
+outside the catalogue has nowhere to record one; each is reported under
+`not_recorded` rather than written. Those are the only refusals. Every wall that
+is written is named against the figure it replaced, in whichever direction is the
+multiple, with its conditions and a `DRIFT` mark past the reporting threshold:
+
+```text
+Recorded DRIFT baseline-good 29.88s against 0.41s recorded, 72.9x higher, wall/CPU 0.61, 28.75s of it compile
+```
+
+A `sim` unit's own child record travels into the selection as `units.<name>.timing`,
+so a recorded selection carries the same compile split a lone `sim test` does.
+
+### Why nothing is refused for the state of the host
+
+A recording does not judge whether the host was busy, because nothing in a run's
+own retained record separates a busy sitting from a quiet one across the
+populations the catalogue holds. Inside one population a run's own wall-to-CPU
+ratio does track contention, and the
+[host-play loop](../host-play/SPEC.md#what-each-budget-measures) is budgeted on
+exactly that. A recording covers every unit, and each candidate fails on a
+different one:
+
+- CPU is not invariant under contention. Four competing spinners moved a wall
+  1.96 times and its CPU 1.30 times.
+- Contention moves the wall far further than the CPU, so an honest wall can sit
+  at any ratio. This suite's own three groups, run beside a second worktree's
+  `check` at load average 12 to 22, took 604.6, 637.8 and 383.4 seconds of wall
+  for 135.6, 160.0 and 127.6 seconds of CPU — ratios of 4.46, 3.99 and 3.01 —
+  against 226.6, 282.8 and 204.3 seconds of wall for 115.2, 145.4 and 115.2 of
+  CPU on the same content at load average 9 to 11. The wall moved up to 2.7
+  times; the CPU moved 1.10 to 1.18. Every one of those walls describes real
+  work, and a two-times ratio gate would have refused all three.
+- A `sim` wall moves while its CPU does not. `baseline-good` measured 44.71 s
+  then 29.88 s back to back in one sitting, a 1.50-times swing, with its CPU at
+  49.61 then 48.61 s; the ratio therefore went 0.90 to 0.61 on identical work.
+  A parallel compile puts the ratio below 1 whatever the load, so no threshold
+  above 1 can ever reach the class whose walls move most.
+- A `unit` wall moves and its CPU moves with it. `test_endurance_current.py`
+  measured 76.62 s then 195.28 s in one sitting with its CPU at 71.9 then
+  124.4 s, and a host unit compiles nothing, so only the host's frequency and
+  thermal state can account for it.
+- A unit that sleeps sits at a high ratio while computing almost nothing:
+  `test_live_viewer.py` measures about 7.4 s of wall against 2.0 s of CPU, a
+  ratio near 3.8, on an idle host. A ratio threshold would refuse that honest
+  wall.
+- The load average is worse still, having read the idle 0.27 while six
+  competitors were live.
+
+Instruments outside a run's own record do better. Sampling `/proc/stat` around a
+run, against four competing spinners, moved idle core-seconds inside the window
+20.8 to 0.00, other processes' CPU 41.4 to 214.4 seconds and involuntary context
+switches 4,541 to 17,384, while the run's own ratio moved only 1.10 to 2.26.
+Idle-in-window is population-independent: it does not care whether the run
+compiles in parallel, sleeps or computes, which is where the ratio fails. Reading
+one is not this command's business and would not change it, because a busy
+sitting does not by itself make a wall untrustworthy — the three `check` sittings
+recorded above include honest walls at a ratio of 3.99 under load average 12 to
+22.
+
+So the conditions are recorded for the reader and never used as a gate. Whether a
+sitting was quiet enough is the operator's judgement, and `at`, `wall_cpu` and
+`build` are what that judgement is made from afterwards. A recorded wall remains
+one sample: compare figures only inside one `at`.
 
 A `sim` unit runs as the ordinary `sim test` worker under the run's tag, with
 the same backend, `--seed`, `--rebuild` and selected backend tool options, under the
@@ -1031,7 +1137,7 @@ with `preload_inputs` now does on the stage.
 
 Beyond the shared fields, a Verilator record carries `simulator`
 (`verilator`), `os`, `seed`, `waves` (`format: fst` and the retained path),
-`timing` with the four separately measured walls listed under
+`timing` with the four separately measured walls and the locked CPU listed under
 [prepared attempts](#prepared-attempts), so the preparation and compile cost
 against the wall budget are visible, `elapsed_seconds`,
 `exit_code` and `timeout_seconds` on each command, `preload` when the
@@ -1692,7 +1798,9 @@ immediately before launch still applies.
 Every simulation record splits the walls: `timing.prepare_seconds` (inline
 preparation under the lock, or the receipt's value for an adopted attempt),
 `build_seconds`, `run_seconds` and `locked_seconds` from tag lock acquisition
-to record completion; `lock_acquired` and, for an adopted attempt,
+to record completion, and `locked_cpu_seconds`, the CPU that same window spent in
+this process and every child it reaped, absent where the host reports no
+per-child CPU; `lock_acquired` and, for an adopted attempt,
 `prepared.prepared_started`/`prepared_finished` place the preparation against
 another run's lock window, so the overlap is measured from receipts rather
 than claimed. `prepared.mode` is `inline` or `adopted`.

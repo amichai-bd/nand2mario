@@ -1,11 +1,14 @@
 # Catalogue of every runnable test unit: one entry per registry target and
 # per standalone test_*.py file. Levels are ordered, so selecting a level runs
 # every level below it. Labels are a set, validated against the vocabulary
-# below. duration_seconds is the wall of the last actual run, written back by
-# `tools/build.py tests run` and by a passing `sim test`; it is never edited by
-# hand and 0.00 marks an entry nothing measured. A host unit's optional
-# inputs list the data files or directories it reads; its module imports are
-# derived, and external_imports names the packages outside the tree they reach.
+# below. duration_seconds is the wall of one deliberate measurement and 0.00
+# marks an entry nothing measured. Running a test never writes it: only
+# `tools/build.py tests record --tag <run>` does, from that run's retained
+# record, and it is never edited by hand. An entry's optional measured names
+# the sitting behind the wall, because the same work costs a different wall
+# from one sitting to the next. A host unit's optional inputs list the data
+# files or directories it reads; its module imports are derived, and
+# external_imports names the packages outside the tree they reach.
 #
 # Whole-line comments only; see tools/n2m/catalogue.py for the accepted subset.
 version: 1
