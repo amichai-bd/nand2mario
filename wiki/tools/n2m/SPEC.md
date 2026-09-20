@@ -3614,6 +3614,62 @@ retried attempt. A reported failure, a different exit code, a timeout or a
 sixth silent exit fails the request. A later explicit build
 request creates a separate attempt.
 
+### DE2-115 system image
+
+[`fpga_de2_system.py`](../../../tools/n2m/fpga_de2_system.py) owns what the
+DE2-115's system image adds on top of the checks the composition's own owners
+already carry. The image is
+[`de2_system_proof.sv`](../../../src/fpga/de2_115/de2_system_proof.sv) binding
+`n2m_clocking` and `n2m_v05_system` to that board, so every clocking, memory,
+CPU, pixel-path and endpoint check reaches it through the module that owns it, one
+hierarchy level down; that level is applied by rewriting the shared checkers'
+`u_bridge|` strings, exactly as the DE10-Lite's composed image does.
+
+**Ports.** The placed and virtual port sets are stated, not derived, and a
+definition that does not match them is refused before any tool launches. The pin
+numbers themselves stay on the
+[board page](../../src/de2-115-board.md); this module never restates one. What it
+refuses is a dropped readout pin, a picture pin moved to a virtual one, or an
+extra virtual output, on an image someone will program.
+
+**Readout pins.** Each of the 56 seven-segment pins and the 29 video pins states
+the output settings `OUTPUT_IO_COMPLETION` gives for the standard *that pin's own
+board record supplies*, so the image declares a slew rate on its 2.5 V digits and
+only a drive strength on its 3.3-V LVTTL ones. The
+[seven-segment group is not one voltage](../../src/de2-115-board.md#seven-segment-displays):
+the vendor fixes four of the 56 and leaves 52 to two different jumpers, with the
+boundaries falling inside digits, so this is per pin and not per group.
+
+**Readout contents.** The image publishes its 128-bit build identity and the
+CRC-32 of the carried ROM on its own displays, because this board has no host to
+ask. The identity is the same `N2M_V05_BUILD_ID` macro the DE10-Lite's composed
+images carry, checked in the generated project and as the compiled constant the
+synthesis report states, twice: the wrapper's and the composition's. The CRC is
+`N2M_DE2_ROM_CRC32`, taken from the
+[packager's own record](#carried-rom-image) of the image it wrote into this
+attempt, and checked the same two ways. A constant in a source file is not
+evidence that it reached the design, so both ends are read every build, and a
+record without a 32-bit CRC refuses.
+
+**Unused pins.** This image drives no bus of its own, so the project reserves
+every package pin it does not place as a tri-stated input, and the board's SDRAM,
+SRAM, flash and Ethernet devices meet high impedance rather than a driven pin.
+
+**Composed evidence.** The [VGA proof profile](#vga-proof-profile) runs on this
+board's eight-bit output profile with the blank-control chains selected, because
+this composition's PPU asserts blank and that assertion crosses from the pixel
+clock to the system clock; the standalone
+[video DAC fixture](#de2-115-video-dac) generates its own pixels and asserts none.
+The DAC's own clock, blank and sync pins are read out of the fitted netlist by
+that fixture's checker. Each of the twelve asynchronous control inputs carries the
+shared checked synchronizer chain, per corner and per check; `KEY[0]` is not among
+them because it is the reset and the reset controller owns its chain.
+
+**Pin clocks.** The DAC's inverted pixel clock is expected of any target that
+places `vga_clk`, not of one top by name, so both this board's images declare it
+and a target that places the port and declares no clock fails the clock inventory
+instead of passing with a clock missing.
+
 ### Cyclone IV E ALTPLL
 
 ALTPLL serves this family, so

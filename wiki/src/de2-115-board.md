@@ -864,13 +864,23 @@ image must not be.
   fitted netlist, and positive slack at all three corners; `de2-vga-invalid` must
   FAIL. Both are recorded in the
   [builder contract](../tools/n2m/SPEC.md#de2-115-video-dac).
+- `python3 tools/build.py fpga build de2-system` must PASS with the fit, timing at
+  all three corners, the carried image's fitted contents, the readout's identity
+  and CRC constants, the DAC's pin levels and every control chain's per-corner
+  reports retained; `de2-system-invalid` must FAIL. The
+  [builder contract](../tools/n2m/SPEC.md#de2-115-system-image) records both.
+- [`test_fpga_de2_system.py`](../../tools/n2m/tests/test_fpga_de2_system.py) covers
+  the seven-segment decode against the polarity and segment index above, every
+  switch position selecting a defined view, each absent interface driven to its
+  inactive value, the two I/O standards this readout declares and the settings each
+  needs, and the carried image's CRC in the project and as compiled.
 - [`test_fpga_cycloneive.py`](../../tools/n2m/tests/test_fpga_cycloneive.py) covers
   what this family changes against MAX 10 and what it still refuses.
 - [`test_fpga_vga_dac.py`](../../tools/n2m/tests/test_fpga_vga_dac.py) covers the
   bit alignment against the RTL, the output profile's register-to-pin map, the DAC
   control levels in a netlist fixture, and the bounds of both DAC diagnostics.
-- The Questa compile gate elaborates `de2_smoke`, `de2_clocking_proof` and
-  `de2_vga_proof` with every other registered top.
+- The Questa compile gate elaborates `de2_smoke`, `de2_clocking_proof`,
+  `de2_vga_proof` and `de2_system_proof` with every other registered top.
 
 Physical verification of this board is not done. It needs explicit hardware
 authorization, and it is not part of the flow proof.
