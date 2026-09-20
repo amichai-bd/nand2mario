@@ -630,7 +630,7 @@ units:
   tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.01, inputs: [cfg, src/dv, src/rtl, src/sw, tools/sw/opcodes.json]}
   tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 3.32, inputs: [cfg/interfaces.json, src/fpga/de10_lite/library.json, src/sw, tools/n2m/dependencies.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 2.01, inputs: [src/dv/builder/fpga_smoke.sv, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
-  tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.18, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.18, inputs: [src/dv/builder/fpga_smoke.sv, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw/targets.json, tools/n2m/tests/data/adc-unused-features.txt, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.21, inputs: [tools, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.09, inputs: []}
   tools/n2m/tests/test_fpga_cycloneive.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
