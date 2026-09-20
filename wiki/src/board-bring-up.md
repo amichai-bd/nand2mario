@@ -71,23 +71,31 @@ digital output, or unknown terminal order is connected to this board.
 ## Programming
 
 Programming always checks the attached JTAG identity before writing a
-bitstream. `n2m fpga program` requires `jtagconfig` to report exactly one
-selected USB-Blaster chain whose device name matches `10M50DA`, the same check
-`doctor.py` already performs read-only in its `environment` profile.
-Programming refuses to run if zero or more than one matching chain is present,
-and refuses a `.sof` path that is missing, a symlink, or outside the
-repository. It does not inspect the bitstream's own target device: a `.sof`
-built for a different device is refused by `quartus_pgm` itself, which checks
-the file against the device it finds on the chain. `quartus_pgm` is invoked in
-JTAG mode with `-o "p;<sof>"`; a nonzero exit, or output without its explicit
-success line, fails the run before any host traffic is attempted. The command
-is normally run from Windows PowerShell inside the WSL checkout over its
-`\\wsl.localhost\<distro>\...` UNC path with the `.sof` given as the
-repository-relative path `fpga build` printed; the
+bitstream. `n2m fpga program` requires exactly one cable reporting exactly one
+device of the board the image's own attempt record was built for, which for this
+board is `10M50DAF484C7G`. `doctor.py` performs the same matching read-only in
+its `environment` profile, there against every registered board because it has
+no image. Programming refuses to run if zero or more than one matching device is
+present, and refuses a `.sof` path that is missing, a symlink, or outside the
+repository. It does not inspect the bitstream's own contents: the board comes
+from the attempt record's target and the
+[board registry](../tools/n2m/SPEC.md#programming-backends), so a `.sof` built
+for another board is refused before any write rather than by the programmer
+afterwards. `quartus_pgm` is invoked in JTAG mode with `-o "p;<sof>"`; a nonzero
+exit, or output without its explicit success line, fails the run before any host
+traffic is attempted. This board's volatile configuration and its flash image
+both use `quartus_pgm`: the
+[other backend](../tools/n2m/SPEC.md#programming-backends) has no volatile
+MAX 10 path at all.
+
+The command runs on any host with a programmer, including Windows PowerShell
+inside the WSL checkout over its `\\wsl.localhost\<distro>\...` UNC path with
+the `.sof` given as the repository-relative path `fpga build` printed; the
 [record](../tools/n2m/SPEC.md#program-records) stays repository-relative and
 portable, and a failed record names its `device_state` (`unchanged`,
 `changed` or `unconfirmed`) so the operator, not the tool, decides on a
-second programming pass.
+second programming pass. Writing to a board still needs the owner's
+authorization for that run.
 
 ### Flash programming procedure
 
@@ -107,8 +115,8 @@ exclusive board lock:
    `quartus_pgm -c <cable> -m jtag -o pvb;<pof>` (the argument list without
    shell quoting).
 3. With the UART adapter disconnected and only the USB-Blaster attached, run
-   the same command without `--dry-run`. `jtagconfig` must report one
-   USB-Blaster chain with a `10M50DA`; `quartus_pgm` programs, verifies and
+   the same command without `--dry-run`. `jtagconfig` must report one cable
+   holding this board's `10M50DAF484C7G`; `quartus_pgm` programs, verifies and
    blank-checks CFM0 and the user range. The result records `isp_seconds`,
    `pof_sha256`, the chain and `program.log` under `fpga-program/<id>/`.
 4. Power-cycle the board with no host attached and observe the monitor. A

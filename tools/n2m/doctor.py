@@ -3,12 +3,12 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import stat
 import subprocess
 import sys
 import uuid
 
+from . import fpga_jtag
 from .fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from .records import file_hash
 from .questa import diagnostic as questa_diagnostic, write_macro
@@ -50,11 +50,31 @@ def execute(argv, cwd, log, timeout=60, env=None, expect_failure=False):
 
 
 def executable(directory, name):
-    candidate = str(Path(directory) / (name + (".exe" if os.name == "nt" else ""))) if directory else name
-    found = shutil.which(candidate)
+    """The one required executable, or a refusal naming it. `fpga_jtag.locate` is the probe form."""
+    found = fpga_jtag.locate(directory, name)
     if not found:
         raise RuntimeError(f"missing {name}; select its tool directory explicitly")
-    return str(Path(found).resolve())
+    return found
+
+
+def enumeration_runner(folder, runner=None):
+    """Run one read-only JTAG enumeration and return its output, successful or not.
+
+    An enumeration writes nothing to a device, `openFPGALoader --detect`
+    returns success whatever it read, and a probe that could not start has
+    already written its own reason into its log. So the exit code decides
+    nothing here and the parsed identity decides everything. Each enumeration
+    carries its own bound, because the tools differ in what a slow read means.
+    `runner` lets a caller supply its own `execute`, so the command belongs to
+    the module that owns the operation.
+    """
+    def run(argv, log, timeout):
+        try:
+            return (runner or execute)(argv, folder, log, timeout)
+        except RuntimeError:
+            path = Path(folder) / log
+            return path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+    return run
 
 
 def warning(output):
@@ -190,23 +210,27 @@ def quartus(folder, directory):
             "synthesis": "not tested", "status": "PASS" if lite else "WARNING"}
 
 
-def parse_jtag(output, cable=None):
-    chains = []
-    for line in output.splitlines():
-        header = re.match(r"^\s*(\d+)\)\s+(.+)$", line)
-        if header:
-            chains.append({"index": header[1], "name": header[2], "devices": []})
-        else:
-            device = re.match(r"^\s+([0-9a-fA-F]{8})\s+(.+)$", line)
-            if device and chains:
-                chains[-1]["devices"].append({"idcode": device[1].upper(), "name": device[2]})
-    matches = [chain for chain in chains if "USB-Blaster" in chain["name"]
-               and (cable is None or cable == chain["index"])
-               and any(re.search(r"\b10M50DA\b", d["name"]) for d in chain["devices"])]
-    if len(matches) != 1:
-        raise RuntimeError("expected one selected USB-Blaster chain reporting 10M50DA")
-    return {"selected": matches[0], "chains": chains,
-            "scope": "reported JTAG identity only; no wiring, voltage, or programming proof"}
+def jtag(root, folder, args):
+    """Read the JTAG chain through whichever programmer is available, and say which.
+
+    No image is selected here, so no single board is expected: the chain must
+    report exactly one of the registered boards' devices. That is the same
+    matching `fpga program` applies against the one board its image was built
+    for, so a chain this check accepts is a chain the programmer recognises.
+    Nothing is written; `openFPGALoader --detect` and `jtagconfig` both only
+    read.
+    """
+    chain = fpga_jtag.enumerate_chain(
+        root, folder, enumeration_runner(folder), programmer=getattr(args, "programmer", "auto"),
+        quartus_bin=args.quartus_bin, openfpgaloader_bin=getattr(args, "openfpgaloader_bin", None),
+        cable=args.jtag_cable,
+        probe_firmware=getattr(args, "probe_firmware", None) or fpga_jtag.firmware_path(args.quartus_bin))
+    return {"backend": chain["backend"], "tool": chain["tool"], "cable": chain["index"],
+            "board": chain["expected"]["board"], "device": chain["expected"]["device"],
+            "chain_position": chain["position"], "devices": chain["devices"],
+            "command": chain["command"], "rejected": chain["rejected"],
+            "probe_firmware": chain["probe_firmware"], "selected": chain, "chains": chain["chains"],
+            "scope": chain["scope"]}
 
 
 def select_uart(ports, args):
@@ -375,8 +399,7 @@ def doctor(root, build, args, provenance):
     untested = ["Quartus", "JTAG", "UART"]
     if args.profile == "environment":
         check("quartus", lambda folder: quartus(folder, args.quartus_bin))
-        check("jtag", lambda folder: parse_jtag(execute(
-            [executable(args.quartus_bin, "jtagconfig")], folder, "chain.log"), args.jtag_cable))
+        check("jtag", lambda folder: jtag(root, folder, args))
         check("uart", lambda folder: uart(folder, args))
         untested = ["Quartus synthesis", "physical wiring/voltage", "UART communication", "FPGA programming"]
     applicable = [c["status"] for c in checks.values()]

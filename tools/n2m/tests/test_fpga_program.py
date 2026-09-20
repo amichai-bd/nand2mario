@@ -1,9 +1,15 @@
-"""Programming refuses ambiguous identity and unsafe .sof or .pof paths; no hardware needed."""
+"""Programming refuses ambiguous identity and unsafe .sof or .pof paths; no hardware needed.
+
+Every programmer here is a fake: tool discovery is patched to name the
+programmers a host is supposed to have, and execution is patched to return the
+chain and programmer output a board would. No test opens a cable.
+"""
 import contextlib
 import io
 import json
 import os
 from pathlib import Path, PureWindowsPath
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,7 +17,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
-from n2m import fpga_program
+from n2m import fpga, fpga_jtag, fpga_program
 from n2m.fpga_program import attempt_record, device_state_after, program, program_flash, repository_relative
 from n2m.records import file_hash
 from n2m.progress import Progress
@@ -21,6 +27,54 @@ VALID_CHAIN = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n"
 AMBIGUOUS_CHAIN = VALID_CHAIN + VALID_CHAIN.replace("1)", "2)")
 SUCCESS = "Info: Quartus Prime Programmer was successful. 0 errors, 0 warnings\n"
 FAILED = "Info: Quartus Prime Programmer failed. 1 error\n"
+# The measured jtagconfig failure on the Linux host: both cables answer, neither
+# chain is read, and the two cables fail differently.
+UNREADABLE_CHAIN = ("1) DE-SoC [1-3.2]\n  Unable to read device chain - Hardware not attached\n"
+                    "2) USB-Blaster [1-2]\n  Unable to read device chain - JTAG chain broken\n")
+# `openFPGALoader --detect` on the DE2-115: one Cyclone IV E on the FTDI cable.
+DE2_DETECT = ("index 0:\n\tidcode 0x20f70dd\n\tmanufacturer altera\n\tfamily cyclone III/IV/10 LP\n"
+              "\tmodel  EP3C120/EP4CE115/10CL120\n\tirlength 10\n")
+# `openFPGALoader --detect` on the DE10-Nano: the ARM debug access port of the
+# Cyclone V SoC sits at chain position 0 and the FPGA at position 1.
+NANO_DETECT = ("index 0:\n\tidcode   0x4ba00477\n\ttype     Cortex A9\n\tirlength 4\n"
+               "index 1:\n\tidcode 0x2d020dd\n\tmanufacturer altera\n\tfamily cyclone V Soc\n"
+               "\tmodel  5CSE*A6/5CSX*6\n\tirlength 10\n")
+# The same probe with its FX2 firmware wedged: openFPGALoader exits successfully
+# and reports thirty-two identical Lattice parts. Measured on the host, kept as
+# the reason a successful exit proves nothing about the chain.
+WEDGED_DETECT = "".join(f"index {i}:\n\tidcode 0x81111043\n\tmanufacturer lattice\n\tfamily ECP5\n"
+                        "\tmodel  LFE5UM5G-25\n\tirlength 8\n" for i in range(32))
+LOADED = ("Load SRAM: [==================================================] 100.00%\nDone\n")
+LOAD_FAILED = ("Load SRAM: [=========                                         ] 18.00%\nFail\n")
+CONVERTED = "Info: Quartus Prime Convert_programming_file was successful. 0 errors, 0 warnings\n"
+# openFPGALoader on a cable that is not attached: it fails and says so.
+ABSENT_CABLE = "unable to open ftdi device: -3 (device not found)\nempty\nJTAG init failed with: std::exception\n"
+# The banner the installed openFPGALoader prints for `--Version`.
+VERSION_BANNER = "openFPGALoader v1.1.1\n"
+
+
+def stage_registry(root):
+    """Copy the board registries and the specifications they link into a fake checkout root.
+
+    `program` reads the expected device from the registry under its `root`, so a
+    test that stands a temporary directory in for the repository stages the same
+    files the repository has.
+    """
+    for name in fpga.REGISTRIES:
+        source = ROOT / name
+        staged = Path(root) / name
+        staged.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, staged)
+        specification = Path(root) / json.loads(source.read_text())["board"]["specification"]
+        specification.parent.mkdir(parents=True, exist_ok=True)
+        specification.write_text("staged board specification\n", encoding="utf-8")
+
+
+def fake_programmers(*, quartus=True, openfpgaloader=False):
+    """Tool discovery finding only the programmers a host is supposed to have."""
+    present = {"jtagconfig": quartus, "quartus_pgm": quartus, "quartus_cpf": quartus,
+               "openFPGALoader": openfpgaloader}
+    return patch("n2m.fpga_jtag.locate", side_effect=lambda d, n: n if present.get(n) else None)
 # The reported recreation: a Windows PowerShell session inside a WSL checkout reached over UNC.
 UNC_ROOT = PureWindowsPath(r"\\wsl.localhost\Ubuntu\home\abendavid\github\nand2mario")
 UNC_SOF = UNC_ROOT / r"workdir\builds\stackdrop-program-34ed4f\output\design.sof"
@@ -33,6 +87,7 @@ class FpgaProgramTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="program ", dir=base)
         self.addCleanup(self.temp.cleanup)
         self.folder = Path(self.temp.name)
+        stage_registry(self.folder)
         self.sof = self.write_attempt(self.folder)
 
     def write_attempt(self, attempt, record=None):
@@ -66,7 +121,7 @@ class FpgaProgramTests(unittest.TestCase):
             calls.append(argv)
             return AMBIGUOUS_CHAIN if "jtagconfig" in argv[0] else SUCCESS
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run):
             with self.assertRaises(RuntimeError):
                 program(ROOT, self.folder, self.sof, quartus_bin="tools")
@@ -79,7 +134,7 @@ class FpgaProgramTests(unittest.TestCase):
             calls.append(argv)
             return VALID_CHAIN if "jtagconfig" in argv[0] else SUCCESS
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run):
             result = program(ROOT, self.folder, self.sof, quartus_bin="tools")
         self.assertEqual(result["cable"], "1")
@@ -88,7 +143,7 @@ class FpgaProgramTests(unittest.TestCase):
         self.assertEqual(calls[1][-1], f"p;{self.sof.resolve()}")
         # The path `fpga build` prints is repository-relative; it is recorded resolved.
         relative = Path(os.path.relpath(self.sof, Path.cwd()))
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run):
             result = program(ROOT, self.folder, relative, quartus_bin="tools")
         self.assertEqual(result["sof"], self.sof.resolve().relative_to(ROOT.resolve()).as_posix())
@@ -103,7 +158,7 @@ class FpgaProgramTests(unittest.TestCase):
         def run(argv, cwd, log, timeout=60):
             return VALID_CHAIN if "jtagconfig" in argv[0] else SUCCESS
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run):
             result = program(ROOT, self.folder, self.sof, quartus_bin="tools",
                              progress=Progress(stream=output))
@@ -112,7 +167,7 @@ class FpgaProgramTests(unittest.TestCase):
         text = output.getvalue()
         ordered = ["[....] Check FPGA build record", "[done] Check FPGA build record",
                    "[....] Discover JTAG chain", "[done] Discover JTAG chain",
-                   "JTAG: cable 1; device", "[....] Program FPGA", "[done] Program FPGA",
+                   "JTAG: backend quartus; cable 1; device", "[....] Program FPGA", "[done] Program FPGA",
                    "[....] Check programmer result", "[PASS] Check programmer result"]
         positions = [text.index(fragment) for fragment in ordered]
         self.assertEqual(positions, sorted(positions), text)
@@ -121,13 +176,13 @@ class FpgaProgramTests(unittest.TestCase):
         def run(argv, cwd, log, timeout=60):
             return VALID_CHAIN if "jtagconfig" in argv[0] else "Info: Quartus Prime Programmer failed. 1 error\n"
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run):
             with self.assertRaises(RuntimeError):
                 program(ROOT, self.folder, self.sof, quartus_bin="tools")
 
     def test_cli_program_action_reports_its_retained_log(self):
-        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None, **options):
             (folder / "program.log").write_text("retained\n")
             return {"cable": cable or "1", "sof": str(sof), "scope": "double"}
 
@@ -175,7 +230,7 @@ class FpgaProgramTests(unittest.TestCase):
     def test_cli_text_offers_the_existing_launcher_with_a_uart_placeholder(self):
         target = ["v05-board"]
 
-        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None, **options):
             (folder / "program.log").write_text("retained\n")
             return {"cable": "1", "devices": ["10M50DA(.|ES)/10M50DC"],
                     "sof": str(sof), "program_log": (folder / "program.log").relative_to(root).as_posix(),
@@ -263,7 +318,7 @@ class PostProgramRecordTests(FpgaProgramTests):
             order.append(argv[0])
             return VALID_CHAIN if "jtagconfig" in argv[0] else SUCCESS
 
-        with patch("n2m.fpga_program.repository_relative", side_effect=traced), \
+        with fake_programmers(), patch("n2m.fpga_program.repository_relative", side_effect=traced), \
                 patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run):
             result = run_program()
@@ -288,7 +343,7 @@ class PostProgramRecordTests(FpgaProgramTests):
         self.assertEqual(result["device_state"], "changed")
 
     def test_post_program_host_failure_records_that_the_device_changed_without_replay(self):
-        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None, **options):
             (folder / "chain.log").write_text(VALID_CHAIN)
             (folder / "program.log").write_text(SUCCESS)
             raise ValueError(r"'workdir\builds\x\output\design.sof' is not in the subpath of "
@@ -312,7 +367,8 @@ class PostProgramRecordTests(FpgaProgramTests):
     def test_programmer_failure_records_an_unconfirmed_device_and_runs_once(self):
         # The CLI treats its root argument as the repository; list the image relative to it.
         (self.folder / "result.json").write_text(json.dumps(
-            {"status": "PASS", "artifacts": {"output/design.sof": file_hash(self.sof)}}))
+            {"status": "PASS", "target": "v05-board",
+             "artifacts": {"output/design.sof": file_hash(self.sof)}}))
         calls = []
 
         def run(argv, cwd, log, timeout=60):
@@ -320,7 +376,7 @@ class PostProgramRecordTests(FpgaProgramTests):
             (Path(cwd) / log).write_text(VALID_CHAIN if "jtagconfig" in argv[0] else FAILED)
             return VALID_CHAIN if "jtagconfig" in argv[0] else FAILED
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run), \
                 patch("n2m.cli.platform.system", return_value="Windows"), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
@@ -334,7 +390,7 @@ class PostProgramRecordTests(FpgaProgramTests):
         self.assertIn("Device state: unconfirmed; no automatic replay", output.getvalue())
 
     def test_pass_records_carry_no_failure_device_line(self):
-        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None, **options):
             (folder / "program.log").write_text(SUCCESS)
             return {"cable": "1", "devices": ["10M50DA(.|ES)/10M50DC"], "sof": "workdir/x/design.sof",
                     "device_state": "changed", "scope": "double"}
@@ -398,6 +454,7 @@ class FlashProgramTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="flash ", dir=base)
         self.addCleanup(self.temp.cleanup)
         self.folder = Path(self.temp.name)
+        stage_registry(self.folder)
         self.pof = self.write_attempt(self.folder)
 
     def write_attempt(self, attempt, edit=None, root=ROOT):
@@ -504,7 +561,7 @@ class FlashProgramTests(unittest.TestCase):
             calls.append((argv, log, timeout))
             return VALID_CHAIN if "jtagconfig" in argv[0] else SUCCESS
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=run):
             result = program_flash(ROOT, self.folder, self.pof, quartus_bin="tools")
         self.assertEqual([call[0][0] for call in calls], ["jtagconfig", "quartus_pgm"])
@@ -512,7 +569,7 @@ class FlashProgramTests(unittest.TestCase):
         self.assertEqual(calls[1][1:], ("program.log", 600))
         self.assertEqual(result["cable"], "1")
         self.assertEqual(result["devices"], ["10M50DA(.|ES)/10M50DC"])
-        self.assertEqual(result["chain"]["selected"]["index"], "1")
+        self.assertEqual(result["chain"]["index"], "1")
         self.assertEqual(result["pof_sha256"], file_hash(self.pof))
         self.assertIsInstance(result["isp_seconds"], float)
         self.assertGreaterEqual(result["isp_seconds"], 0)
@@ -526,7 +583,7 @@ class FlashProgramTests(unittest.TestCase):
             calls.append(argv)
             return AMBIGUOUS_CHAIN if "jtagconfig" in argv[0] else SUCCESS
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=ambiguous):
             with self.assertRaises(RuntimeError):
                 program_flash(ROOT, self.folder, self.pof, quartus_bin="tools")
@@ -535,7 +592,7 @@ class FlashProgramTests(unittest.TestCase):
         def failed(argv, cwd, log, timeout=60):
             return VALID_CHAIN if "jtagconfig" in argv[0] else "Info: Quartus Prime Programmer failed. 1 error\n"
 
-        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
                 patch("n2m.fpga_program.execute", side_effect=failed):
             with self.assertRaises(RuntimeError):
                 program_flash(ROOT, self.folder, self.pof, quartus_bin="tools")
@@ -583,10 +640,10 @@ class FlashProgramTests(unittest.TestCase):
                 main(["fpga", "program", "--quartus-bin", "tools"], self.folder)
 
     def test_cli_flash_success_reports_time_hash_and_the_power_cycle_step(self):
-        def fake(root, folder, pof, *, quartus_bin, cable, timeout, dry_run, progress=None):
+        def fake(root, folder, pof, *, quartus_bin, cable, timeout, dry_run, progress=None, **options):
             (folder / "program.log").write_text(SUCCESS)
             return {"cable": "1", "devices": ["10M50DA(.|ES)/10M50DC"], "pof": str(pof),
-                    "pof_sha256": "ab" * 32, "isp_seconds": 123.456, "operation": "pvb",
+                    "backend": "quartus", "pof_sha256": "ab" * 32, "isp_seconds": 123.456, "operation": "pvb",
                     "program_log": (folder / "program.log").relative_to(root).as_posix(),
                     "next_step": "Power-cycle the DE10-Lite.", "scope": "double"}
 
@@ -599,10 +656,426 @@ class FlashProgramTests(unittest.TestCase):
         self.assertEqual(called.call_args.kwargs["timeout"], 600)
         self.assertFalse(called.call_args.kwargs["dry_run"])
         text = output.getvalue()
-        self.assertIn("JTAG: cable 1; device 10M50DA", text)
+        self.assertIn("JTAG: backend quartus; cable 1; device 10M50DA", text)
         self.assertIn("Flash programmed, verified and blank-checked in 123.456 s; .pof sha256 " + "ab" * 32, text)
         self.assertIn("Next: Power-cycle the DE10-Lite.", text)
         self.assertNotIn("gb_launcher", text)
+
+
+class DeviceIdentityTests(unittest.TestCase):
+    """One matching rule for every supported board, against what each tool actually prints."""
+
+    # Ordering code, the `jtagconfig` chain name and the `openFPGALoader --list-fpga`
+    # model for the same IDCODE. Taken from the tools, not from a datasheet.
+    BOARDS = (("10M50DAF484C7G", "10M50DA(.|ES)/10M50DC", "10M50D"),
+              ("5CSEBA6U23I7", "5CSEBA6(.|ES)/5CSEMA6", "5CSE*A6/5CSX*6"),
+              ("EP4CE115F29C7", "EP4CE115", "EP3C120/EP4CE115/10CL120"))
+
+    def test_each_board_device_matches_its_own_chain_names_only(self):
+        for device, jtagconfig_name, openfpgaloader_model in self.BOARDS:
+            with self.subTest(device=device):
+                self.assertTrue(fpga_jtag.device_matches(device, jtagconfig_name))
+                self.assertTrue(fpga_jtag.device_matches(device, openfpgaloader_model))
+            for other, other_jtagconfig, other_model in self.BOARDS:
+                if other == device:
+                    continue
+                with self.subTest(device=device, against=other):
+                    self.assertFalse(fpga_jtag.device_matches(device, other_jtagconfig))
+                    self.assertFalse(fpga_jtag.device_matches(device, other_model))
+
+    def test_every_registered_board_is_covered_by_this_case_list(self):
+        """A board added to the registry without a case here fails this test, not a board session."""
+        registered = set(fpga_jtag.registered_boards(ROOT))
+        covered = {device for device, _, _ in self.BOARDS}
+        self.assertTrue(registered <= covered, f"registered but unchecked: {sorted(registered - covered)}")
+
+    def test_a_garbled_or_neighbouring_device_never_matches(self):
+        # The wedged probe's reading, a neighbouring density, and a truncated name.
+        for reported in ("LFE5UM5G-25", "10M40DA", "10M50S", "5CSE*A4", "EP4CE11", "10M5", "", "0x0"):
+            with self.subTest(reported=reported):
+                self.assertFalse(fpga_jtag.device_matches("10M50DAF484C7G", reported))
+        with self.assertRaises(ValueError):
+            fpga_jtag.device_matches(None, "10M50DA")
+
+    def test_detect_output_keeps_unknown_positions_in_place(self):
+        chains = fpga_jtag.parse_detect(NANO_DETECT, "usb-blasterII")
+        self.assertEqual(len(chains), 1)
+        self.assertEqual([d["idcode"] for d in chains[0]["devices"]], ["4BA00477", "02D020DD"])
+        self.assertEqual(chains[0]["devices"][1]["name"], "5CSE*A6/5CSX*6")
+        # A position openFPGALoader knows nothing about still occupies its index.
+        unknown = fpga_jtag.parse_detect("index 0:\nindex 1:\n\tidcode 0x2d020dd\n\tmodel  5CSE*A6\n",
+                                        "usb-blasterII")
+        self.assertEqual(len(unknown[0]["devices"]), 2)
+        self.assertEqual(unknown[0]["devices"][0], {"idcode": "", "name": ""})
+
+    def test_a_refusal_quotes_the_read_s_own_diagnostic(self):
+        """Measured tool output: the quoted line explains the failure, not the chain."""
+        # The wedged probe announces its firmware before the error that explains it.
+        wedged = "empty\nUSB-Blaster II firmware version: 1.42\nFX2 write error: LIBUSB_ERROR_TIMEOUT\n" + WEDGED_DETECT
+        for output, expected in (
+                (wedged, "FX2 write error: LIBUSB_ERROR_TIMEOUT"),
+                (ABSENT_CABLE, "unable to open ftdi device: -3 (device not found)"),
+                (UNREADABLE_CHAIN, "Unable to read device chain - Hardware not attached"),
+                ("empty\nmissing FX2 firmware\nuse --probe-firmware with something\n", "missing FX2 firmware"),
+                (NANO_DETECT, ""),
+                (VALID_CHAIN, "")):
+            with self.subTest(expected=expected):
+                self.assertEqual(fpga_jtag.complaint(output), expected)
+
+    def test_an_unreadable_jtagconfig_chain_is_parsed_and_holds_no_device(self):
+        chains = fpga_jtag.parse_jtagconfig(UNREADABLE_CHAIN)
+        self.assertEqual([chain["devices"] for chain in chains], [[], []])
+        # Both are programming cables of supported boards; neither read a chain.
+        self.assertEqual([chain["probe"] for chain in chains], [True, True])
+        self.assertEqual([chain["name"] for chain in chains][0][:6], "DE-SoC")
+
+
+class ProgrammerBackendTests(FpgaProgramTests):
+    """The backend is chosen by what each available tool reads, and every refusal survives it."""
+
+    def nano_attempt(self):
+        """A DE10-Nano attempt: the same record rules, a Cyclone V target."""
+        return self.board_attempt("nano", "nano-smoke", "5CSEBA6U23I7")
+
+    def board_attempt(self, name, target, device):
+        """A built attempt for any registered board: the same record rules, its own device."""
+        attempt = self.folder / name
+        attempt.mkdir()
+        sof = attempt / "output/design.sof"
+        sof.parent.mkdir()
+        sof.write_text("not a real bitstream\n")
+        (attempt / "result.json").write_text(json.dumps(
+            {"status": "PASS", "target": target, "device": device,
+             "artifacts": {sof.resolve().relative_to(ROOT.resolve()).as_posix(): file_hash(sof)}}))
+        return sof
+
+    def responder(self, calls, *, jtagconfig=UNREADABLE_CHAIN, detect=NANO_DETECT,
+                  cable="usb-blasterII", convert=CONVERTED, load=LOADED):
+        """A fake programmer: each tool answers with the output a board would produce.
+
+        Only `cable` has a board on it, as on a host with one attached probe, so
+        an enumeration with no cable named still has exactly one answer to find.
+        """
+        def run(argv, cwd, log, timeout=60):
+            calls.append(argv)
+            name = Path(argv[0]).name
+            if name == "jtagconfig":
+                output = jtagconfig
+            elif name == "quartus_pgm":
+                output = SUCCESS
+            elif name == "quartus_cpf":
+                Path(argv[-1]).write_bytes(b"raw volatile image\n")
+                output = convert
+            elif "--Version" in argv:
+                output = VERSION_BANNER
+            elif "--detect" in argv:
+                output = detect if argv[argv.index("-c") + 1] == cable else ABSENT_CABLE
+            else:
+                output = load
+            (Path(cwd) / log).write_text(output)
+            return output
+        return run
+
+    def test_openfpgaloader_configures_a_cyclone_v_from_the_checked_sof(self):
+        sof = self.nano_attempt()
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=self.responder(calls)):
+            result = program(ROOT, self.folder, sof, quartus_bin="tools", probe_firmware="blaster_6810.hex")
+        names = [Path(call[0]).name for call in calls]
+        self.assertEqual(names, ["jtagconfig", "openFPGALoader", "openFPGALoader",
+                                 "openFPGALoader", "quartus_cpf", "openFPGALoader"],
+                         "the unreadable Quartus chain falls through, both cables are read, "
+                         "then the image is converted and loaded")
+        self.assertNotIn("--detect", calls[-1], "the last command is the load, not an enumeration")
+        self.assertEqual(result["backend"], "openfpgaloader")
+        self.assertEqual((result["board"], result["expected_device"], result["family"]),
+                         ("DE10-Nano", "5CSEBA6U23I7", "Cyclone V"))
+        self.assertEqual(result["cable"], "usb-blasterII")
+        self.assertEqual(result["chain_position"], 1, "the FPGA sits behind the ARM debug access port")
+        rbf = self.folder / "design.rbf"
+        self.assertEqual(result["command"],
+                         ["openFPGALoader", "-c", "usb-blasterII", "--probe-firmware", "blaster_6810.hex",
+                          "--index-chain", "1", "--file-type", "rbf", "--write-sram",
+                          "--bitstream", str(rbf.resolve())])
+        self.assertEqual(result["volatile_image_sha256"], file_hash(rbf))
+        self.assertEqual((result["backend_version"], result["backend_banner"]),
+                         ("1.1.1", "openFPGALoader v1.1.1"))
+        self.assertEqual(result["device_state"], "changed")
+        self.assertIn("CONF_DONE", result["scope"])
+        self.assertIn("5CSE*A6/5CSX*6", (self.folder / "chain.log").read_text(),
+                      "chain.log is the enumeration the programmer acted on")
+        self.assertTrue((self.folder / "chain-quartus.log").is_file(),
+                        "the rejected Quartus attempt keeps its own log")
+
+    def test_openfpgaloader_configures_a_cyclone_iv_e_on_its_own_cable(self):
+        """The third supported board, end to end: its own device, its own cable, no MAX 10 path."""
+        sof = self.board_attempt("de2", "de2-smoke", "EP4CE115F29C7")
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute",
+                      side_effect=self.responder(calls, detect=DE2_DETECT, cable="usb-blaster")):
+            result = program(ROOT, self.folder, sof, quartus_bin="tools")
+        self.assertEqual((result["board"], result["expected_device"], result["family"]),
+                         ("DE2-115", "EP4CE115F29C7", "Cyclone IV E"))
+        self.assertEqual((result["backend"], result["cable"], result["chain_position"]),
+                         ("openfpgaloader", "usb-blaster", 0))
+        self.assertEqual(result["devices"], ["EP3C120/EP4CE115/10CL120"])
+        self.assertEqual(result["device_state"], "changed")
+        self.assertIn("--write-sram", result["command"])
+
+        # And that same image is refused against either other board's chain.
+        for other in (NANO_DETECT, VALID_CHAIN):
+            with self.subTest(other=other[:12]):
+                calls = []
+                detect = other if other is NANO_DETECT else ABSENT_CABLE
+                with fake_programmers(openfpgaloader=True), \
+                        patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                        patch("n2m.fpga_program.execute",
+                              side_effect=self.responder(calls, jtagconfig=other, detect=detect,
+                                                         cable="usb-blasterII")):
+                    with self.assertRaises(RuntimeError) as caught:
+                        program(ROOT, self.folder, sof, quartus_bin="tools")
+                self.assertIn("EP4CE115F29C7 (DE2-115)", str(caught.exception))
+                self.assertNotIn("quartus_cpf", [Path(call[0]).name for call in calls])
+
+    def test_quartus_is_used_whenever_its_own_chain_reads(self):
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=self.responder(calls, jtagconfig=VALID_CHAIN)):
+            result = program(ROOT, self.folder, self.sof, quartus_bin="tools")
+        self.assertEqual([Path(call[0]).name for call in calls], ["jtagconfig", "quartus_pgm"])
+        self.assertEqual(result["backend"], "quartus")
+        self.assertEqual(result["command"], ["quartus_pgm", "-c", "1", "-m", "jtag",
+                                             "-o", f"p;{self.sof.resolve()}"])
+        self.assertNotIn("volatile_image", result, "no conversion on the Quartus path")
+
+    def test_a_successful_exit_on_a_garbled_chain_refuses_before_any_write(self):
+        """The wedged FX2 probe measured on the host: exit 0, thirty-two Lattice parts."""
+        sof = self.nano_attempt()
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=self.responder(calls, detect=WEDGED_DETECT)):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+        self.assertIn("5CSEBA6U23I7", str(caught.exception))
+        names = [Path(call[0]).name for call in calls]
+        self.assertNotIn("quartus_cpf", names, "nothing is converted after a failed identity check")
+        self.assertTrue(all("--detect" in call for call in calls if Path(call[0]).name == "openFPGALoader"),
+                        "every openFPGALoader command was an enumeration")
+        self.assertNotIn("--Version", [flag for call in calls for flag in call])
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+    def test_a_de10_lite_image_cannot_reach_a_cyclone_v_or_the_reverse(self):
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=self.responder(calls)):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, self.sof, quartus_bin="tools")
+        self.assertIn("10M50DAF484C7G (DE10-Lite)", str(caught.exception))
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+        nano = self.nano_attempt()
+        calls = []
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=self.responder(calls, jtagconfig=VALID_CHAIN)):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, nano, quartus_bin="tools")
+        self.assertIn("5CSEBA6U23I7 (DE10-Nano)", str(caught.exception))
+        self.assertEqual([Path(call[0]).name for call in calls], ["jtagconfig"])
+
+    def test_openfpgaloader_refuses_a_max_10_because_its_only_path_writes_flash(self):
+        lite_detect = ("index 0:\n\tidcode 0x31050dd\n\tmanufacturer altera\n\tfamily MAX 10\n"
+                       "\tmodel  10M50D\n\tirlength 10\n")
+        calls = []
+        with fake_programmers(quartus=False, openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute",
+                      side_effect=self.responder(calls, detect=lite_detect, cable="usb-blaster")):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, self.sof, quartus_bin="tools")
+        self.assertIn("no volatile configuration for the MAX 10", str(caught.exception))
+        self.assertIn("quartus_pgm", str(caught.exception))
+        self.assertTrue(all("--detect" in call for call in calls),
+                        "the identity matched, and still nothing was identified, converted or written")
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+    def test_no_programmer_at_all_names_the_tools_not_the_operating_system(self):
+        with fake_programmers(quartus=False), patch("n2m.fpga_program.execute") as run:
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, self.sof, quartus_bin="tools")
+            run.assert_not_called()
+        message = str(caught.exception)
+        self.assertIn("jtagconfig", message)
+        self.assertIn("openFPGALoader", message)
+        for absent in ("Windows", "PowerShell", "Linux", "operating system"):
+            self.assertNotIn(absent, message)
+
+    def test_an_explicit_openfpgaloader_cable_selects_that_backend_alone(self):
+        sof = self.nano_attempt()
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=self.responder(calls)):
+            result = program(ROOT, self.folder, sof, quartus_bin="tools", cable="usb-blasterII")
+        self.assertEqual([Path(call[0]).name for call in calls],
+                         ["openFPGALoader", "openFPGALoader", "quartus_cpf", "openFPGALoader"],
+                         "a named openFPGALoader cable never enumerates through Quartus")
+        self.assertEqual(result["cable"], "usb-blasterII")
+
+    def test_two_cables_reporting_the_board_are_refused_on_either_backend(self):
+        """`exactly one cable` means the same on both backends, so read order never decides."""
+        sof = self.nano_attempt()
+        calls = []
+
+        def both(argv, cwd, log, timeout=60):
+            calls.append(argv)
+            # Two DE10-Nanos, one on each probe type: every cable holds the board.
+            output = NANO_DETECT if "--detect" in argv else UNREADABLE_CHAIN
+            (Path(cwd) / log).write_text(output)
+            return output
+
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=both):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+        message = str(caught.exception)
+        self.assertIn("found 2", message)
+        for cable in fpga_jtag.CABLES:
+            self.assertIn(cable, message, "the refusal names both matching cables")
+        detects = [call for call in calls if "--detect" in call]
+        self.assertEqual(len(detects), 2, "every cable is read before anything is selected")
+        self.assertTrue(all("--detect" in call or "jtagconfig" in call[0] for call in calls),
+                        "nothing was identified, converted or written")
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+        # The same ambiguity through jtagconfig, which prints both cables at once.
+        chain = VALID_CHAIN + VALID_CHAIN.replace("1)", "2)")
+
+        def ambiguous(argv, cwd, log, timeout=60):
+            (Path(cwd) / log).write_text(chain)
+            return chain
+
+        with fake_programmers(), patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=ambiguous):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, self.sof, quartus_bin="tools")
+        self.assertIn("found 2: 1, 2", str(caught.exception))
+
+    def test_a_pinned_backend_and_the_other_one_s_cable_is_refused(self):
+        for programmer, cable, fragment in (("quartus", "usb-blasterII", "jtagconfig chain index"),
+                                            ("openfpgaloader", "1", "not an openFPGALoader cable")):
+            with self.subTest(programmer=programmer):
+                with fake_programmers(openfpgaloader=True), patch("n2m.fpga_program.execute") as run:
+                    with self.assertRaises(ValueError) as caught:
+                        program(ROOT, self.folder, self.sof, quartus_bin="tools",
+                                programmer=programmer, cable=cable)
+                    run.assert_not_called()
+                self.assertIn(fragment, str(caught.exception))
+
+    def test_a_record_without_a_registered_target_has_no_expected_device(self):
+        listed = json.loads((self.folder / "result.json").read_text())
+        for edit, fragment in (({"target": None}, "names no FPGA target"),
+                               ({"target": "not-a-target"}, "unregistered FPGA target"),
+                               ({"device": "5CSEBA6U23I7"}, "is not the DE10-Lite device")):
+            with self.subTest(edit=edit):
+                (self.folder / "result.json").write_text(json.dumps({**listed, **edit}))
+                with fake_programmers(), patch("n2m.fpga_program.execute") as run:
+                    with self.assertRaises(ValueError) as caught:
+                        program(ROOT, self.folder, self.sof, quartus_bin="tools")
+                    run.assert_not_called()
+                self.assertIn(fragment, str(caught.exception))
+                self.assertIn(fragment, (self.folder / "failure.log").read_text())
+
+    def test_the_record_refusals_still_fire_on_the_openfpgaloader_backend(self):
+        sof = self.nano_attempt()
+        record = json.loads((sof.parent.parent / "result.json").read_text())
+        for edit, fragment in (({"build_id_override": True}, "comparison-only"),
+                               ({"artifacts": {}}, "not the artifact")):
+            with self.subTest(edit=edit):
+                (sof.parent.parent / "result.json").write_text(json.dumps({**record, **edit}))
+                with fake_programmers(quartus=False, openfpgaloader=True), \
+                        patch("n2m.fpga_program.execute") as run:
+                    with self.assertRaises(ValueError) as caught:
+                        program(ROOT, self.folder, sof, quartus_bin="tools")
+                    run.assert_not_called()
+                self.assertIn(fragment, str(caught.exception))
+
+    def test_the_flash_image_is_not_a_backend_choice(self):
+        """`--pof` names quartus_pgm's documented operation letters, not a programmer to pick."""
+        attempt = self.folder / "flash"
+        attempt.mkdir()
+        pof = FlashProgramTests.write_attempt(self, attempt, root=self.folder)
+        with patch("n2m.fpga_program.execute") as run, \
+                patch("n2m.cli.platform.system", return_value="Windows"):
+            code = main(["fpga", "program", "--pof", str(pof), "--programmer", "openfpgaloader",
+                         "--quartus-bin", "tools", "--tag", "flash-backend", "--json"], self.folder)
+            run.assert_not_called()
+        self.assertEqual(code, 1)
+        report = json.loads((self.folder / "workdir/builds/flash-backend/manifest.json").read_text())
+        self.assertIn("does not apply to --pof", report["error"])
+
+    def test_a_failed_conversion_refuses_before_the_load(self):
+        sof = self.nano_attempt()
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute",
+                      side_effect=self.responder(calls, convert="Error: no license\n")):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+        self.assertIn("raw volatile image", str(caught.exception))
+        self.assertEqual([Path(call[0]).name for call in calls][-1], "quartus_cpf")
+        self.assertTrue(all("--detect" in call or "--Version" in call
+                            for call in calls if Path(call[0]).name == "openFPGALoader"))
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+    def test_an_unrecognized_programmer_banner_refuses_before_the_load(self):
+        sof = self.nano_attempt()
+        calls = []
+
+        def run(argv, cwd, log, timeout=60):
+            calls.append(argv)
+            if "--Version" in argv:
+                output = "some other tool 9.9\n"
+            else:
+                output = NANO_DETECT if argv[argv.index("-c") + 1] == "usb-blasterII" else ABSENT_CABLE
+            (Path(cwd) / log).write_text(output)
+            return output
+
+        with fake_programmers(quartus=False, openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=run):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+        self.assertIn("unrecognized openFPGALoader version banner", str(caught.exception))
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+
+    def test_an_openfpgaloader_load_without_done_is_unconfirmed(self):
+        sof = self.nano_attempt()
+        calls = []
+        with fake_programmers(openfpgaloader=True), \
+                patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=self.responder(calls, load=LOAD_FAILED)):
+            with self.assertRaises(RuntimeError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+        self.assertIn("did not report a successful configuration", str(caught.exception))
+        self.assertEqual(device_state_after(self.folder), "unconfirmed")
+
+    def test_device_state_reads_either_backend_success_signature(self):
+        log = self.folder / "program.log"
+        self.assertEqual(device_state_after(self.folder), "unchanged")
+        for text, state in ((LOAD_FAILED, "unconfirmed"), (LOADED, "changed"),
+                            (FAILED, "unconfirmed"), (SUCCESS, "changed")):
+            with self.subTest(state=state):
+                log.write_text(text)
+                self.assertEqual(device_state_after(self.folder), state)
 
 
 if __name__ == "__main__":

@@ -125,6 +125,14 @@
       "storage": "User installation only; no redistribution"
     },
     {
+      "name": "openFPGALoader",
+      "record": "sim/THIRD_PARTY.md",
+      "purpose": "User-installed JTAG programmer for the volatile board configuration Quartus's jtagd cannot reach on every host; the argv semantics fpga program relies on, including --index-chain addressing the same chain vector --detect prints, were read from release v1.1.1",
+      "license": "Apache-2.0, per SPDX-License-Identifier headers in every v1.1.1 source consulted, the LICENSE file at that tag, and the installed package's own metadata",
+      "local_changes": "none; no source or binary is committed and nothing it produces is redistributed",
+      "storage": "User installation only; each operation records the tool path and its --Version banner under ignored workdir/builds/<tag>/fpga-program/<id>/"
+    },
+    {
       "name": "Planned SingleStepTests, Mooneye and SameBoy adapters",
       "record": "../wiki/src/dv/baseline/SPEC.md#future-adapter-plans",
       "purpose": "Reviewed immutable pins and MIT/Expat reuse boundaries for future vectors, acceptance tests and independent reference",

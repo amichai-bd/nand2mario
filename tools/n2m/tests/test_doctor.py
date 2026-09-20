@@ -13,14 +13,17 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.doctor import (LICENSE_VARIABLES, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, doctor, execute,
-                        linux_ports, node_state, parse_jtag, quartus, questa, select_uart, uart,
+                        jtag, linux_ports, node_state, quartus, questa, select_uart, uart,
                         verilator, warning)
+from n2m import fpga_jtag
 from n2m.simulator import QUESTA_LICENSE, QUESTA_LICENSE_PROBE
 from n2m.fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from n2m.cli import main, parser
 import serial_fixture
 
 ROOT = Path(__file__).resolve().parents[3]
+# One cable reporting the DE10-Lite's MAX 10, as `jtagconfig` prints it.
+LITE_CHAIN = "1) USB-Blaster\n  031050DD 10M50DA\n"
 
 
 # Measured on this host from `vsim -c -nolog -lic_noqueue -do "quit -f"` with no
@@ -176,13 +179,68 @@ class DoctorTests(unittest.TestCase):
         self.assertIn("partial runtime", (self.folder / "failed.log").read_text())
 
     def test_jtag_identity_stays_with_cable_and_ambiguity(self):
+        """The read-only check accepts one supported board on one cable and nothing else."""
         valid = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n"
-        self.assertEqual(parse_jtag(valid)["selected"]["index"], "1")
+        args = SimpleNamespace(quartus_bin=None, jtag_cable=None, programmer="quartus",
+                               openfpgaloader_bin=None, probe_firmware=None)
+
+        def read(output, cable=None):
+            with patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                    patch("n2m.doctor.execute", return_value=output):
+                return jtag(ROOT, self.folder, SimpleNamespace(**{**vars(args), "jtag_cable": cable}))
+
+        self.assertEqual(read(valid)["cable"], "1")
+        self.assertEqual(read(valid)["board"], "DE10-Lite")
+        self.assertEqual(read(valid)["backend"], "quartus")
         for invalid in ("1) USB-Blaster\n  00000000 UNKNOWN\n2) Other\n  031050DD 10M50DA\n",
-                        valid + valid.replace("1)", "2)"), "No hardware", valid.replace("10M50DA", "10M40DA")):
+                        valid + valid.replace("1)", "2)"), "No hardware",
+                        valid.replace("10M50DA", "10M40DA")):
             with self.assertRaises(RuntimeError):
-                parse_jtag(invalid)
-        self.assertEqual(parse_jtag(valid + valid.replace("1)", "2)"), "2")["selected"]["index"], "2")
+                read(invalid)
+        self.assertEqual(read(valid + valid.replace("1)", "2)"), "2")["cable"], "2")
+        # A second supported board on the same cable is ambiguous, not a preference.
+        both = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n  02D020DD 5CSEBA6(.|ES)/5CSEMA6\n"
+        with self.assertRaises(RuntimeError):
+            read(both)
+        # Terasic names the SoC boards' built-in USB-Blaster II `DE-SoC`; other hardware is not a cable.
+        nano = "1) DE-SoC [1-3.2]\n  4BA00477 SOCVHPS\n  02D020DD 5CSEBA6(.|ES)/5CSEMA6\n"
+        self.assertEqual(read(nano)["board"], "DE10-Nano")
+        self.assertEqual(read(nano)["chain_position"], 1)
+        with self.assertRaises(RuntimeError):
+            read(nano.replace("DE-SoC [1-3.2]", "Some Other Programmer"))
+
+    def test_jtag_check_falls_through_to_openfpgaloader_and_names_it(self):
+        """With the Quartus daemon unable to read a chain, the check uses openFPGALoader and says so."""
+        unreadable = ("1) DE-SoC [1-3.2]\n  Unable to read device chain - Hardware not attached\n"
+                      "2) USB-Blaster [1-2]\n  Unable to read device chain - JTAG chain broken\n")
+        detect = ("index 0:\n\tidcode   0x4ba00477\n\ttype     Cortex A9\n\tirlength 4\n"
+                  "index 1:\n\tidcode 0x2d020dd\n\tmanufacturer altera\n\tfamily cyclone V Soc\n"
+                  "\tmodel  5CSE*A6/5CSX*6\n\tirlength 10\n")
+        args = SimpleNamespace(quartus_bin=None, jtag_cable=None, programmer="auto",
+                              openfpgaloader_bin=None, probe_firmware="firmware.hex")
+
+        absent = "unable to open ftdi device: -3 (device not found)\nempty\n"
+
+        def run(argv, cwd, log, timeout=60, env=None, expect_failure=False):
+            if "jtagconfig" in argv[0]:
+                output = unreadable
+            else:
+                # Only the USB-Blaster II has a board on it, as on this host.
+                output = detect if argv[argv.index("-c") + 1] == "usb-blasterII" else absent
+            (Path(cwd) / log).write_text(output)
+            return output
+
+        with patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                patch("n2m.doctor.execute", side_effect=run):
+            report = jtag(ROOT, self.folder, args)
+        self.assertEqual(report["backend"], "openfpgaloader")
+        self.assertEqual((report["board"], report["device"]), ("DE10-Nano", "5CSEBA6U23I7"))
+        self.assertEqual(report["chain_position"], 1, "the FPGA sits behind the ARM debug access port")
+        self.assertEqual(report["command"][:2], ["openFPGALoader", "-c"])
+        self.assertIn("--detect", report["command"])
+        self.assertTrue(any("quartus" in reason for reason in report["rejected"]),
+                        "the rejected Quartus attempt is recorded")
+        self.assertIn("no wiring, voltage, or programming proof", report["scope"])
 
     def test_uart_selection_is_read_only_and_exact(self):
         ports = [{"DeviceID": "COM5", "Name": "USB Serial Port (COM5)",
@@ -322,8 +380,8 @@ class DoctorTests(unittest.TestCase):
 
     def test_profile_failure_priority_and_fresh_attempts(self):
         args = parser().parse_args(["doctor", "--profile", "environment", "--sim", "verilator"])
-        with patch("n2m.doctor.quartus", return_value={}), patch("n2m.doctor.executable", return_value="jtagconfig"), \
-                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+        with patch("n2m.doctor.quartus", return_value={}), patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                patch("n2m.doctor.execute", return_value=LITE_CHAIN), \
                 patch("n2m.doctor.uart", return_value={"status": "WARNING"}), \
                 patch("n2m.doctor.verilator", return_value={}):
             self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "WARNING")
@@ -366,8 +424,8 @@ class DoctorTests(unittest.TestCase):
 
         args = parser().parse_args(["doctor", "--profile", "environment", "--sim", "questa"])
         with patch("n2m.doctor.quartus", return_value={}) as quartus_probe, \
-                patch("n2m.doctor.executable", return_value="jtagconfig"), \
-                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                patch("n2m.doctor.execute", return_value=LITE_CHAIN), \
                 patch("n2m.doctor.uart", return_value={"selected": "COM5"}) as uart_probe, \
                 patch("n2m.doctor.questa_lint", return_value={}), \
                 patch("n2m.doctor.questa", return_value={}):
@@ -378,15 +436,15 @@ class DoctorTests(unittest.TestCase):
                          {"questa": "PASS", "questa-lint": "PASS", "quartus": "PASS", "jtag": "PASS", "uart": "PASS"})
         self.assertEqual((report["status"], report["readiness"]), ("PASS", "complete"))
         with patch("n2m.doctor.quartus", return_value={}), \
-                patch("n2m.doctor.executable", return_value="jtagconfig"), \
-                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                patch("n2m.doctor.execute", return_value=LITE_CHAIN), \
                 patch("n2m.doctor.uart", return_value={"status": "WARNING"}), \
                 patch("n2m.doctor.questa_lint", return_value={}), \
                 patch("n2m.doctor.questa", return_value={}):
             self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "WARNING")
         with patch("n2m.doctor.quartus", side_effect=RuntimeError("missing quartus_sh")), \
-                patch("n2m.doctor.executable", return_value="jtagconfig"), \
-                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                patch("n2m.doctor.execute", return_value=LITE_CHAIN), \
                 patch("n2m.doctor.uart", return_value={}), \
                 patch("n2m.doctor.questa_lint", return_value={}), \
                 patch("n2m.doctor.questa", return_value={}):

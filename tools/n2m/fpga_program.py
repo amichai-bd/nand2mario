@@ -1,24 +1,32 @@
-"""Program a checked MAX 10 image onto the connected board; identity checked first.
+"""Program a checked board image onto the connected device; identity checked first.
 
 Two images, one rule set: the volatile `.sof` configures the device over JTAG;
 the `.pof` of a flash image writes the compressed bitstream into CFM0 and the
 game library into the user range (wiki/src/rtl/storage/MAS_flash_library.md,
 "Programming the flash"). Both are accepted only in place beside the attempt
 record that lists them with their current hash.
+
+Which programmer performs the volatile configuration is decided by
+[fpga_jtag](fpga_jtag.py) from the tools present and from what each one reads,
+because Quartus's JTAG daemon cannot reach the boards on every host that can.
+The flash image stays with `quartus_pgm`: openFPGALoader's only MAX 10 path
+writes the internal flash, and writing flash is not something a backend may
+choose.
 """
 from pathlib import Path, PurePath
 import re
 import time
 
-from .doctor import executable, execute, parse_jtag
+from . import fpga_jtag
+from .doctor import enumeration_runner, executable, execute
 from .progress import Progress, display_path
 from .records import file_hash, read_json
 
-SUCCESS_LINE = "Quartus Prime Programmer was successful. 0 errors, 0 warnings"
+SUCCESS_LINE = fpga_jtag.SUCCESS_LINES[fpga_jtag.QUARTUS][0]
 # What the retained program.log proves about the board after an operation.
-DEVICE_UNCHANGED = "unchanged"      # quartus_pgm never ran
-DEVICE_CHANGED = "changed"          # quartus_pgm reported its success line
-DEVICE_UNCONFIRMED = "unconfirmed"  # quartus_pgm ran without its success line
+DEVICE_UNCHANGED = "unchanged"      # the programmer never ran
+DEVICE_CHANGED = "changed"          # the programmer reported its success line
+DEVICE_UNCONFIRMED = "unconfirmed"  # the programmer ran without its success line
 # quartus_pgm operation letters for the flash image: program, verify and
 # blank-check. `quartus_pgm --help=o` of Quartus Prime 25.1std Lite lists
 # BPV among the valid combinations and gives "JTAG Program: -o pvb;file.pof"
@@ -51,15 +59,18 @@ def repository_relative(root, path):
 def device_state_after(folder):
     """What the operation directory proves about the board once the command has failed.
 
-    Without `program.log`, `quartus_pgm` never ran. With the success line in
-    it, the device or its flash was written and only the host record failed
-    afterwards. Any other log means `quartus_pgm` ran and did not confirm
-    success. Nothing here replays the programmer; the operator decides.
+    Without `program.log`, no programmer ran. With a backend's own success
+    signature in it, the device or its flash was written and only the host
+    record failed afterwards. Any other log means a programmer ran and did not
+    confirm success. Nothing here replays the programmer; the operator decides.
+    Both backends' signatures are read, because neither one's wording can
+    appear in the other's output.
     """
     log = Path(folder) / "program.log"
     if not log.is_file():
         return DEVICE_UNCHANGED
-    return DEVICE_CHANGED if SUCCESS_LINE in log.read_text(encoding="utf-8", errors="replace") else DEVICE_UNCONFIRMED
+    return (DEVICE_CHANGED if fpga_jtag.programmed(log.read_text(encoding="utf-8", errors="replace"))
+            else DEVICE_UNCONFIRMED)
 
 
 def attempt_record(root, image):
@@ -137,17 +148,56 @@ def flash_command(quartus_pgm, cable, pof):
     return [quartus_pgm, "-c", cable, "-m", "jtag", "-o", f"{FLASH_OPERATION};{Path(pof).resolve()}"]
 
 
-def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=None):
-    """Verify the selected USB-Blaster reports the expected device, then program it.
+def expected_board(root, record, fpga_target):
+    """The board the registry gives the target that produced this image.
+
+    The registry is the source of truth for every board's device, so the check
+    generalises to each supported board instead of naming one device. A record
+    that names no registered target has no expected device and is refused: with
+    nothing to compare, an image for one board could reach another. A record
+    that carries its own `device` must agree with the registry, so a record
+    edited after the build cannot move the expectation.
+    """
+    expected = fpga_jtag.expected_device(root, fpga_target)
+    built = record.get("device")
+    if built is not None and built != expected["device"]:
+        raise ValueError(f"the attempt record's device {built} is not the {expected['board']} device "
+                         f"{expected['device']} its target is registered with")
+    return expected
+
+
+def volatile_image(folder, quartus_bin, sof, timeout):
+    """Derive the raw volatile image openFPGALoader loads from the checked `.sof`.
+
+    openFPGALoader has no `.sof` reader. The raw image is derived by
+    `quartus_cpf` from the already checked file into the operation directory,
+    never beside the attempt, and the record carries its hash, so the chain of
+    custody still starts at the attempt record. The conversion reads the `.sof`
+    and touches no device.
+    """
+    rbf = Path(folder) / "design.rbf"
+    output = execute(fpga_jtag.convert_command(executable(quartus_bin, "quartus_cpf"), sof, rbf),
+                     folder, "convert.log", timeout)
+    if fpga_jtag.CONVERT_SUCCESS_LINE not in output or not rbf.is_file() or not rbf.stat().st_size:
+        raise RuntimeError("quartus_cpf did not produce a raw volatile image; see convert.log")
+    return rbf
+
+
+def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=None,
+            programmer="auto", openfpgaloader_bin=None, probe_firmware=None):
+    """Verify the attached chain is the board this image was built for, then program it.
 
     `sof` must be an existing file under `root`, in place beside the attempt
-    record that lists it. A producing target carried by that record must be a
-    valid target name; callers use it only for target-specific handoffs.
-    Nothing here inspects the bitstream's own target device, so a `.sof` built
-    for another device is refused by `quartus_pgm` itself, not by this check. Chain identity is
-    re-read with a fresh `jtagconfig` immediately before `quartus_pgm` runs; a
-    stale or ambiguous chain, or more than one matching chain, refuses to
-    program.
+    record that lists it with its current hash. That record's target names the
+    board, and the registry gives that board's device: the chain must report
+    exactly one of them before anything is written, so a DE10-Lite image cannot
+    reach a Cyclone V. Nothing here inspects the bitstream's own target device.
+
+    The chain is re-read for this operation, never carried over from an earlier
+    command, and the backend that read it is the backend that writes. Between
+    the read and the write the openFPGALoader path derives its raw image with
+    `quartus_cpf`, which reads the checked `.sof` and writes only into the
+    operation directory; no device is touched until the write itself.
     """
     progress = progress or Progress(False)
     folder = Path(folder)
@@ -156,14 +206,18 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=
     started = progress.begin(label)
     try:
         record, on_wire, fpga_target = checked_attempt(root, sof)
+        expected = expected_board(root, record, fpga_target)
         # Every recorded path is derived here, before JTAG. The path is
         # checked as given (a link is refused unresolved) and recorded
-        # resolved, so the record after a successful quartus_pgm needs no
+        # resolved, so the record after a successful write needs no
         # further path arithmetic that could fail it.
         located = sof.resolve()
+        raw_image = display_path(root, folder / "design.rbf")
         result = {"sof": repository_relative(Path(root).resolve(), located),
                   **({"build_id": record["build_id"], "wire_build_id": on_wire} if on_wire else {}),
                   **({"fpga_target": fpga_target} if fpga_target else {}),
+                  "board": expected["board"], "family": expected["family"],
+                  "expected_device": expected["device"],
                   "chain_log": display_path(root, folder / "chain.log"),
                   "program_log": display_path(root, folder / "program.log")}
     except Exception as error:
@@ -175,19 +229,49 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=
     else:
         progress.finish(label, started)
     with progress.stage("Discover JTAG chain", f"log: {result['chain_log']}"):
-        chain = parse_jtag(execute([executable(quartus_bin, "jtagconfig")], folder, "chain.log"), cable)
-    index = chain["selected"]["index"]
-    device_names = [device["name"] for device in chain["selected"]["devices"]]
-    progress.line(f"JTAG: cable {index}; device {', '.join(device_names)}")
+        chain = fpga_jtag.enumerate_chain(
+            root, folder, enumeration_runner(folder, execute),
+            programmer=programmer, quartus_bin=quartus_bin, openfpgaloader_bin=openfpgaloader_bin, cable=cable,
+            probe_firmware=probe_firmware or fpga_jtag.firmware_path(quartus_bin), expected=expected)
+    backend = chain["backend"]
+    index = chain["index"]
+    device_names = [device["name"] for device in chain["devices"] if device["name"]]
+    progress.line(f"JTAG: backend {backend}; cable {index}; device {', '.join(device_names)}")
+    extra = {}
+    if backend == fpga_jtag.OPENFPGALOADER:
+        if expected["family"] in fpga_jtag.FLASH_ONLY_FAMILIES:
+            # Not a limit of this repository: openFPGALoader routes every MAX 10
+            # to its internal-flash path before it looks at the file or the
+            # requested mode, so there is no volatile configuration to ask for,
+            # and the `.rbf` this backend builds would erase and rewrite
+            # UFM1+UFM0 on a part its table knows. See FLASH_ONLY_FAMILIES.
+            raise RuntimeError(f"openFPGALoader has no volatile configuration for the {expected['family']} "
+                               f"{expected['device']}; its only path for that family writes the internal "
+                               "flash. Program this board with quartus_pgm.")
+        with progress.stage("Derive raw volatile image", f"image: {raw_image}"):
+            # The programmer identifies itself into the record before it writes:
+            # nothing pins this tool, so the record has to say which one wrote.
+            identity = fpga_jtag.version(execute(fpga_jtag.version_command(chain["tool"]),
+                                                 folder, "version.log", fpga_jtag.DETECT_TIMEOUT))
+            image = volatile_image(folder, quartus_bin, located, timeout)
+            extra = {"volatile_image": raw_image, "volatile_image_sha256": file_hash(image),
+                     "backend_version": identity["release"], "backend_banner": identity["banner"]}
+        command = fpga_jtag.sram_command(chain["tool"], index, chain["position"], image,
+                                         chain["probe_firmware"])
+        scope = ("JTAG configuration only; openFPGALoader shifts the bitstream and reports Done without "
+                 "reading CONF_DONE back, so it does not itself prove configuration completed, "
+                 "UART or VGA behavior")
+    else:
+        command = [executable(quartus_bin, "quartus_pgm"), "-c", index, "-m", "jtag", "-o", f"p;{located}"]
+        scope = "JTAG configuration only; does not itself prove UART or VGA behavior"
     with progress.stage("Program FPGA", f"log: {result['program_log']}"):
-        output = execute([executable(quartus_bin, "quartus_pgm"), "-c", index, "-m", "jtag",
-                          "-o", f"p;{located}"], folder, "program.log", timeout)
+        output = execute(command, folder, "program.log", timeout)
     with progress.stage("Check programmer result", success="PASS"):
-        if SUCCESS_LINE not in output:
-            raise RuntimeError("quartus_pgm did not report a successful configuration; see program.log")
-    return {**result, "devices": device_names, "cable": index, "chain": chain, "output": output.strip(),
-            "device_state": DEVICE_CHANGED,
-            "scope": "JTAG configuration only; does not itself prove UART or VGA behavior"}
+        if not all(fragment in output for fragment in fpga_jtag.SUCCESS_LINES[backend]):
+            raise RuntimeError(f"{backend} did not report a successful configuration; see program.log")
+    return {**result, **extra, "devices": device_names, "cable": index, "chain": chain,
+            "backend": backend, "backend_tool": chain["tool"], "chain_position": chain["position"],
+            "command": command, "output": output.strip(), "device_state": DEVICE_CHANGED, "scope": scope}
 
 
 def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_TIMEOUT, dry_run=False,
@@ -198,10 +282,14 @@ def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_T
     `failure.log` on refusal. `dry_run` stops there: it writes the exact
     `quartus_pgm` command to `dry-run.log` with `<cable>` in place of the
     chain index and never runs `jtagconfig` or `quartus_pgm`. Otherwise the
-    chain is re-read and must report exactly one USB-Blaster with a 10M50DA,
-    then `quartus_pgm -m jtag -o "pvb;<pof>"` runs under `timeout`; the
-    in-system programming time is measured around that call and the explicit
-    success line is required.
+    chain is re-read through `jtagconfig` and must report exactly one cable
+    holding the device its target's board is registered with, then
+    `quartus_pgm -m jtag -o "pvb;<pof>"` runs under `timeout`; the in-system
+    programming time is measured around that call and the explicit success line
+    is required. The backend is not chosen here: openFPGALoader's only MAX 10
+    path writes the internal flash through its own POF parser, and a flash
+    write follows the documented `quartus_pgm` operation letters and timing,
+    not a substitute.
     """
     progress = progress or Progress(False)
     folder = Path(folder)
@@ -210,6 +298,7 @@ def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_T
     started = progress.begin(label)
     try:
         record, on_wire, fpga_target, evidence = checked_flash_attempt(root, pof)
+        expected = expected_board(root, record, fpga_target)
         # Every recorded path is derived here, before JTAG; see `program`.
         located = pof.resolve()
         checkout = Path(root).resolve()
@@ -219,7 +308,8 @@ def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_T
                   "attempt_result": repository_relative(checkout, located.parent.parent / "result.json"),
                   **({"build_id": record["build_id"], "wire_build_id": on_wire} if on_wire else {}),
                   **({"fpga_target": fpga_target} if fpga_target else {}),
-                  "next_step": NEXT_STEP}
+                  "board": expected["board"], "family": expected["family"],
+                  "expected_device": expected["device"], "next_step": NEXT_STEP}
         logs = {"chain_log": display_path(root, folder / "chain.log"),
                 "program_log": display_path(root, folder / "program.log")}
     except Exception as error:
@@ -239,10 +329,12 @@ def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_T
                 "device_state": DEVICE_UNCHANGED,
                 "scope": "record checks and command construction only; no JTAG access, flash unchanged"}
     with progress.stage("Discover JTAG chain", f"log: {logs['chain_log']}"):
-        chain = parse_jtag(execute([executable(quartus_bin, "jtagconfig")], folder, "chain.log"), cable)
-    index = chain["selected"]["index"]
-    device_names = [device["name"] for device in chain["selected"]["devices"]]
-    progress.line(f"JTAG: cable {index}; device {', '.join(device_names)}")
+        chain = fpga_jtag.enumerate_chain(
+            root, folder, enumeration_runner(folder, execute), programmer=fpga_jtag.QUARTUS,
+            quartus_bin=quartus_bin, cable=cable, expected=expected)
+    index = chain["index"]
+    device_names = [device["name"] for device in chain["devices"] if device["name"]]
+    progress.line(f"JTAG: backend {chain['backend']}; cable {index}; device {', '.join(device_names)}")
     command = flash_command(executable(quartus_bin, "quartus_pgm"), index, located)
     with progress.stage("Program flash", f"log: {logs['program_log']}"):
         begun = time.monotonic()
@@ -253,5 +345,6 @@ def program_flash(root, folder, pof, *, quartus_bin, cable=None, timeout=FLASH_T
             raise RuntimeError("quartus_pgm did not report a successful flash program, verify and blank-check; "
                                "see program.log")
     return {**result, **logs, "devices": device_names, "cable": index, "chain": chain, "command": command,
+            "backend": chain["backend"], "backend_tool": chain["tool"], "chain_position": chain["position"],
             "isp_seconds": isp_seconds, "output": output.strip(), "device_state": DEVICE_CHANGED,
             "scope": "JTAG flash programming with verify and blank-check; the menu at power-up is the board check"}
