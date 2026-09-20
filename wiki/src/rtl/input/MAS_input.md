@@ -28,7 +28,7 @@ Host readbacks use these same observations, not a duplicate register bank.
 All accepted fields at one edge resolve together. A source switch concurrent
 with a physical commit selects the newly supplied mask. The combinational
 `effective_update` record carries that final mask before the edge, with valid
-only when it differs from the current effective mask. Connect valid/buttons
+only when it differs from the mask JOYP last accepted. Connect valid/buttons
 directly to JOYP input_commit/input_buttons so both owners capture together.
 JOYP registers its selected-line fall at this A edge; IF consumes it at B.
 No intermediate mask or extra event pipeline is introduced.
@@ -50,12 +50,27 @@ boards select it.
 
 Global reset asynchronously clears all shadows and selects the default producer.
 Core reset
-asynchronously clears the host shadow and selects that same default,
-producing effective0.
+asynchronously clears the host shadow and selects that same default.
+Under the UART default that produces effective0; under PHYSICAL it produces the
+surviving physical shadow.
 The physical shadow survives core reset and may accept external updates while
 it is held. This retention is the delegated physical-input rule, not a claim
-about the prior host-only endpoint. PHYSICAL must be selected explicitly again.
+about the prior host-only endpoint. Under the UART default PHYSICAL must be
+selected explicitly again.
 Both resets suppress effective_update, and JOYP reset cancels pending events.
+
+The first edge out of a core reset re-offers a nonzero effective mask. JOYP clears
+its button field at that reset and this owner's physical shadow does not, so the
+two owners hold different masks, and one update carrying a mask that never changed
+is what agrees them again. Without it a button held across the reset would stay
+invisible to the program until it moved. This is why the difference is taken
+against the mask JOYP last accepted rather than against this owner's own previous
+level; outside reset the two are the same value, so no other edge changes. A
+released mask needs no update and produces none, which keeps the UART default's
+effective0 exactly as it was. The
+[held-mask check](../../../../src/dv/input/README.md) settles both compositions
+against one producer and one reset.
+
 Existing core-reset retry-cache retention and global-reset cache clearing remain.
 
 Pause, CPU HALT and STOP do not block an accepted input transaction. Input does
@@ -67,6 +82,6 @@ existing JOYP/IF boundary; oscillator restart remains the approved CPU contract.
 The [input verification](../../../../src/dv/input/README.md) covers generated address/value rejection before
 transport and before RTL effects; equivalent masks across both sources and all
 four JOYP row selections; isolation and atomic switching; reset and physical
-shadow retention; actual CPU HALT/STOP and pause; cached replay; and actual
+shadow retention; a mask held across a core reset; actual CPU HALT/STOP and pause; cached replay; and actual
 mask/source/event faults plus a named assertion failure. These component checks
 do not establish physical wiring or acquisition acceptance.

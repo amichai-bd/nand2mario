@@ -721,6 +721,15 @@ one of these thirteen inputs passes the shared button filter's two forced
 synchronizer stages and its 5 ms stable window before it reaches the composition,
 because the vendor states these switches are not debounced.
 
+A switch left up when the board is powered on is delivered, and the stable window
+is why. This image issues one core reset, from the host-free start path, two
+`clk_sys` cycles after the global reset releases, and the filter cannot accept
+anything for 125000 cycles after that same release. So the held switch arrives on
+the ordinary commit that follows the reset, not across it. A core reset with a mask
+already published is the case the
+[input owner](rtl/input/MAS_input.md#reset-and-power) re-offers the mask on, and
+this board issues no second one.
+
 ## Targets
 
 [`src/fpga/de2_115/targets.json`](../../src/fpga/de2_115/targets.json) registers
