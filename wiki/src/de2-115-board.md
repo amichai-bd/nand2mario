@@ -707,6 +707,10 @@ unsynchronized crossing between two unrelated clocks, which tears the number and
 adds a path the analysis cannot meet. A moving dot count is what says the core is
 running whatever the monitor shows.
 
+That the core runs at all on a board with no host is not something the fit shows;
+the [host-free execution check](rtl/system/MAS_system.md#host-free-composition) is
+what establishes it.
+
 The controls are this board's own. `KEY[0]` is the board reset. `SW[7:0]` hold the
 eight DMG buttons in the order the shared button mask uses — right, left, up,
 down, A, B, select, start — and `KEY[3]` and `KEY[2]` add momentary A and B,
@@ -869,6 +873,11 @@ image must not be.
   and CRC constants, the DAC's pin levels and every control chain's per-corner
   reports retained; `de2-system-invalid` must FAIL. The
   [builder contract](../tools/n2m/SPEC.md#de2-115-system-image) records both.
+- `python3 tools/build.py sim test host-free-boot --sim verilator` must PASS. It is
+  the one check a fit cannot stand in for: this image's core starts only because the
+  composition issues its own power-up reset and releases host pause, and a fit shows
+  neither. The [integration specification](../src/dv/integration/SPEC.md#host-free-start)
+  owns it.
 - [`test_fpga_de2_system.py`](../../tools/n2m/tests/test_fpga_de2_system.py) covers
   the seven-segment decode against the polarity and segment index above, every
   switch position selecting a defined view, each absent interface driven to its
