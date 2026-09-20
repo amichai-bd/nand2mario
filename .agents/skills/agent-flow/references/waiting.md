@@ -37,10 +37,10 @@ confirm:
 - root's own cleanup check, which reported the number of surviving waiters going
   up rather than down, because the check matched itself
 
-That is seven instances of the trap in one day. Six waiting shells were killed as
-orphans that day, three of them in the list above. The two counts are different
-sets: the 7-minute wait was stopped soon after it started, so it belongs only to
-the first.
+The list is not exhaustive and no complete count exists. More have been found on
+this host since, including waiters near twenty hours, by several different agents
+and by cleanup rather than by any procedure that looks for them. Treat the trap as
+common and its frequency as unknown.
 
 A root status report from the same session called a finished test run still
 running after more than a thousand seconds, from the same cause.
@@ -68,8 +68,15 @@ done
 ```
 
 `[b]` is a one-character class. It matches the same literal `b`, so the pattern
-still matches the running `build.py check`, while the command line holding the
-brackets does not match.
+still matches the running `build.py check` while the bracketed text itself does
+not.
+
+The bracket covers the pattern, not the rest of the command line. A waiter seen on
+this host bracketed its pattern and then announced the result with
+`echo "closure-trace finished"`, so its own command line held the plain text and it
+hung for 5 hours 12 minutes; a second waiter, holding no literal at all, was held
+5 hours 8 minutes by matching the first. Announcing what you waited for defeats a
+correct bracket. A marker wait carries no pattern for any of this to reach.
 
 ## Pick a marker the work writes at the end
 
@@ -82,15 +89,14 @@ arguments, so a loop watching that path returns about two seconds into a
 the last script it runs writes `quality-result.json` when the gate passes, so
 that file appears only because the work produced it.
 
-Prefer the marker over the bracket. The bracket protects only the loop's own
-command line: any other process holding the unbracketed text still matches, and
-it still exits at once, reporting success, for a command that never started. A
-completion marker answers the question that was asked, whatever the process table
-holds.
+Prefer the marker over the bracket. The bracket protects one piece of text, not
+the command line that holds it and not any other process, and it still exits at
+once, reporting success, for a command that never started. A completion marker
+answers the question that was asked, whatever the process table holds.
 
 ## Bound the wait
 
 Both forms above carry a deadline and report reaching it as a failure. Give every
-wait one. The three orphans counted above were unbounded waits, left polling paths
-that had been removed under them. Stopping owned processes remains part of
+wait one. The orphans above were unbounded waits, left polling paths that had been
+removed under them. Stopping owned processes remains part of
 [cleanup](../../../../worktrees/README.md#clean-up-after-merge).
