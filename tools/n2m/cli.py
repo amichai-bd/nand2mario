@@ -11,7 +11,8 @@ import sys
 import time
 import uuid
 
-from .records import atomic_json, atomic_text, file_hash, git_state, tag_directory, workspace
+from .records import (atomic_json, atomic_text, cpu_seconds, file_hash, git_state,
+                      tag_directory, workspace)
 from .simulation import SIMULATORS, load_target, prepare, publish_mirror, simulate, stage_paths
 from .simulator import Simulator, ToolError
 from . import fpga_jtag
@@ -103,8 +104,6 @@ def parser():
     recorder = tests.add_parser("record", help="write one retained run's measured walls into the catalogue, with the conditions that produced them")
     recorder.add_argument("--tag", required=True,
                           help="the retained run to record: its tests/summary.json or manifest.json")
-    recorder.add_argument("--contended", action="store_true",
-                          help="record a wall that took more than twice its own CPU; such a wall measures waiting, not work")
     recorder.add_argument("--json", action="store_true")
     for leaf in (listing, runner):
         leaf.add_argument("--level", type=int, choices=catalogue.LEVELS,
@@ -305,6 +304,30 @@ def measured_notices(root, target, report):
     return lines
 
 
+def recorded_lines(report):
+    """Say what each recorded wall replaced, so no multiple lands silently.
+
+    A recording that writes 195 seconds over 26 without a word is the same
+    silence this command exists to end, so the gap is named at the moment of
+    writing and marked when it is more than the reporting threshold."""
+    lines = []
+    for name, entry in (report.get("recorded") or {}).items():
+        was, ratio = entry.get("was"), entry.get("wall_cpu")
+        if isinstance(was, (int, float)) and was > 0:
+            # Named in whichever direction is the multiple, so a wall that
+            # shrank by 268 times does not print as 0.0x.
+            times = (f"{entry['seconds'] / was:.1f}x higher" if entry["seconds"] >= was
+                     else f"{was / entry['seconds']:.1f}x lower")
+            gap = f"against {was:.2f}s recorded, {times}"
+        else:
+            gap = "against no recorded wall"
+        load = "" if ratio is None else f", wall/CPU {ratio:.2f}"
+        build = "" if entry.get("build") is None else f", {entry['build']:.2f}s of it compile"
+        mark = " DRIFT" if name in (report.get("drift") or []) else ""
+        lines.append(f"Recorded{mark} {name} {entry['seconds']:.2f}s {gap}{load}{build}")
+    return lines
+
+
 def drift_lines(report):
     """Name every unit whose measured wall no longer matches the recorded one."""
     lines = []
@@ -329,7 +352,7 @@ def tagged(root, args, header, publish, progress=None):
     operation_folder = None
     with workspace(root, args.tag, reclaimed) as build:
         locked_at = time.monotonic()
-        cpu_at = catalogue.cpu_seconds()
+        cpu_at = cpu_seconds()
         report = header(build.name)
         if reclaimed:
             report["stale_lock_reclaimed"] = reclaimed[0].relative_to(root).as_posix()
@@ -418,9 +441,8 @@ def tagged(root, args, header, publish, progress=None):
                 with progress.stage(f"Discover {args.sim.capitalize()} tools"):
                     simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
                                           questa_bin=args.questa_bin, root=root)
-                report.update(simulate(root, build, args, simulator, provenance, progress=progress, locked_at=locked_at))
-                if cpu_at is not None and isinstance(report.get("timing"), dict):
-                    report["timing"]["locked_cpu_seconds"] = round(catalogue.cpu_seconds() - cpu_at, 3)
+                report.update(simulate(root, build, args, simulator, provenance, progress=progress,
+                                       locked_at=locked_at, cpu_at=cpu_at))
                 # The measured wall stays in this run's retained record and is
                 # reported here, so an author reads what its run cost without a
                 # tracked file changing under it. Writing it into the catalogue
@@ -762,8 +784,8 @@ def main(argv=None, root=None):
             for line in drift_lines(report):
                 print(line)
         if args.command == "tests" and args.action == "record":
-            for name, wall in (report.get("recorded") or {}).items():
-                print(f"Recorded {name} {wall:.2f}s")
+            for line in recorded_lines(report):
+                print(line)
             for name, reason in (report.get("not_recorded") or {}).items():
                 print(f"Not recorded {name}: {reason}")
             if "measured" in report:

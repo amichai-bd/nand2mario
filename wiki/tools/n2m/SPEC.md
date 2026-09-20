@@ -461,10 +461,17 @@ Each unit declares exactly:
   system and machine, such as `Linux-x86_64`; `wall_cpu` is that run's wall
   divided by its own CPU time, or `null` where the host reports no per-child CPU,
   and below 1 where the work ran on more than one core. `build` is the compile
-  inside that wall, never more than the wall itself, because a cold compile cache
-  dominates a simulation's wall: `baseline-good` measured 20.48 s with 20.17 s of
-  compile against the 0.41 s it recorded from a warm cache. An entry may carry no
-  conditions, which says the sitting behind its wall is unknown. It may never
+  inside that wall, never more than the wall itself, because a simulation's wall
+  is nearly all compile: `baseline-good` measured 44.71 s with 43.45 s of compile
+  and 0.02 s of run, and 29.88 s with 28.75 s of compile in the same sitting.
+  Every recorded simulation compiles, because the compile directory is keyed by a
+  fresh attempt id per run and the only compile-free outcome is a cache hit,
+  which is never recorded. An entry may carry no conditions, which says the
+  sitting behind its wall is unknown, which is the state of every figure the
+  catalogue carries today: `baseline-good` records `0.41` and nothing says what
+  produced it. Re-measuring those figures is tracked by
+  [#900](https://github.com/amichai-bd/nand2mario/issues/900) and
+  [#902](https://github.com/amichai-bd/nand2mario/issues/902). An entry may never
   carry conditions without a wall.
 - `inputs` (host units only, optional): the repository files or directories the
   unit reads as data, sorted. Its module imports are never listed; they are
@@ -610,24 +617,53 @@ other.
 Only a wall that describes actual work is recorded. A cache hit times the cache
 check, a skipped unit never ran, a failure has no trustworthy wall, and a name
 outside the catalogue has nowhere to record one; each is reported under
-`not_recorded` rather than written. A wall that took more than twice its own CPU
-is refused the same way and names `--contended`, which records it anyway: on this
-host contention adds wall and almost no CPU, so such a wall measures waiting
-rather than the work, and the recorded figures size shared budgets. Below a
-10-second wall the ratio is not judged at all, because fsync waits and the 10 ms
-CPU accounting tick dominate there — a 0.18-second run measured 0.08 seconds of
-CPU, a ratio of 2.26, with nothing competing. The ratio is recorded either way.
+`not_recorded` rather than written. Those are the only refusals. Every wall that
+is written is named against the figure it replaced, in whichever direction is the
+multiple, with its conditions and a `DRIFT` mark past the reporting threshold:
+
+```text
+Recorded DRIFT baseline-good 29.88s against 0.41s recorded, 72.9x higher, wall/CPU 0.61, 28.75s of it compile
+```
 
 A `sim` unit's own child record travels into the selection as `units.<name>.timing`,
 so a recorded selection carries the same compile split a lone `sim test` does.
 
-A recorded wall is one sample. The same work has measured 1.4 to 7 times a
-recorded figure in either direction across sittings, and about 1.63 times itself
-on identical work, while staying within 1.07 times inside one sitting. What moves
-it is the host's thermal and frequency state, which lags in both directions; the
-load average is not the instrument, having read the idle 0.27 while six
-competitors were live. That is why `at` and `wall_cpu` travel with the wall, and
-why a reader compares figures only inside one sitting.
+### Why nothing is refused for the state of the host
+
+A recording does not judge whether the host was busy, because no measurement
+available here separates a busy sitting from a quiet one. Each candidate was
+tried and fails on a different population:
+
+- CPU is not invariant under contention. Four competing spinners moved a wall
+  1.96 times and its CPU 1.30 times.
+- Contention moves the wall far further than the CPU, so an honest wall can sit
+  at any ratio. This suite's own three groups, run beside a second worktree's
+  `check` at load average 12 to 22, took 604.6, 637.8 and 383.4 seconds of wall
+  for 135.6, 160.0 and 127.6 seconds of CPU — ratios of 4.46, 3.99 and 3.01 —
+  against 226.6, 282.8 and 204.3 seconds of wall for 115.2, 145.4 and 115.2 of
+  CPU on the same content at load average 9 to 11. The wall moved up to 2.7
+  times; the CPU moved 1.10 to 1.18. Every one of those walls describes real
+  work, and a two-times ratio gate would have refused all three.
+- A `sim` wall moves while its CPU does not. `baseline-good` measured 44.71 s
+  then 29.88 s back to back in one sitting, a 1.50-times swing, with its CPU at
+  49.61 then 48.61 s; the ratio therefore went 0.90 to 0.61 on identical work.
+  A parallel compile puts the ratio below 1 whatever the load, so no threshold
+  above 1 can ever reach the class whose walls move most.
+- A `unit` wall moves and its CPU moves with it. `test_endurance_current.py`
+  measured 76.62 s then 195.28 s in one sitting with its CPU at 71.9 then
+  124.4 s, and a host unit compiles nothing, so only the host's frequency and
+  thermal state can account for it.
+- A unit that sleeps sits at a high ratio while computing almost nothing:
+  `test_live_viewer.py` measures about 7.4 s of wall against 2.0 s of CPU, a
+  ratio near 3.8, on an idle host. A ratio threshold would refuse that honest
+  wall.
+- The load average is worse still, having read the idle 0.27 while six
+  competitors were live.
+
+So the conditions are recorded for the reader and never used as a gate. Whether a
+sitting was quiet enough is the operator's judgement, and `at`, `wall_cpu` and
+`build` are what that judgement is made from afterwards. A recorded wall remains
+one sample: compare figures only inside one `at`.
 
 A `sim` unit runs as the ordinary `sim test` worker under the run's tag, with
 the same backend, `--seed`, `--rebuild` and selected backend tool options, under the

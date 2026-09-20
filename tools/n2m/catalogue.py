@@ -22,7 +22,7 @@ import sys
 import time
 
 from . import host_closure
-from .records import atomic_json, atomic_text, file_hash, read_json, workspace
+from .records import atomic_json, atomic_text, cpu_seconds, file_hash, read_json, workspace
 from .simulation import UNSUPPORTED_REASON, simulator_problem, unsupported_backend
 from .test_budget import supervise
 
@@ -39,28 +39,39 @@ MINIMUM_DURATION = 0.01
 # The conditions a recorded wall carries, in the order they are written: the UTC
 # minute of the run, the commit it measured, the host family, and the run's own
 # wall divided by its CPU time. Two entries sharing `at` were measured in one
-# sitting, which is the only span their walls are comparable over. A simulation
-# also carries `build`, the compile inside that wall, because a cold compile cache
-# dominates it: `baseline-good` measured 20.48 s here with 20.17 s of compile,
-# against the 0.41 s it records from a warm cache.
+# sitting, which is the only span their walls are comparable over.
+#
+# A simulation also carries `build`, the compile inside that wall, because the
+# compile is nearly the whole of it: `baseline-good` measured 17.97 s with
+# 17.62 s of compile and 0.006 s of run, and 19.49 s with 19.01 s of compile in
+# another sitting. Every recorded simulation compiles, because the compile
+# directory is keyed by a fresh attempt id per run; the only compile-free
+# outcome is a cache hit, which is never recorded. So a `sim` wall is a compile
+# wall, and `build` says how much of it.
+#
+# Nothing here judges whether the host was busy, because no measurement
+# available to this tool separates a busy sitting from a quiet one. Contention
+# moves the wall far further than the CPU, so an honest wall can sit at any
+# ratio: this repository's own check groups reached ratios of 4.46, 3.99 and 3.01
+# beside another worktree's check, their walls up to 2.7 times and their CPU only
+# 1.10 to 1.18 times the same content's on a quieter host. Nor is CPU invariant:
+# four competing spinners moved a wall 1.96 times and its CPU 1.30 times, and the
+# same host unit measured 76.62 s then 195.28 s in one sitting with its CPU moving
+# 71.9 to 124.4 s and nothing to compile. A simulation's parallel compile puts its
+# ratio below 1 whatever the load, 0.90 and 0.61 for the same target in one
+# sitting with its CPU steady. A unit that sleeps sits near 3.8 while computing
+# almost nothing. The load average is no better, having read the idle 0.27 while
+# six competitors were live. The conditions are therefore recorded for the reader
+# and never used as a gate.
 MEASURED_KEYS = ("at", "commit", "host", "wall_cpu")
 MEASURED_OPTIONAL = ("build",)
 MEASURED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z")
 MEASURED_TOKEN = re.compile(r"[A-Za-z0-9._+-]+")
-# Contention on this host adds wall and almost no CPU: a measured 1.01 to 1.06
-# times from one competitor to six. A run that took more than twice its own CPU
-# therefore spent that time waiting rather than computing, and its wall does not
-# describe the work. `tests record` refuses such a wall unless it is declared.
-CONTENDED_RATIO = 2.0
-# Below this wall the ratio is not a contention measurement and is never judged:
-# a 0.18-second run measured here spent 0.08 seconds of CPU, a ratio of 2.26,
-# with nothing competing, because fsync waits and the 10 ms CPU accounting tick
-# dominate at that scale. The walls the ratio protects are the tens of seconds a
-# simulation takes. The ratio is still recorded, so a reader can weigh it.
-RATIO_FLOOR_SECONDS = 10.0
-# How far a measured wall may stand from the recorded one before the run names
-# it. The recorded figure has been seen 1.4 to 7 times a fresh measurement in
-# either direction, so anything past this is worth a reader's attention.
+# How far a measured wall may stand from the recorded one before a run or a
+# recording names it. It is a reporting threshold, not a gate: nothing is
+# refused or written differently because of it. Two is low enough to catch the
+# gaps that matter here, which are whole multiples: 0.41 against 17.97 for one
+# target, 26 against 195 for one unit.
 DRIFT_FACTOR = 2.0
 LABEL = re.compile(r"[a-z0-9][a-z0-9-]*")
 TARGET = re.compile(r"[a-z0-9][a-z0-9_-]*")
@@ -765,19 +776,6 @@ def record_durations(path, durations, measured=None):
     return written
 
 
-def cpu_seconds():
-    """This process and every child it has reaped, in CPU seconds, or None.
-
-    Windows reports no per-child CPU through `os.times`, so the whole idea of a
-    wall-to-CPU ratio is unavailable there rather than wrong: a sim test spends
-    its work in a child, and counting only this process would read as a host
-    stalled on nothing. Off Windows the four fields are the run's own CPU."""
-    if os.name == "nt":
-        return None
-    spent = os.times()
-    return round(spent.user + spent.system + spent.children_user + spent.children_system, 3)
-
-
 def wall_cpu_ratio(wall, cpu):
     """How much longer a run took than the CPU it spent, or None when unknown.
 
@@ -821,14 +819,16 @@ def sitting(record):
     return {"at": minute, "commit": commit, "host": host}
 
 
-def record_from_run(root, tag, contended=False):
+def record_from_run(root, tag):
     """Write one retained run's measured walls into the catalogue, with conditions.
 
     This is the only path that writes a duration. It reads a run that already
     happened rather than measuring anything itself, so the figures it commits
     are the ones the author saw, and the sitting that produced them travels with
-    them. A wall measured under contention is refused by name, because the
-    recorded figures size shared budgets."""
+    them. A wall is refused only when it describes no work: a cache hit, a
+    failure, a skip, or a name this catalogue does not carry. Whether the host
+    was quiet is the operator's judgement, reported beside every figure and
+    never decided here."""
     root = Path(root)
     source = None
     for candidate in (f"workdir/builds/{tag}/tests/summary.json", f"workdir/builds/{tag}/manifest.json"):
@@ -841,27 +841,25 @@ def record_from_run(root, tag, contended=False):
     run = read_json(root / source)
     model, path = load(root)
     conditions = sitting(run)
-    durations, measured, refused = {}, {}, {}
+    durations, measured, refused, against = {}, {}, {}, {}
     for name, wall in sorted(measured_walls(run).items()):
         if name not in model["units"]:
             refused[name] = f"not a unit of {CATALOGUE}"
             continue
-        ratio = wall_cpu_ratio(wall.get("wall"), wall.get("cpu"))
-        judged = ratio is not None and wall.get("wall", 0) >= RATIO_FLOOR_SECONDS
-        if judged and ratio > CONTENDED_RATIO and not contended:
-            refused[name] = (f"took {ratio:.2f} times its own CPU, above {CONTENDED_RATIO:.2f}; "
-                             "this wall measures waiting, not work. Pass --contended to record it")
-            continue
         durations[name] = measured_duration(wall["wall"])
-        measured[name] = {**conditions, "wall_cpu": ratio}
-        # A simulation's wall is mostly its compile on a cold cache, so the
-        # compile travels with it; a host unit builds nothing and omits it.
+        measured[name] = {**conditions, "wall_cpu": wall_cpu_ratio(wall.get("wall"), wall.get("cpu"))}
+        # A simulation's wall is nearly all compile, so the compile travels with
+        # it; a host unit compiles nothing and omits it.
         if isinstance(wall.get("build"), (int, float)):
             measured[name]["build"] = min(round(wall["build"], 2), durations[name])
+        against[name] = model["units"][name]["duration_seconds"]
     written = record_durations(path, durations, measured)
     report = {"source": source, "measured": conditions,
-              "recorded": {name: durations[name] for name in sorted(durations)},
+              "recorded": {name: {"seconds": durations[name], "was": against[name],
+                                  **{k: v for k, v in measured[name].items() if k not in conditions}}
+                           for name in sorted(durations)},
               "not_recorded": refused, "durations_written": written,
+              "drift": sorted(name for name in durations if drifted(durations[name], against[name])),
               "catalogue": {"path": CATALOGUE, "sha256": file_hash(path)}}
     if not measured_walls(run):
         report.update(status="FAIL", error=f"{source} records no wall that describes actual work")
@@ -991,7 +989,7 @@ def command(root, args, header, publish):
         # happened and writes its walls into the tracked catalogue, which is a
         # reviewed source change like any other.
         report = header(args.tag)
-        report.update(record_from_run(root, args.tag, args.contended))
+        report.update(record_from_run(root, args.tag))
         return report
     if args.action in ("list", "validate"):
         report = header(args.tag or "-")

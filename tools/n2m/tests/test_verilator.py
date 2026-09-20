@@ -846,9 +846,13 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(record["waves"]["format"], "fst")
         self.assertIn(record["waves"]["path"], record["artifacts"])
         self.assertTrue(record["waves"]["path"].endswith("waves/simulation.fst"))
-        self.assertEqual(set(record["timing"]), {"prepare_seconds", "build_seconds", "run_seconds", "locked_seconds"})
+        self.assertEqual(set(record["timing"]), {"prepare_seconds", "build_seconds", "run_seconds",
+                                                 "locked_seconds", "locked_cpu_seconds"})
         self.assertEqual(record["prepared"]["mode"], "inline")
         self.assertGreaterEqual(record["timing"]["locked_seconds"], record["timing"]["build_seconds"] + record["timing"]["run_seconds"])
+        # The locked CPU is measured beside the locked wall so the pair is
+        # written into one record and a cache hit replays both.
+        self.assertGreaterEqual(record["timing"]["locked_cpu_seconds"], 0)
         self.assertTrue(all("elapsed_seconds" in command for command in record["commands"]))
         self.assertTrue(any(path.startswith("workdir/builds/test/compile/verilator/builder-smoke/") for path in record["artifacts"]))
 

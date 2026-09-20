@@ -361,12 +361,14 @@ class BuilderTests(unittest.TestCase):
         manifest = read_json(self.root / "workdir/builds/duration/manifest.json")
         wall = manifest["timing"]["locked_seconds"]
         self.assertGreater(wall, 0)
+        self.assertGreaterEqual(manifest["timing"]["locked_cpu_seconds"], 0)
         self.assertIn(f"Measured builder-smoke {wall:.2f}s", output.getvalue())
         self.assertIn("no tracked file changed", output.getvalue())
         with patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as recorded:
             self.assertEqual(main(["tests", "record", "--tag", "duration"], self.root), 0)
-        self.assertIn("Recorded builder-smoke", recorded.getvalue())
+        self.assertIn("Recorded DRIFT builder-smoke", recorded.getvalue())
+        self.assertIn("against 48.20s recorded", recorded.getvalue())
         entry = entries()["builder-smoke"]
         self.assertEqual(entry["duration_seconds"], catalogue.measured_duration(wall))
         self.assertEqual(entry["measured"]["commit"], "test")
@@ -378,6 +380,15 @@ class BuilderTests(unittest.TestCase):
             self.assertEqual(main(command, self.root), 0)
         self.assertEqual(catalogue_file.read_bytes(), after)
         self.assertNotIn("Measured builder-smoke", cached.getvalue())
+        # A cache hit replays the earlier record whole. Timing this invocation
+        # would leave the cache check's CPU beside that run's wall, which reads
+        # as a host stalled on nothing, so the pair is measured together or
+        # not at all.
+        hit = read_json(self.root / "workdir/builds/duration/manifest.json")
+        self.assertEqual(hit["cache"], "CACHED")
+        self.assertEqual(hit["timing"]["locked_seconds"], manifest["timing"]["locked_seconds"])
+        self.assertEqual(hit["timing"]["locked_cpu_seconds"],
+                         manifest["timing"]["locked_cpu_seconds"])
         # Nothing measured, so there is nothing to record and the command says so.
         with contextlib.redirect_stdout(io.StringIO()) as empty:
             self.assertEqual(main(["tests", "record", "--tag", "duration", "--json"], self.root), 1)
@@ -495,7 +506,8 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(record["prepared"], {"id": receipt["prepared"], "mode": "adopted",
                                               "prepared_started": receipt["started"], "prepared_finished": receipt["finished"]})
         self.assertEqual(record["timing"]["prepare_seconds"], receipt["prepare_seconds"])
-        self.assertEqual(set(record["timing"]), {"prepare_seconds", "build_seconds", "run_seconds", "locked_seconds"})
+        self.assertEqual(set(record["timing"]), {"prepare_seconds", "build_seconds", "run_seconds",
+                                                 "locked_seconds", "locked_cpu_seconds"})
         self.assertGreater(record["timing"]["locked_seconds"], 0)
         self.assertIn("lock_acquired", record)
         self.assertIn((attempt / "fixture.bin").relative_to(self.root).as_posix(), record["artifacts"])

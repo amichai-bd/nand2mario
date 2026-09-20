@@ -403,9 +403,9 @@ class Recording(unittest.TestCase):
         recorded = self.entries(root)["a"]
         self.assertEqual(recorded["duration_seconds"], 74.57)
         # The sitting travels with the wall: its UTC minute, the commit it
-        # measured, the host family and how much of its wall was work.
-        # A simulation's wall is mostly its compile on a cold cache, so the
-        # compile travels with it and the next reader can see what it paid for.
+        # measured, the host family and how much of its wall was work. A
+        # simulation's wall is nearly all compile, so the compile travels with
+        # it and the next reader can see what the figure paid for.
         self.assertEqual(recorded["measured"], {"at": "2026-09-20T14:29Z",
                                                 "commit": "f70fb078b67b",
                                                 "host": "Linux-" + platform.machine(),
@@ -423,30 +423,54 @@ class Recording(unittest.TestCase):
                 self.assertEqual(report["durations_written"], 0)
                 self.assertIsNone(self.entries(root)["a"]["duration_seconds"])
 
-    def test_a_wall_that_measures_waiting_is_refused_until_it_is_declared(self):
-        """Contention here adds wall and almost no CPU, so a wall far above its
-        own CPU measured a queue rather than the work, and a shared budget must
-        not inherit it by accident."""
-        record = {"status": "PASS", "measured_walls": {"a": {"wall": 60.0, "cpu": 20.0}},
-                  "finished": "2026-09-20T14:29:07+00:00", "commit": "abcdef123456", "os": "Linux"}
+    def test_no_measured_wall_is_refused_for_the_state_of_the_host(self):
+        """The ratio is recorded and never judged. No measurement here separates
+        a busy sitting from a quiet one: four spinners moved a wall 1.96x and its
+        CPU 1.30x, a simulation's parallel compile sits below 1 whatever the
+        load, and a unit that sleeps sits at 3.76 while computing nothing. So a
+        wall is refused only when it describes no work, and the operator reads
+        the conditions rather than a verdict."""
+        for wall, cpu, ratio in ((60.0, 20.0, 3.0),     # a unit that waits or sleeps
+                                 (15.57, 43.0, 0.36),   # a simulation compiling in parallel
+                                 (0.18, 0.08, 2.25)):   # a wall too short for the ratio to mean much
+            with self.subTest(wall=wall):
+                record = {"status": "PASS", "measured_walls": {"a": {"wall": wall, "cpu": cpu}},
+                          "finished": "2026-09-20T14:29:07+00:00", "commit": "abcdef123456",
+                          "os": "Linux"}
+                root = self.build("selection", "tests/summary.json", record)
+                report = module.record_from_run(root, "selection")
+                self.assertEqual((report["durations_written"], report["not_recorded"]), (1, {}))
+                self.assertEqual(self.entries(root)["a"]["duration_seconds"], round(wall, 2))
+                self.assertEqual(self.entries(root)["a"]["measured"]["wall_cpu"], ratio)
+
+    def test_a_recording_names_the_figure_it_replaced(self):
+        """A recording that writes 195 s over 26 without a word is the silence
+        this command exists to end, so every write says what it replaced."""
+        from n2m.cli import recorded_lines
+        record = {"status": "PASS", "commit": "abcdef123456", "os": "Linux",
+                  "finished": "2026-09-20T14:29:07+00:00",
+                  "measured_walls": {"a": {"wall": 17.97, "cpu": 49.9, "build": 17.62},
+                                     "b": {"wall": 9.6, "cpu": 9.5}}}
         root = self.build("selection", "tests/summary.json", record)
         report = module.record_from_run(root, "selection")
-        self.assertEqual(report["durations_written"], 0)
-        self.assertIn("3.00 times its own CPU", report["not_recorded"]["a"])
-        self.assertIsNone(self.entries(root)["a"]["duration_seconds"])
-        report = module.record_from_run(root, "selection", contended=True)
-        self.assertEqual(report["durations_written"], 1)
-        self.assertEqual(self.entries(root)["a"]["duration_seconds"], 60.0)
-        self.assertEqual(self.entries(root)["a"]["measured"]["wall_cpu"], 3.0)
+        # `a` has no recorded wall at all; `b` records 9.0, which 9.6 is close to.
+        self.assertEqual(report["drift"], ["a"])
+        self.assertEqual(recorded_lines(report), [
+            "Recorded DRIFT a 17.97s against no recorded wall, wall/CPU 0.36, 17.62s of it compile",
+            "Recorded b 9.60s against 9.00s recorded, 1.1x higher, wall/CPU 1.01"])
+        # A wall that shrank is named by its own multiple, never as 0.0x.
+        report["recorded"]["b"].update(seconds=0.18, was=48.2)
+        self.assertIn("0.18s against 48.20s recorded, 267.8x lower", recorded_lines(report)[1])
 
     def test_a_wall_far_from_the_recorded_figure_is_named_rather_than_written(self):
-        """The recorded figure has measured 1.4 to 7 times a fresh wall in either
-        direction, so a run names the gap and leaves the catalogue to a person."""
+        """The gaps that matter here are whole multiples: 0.41 recorded against a
+        measured 17.97, and 26 against 195. A run names the gap and leaves the
+        catalogue to a person."""
         from n2m.cli import drift_lines
-        self.assertTrue(module.drifted(17.61, 48.20))
-        self.assertTrue(module.drifted(96.30, 4.20))
+        self.assertTrue(module.drifted(17.97, 0.41))
+        self.assertTrue(module.drifted(195.28, 26.0))
         self.assertFalse(module.drifted(0.16, 0.13))
-        self.assertFalse(module.drifted(52.40, 21.51 * 2))
+        self.assertFalse(module.drifted(195.28, 76.62 * 1.3))
         # A unit with no recorded wall at all has nothing to stand against.
         self.assertTrue(module.drifted(1.0, None))
         report = {"tag": "level0", "drift": ["a"], "measured_walls": {"a": {"wall": 17.61, "cpu": 17.2}},
@@ -456,16 +480,6 @@ class Recording(unittest.TestCase):
                           f"{module.CATALOGUE} is unchanged. Record this sitting if the host was "
                           "quiet: python tools/build.py tests record --tag level0"])
         self.assertEqual(drift_lines({"drift": []}), [])
-
-    def test_a_short_wall_is_never_judged_contended(self):
-        """At sub-second scale the ratio measures fsync waits and the CPU
-        accounting tick, not a busy host, so it is recorded and not judged."""
-        record = {"status": "PASS", "measured_walls": {"a": {"wall": 0.18, "cpu": 0.08}},
-                  "finished": "2026-09-20T14:29:07+00:00", "commit": "abcdef123456", "os": "Linux"}
-        root = self.build("short", "tests/summary.json", record)
-        report = module.record_from_run(root, "short")
-        self.assertEqual((report["durations_written"], report["not_recorded"]), (1, {}))
-        self.assertEqual(self.entries(root)["a"]["measured"]["wall_cpu"], 2.25)
 
     def test_a_host_without_per_child_cpu_records_an_unknown_ratio(self):
         record = {"status": "PASS", "measured_walls": {"a": {"wall": 12.0, "cpu": None}},

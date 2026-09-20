@@ -12,6 +12,19 @@ import time
 import uuid
 
 
+def cpu_seconds():
+    """This process and every child it has reaped, in CPU seconds, or None.
+
+    Windows reports no per-child CPU through `os.times`, so the whole idea of a
+    wall-to-CPU ratio is unavailable there rather than wrong: a simulation spends
+    its work in a child, and counting only this process would read as a host
+    stalled on nothing. Off Windows the four fields are the run's own CPU."""
+    if os.name == "nt":
+        return None
+    spent = os.times()
+    return round(spent.user + spent.system + spent.children_user + spent.children_system, 3)
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 

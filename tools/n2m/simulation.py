@@ -13,7 +13,7 @@ from .hdl import dependencies
 from .simulator import ToolError
 from .verilator import commands as verilator_commands, diagnostic as verilator_diagnostic, WAVES as VERILATOR_WAVES, prepare_attempt as verilator_prepare
 from .questa import commands as questa_commands, diagnostic as questa_diagnostic, prepare_attempt as questa_prepare
-from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json, release_held_lock, take_lock
+from .records import atomic_json, atomic_text, cache_matches, cpu_seconds, digest, file_hash, read_json, release_held_lock, take_lock
 from .progress import Progress, display_path
 from . import intel_adc, intel_memory, python_tb, vendor_sources
 from .simulation_peer import Peer
@@ -298,9 +298,14 @@ def changed_inputs(root, record):
     return changed
 
 
-def simulate(root, build, args, simulator, provenance=None, progress=None, locked_at=None):
+def simulate(root, build, args, simulator, provenance=None, progress=None, locked_at=None, cpu_at=None):
     progress = progress or Progress(False)
     locked_at = time.monotonic() if locked_at is None else locked_at
+    # The locked CPU is measured here, beside the locked wall, so the pair is
+    # written into the same record. A cache hit returns that record untouched:
+    # measuring this invocation's CPU would time the cache check and leave it
+    # beside the earlier run's wall, which reads as a host stalled on nothing.
+    cpu_at = cpu_seconds() if cpu_at is None else cpu_at
     backend = simulator.backend
     planned = plan(root, args, simulator)
     target, driver, python_runtime, peer_config, vendor_model, hashes, options, fixture_tools, fingerprint = (
@@ -506,6 +511,8 @@ def simulate(root, build, args, simulator, provenance=None, progress=None, locke
             (attempt / "sim.log").write_text(str(error) + "\n", encoding="utf-8")
     record["finished"] = datetime.now(timezone.utc).isoformat()
     record["timing"]["locked_seconds"] = time.monotonic() - locked_at
+    if cpu_at is not None:
+        record["timing"]["locked_cpu_seconds"] = round(cpu_seconds() - cpu_at, 3)
     artifacts = [p for base in (compile_dir, attempt) for p in base.rglob("*") if p.is_file()]
     record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p) for p in artifacts}
     atomic_json(attempt / "result.json", record)
