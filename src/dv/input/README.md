@@ -66,6 +66,31 @@ The paused timebase must remain paused while the diagnostic VGA producer advance
 The negative changes actual JOYP observation from 16 to zero. Physical wiring,
 ADC accuracy, and the generated board clocks are separate acceptance evidence.
 
+`controls-running` composes the same actual producer, shared input owner and JOYP
+with the timebase running. `controls-wire` and the board's own `controls_proof`
+compose those three modules only while the timebase is paused, so `gb_tick` never
+asserts and no JOYP bus cycle happens in either; this fixture releases the pause
+and a bus owner writes the row selection and reads FF00 on tick edges, which is
+the boundary prepared CPU service uses. No host is present, so the owner selects
+the physical producer out of reset the way a
+[host-free composition](../../../wiki/src/rtl/system/MAS_system.md#host-free-composition)
+does. Fourteen held masks are read through all four row selections: released, one
+and four action buttons, each axis extreme, the hysteresis band that holds a
+direction, the centre, both axes with an action button, and a full reversal in one
+published pair. Public ADC command/response stimulus supplies the samples;
+eight-cycle debounce and a 32-cycle interval bound the run and the board values are
+unchanged. Concurrent monitors require the commit rule in both directions, no
+commit on a tick and no JOYP write off one; the opposing-axes rule at the published
+mask, at the JOYP button field and at the direction-row read; and JOYP register
+stability on public outputs. A ten-value sweep of both axes while ticks run is what
+puts a pending mask change on a tick edge, and the run requires a nonzero census of
+ticks, commits, effective updates and deferred commits, plus all four direction
+lines observed. `JOYP_STATE_STABLE` holds throughout.
+`controls-running-corrupt` changes the actual register read;
+`controls-running-stable` moves the JOYP button field with no accepted mask and no
+select write, which sensitizes the register-stability witness. This composition does
+not establish physical wiring, ADC accuracy or the generated board clocks.
+
 ## ADC doubles
 
 Contract: [DE10-Lite physical controls](../../../wiki/src/fpga-controls.md#acquisition-and-filtering).

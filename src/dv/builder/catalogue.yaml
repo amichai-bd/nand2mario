@@ -100,6 +100,9 @@ units:
   controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.36}
   controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: 2.83}
   controls-mask-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.68}
+  controls-running: {kind: sim, level: 2, labels: [input], duration_seconds: 32.82}
+  controls-running-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 29.20}
+  controls-running-stable: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 31.55}
   controls-sticky: {kind: sim, level: 2, labels: [input], duration_seconds: 6.19}
   controls-unsolicited: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.40}
   controls-wire: {kind: sim, level: 2, labels: [input], duration_seconds: 14.81}

@@ -8085,6 +8085,82 @@
     "vendor_model": "intel-memory",
     "timeout_seconds": 180
   },
+  "controls-running": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/input/tb_controls_running.sv"
+    ],
+    "top": "tb_controls_running",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CONTROLS_RUNNING reads=56 checks=56 lines=f"
+  },
+  "controls-running-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/input/tb_controls_running.sv"
+    ],
+    "top": "tb_controls_running",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+CORRUPT_READ"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CONTROLS_RUNNING_JOYP row=1 expected=de actual=df"
+  },
+  "controls-running-stable": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/input/tb_controls_running.sv"
+    ],
+    "top": "tb_controls_running",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+CORRUPT_STATE"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CONTROLS_RUNNING_JOYP_STATE previous=003 now=083"
+  },
   "memory-bank-enables": {
     "vendor_model": "intel-memory",
     "sources": [
