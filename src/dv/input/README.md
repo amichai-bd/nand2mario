@@ -91,6 +91,33 @@ lines observed. `JOYP_STATE_STABLE` holds throughout.
 select write, which sensitizes the register-stability witness. This composition does
 not establish physical wiring, ADC accuracy or the generated board clocks.
 
+`controls-held` drives what `controls-running` assigns low and never moves:
+`core_reset`, with a mask held. The two owners do not lose the same state at a core
+reset — JOYP clears its button field while the input owner's physical shadow
+survives — and the update between them is a difference, so the fixture settles what
+the program reads afterwards. One producer and one reset drive two actual input
+owners, one per value of `PHYSICAL_SOURCE_DEFAULT`, and both JOYPs are read at FF00
+through all four row selections on tick edges: 40 checks over ten phases. Phase 0 is
+the power-up ordering, with the button held before the global reset releases and the
+single core reset issued two cycles after it, as the host-free start path does;
+measured here, that reset lands at cycle 3 and the first commit at cycle 11, counting
+the edge each is first sampled at, so the held button arrives on the ordinary commit
+rather than across the reset. Phases 1 to
+4 are the mechanism, with the mask already published and read, at four alignments:
+the reset driven on a negedge from the stimulus block, one delay past a posedge,
+released between edges, and as a single cycle. Phase 5 changes the mask while the
+reset is held, because the producer never sees core reset and commits through it.
+Phases 6 and 7 select the physical producer on the host-default instance by host
+write and take it back by core reset. Every reset exit with a mask held costs exactly
+one update on the physical instance and none on the host-default one, a released mask
+costs none on either, and the host-default instance reads released at every reset exit
+throughout. Against the pre-fix owner the fixture fails at phase 1 with zero updates
+while phase 0 passes, which is what separates the two cases.
+`controls-held-corrupt` changes the actual JOYP observation to released at the first
+post-reset read, which is the pre-fix symptom itself and sensitizes the held-mask
+oracle. This fixture does not establish physical wiring, ADC accuracy or the board's
+own filter and interval values.
+
 ## ADC doubles
 
 Contract: [DE10-Lite physical controls](../../../wiki/src/fpga-controls.md#acquisition-and-filtering).

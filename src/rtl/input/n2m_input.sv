@@ -24,6 +24,14 @@ module n2m_input #(
 );
     n2m_input_pkg::input_host_state_t host_q, host_next;
     logic [7:0] physical_q, physical_next, effective_next;
+    // The mask JOYP last accepted. The update is a difference, and the two owners
+    // do not lose the same state at a core reset: JOYP clears its button field
+    // while the physical shadow here survives. Taking the difference against this
+    // owner's own previous level would then miss a mask that did not change
+    // across the reset, leaving JOYP cleared and the held buttons invisible to
+    // the program for as long as nothing moves. Taking it against what the
+    // consumer holds re-offers that mask once, on the first edge out of reset.
+    logic [7:0] published_q;
     logic reset;
     assign reset = reset_sys || core_reset;
     always_comb begin
@@ -50,8 +58,13 @@ module n2m_input #(
     assign source_observe = reset ? 8'd0 : {7'd0, host_q.physical_source};
     assign effective_buttons = reset ? 8'd0 :
         (host_q.physical_source ? physical_q : host_q.host_buttons);
-    assign effective_update.valid = !reset && effective_next != effective_buttons;
+    assign effective_update.valid = !reset && effective_next != published_q;
     assign effective_update.buttons = reset ? 8'd0 : effective_next;
+    // Reset to JOYP's own cleared button field, on JOYP's own reset condition,
+    // so the two owners agree on what the consumer holds. Outside reset this
+    // tracks effective_buttons, which is why every other edge behaves as before.
+    `DFF_ARST_VAL(published_q, effective_update.valid ? effective_next : published_q,
+        clk_sys, reset, 8'd0)
     `N2M_ASSERT_KNOWN(INPUT_CONTROLS_KNOWN, clk_sys, reset_sys,
         {core_reset, gb_tick, physical_commit, host_write.valid})
     `N2M_ASSERT(INPUT_PHYSICAL_BOUNDARY, clk_sys, reset_sys,

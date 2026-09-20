@@ -99,6 +99,8 @@ units:
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
   clocking-drop-tick: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.38}
   clocking-early-reset: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.50}
+  controls-held: {kind: sim, level: 2, labels: [input], duration_seconds: 15.79, measured: {at: "2026-09-20T16:47Z", commit: "6e5a0da20eaa", host: "Linux-x86_64", wall_cpu: 0.33, build: 15.61}}
+  controls-held-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 16.00, measured: {at: "2026-09-20T16:47Z", commit: "6e5a0da20eaa", host: "Linux-x86_64", wall_cpu: 0.33, build: 15.82}}
   controls-lifecycle: {kind: sim, level: 2, labels: [input], duration_seconds: 6.15}
   controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.36}
   controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: 2.83}
