@@ -2564,11 +2564,12 @@ targets a host can build is a measurement and not a rule. All 39 registered
 targets of the three boards were built on the Linux development host at
 `9375432`, against Quartus Prime 25.1std.0 Build 1129 Lite with `--quartus-bin`
 naming that installation's `bin/` launcher directory, two builds at a time on its
-two physical cores except where noted below:
+two physical cores except where noted below. `adc-early` refused in that sweep and
+was refitted alone once its cause was fixed, in 110 seconds of wall and 94 of CPU:
 
 | Board | Targets | Reached its intended result | Did not |
 | --- | --- | --- | --- |
-| DE10-Lite | 25 | 22 | `adc-early`, `controls-board`, `v05-controls-board` |
+| DE10-Lite | 25 | 23 | `controls-board`, `v05-controls-board` |
 | DE10-Nano | 6 | 6 | — |
 | DE2-115 | 8 | 8 | — |
 
@@ -2581,20 +2582,20 @@ at each corner its board declares. No installed vendor file entered the
 [ledger](#accepted-vendor-sources) that this installation had not already
 accepted, so every result rests on recorded bytes.
 
-Three DE10-Lite targets refuse, and none of the three is a limit of this host or
-of Linux. Each cause is a mismatch between repository sources that every
-installation reads the same way — a count, a constraint and a port list — and
-not a property of any installed toolchain, so no host builds them. `adc-early`
-fails the
-structural timing audit on the one no-clock endpoint its own ADC check requires
-([#903](https://github.com/amichai-bd/nand2mario/issues/903)), `controls-board`
+Two DE10-Lite targets still refuse, and neither is a limit of this host or of
+Linux. Each cause is a mismatch between repository sources that every
+installation reads the same way — a constraint and a warning count — and not a
+property of any installed toolchain, so no host builds them. `controls-board`
 fails on the SDRAM and KEY1 constraints its top declares no ports for
 ([#904](https://github.com/amichai-bd/nand2mario/issues/904)), and
 `v05-controls-board` fails because the ADC diagnostic classifier also counts the
 On-Chip Flash IP's accepted warnings
-([#908](https://github.com/amichai-bd/nand2mario/issues/908)). None of the three
-is in a regression subset, a catalogue unit or a CI workflow, which is why each
-break went unmeasured.
+([#908](https://github.com/amichai-bd/nand2mario/issues/908)). Neither is in a
+regression subset, a catalogue unit or a CI workflow, which is why each break
+went unmeasured. `adc-early` refused for a third such mismatch, an accepted
+no-clock count that omitted the ADC backend's own lock row; that count is now
+summed from the modules that name the rows and is compared with them for every
+registered target by a host unit, without a fit.
 
 Per-target wall ran from 43 to 683 seconds, 6,487 seconds across the 39 results,
 so each one is an upper bound under that contention rather than a quiet cost.
@@ -3951,8 +3952,15 @@ The MAX 10 ALTPLL lock output contains the vendor's documented event latch when
 and output logic still propagates raw lock loss. This is not a periodic datapath
 clock. A single-PLL proof has one such `no_clock` row; the parallel system/pixel
 wrapper has exactly two. The ADC composition adds its separately checked vendor
-row. The builder explains these rows only after checking
-the generated functional netlist: latch input/reset/initial state, the lock gate
+row, and an ADC proof that generates no PLL of its own reports that row alone.
+The audited count is the sum of the rows each owner names: the family's clocking
+module for the instances the target generates, the ADC backend for its own
+dedicated PLL, the On-Chip Flash IP for its strobe pair. Each clocking family's
+count is the length of the rows it names, so the two cannot state different
+things. Because both statements come from the registry and those modules, a host
+check compares them for every registered target without a fit, and ties the ADC
+top set to the targets that compile the backend. The builder explains these rows
+only after checking the generated functional netlist: latch input/reset/initial state, the lock gate
 truth table, and all downstream buffers/fanout through the two lock sampling reset
 pins. For parallel PLLs, all 32 combinations of raw locks, event latches and
 reference reset release must propagate either lock loss to reset. Bootstrap

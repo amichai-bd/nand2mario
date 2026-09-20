@@ -121,11 +121,15 @@ def corner_slacks(target, corner):
     return fpga_pll.corner_slacks(target, corner)
 
 
-def lock_event_count(target):
-    """Two ALTPLL lock event latches, one per instance."""
+def no_clock_rows(target):
+    """Two ALTPLL lock event latches, one per instance, as MAX 10 names them."""
     if target["top"] not in SUPPORTED_TOPS:
         raise ValueError("unsupported Cyclone IV E PLL proof top")
-    return fpga_pll.lock_event_count(target)
+    return fpga_pll.no_clock_rows(target)
+
+
+def lock_event_count(target):
+    return len(no_clock_rows(target))
 
 
 def identity(directory):
