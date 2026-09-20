@@ -47,14 +47,18 @@ running after more than a thousand seconds, from the same cause.
 
 ## Two forms that work
 
-Wait for a marker the work writes when it finishes:
+Clear the marker, start the work, bound the wait, then read what the marker says:
 
 ```text
+rm -f workdir/wiki/browser/quality-result.json
+python3 tools/wiki/check.py --browser &
 deadline=$(( $(date +%s) + 1800 ))
 until [ -f workdir/wiki/browser/quality-result.json ]; do
   [ "$(date +%s)" -lt "$deadline" ] || { echo "no result after 30 minutes" >&2; exit 1; }
   sleep 10
 done
+grep -q '"status": "passed"' workdir/wiki/browser/quality-result.json \
+  || { echo "gate did not pass" >&2; exit 1; }
 ```
 
 Break the self-match with a bracket:
@@ -80,23 +84,37 @@ correct bracket. A marker wait carries no pattern for any of this to reach.
 
 ## Pick a marker the work writes at the end
 
-"Wait for a result file" is not advice until it names the file. A marker written
-when the work starts proves only that it started. `tools/wiki/check.py` writes
+"Wait for a result file" is not advice until it names the file and says what the
+file's presence means. Three things have to hold, and for `tools/wiki/check.py`
+each one is visible in its source.
+
+**Written at the end, not the start.** `check.py` writes
 `workdir/wiki/browser/result.json` as `{"status": "starting"}` while it parses
-arguments, so a loop watching that path returns about two seconds into a
-75-second gate and reports success. The same function deletes
-`quality-result.json`, `failure.png` and `trace.zip` before the work begins, and
-the last script it runs writes `quality-result.json` when the gate passes, so
-that file appears only because the work produced it.
+arguments, so a loop watching that path returns about two seconds into a 75-second
+gate and reports success. `quality-result.json` is written by the last script the
+gate runs.
+
+**Carries a status, because presence is not success.** That script initialises
+`{'status': 'failed'}` and writes the marker from a `finally:` block, so the file
+appears whether the stage passed or threw. Presence proves the work ended, which is
+all a marker written at the end can prove. Read the status; never infer it from the
+file being there.
+
+**Not left over from last time.** `check.py` deletes `quality-result.json`,
+`quality-trace.zip`, `failure.png` and `trace.zip`, but only once a gate starts, so
+the previous run's marker sits on disk until then. A waiter that starts before the
+work samples the stale file and returns at once. Delete the marker yourself, or
+start the work before the loop; the form above does both.
 
 Prefer the marker over the bracket. The bracket protects one piece of text, not
 the command line that holds it and not any other process, and it still exits at
-once, reporting success, for a command that never started. A completion marker
-answers the question that was asked, whatever the process table holds.
+once, reporting success, for a command that never started. A marker and its status
+answer the question that was asked, whatever the process table holds.
 
 ## Bound the wait
 
 Both forms above carry a deadline and report reaching it as a failure. Give every
-wait one. The orphans above were unbounded waits, left polling paths that had been
+wait one. They avoid bashisms, but only `bash` and `bash --posix` exist here to
+check that against, so read portability as unverified rather than proven. The orphans above were unbounded waits, left polling paths that had been
 removed under them. Stopping owned processes remains part of
 [cleanup](../../../../worktrees/README.md#clean-up-after-merge).
