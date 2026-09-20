@@ -105,7 +105,9 @@ same identity check and the [flash record rules](../tools/n2m/SPEC.md#flash-prog
 The procedure for a board session, which needs its own authorization and the
 exclusive board lock:
 
-1. Build the flash image on Windows:
+1. Build the flash image on a host with an installed Quartus, which is all
+   `fpga build` requires. The Linux development host fits `flash-proof`
+   ([measured reach](../tools/n2m/SPEC.md#measured-reach-on-linux)):
    `python tools/build.py fpga build flash-proof --quartus-bin <Quartus-bin> --tag <tag>`.
    The result names `output/design.pof`; the record shows `configuration_mode`
    `Single Comp Image` and a passing `.pof` check.

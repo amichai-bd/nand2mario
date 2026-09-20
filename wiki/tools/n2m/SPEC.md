@@ -2547,6 +2547,50 @@ requires zero illegal/unconstrained clock/input/output setup and hold counts, no
 ignored SDC assignments, and no structural timing problems. Missing/malformed evidence fails rather than passing
 on the tool exit alone. Keep resource totals and all corner slack values.
 
+### Measured reach on Linux
+
+`fpga build` names a missing tool rather than an operating system, so which
+targets a host can build is a measurement and not a rule. All 39 registered
+targets of the three boards were built on the Linux development host at
+`9375432`, against Quartus Prime 25.1std.0 Build 1129 Lite with `--quartus-bin`
+naming that installation's `bin/` launcher directory, two builds at a time on its
+two physical cores except where noted below:
+
+| Board | Targets | Reached its intended result | Did not |
+| --- | --- | --- | --- |
+| DE10-Lite | 25 | 22 | `adc-early`, `controls-board`, `v05-controls-board` |
+| DE10-Nano | 6 | 6 | — |
+| DE2-115 | 8 | 8 | — |
+
+An `*-invalid` target's intended result is its refusal, and each of the eleven
+reached the one it names: an invalid clock period for `builder-invalid`,
+`nano-invalid` and `de2-invalid`, a filter matching no port for
+`de2-vga-invalid`, and a checked endpoint count mismatch for the rest. Every
+passing fit kept its `design.sof`, its fit summary and a finite nonnegative slack
+at each corner its board declares. No installed vendor file entered the
+[ledger](#accepted-vendor-sources) that this installation had not already
+accepted, so every result rests on recorded bytes.
+
+Three DE10-Lite targets refuse for causes that live in repository sources rather
+than in this installation, so no host builds them: `adc-early` fails the
+structural timing audit on the one no-clock endpoint its own ADC check requires
+([#903](https://github.com/amichai-bd/nand2mario/issues/903)), `controls-board`
+fails on the SDRAM and KEY1 constraints its top declares no ports for
+([#904](https://github.com/amichai-bd/nand2mario/issues/904)), and
+`v05-controls-board` fails because the ADC diagnostic classifier also counts the
+On-Chip Flash IP's accepted warnings
+([#908](https://github.com/amichai-bd/nand2mario/issues/908)). None of the three
+is in a regression subset, a catalogue unit or a CI workflow, which is why each
+break went unmeasured.
+
+Per-target wall ran from 43 to 683 seconds, 6,487 seconds across the 39 results,
+so each one is an upper bound under that contention rather than a quiet cost.
+The contention is enough to matter: `v05-controls-board` exceeded the 600-second
+default per-tool timeout beside another fit, and reached its own refusal in 488
+seconds alone at `--timeout 1800`, so the largest images want an explicit
+`--timeout` on a host this size. Only that run and `builder-smoke` ran alone.
+A second build of the same target reports `CACHED` in seconds.
+
 ### Hold path audit
 
 The timing summary keeps one hold slack per clock, and the fitter optimizes

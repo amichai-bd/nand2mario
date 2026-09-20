@@ -173,7 +173,7 @@ both, as the vendor IP itself keeps separate `.hex` and `.dat` files. The
 double fails with a named fatal on a write (`FLASH_MODEL_WRITE`), a read
 whose fields change under `waitrequest` (`FLASH_MODEL_HOLD`), a misaligned,
 out-of-range or zero burst (`FLASH_MODEL_ALIGNED`, `FLASH_MODEL_RANGE`,
-`FLASH_MODEL_BURST`). Quartus never sees the double. The Windows
+`FLASH_MODEL_BURST`). Quartus never sees the double. The
 [Questa compile gate](../../../tools/n2m/SPEC.md#questa-compile-gate) has one
 elaboration stand-in for the IP, `altera_onchip_flash`, port- and
 parameter-compatible and empty, beside the other five.
