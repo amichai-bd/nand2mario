@@ -8,11 +8,14 @@ work it did: the same `check` content has been measured at 229.8, 282.8 and
 637.8 s of wall for 141.6, 145.4 and 160.0 s of CPU, all three passing. The wall
 spans 2.8 times and the CPU 1.13.
 
-CPU is the better quantity, not an invariant one. It moves with the host's
-frequency and thermal state, which a busy machine produces and which lags in
-both directions, and it moves a little with contention itself. The measured
-spreads are in [the SPEC](../../wiki/tools/n2m/SPEC.md#test-wall-budget); a
-budget derived here has to cover them.
+CPU is the better quantity because it has a worst case and the wall has none. On
+this host, two physical cores with symmetric multithreading, contention inflates a
+serial run's CPU to about 2.3 times its solo cost and then stops: 1.74, 2.31, 2.30
+and 2.31 times against 2, 4, 8 and 16 competitors, while the same run's wall-to-CPU
+ratio kept climbing to 4.31. That ceiling is the SMT limit, and it is what lets a
+budget be judged against every load rather than one. It is not invariance: a
+budget derived here has to cover it. The samples are in
+[the SPEC](../../wiki/tools/n2m/SPEC.md#test-wall-budget).
 
 The reaping hook and the bounded run live here so the quantity has one
 definition rather than one per caller.
@@ -20,6 +23,11 @@ definition rather than one per caller.
 import os
 import subprocess
 import time
+
+# How long the read after a kill may take before it is abandoned. It is not a budget:
+# a killed child's remaining output arrives at once, and anything longer means a
+# descendant is holding the pipe, which no amount of waiting resolves.
+CLEANUP_SECONDS = 5
 
 
 class Child(subprocess.Popen):
@@ -62,6 +70,13 @@ def bounded(command, wall_ceiling, **kwargs):
     afterwards. `cpu_seconds` is None where the OS reports no per-child usage,
     and `stalled` says the ceiling killed the child rather than the child
     finishing.
+
+    A guard has to be bounded itself. Killing the child does not close the pipe
+    it was writing to: every descendant that inherited it holds the write end,
+    which is the ordinary state of a unit blocked inside a child it waits for.
+    So the read after the kill is bounded and then abandoned, and the child is
+    reaped either way. `subprocess.run` does the same thing for the same reason,
+    reaping rather than reading again.
     """
     started = time.monotonic()
     child = spawn(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, **kwargs)
@@ -69,12 +84,36 @@ def bounded(command, wall_ceiling, **kwargs):
         output, _ = child.communicate(timeout=wall_ceiling)
         stalled = False
     except subprocess.TimeoutExpired:
-        child.kill()
-        output, _ = child.communicate()
         stalled = True
+        child.kill()
+        output = drain(child)
     return {"exit_code": None if stalled else child.returncode, "output": output or "",
             "elapsed_seconds": time.monotonic() - started, "stalled": stalled,
             "cpu_seconds": getattr(child, "cpu_seconds", None)}
+
+
+def drain(child, seconds=CLEANUP_SECONDS):
+    """Whatever a killed child already wrote, without waiting on a descendant's pipe.
+
+    Retrying `communicate` loses nothing that had arrived, so it is tried first
+    and bounded. When a surviving descendant still holds the pipe that read
+    cannot finish, so it is given up: the child is reaped for its usage and the
+    pipe is dropped. Reaping is what makes `cpu_seconds` available at all.
+    """
+    try:
+        return child.communicate(timeout=seconds)[0]
+    except subprocess.TimeoutExpired:
+        try:
+            child.wait(timeout=seconds)
+        except subprocess.TimeoutExpired:  # SIGKILL cannot be caught; nothing else to try
+            pass
+        for stream in (child.stdout, child.stderr, child.stdin):
+            if stream is not None:
+                try:
+                    stream.close()
+                except OSError:
+                    pass
+        return None
 
 
 def ratio(cpu, wall):

@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -33,6 +34,12 @@ BURN = ("import time, unittest\n\nclass T(unittest.TestCase):\n"
 # Spends wall and no CPU, the way a unit waiting for a core does.
 WAIT = ("import time, unittest\n\nclass T(unittest.TestCase):\n"
         "    def test_wait(self):\n        time.sleep({0})\n")
+# Blocks inside a child it waits for, which is the ordinary shape of a stalled unit. That
+# child inherited the unit's stdout, so it holds the write end of the pipe the runner
+# reads: killing the unit alone leaves the pipe open, and reading it again cannot finish.
+WAIT_IN_CHILD = ("import subprocess, sys, unittest\n\nclass T(unittest.TestCase):\n"
+                 "    def test_wait(self):\n"
+                 "        subprocess.run([sys.executable, '-c', 'import time; time.sleep({0})'])\n")
 
 # Skipped, never degraded, where the OS reports no per-child CPU: a test that tolerates
 # `cpu_seconds` being None passes just as well when the reaping hook has stopped working.
@@ -419,13 +426,14 @@ class Recording(unittest.TestCase):
         recorded = self.entries(root)["a"]
         self.assertEqual(recorded["duration_seconds"], 74.57)
         # The sitting travels with the wall: its UTC minute, the commit it
-        # measured, the host family and how much of its wall was work. A
-        # simulation's wall is nearly all compile, so the compile travels with
-        # it and the next reader can see what the figure paid for.
+        # measured, the host family, the CPU it spent and how much of its wall was
+        # work. The CPU is what a host unit's budget is a multiple of, and a
+        # simulation's wall is nearly all compile, so the compile travels with it
+        # and the next reader can see what the figure paid for.
         self.assertEqual(recorded["measured"], {"at": "2026-09-20T14:29Z",
                                                 "commit": "f70fb078b67b",
                                                 "host": "Linux-" + platform.machine(),
-                                                "wall_cpu": 1.03, "build": 70.1})
+                                                "wall_cpu": 1.03, "cpu": 72.4, "build": 70.1})
         self.assertEqual(self.entries(root)["b"]["duration_seconds"], 9.0)
         # A cache hit times the cache check, a failure has no trustworthy wall,
         # and a target outside the catalogue has nowhere to record one.
@@ -728,16 +736,32 @@ class UnitExecution(unittest.TestCase):
         self.assertEqual(module.run_unit(self.root, "suite/test_one.py", {"labels": []})["status"],
                          "PASS")
 
-    def test_a_units_budget_is_the_default_or_a_multiple_of_its_own_measured_wall(self):
+    def test_a_units_budget_is_the_default_or_a_multiple_of_its_own_measured_cpu(self):
         """One number for every unit is sized by the slowest and then bounds nothing else."""
         default, factor = module.UNIT_CPU_BUDGET, module.UNIT_CPU_FACTOR
-        self.assertEqual(module.unit_cpu_budget({"duration_seconds": None}), default)
         self.assertEqual(module.unit_cpu_budget({}), default)
-        self.assertEqual(module.unit_cpu_budget({"duration_seconds": default / factor / 2}), default)
+        self.assertEqual(module.unit_cpu_budget({"measured": {"cpu": default / factor / 2}}), default)
         # Only a unit that measured more than the default's own share of the factor gets more.
-        self.assertEqual(module.unit_cpu_budget({"duration_seconds": default}), factor * default)
+        self.assertEqual(module.unit_cpu_budget({"measured": {"cpu": default}}), factor * default)
         # A drift report arrives before a budget failure, so growth is named before it blocks.
         self.assertGreater(factor, module.DRIFT_FACTOR)
+
+    def test_a_recorded_wall_never_raises_a_units_budget_however_large_it_is(self):
+        """The multiple is of CPU, and the wall is the one figure with no worst case in load.
+
+        A wall recorded on a contended host carries that contention into the bound: the
+        same content has measured 229.8 and 637.8 seconds of wall for 141.6 and 160.0 of
+        CPU, so a wall anchor would have moved the bound 2.8 times for no change in work."""
+        default = module.UNIT_CPU_BUDGET
+        for entry in ({"duration_seconds": 10_000.0},
+                      {"duration_seconds": 10_000.0, "measured": {"wall_cpu": 3.99}},
+                      {"duration_seconds": None}):
+            with self.subTest(entry=entry):
+                self.assertEqual(module.unit_cpu_budget(entry), default)
+        # Only the recorded CPU moves it, and a wall beside it changes nothing.
+        self.assertEqual(module.unit_cpu_budget({"duration_seconds": 10_000.0,
+                                                 "measured": {"cpu": default, "wall_cpu": 3.99}}),
+                         module.UNIT_CPU_FACTOR * default)
 
     @measures_cpu
     def test_a_unit_that_waits_for_a_core_passes_while_one_that_grows_fails(self):
@@ -757,9 +781,9 @@ class UnitExecution(unittest.TestCase):
                                          r"\(wall \d+ s, [\d.]+x its CPU\)$")
 
     @measures_cpu
-    def test_a_unit_measured_above_the_default_is_bounded_against_its_own_wall(self):
+    def test_a_unit_measured_above_the_default_is_bounded_against_its_own_cpu(self):
         """The proportional bound has to raise the budget and still fail growth past it."""
-        entry = {"labels": [], "duration_seconds": 1.0}
+        entry = {"labels": [], "duration_seconds": None, "measured": {"cpu": 1.0}}
         self.write(BURN.format(1.5))
         with patch.object(module, "UNIT_CPU_BUDGET", 1), patch.object(module, "UNIT_CPU_FACTOR", 2):
             inside = module.run_unit(self.root, "suite/test_one.py", entry)
@@ -772,13 +796,26 @@ class UnitExecution(unittest.TestCase):
         self.assertIn("over its 2-second CPU budget", outside["error"])
 
     def test_a_unit_that_stops_making_progress_fails_on_the_wall_ceiling(self):
-        self.write(WAIT.format(60))
-        with patch.object(module, "UNIT_CPU_BUDGET", 1), patch.object(module, "UNIT_WALL_STRETCH", 1):
-            outcome = module.run_unit(self.root, "suite/test_one.py", UNMEASURED)
-        self.assertEqual(outcome["status"], "FAIL")
-        self.assertIsNone(outcome["exit_code"])
-        self.assertRegex(outcome["error"], r"^unit made no progress: it ran \d+ s, past the 1-second "
-                                           r"wall ceiling, for (\d+ s of|an unmeasured amount of) CPU$")
+        """Both shapes of a stalled unit, because only the second exercises the guard.
+
+        A bare sleep dies with its interpreter and closes the pipe. A unit blocked inside
+        a child it waits for does not: that child holds the write end, so a ceiling that
+        reads the pipe again after the kill waits on the descendant and never returns."""
+        for body, blocked in ((WAIT.format(60), "alone"), (WAIT_IN_CHILD.format(60), "in a child")):
+            with self.subTest(blocked=blocked):
+                self.write(body)
+                started = time.monotonic()
+                with patch.object(module, "UNIT_CPU_BUDGET", 1), \
+                        patch.object(module, "UNIT_WALL_STRETCH", 1):
+                    outcome = module.run_unit(self.root, "suite/test_one.py", UNMEASURED)
+                elapsed = time.monotonic() - started
+                self.assertEqual(outcome["status"], "FAIL")
+                self.assertIsNone(outcome["exit_code"])
+                self.assertRegex(outcome["error"],
+                                 r"^unit made no progress: it ran \d+ s, past the 1-second "
+                                 r"wall ceiling, for (\d+ s of|an unmeasured amount of) CPU$")
+                # Well under the 60 s the unit asked for, so the guard bounded itself.
+                self.assertLess(elapsed, 30, f"the ceiling waited {elapsed:.1f} s")
 
     def test_a_unit_whose_cpu_time_cannot_be_read_is_judged_on_its_wall(self):
         """The fail-safe path, exercised rather than argued: a host without `os.wait4`, and a

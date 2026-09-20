@@ -42,16 +42,16 @@ MINIMUM_CHILD_SECONDS = 13
 # The bound is per unit rather than one number for all of them. One sweep of every host
 # unit put 170 of the 178 that ran under 30 s of CPU, seven between 33 and 88, and one at
 # 162; a single bound has to clear the largest, and at that size it bounds nothing else.
-# 240 covers the ordinary population: the worst unit outside that one spent 87.9 s of CPU
-# alone and 148.8 s against four deliberate competitors, and 240 is 1.61 times that. It is
-# below the 300 it replaces, on a stricter quantity.
+# 240 covers the ordinary population against the worst case rather than one load: the
+# worst unit outside that one spent 77.1 s of CPU at its quietest, and 2.31 times that,
+# the measured SMT ceiling, is 178. It is below the 300 it replaces, on a stricter
+# quantity.
 UNIT_CPU_BUDGET = 240
-# A unit that measured more than the default's own share is bounded against its own
-# recorded wall instead. 3 covers the worst measured CPU against a fresh recorded wall,
-# 1.85 times, and stays above DRIFT_FACTOR, so a unit that grows is named by a drift report
-# before its budget fails it. Its limit: a unit that runs its work in parallel spends more
-# CPU than wall, 2.7 times for the import probe, so the factor alone would be too small for
-# such a unit; the default is what covers those, and no unit records above 80 s in parallel.
+# A unit whose recorded conditions name the CPU it spent is bounded against that instead.
+# 3 clears the measured worst case: contention inflates a serial unit's CPU to about 2.3
+# times its solo cost and then stops, the SMT limit of this two-core host. It stays above
+# DRIFT_FACTOR too, so a unit that grows is named by a drift report before its budget
+# fails it.
 UNIT_CPU_FACTOR = 3
 # A liveness guard, not a performance budget, so a unit that stops computing still ends.
 # Five times the budget, as a group's ceiling is five times its own: the worst honest wall
@@ -87,7 +87,7 @@ MINIMUM_DURATION = 0.01
 # ratio: this repository's own check groups reached ratios of 4.46, 3.99 and 3.01
 # beside another worktree's check, their walls up to 2.7 times and their CPU only
 # 1.10 to 1.18 times the same content's on a quieter host. Nor is CPU invariant: four
-# competing spinners moved the CPU of every host unit costing over 5 s by 0.95 to 2.02
+# competing spinners moved the CPU of every host unit costing over 5 s by 1.00 to 2.02
 # times, the low end being the units that already saturate the machine, and the same host
 # unit measured 76.62 s then 195.28 s in one sitting with its CPU moving
 # 71.9 to 124.4 s and nothing to compile. A simulation's parallel compile puts its
@@ -97,7 +97,7 @@ MINIMUM_DURATION = 0.01
 # six competitors were live. The conditions are therefore recorded for the reader
 # and never used as a gate.
 MEASURED_KEYS = ("at", "commit", "host", "wall_cpu")
-MEASURED_OPTIONAL = ("build",)
+MEASURED_OPTIONAL = ("build", "cpu")
 MEASURED_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z")
 MEASURED_TOKEN = re.compile(r"[A-Za-z0-9._+-]+")
 # How far a measured wall may stand from the recorded one before a run or a
@@ -304,6 +304,8 @@ def format_measured(measured):
     body = [f"at: {_quote(measured['at'])}", f"commit: {_quote(measured['commit'])}",
             f"host: {_quote(measured['host'])}",
             "wall_cpu: " + ("null" if ratio is None else f"{float(ratio):.2f}")]
+    if measured.get("cpu") is not None:
+        body.append(f"cpu: {float(measured['cpu']):.2f}")
     if measured.get("build") is not None:
         body.append(f"build: {float(measured['build']):.2f}")
     return ", measured: {" + ", ".join(body) + "}"
@@ -415,6 +417,9 @@ def check_measured(name, measured, duration):
     ratio = measured["wall_cpu"]
     if ratio is not None and (not isinstance(ratio, (int, float)) or ratio <= 0):
         raise ValueError(f"unit {name} measured wall_cpu must be null or a positive ratio")
+    cpu = measured.get("cpu")
+    if "cpu" in measured and (not isinstance(cpu, (int, float)) or cpu <= 0):
+        raise ValueError(f"unit {name} measured cpu must be a positive number of seconds")
     build = measured.get("build")
     if "build" in measured and (not isinstance(build, (int, float)) or not 0 <= build <= duration):
         raise ValueError(f"unit {name} measured build must be a share of its own wall")
@@ -694,14 +699,22 @@ def unit_error(output):
 
 
 def unit_cpu_budget(entry):
-    """What this one unit may spend in CPU: the default, or a multiple of its own measured wall.
+    """What this one unit may spend in CPU: the default, or a multiple of its own measured CPU.
 
     One number for every unit has to be sized by the slowest, which leaves every
-    cheaper unit free to grow by orders of magnitude inside it. A unit that
-    measured its own cost is bounded against that cost instead, so the protection
-    stays proportional to the work. An entry nothing measured gets the default.
+    cheaper unit free to grow by orders of magnitude inside it. A unit whose
+    recorded conditions name the CPU it spent is bounded against that instead, so
+    the protection stays proportional to the work.
+
+    The multiple is of CPU and never of `duration_seconds`. A wall has no worst
+    case in load, so a bound taken from one would rise with whatever else the host
+    was doing: the same `check` content has measured 229.8 and 637.8 s of wall for
+    141.6 and 160.0 s of CPU, and a wall recorded at the high end would have
+    carried that 2.8 times into the bound. Measuring CPU also covers the units
+    that spend more CPU than wall by running in parallel, which a wall understates
+    by up to 2.7 times here. An entry with no recorded CPU gets the default.
     """
-    recorded = entry.get("duration_seconds") or 0
+    recorded = (entry.get("measured") or {}).get("cpu") or 0
     return max(UNIT_CPU_BUDGET, UNIT_CPU_FACTOR * recorded)
 
 
@@ -905,6 +918,11 @@ def record_from_run(root, tag):
             continue
         durations[name] = measured_duration(wall["wall"])
         measured[name] = {**conditions, "wall_cpu": wall_cpu_ratio(wall.get("wall"), wall.get("cpu"))}
+        # The CPU the run measured, which is what a host unit's budget is a multiple of.
+        # A wall would not serve: contention stretches it without bound, so a bound taken
+        # from one would grow with whatever else the host was doing.
+        if isinstance(wall.get("cpu"), (int, float)) and wall["cpu"] > 0:
+            measured[name]["cpu"] = round(wall["cpu"], 2)
         # A simulation's wall is nearly all compile, so the compile travels with
         # it; a host unit compiles nothing and omits it.
         if isinstance(wall.get("build"), (int, float)):

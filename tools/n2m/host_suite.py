@@ -17,14 +17,12 @@ from concurrent.futures import ThreadPoolExecutor
 import fnmatch
 import os
 from pathlib import Path
-import subprocess
 import sys
-import time
 
 from . import catalogue
-# A group and a host unit budget the same quantity; `cpu_budget` defines it once.
+# A group and a host unit budget the same quantity, and run under the same bounded
+# child; `cpu_budget` defines both once.
 from . import cpu_budget
-from .cpu_budget import Child
 
 TESTS = "tools/n2m/tests"
 # One group's own user plus system CPU time, its subprocess and every descendant it waits for.
@@ -34,10 +32,12 @@ TESTS = "tools/n2m/tests"
 # sitting the same three content sets spent 116.9, 135.4 and 118.1 s, up to 1.75 times their
 # own solo cost, while their walls went 2.0 to 3.0 times. Beside its siblings on a busy host a
 # group has reached 160.0 s.
-# 240 is 2.5 times the worst group measured alone. It clears that group's solo cost times the
-# 1.75 contention inflation and the 1.16 cross-sitting spread, whose product is 192, and sits
-# 1.5 times above the worst group CPU ever measured here. The 180 it replaces was the old wall
-# budget carried over, not a derived figure, and it sat only 1.13 times above that 160.0.
+# 240 is 2.5 times the worst group measured alone. Judged against the worst case rather than
+# one load level: contention inflates CPU to about 2.31 times solo and then stops, the SMT
+# limit of this host, and frequency can add at most 1.08, so the quietest group sample of
+# 78.2 s reaches 195 s and 240 is 1.23 times that. The 180 it replaces was the old wall budget
+# carried over, not a derived figure; it sat 1.13 times above the worst group ever measured
+# here and that same 195 s would have failed it.
 CPU_BUDGET = 240
 # A liveness guard, not a performance budget. The worst contention measured here stretched a
 # group's wall to 4.5 times its CPU, so a group spending the whole CPU budget would take
@@ -80,36 +80,25 @@ def load_average():
         return None
 
 
-def spawn(root, run):
-    """The group's subprocess, with CPU accounting where the OS reports per-child usage."""
-    child = Child if hasattr(os, "wait4") else subprocess.Popen
-    return child(run, cwd=str(root), text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-
 def run_group(root, pattern):
-    """One group's subprocess under the budget; its output is kept for the combined log."""
-    started = time.monotonic()
+    """One group's subprocess under the budget; its output is kept for the combined log.
+
+    The bounded run is shared with the host unit's, so the ceiling releases a
+    group whose surviving descendants still hold its pipe rather than waiting on
+    them."""
     run = command(root, pattern)
     outcome = {"pattern": pattern, "command": run}
-    child = spawn(root, run)
-    try:
-        output, _ = child.communicate(timeout=WALL_CEILING)
-        stalled = False
-    except subprocess.TimeoutExpired:
-        child.kill()
-        output, _ = child.communicate()
-        stalled = True
-    wall = time.monotonic() - started
-    cpu = getattr(child, "cpu_seconds", None)
-    outcome.update(exit_code=None if stalled else child.returncode, output=output or "",
+    result = cpu_budget.bounded(run, WALL_CEILING, cwd=str(root))
+    wall, cpu, stalled = result["elapsed_seconds"], result["cpu_seconds"], result["stalled"]
+    outcome.update(exit_code=result["exit_code"], output=result["output"],
                    elapsed_seconds=wall, cpu_seconds=cpu, load_average=load_average(),
-                   status="PASS" if child.returncode == 0 and not stalled else "FAIL")
+                   status="PASS" if result["exit_code"] == 0 else "FAIL")
     if stalled:
         spent = f"{cpu:.0f} s of CPU" if cpu is not None else "an unmeasured amount of CPU"
         outcome["error"] = (f"group {pattern} made no progress: it ran {wall:.0f} s, past the "
                             f"{WALL_CEILING}-second wall ceiling, for {spent}")
-    elif child.returncode:
-        outcome["error"] = f"group {pattern}: {catalogue.unit_error(output or '')}"
+    elif result["exit_code"]:
+        outcome["error"] = f"group {pattern}: {catalogue.unit_error(result['output'])}"
     elif cpu is None and wall > CPU_BUDGET:
         # No per-child CPU on this OS, so the wall is all there is; say which it failed on.
         outcome.update(status="FAIL",
