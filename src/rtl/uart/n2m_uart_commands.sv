@@ -4,7 +4,12 @@
 
 // One validated command at a time. Helpers own storage, core transitions and
 // reply bytes; this owner orders them before exchange-cache publication.
-module n2m_uart_commands (
+// CARRIED_PROFILE names the profile of an image the fitted memory already
+// holds, so PROFILE and IMAGE_VALID reset to it rather than to no image. Zero,
+// the default, is the host-loaded endpoint this owner has always been.
+module n2m_uart_commands #(
+    parameter logic [7:0] CARRIED_PROFILE = 8'h0
+) (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic command_valid,
@@ -456,9 +461,9 @@ module n2m_uart_commands (
     `DFF_ARST_VAL(arg_limit, arg_limit_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(index, index_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(loading, loading_next, clk_sys, reset_sys, 1'b0)
-    `DFF_ARST_VAL(image_valid, image_valid_next, clk_sys, reset_sys, 1'b0)
+    `DFF_ARST_VAL(image_valid, image_valid_next, clk_sys, reset_sys, CARRIED_PROFILE != 8'h0)
     `DFF_ARST_VAL(engine_invalid, engine_invalid_next, clk_sys, reset_sys, 1'b0)
-    `DFF_ARST_VAL(profile, profile_next, clk_sys, reset_sys, '0)
+    `DFF_ARST_VAL(profile, profile_next, clk_sys, reset_sys, CARRIED_PROFILE)
     `DFF_ARST_VAL(reply_status, reply_status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
     `DFF_ARST_VAL(reply_length, reply_length_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(reply_value, reply_value_next, clk_sys, reset_sys, '0)

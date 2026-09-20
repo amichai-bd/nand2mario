@@ -335,6 +335,27 @@ exactly one command at a time. It is deliberately the opposite of SNAPSHOT's own
 rule, which forbids a fresh capture during readback because a capture would
 overwrite the bank being read.
 
+## Power-up profile and input source
+
+`CARRIED_PROFILE` states the profile of an image the fitted memory already holds.
+It defaults to `8'h0`, the host-loaded endpoint: `PROFILE` and `IMAGE_VALID` reset
+to no image, and the [input owner](../input/MAS_input.md#reset-and-power) resets
+to the host's own mask. A nonzero value resets `PROFILE` to it, resets
+`IMAGE_VALID` set, and selects the physical input source, because on a board with
+no host link nothing would ever establish any of the three and the DMA owner's
+`init_done` would never assert.
+
+Nothing else changes. Both registers still move only on an accepted command or an
+image the loader engine publishes, both still clear on a `LOAD_BEGIN` and on the
+engine's invalidate, and the validation rules that read `PROFILE` are unchanged.
+This is a reset value, not a bypass: an image carrying a profile it does not hold
+is a build error, and [the builder](../../../tools/n2m/SPEC.md#carried-rom-image)
+is what binds the two together.
+
+This is not the [simulation preload](#simulation-preload) below. That adopts bytes
+inside a real host session and is `` `ifdef SYNTHESIS ``-disabled; this is a reset
+value that reaches synthesis and never adopts anything.
+
 ## Simulation preload
 
 The explicit [preload mode](../../dv/preload/SPEC.md) initializes the same Intel

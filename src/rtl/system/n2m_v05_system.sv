@@ -7,7 +7,14 @@ module n2m_v05_system #(
     parameter integer UART_BAUD = 115200,
     parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001,
     parameter int unsigned KEY1_DEBOUNCE_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_DEBOUNCE_EDGES),
-    parameter int unsigned KEY1_HOLD_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_HOLD_EDGES)
+    parameter int unsigned KEY1_HOLD_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_HOLD_EDGES),
+    // A composition on a board with no internal flash and no host link
+    // (wiki/src/rtl/system/MAS_system.md#host-free-composition).
+    // FLASH_LIBRARY 0 omits the flash reader; CARRIED_PROFILE, when nonzero,
+    // is the profile of an image already in the fitted memory, so the endpoint
+    // powers up holding it valid and the core obeys the physical buttons.
+    parameter bit FLASH_LIBRARY = 1,
+    parameter logic [7:0] CARRIED_PROFILE = 8'h0
 ) (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -151,7 +158,7 @@ module n2m_v05_system #(
     assign core_initialized = memory_initialized && cpu_initialized;
     assign fault = cpu_fault || memory_fault || ppu_fault;
 
-    n2m_uart #(.CLOCK_HZ(25000000), .BAUD(UART_BAUD)) u_uart (
+    n2m_uart #(.CLOCK_HZ(25000000), .BAUD(UART_BAUD), .CARRIED_PROFILE(CARRIED_PROFILE)) u_uart (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
         .build_id(BUILD_ID), .gb_tick, .paused,
         .io_lcdc, .io_stat, .io_ly, .io_lyc, .io_scy, .io_scx, .io_wy, .io_wx,
@@ -180,7 +187,7 @@ module n2m_v05_system #(
     );
     // The boot copier fills SDRAM from the flash library after power-up and
     // requests the menu select; it is the storage arbiter's third client.
-    n2m_boot_copier u_copier (
+    n2m_boot_copier #(.FLASH_LIBRARY(FLASH_LIBRARY)) u_copier (
         .clk_sys, .reset_sys, .sdram_initialized,
         .sdram_active(copier_busy), .sdram_valid(copier_valid), .sdram_write(copier_write),
         .sdram_address(copier_address), .sdram_data(copier_data), .sdram_ready(copier_ready),

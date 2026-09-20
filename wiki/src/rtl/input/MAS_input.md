@@ -39,8 +39,19 @@ Opposite directions and simultaneous buttons are preserved without filtering.
 
 ## Reset and power
 
-Global reset asynchronously clears all shadows and selects UART. Core reset
-asynchronously clears the host shadow and selects UART, producing effective0.
+`PHYSICAL_SOURCE_DEFAULT` decides which producer reset selects, and defaults to
+UART: the host owns the selection, so every existing composition keeps the host's
+own mask out of reset. A composition on a board with no host link selects 1,
+because nothing else would ever release the buttons and every physical press
+would be discarded for the life of the image. The choice is compile-time, and the
+selection the register then holds is still the host's to change if one appears;
+[the composition](../system/MAS_system.md#host-free-composition) owns which
+boards select it.
+
+Global reset asynchronously clears all shadows and selects the default producer.
+Core reset
+asynchronously clears the host shadow and selects that same default,
+producing effective0.
 The physical shadow survives core reset and may accept external updates while
 it is held. This retention is the delegated physical-input rule, not a claim
 about the prior host-only endpoint. PHYSICAL must be selected explicitly again.

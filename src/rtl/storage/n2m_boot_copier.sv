@@ -20,7 +20,12 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 
-module n2m_boot_copier (
+// FLASH_LIBRARY places the reader and its MAX 10 On-Chip Flash IP. A board
+// without that internal flash selects 0 and reads no library, which is why
+// this is a parameter and not a board fact this module could derive.
+module n2m_boot_copier #(
+    parameter bit FLASH_LIBRARY = 1
+) (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic sdram_initialized,
@@ -71,10 +76,19 @@ module n2m_boot_copier (
     n2m_interfaces_pkg::catalogue_entry_t entry;
     logic entry_ok;
 
-    n2m_flash_reader u_reader (
-        .clk_sys(clk_sys), .reset_sys(reset_sys), .line_valid(line_valid), .line_word(fetch_word),
-        .line_ready(line_ready), .line_data_valid(line_data_valid), .line_data(line_data)
-    );
+    // The taken branch holds one unnamed item, so the reader keeps the fitted
+    // instance path every flash check pins; a named block would move it.
+    generate if (FLASH_LIBRARY)
+        n2m_flash_reader u_reader (
+            .clk_sys(clk_sys), .reset_sys(reset_sys), .line_valid(line_valid), .line_word(fetch_word),
+            .line_ready(line_ready), .line_data_valid(line_data_valid), .line_data(line_data)
+        );
+    else begin : g_no_reader
+        assign line_ready = 1'b0;
+        assign line_data_valid = 1'b0;
+        assign line_data = '0;
+    end
+    endgenerate
 
     assign sdram_active = phase == BOOT_CHECK || phase == BOOT_COPY;
     assign busy = sdram_active;

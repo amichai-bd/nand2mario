@@ -56,6 +56,37 @@ composition now has an owner, and the named `V05_OWNER_SERVICE` assertion makes
 a missing arm fatal instead of a silent CPU-port fault. The serial interrupt
 level stays inactive: the composition drives IF source bit 3 low.
 
+## Host-free composition
+
+Two parameters select a composition for a board that has neither the MAX 10
+internal flash the flash library reads nor a host link. Both default to the
+DE10-Lite's composition, so a target that names neither is unchanged.
+
+| Parameter | Default | Effect when changed |
+|---|---|---|
+| `FLASH_LIBRARY` | `1` | `0` omits the [boot copier's flash reader](../storage/MAS_flash_library.md#boot-copier) and the vendor IP under it, and the copier reads no library. |
+| `CARRIED_PROFILE` | `8'h0` | A nonzero profile id states that the fitted memory already holds an image of that profile, so the [endpoint](../uart/MAS_uart.md#power-up-profile-and-input-source) powers up holding it valid and the [input owner](../input/MAS_input.md#reset-and-power) obeys the physical mask. |
+
+**Why these are parameters and not board facts this composition could derive.**
+The flash reader instantiates the MAX 10 On-Chip Flash IP with that part's own
+family and ordering code, so it is not a module a device without that flash can
+elaborate at all; omitting it has to be a compile-time choice, not a runtime one.
+And `PROFILE`, `IMAGE_VALID` and the input source are all established by a host:
+without one they stay at their reset values forever, the DMA owner's
+`init_done` never asserts and no physical button reaches the core. Nothing a
+board wrapper can drive changes any of the three, and the endpoint's own load
+path cannot stand in, because `LOAD_BEGIN` clears the whole ROM store before a
+session opens.
+
+**Nothing can change a carried profile afterwards.** The two registers move only
+on an accepted host command or an image the loader engine publishes. A host-free
+image holds `uart_rx` at the line's idle mark, so no command is ever accepted,
+and reports storage uninitialized, so the copy engine never runs and the engine
+never publishes. The profile the image powers up with is the profile it keeps.
+
+The DE2-115's [system image](../../de2-115-board.md#targets) is the first
+composition to select both.
+
 ## STOP and joypad wake
 
 A program may execute STOP. This composition is the CPU's

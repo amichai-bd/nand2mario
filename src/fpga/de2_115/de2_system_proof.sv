@@ -128,7 +128,11 @@ module de2_system_proof #(
     // stall visibly instead of being accepted and dropped. The request outputs
     // are left unconnected, and the project reserves every unused package pin
     // as a tri-stated input, so the board's SDRAM devices meet high impedance.
-    n2m_v05_system #(.BUILD_ID(BUILD_ID)) u_system (
+    // This board has no host and no storage, so the composition is selected
+    // without the flash library and with the carried image's profile already
+    // established (wiki/src/rtl/system/MAS_system.md#host-free-composition).
+    n2m_v05_system #(.BUILD_ID(BUILD_ID), .FLASH_LIBRARY(1'b0),
+                     .CARRIED_PROFILE(n2m_interfaces_pkg::PROFILE_DIRECT_ID)) u_system (
         .clk_sys, .clk_pix, .reset_sys, .reset_pix,
         .uart_rx(1'b1), .uart_tx(),
         .physical_commit, .physical_buttons, .effective_buttons, .input_source_observe,

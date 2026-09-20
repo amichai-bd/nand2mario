@@ -3,7 +3,12 @@
 `include "src/rtl/common/macros.svh"
 
 // Both producers resolve one whole mask before JOYP captures the same edge.
-module n2m_input (
+// PHYSICAL_SOURCE_DEFAULT is which producer the core obeys out of reset. The
+// host owns the selection, so the default is the host's own mask; a board with
+// no host selects 1, because nothing else would ever release the buttons.
+module n2m_input #(
+    parameter bit PHYSICAL_SOURCE_DEFAULT = 1'b0
+) (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic core_reset,
@@ -32,7 +37,11 @@ module n2m_input (
         effective_next = host_next.physical_source ? physical_next : host_next.host_buttons;
     end
     // Core reset restores UART ownership but does not release external buttons.
-    `DFF_ARST_VAL(host_q, host_next, clk_sys, reset, '0)
+    // Quartus 25.1 rejects a named struct literal as a constant here (10734),
+    // so the packed order {physical_source, host_buttons} is stated directly.
+    localparam n2m_input_pkg::input_host_state_t HOST_RESET_STATE =
+        n2m_input_pkg::input_host_state_t'({PHYSICAL_SOURCE_DEFAULT, 8'h0});
+    `DFF_ARST_VAL(host_q, host_next, clk_sys, reset, HOST_RESET_STATE)
     `DFF_ARST_VAL(physical_q, physical_next, clk_sys, reset_sys, 8'd0)
     assign host_buttons = reset ? 8'd0 : host_q.host_buttons;
     assign physical_observe = reset_sys ? 8'd0 : physical_q;

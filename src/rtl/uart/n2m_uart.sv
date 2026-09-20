@@ -2,7 +2,11 @@
 `default_nettype none
 module n2m_uart #(
     parameter integer CLOCK_HZ = 25000000,
-    parameter integer BAUD = n2m_interfaces_pkg::WIRE_BAUD
+    parameter integer BAUD = n2m_interfaces_pkg::WIRE_BAUD,
+    // Nonzero when the fitted memory already holds an image of that profile;
+    // the endpoint then powers up holding it valid and selects the physical
+    // input source, because no host will establish either.
+    parameter logic [7:0] CARRIED_PROFILE = 8'h0
 ) (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -115,7 +119,7 @@ module n2m_uart #(
     logic transmit_valid, transmit_read, transmit_data_valid, transmit_done;
     logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] transmit_bytes, transmit_address;
     logic [7:0] transmit_data;
-    n2m_input u_input (
+    n2m_input #(.PHYSICAL_SOURCE_DEFAULT(CARRIED_PROFILE != 8'h0)) u_input (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .gb_tick(gb_tick),
         .host_write(accepted_input), .physical_commit(physical_commit), .physical_buttons(physical_buttons),
         .host_buttons(buttons), .physical_observe(physical_observe), .source_observe(input_source),
@@ -177,7 +181,7 @@ module n2m_uart #(
         .byte_data(byte_data),
         .byte_ready(byte_ready)
     );
-    n2m_uart_commands u_commands (
+    n2m_uart_commands #(.CARRIED_PROFILE(CARRIED_PROFILE)) u_commands (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .command_valid(command_valid),
         .command_forced_status(command_forced_status), .request_header(request_header), .request_bytes(request_bytes),
         .packet_read(command_packet_read), .packet_address(command_packet_address),
