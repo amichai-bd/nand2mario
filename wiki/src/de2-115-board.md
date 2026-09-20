@@ -425,10 +425,12 @@ DAC is available in its datasheet", section 4.10).
 **SYNC is tied low, and that is not merely permitted.** This board sends
 horizontal and vertical sync to the connector on their own pins, so no sync has
 to be encoded on green. The data sheet's own `RSET` relations say what tying SYNC
-low buys: `IOG = 12,081 x VREF/RSET` while SYNC is asserted and
-`IOR, IOB = 8,627 x VREF/RSET`, and "The equation for IOG will be the same as
-that for IOR and IOB when SYNC is not being used, i.e., SYNC tied permanently
-low." Held high instead, green would carry a 40 IRE pedestal that red and blue do
+low buys: `IOG = 11,445 x VREF/RSET` while SYNC is asserted and
+`IOR, IOB = 7989.6 x VREF/RSET`, and "The equation for IOG is the same as that
+for IOR and IOB when SYNC is not being used, that is, SYNC tied permanently
+low." Those are the `Rev. D` figures and wording, from the copy this page
+records; `Rev. A` and `Rev. B` state the same relation with `12,081` and `8,627`
+and the older phrasing. Held high instead, green would carry a 40 IRE pedestal that red and blue do
 not, so equal codes on the three channels would not produce equal light and grey
 would not be grey. Tying it low is what keeps the shade table above true of all
 three channels.
@@ -450,20 +452,29 @@ mapping.
 the rising edge of CLOCK, and the fabric drives that data on the rising edge of
 `clk_pix`. Sending `clk_pix` itself would ask the DAC to sample exactly when the
 data changes. Inverting it puts the DAC's sampling edge half a pixel period
-later: at 25.2 MHz that is 19.84 ns of setup and 19.84 ns of hold before the
-design's own output bounds are subtracted. The part asks for 0.5 ns of setup and
-1.5 ns of hold at 5 V, 0.2 ns and 1.5 ns at 3.3 V (`t1`, `t2`, Rev. D; Rev. A
-states the older 1.5 ns and 2.5 ns, which the same margin also covers).
+later, 19.841 ns at 25.2 MHz, before either pin's own delay. The part asks for
+0.5 ns of setup and 1.5 ns of hold at 5 V, 0.2 ns and 1.5 ns at 3.3 V (`t1`,
+`t2`, Rev. D; Rev. A states the older 1.5 ns and 2.5 ns, which the same margin
+also covers).
 
-The margin follows from the half period and this design's own output bound, not
-from a claim about the DAC. The
-[VGA proof profile](../tools/n2m/SPEC.md#vga-proof-profile) bounds every output
-pin's delay to 10 ns and their spread to 2 ns whatever the fit does, which already
-leaves 19.84 − 10 = 9.8 ns of setup and 19.84 ns of hold. The
-[`de2-vga` fit](#targets) then measures 2.732 ns at worst and 1.507 ns at best
-across all three corners, so what this fit actually presents the DAC is 17.1 ns of
-setup and 21.3 ns of hold — more than an order of magnitude above the requirement
-either way.
+Write `d_data` for a data pin's clock-to-out and `d_clk` for the clock pin's, and
+the two sides are not symmetric:
+
+- setup at the DAC is `19.841 + d_clk − d_data`. `d_clk` is never negative, so
+  bounding `d_data` bounds setup from below and nothing else is needed.
+- hold is `19.841 + d_data − d_clk`, which needs `d_clk` bounded from above.
+
+Only the first is bounded here. The
+[VGA proof profile](../tools/n2m/SPEC.md#vga-proof-profile) bounds every data and
+sync pin's delay to 10 ns and their spread to 2 ns whatever the fit does, so setup
+is at least 19.841 − 10 = 9.8 ns by constraint, and the
+[`de2-vga` fit](#targets) measures `d_data` between 1.507 ns and 2.732 ns across
+all three corners, so this fit presents at least 17.1 ns. `VGA_CLK` carries a
+clock rather than data and is deliberately the one output with no output delay, so
+no retained report bounds `d_clk` and the hold side is a measurement of this fit
+rather than a bound on every fit: around 18 ns once a few nanoseconds of clock-pin
+delay are subtracted from 21.3. Either way both sides stay an order of magnitude
+above what the part asks for, and neither number is an observation of a picture.
 
 `de2_vga.sdc` declares that inversion to the Timing Analyzer as a generated clock
 on the pin, `vga_dac_clk`, sourced from the pixel PLL's `clk[0]` with `-invert`,
@@ -557,13 +568,16 @@ all four analysed clocks at all three corners. Its worst slack is 0.181 ns, on
 `3.3-V LVTTL` with `8mA` on every one of the 29.
 
 The fourth analysed clock is the DAC's: `vga_dac_clk`, the pixel clock inverted at
-`VGA_CLK`, which the fit reports as a generated clock of period 39.683 ns at unit
+`VGA_CLK`, which the fit reports as a generated clock of period 39.682 ns at unit
 ratio from the pixel PLL, inverted, targeting that port. The retained per-corner
 output reports bound every DAC data and sync pin's delay to 2.732 ns at worst
 (`Slow 1200mV 85C`) and 1.507 ns at best (`Fast 1200mV 0C`), with at most 0.250 ns
 of skew across the group. Half a pixel period is 19.841 ns, so the DAC sees at
-least 19.841 − 2.732 = 17.1 ns of setup and at least 19.841 + 1.507 = 21.3 ns of
-hold, against the 0.5 ns and 1.5 ns the part asks for. The checked netlist shows
+least 19.841 − 2.732 = 17.1 ns of setup, against the 0.5 ns the part asks for.
+The hold side carries no "at least": `VGA_CLK` is the one output with no output
+delay, so no retained report bounds its own delay, and
+[the derivation above](#the-dacs-clock-blank-and-sync-inputs) explains why that
+makes the roughly 18 ns of hold a measurement of this fit rather than a bound. The checked netlist shows
 `VGA_CLK`'s output buffer taking the complement of the fitted pixel clock net, and
 `VGA_BLANK_N` and `VGA_SYNC_N` taking `vcc` and `gnd`, so the documented values
 reached their pins.
@@ -670,12 +684,18 @@ authorization, and it is not part of the flow proof.
   `85271b8635a7476cb2ca1ffc595f37c4e96c2a9b14b4eebe1595289d8fe64e7c`
   (`eecg.utoronto.ca/~tm4/ADV7123_a.pdf` and
   `cs.columbia.edu/~sedwards/classes/2009/4840/Analog-Devices-ADV7123-video-DAC.pdf`),
-  as does Digi-Key's `Rev. B`,
-  `7fec6a41419c95a1a76f8972f45f523ece135c263f37889a591789da5ad93bb4`. All three
-  revisions state the same BLANK, SYNC and CLOCK pin descriptions and the same
-  SYNC/BLANK columns of the output truth table; `Rev. B` and `Rev. D` agree on
-  `t1` and `t2`, and `Rev. A` states the older, looser 1.5 ns and 2.5 ns. These
-  are records of what was read, not second readers' confirmations. Vendor
+  and so does Digi-Key's `Rev. B`,
+  `7fec6a41419c95a1a76f8972f45f523ece135c263f37889a591789da5ad93bb4`, whose host
+  returns `403` to a second reader, so that one digest rests on this reader alone
+  while the archived `Rev. D` and both `Rev. A` mirrors have been re-fetched
+  independently. All three revisions state the same BLANK, SYNC and CLOCK pin
+  descriptions and the same SYNC/BLANK columns of the output truth table;
+  `Rev. B` and `Rev. D` agree on `t1` and `t2`, and `Rev. A` states the older,
+  looser 1.5 ns and 2.5 ns. `Rev. D` restates the full-scale current relations
+  with different constants and wording, which is why
+  [the SYNC decision](#the-dacs-clock-blank-and-sync-inputs) quotes `Rev. D` and
+  labels the earlier figures as the earlier revisions'. These are records of what
+  was read, not second readers' confirmations. Vendor
   documentation is a reference, not redistributed source, and no copy is
   committed.
 - [Cyclone IV device handbook](https://www.intel.com/content/www/us/en/docs/programmable/683375/current/device-datasheet-for-devices.html),

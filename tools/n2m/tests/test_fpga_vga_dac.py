@@ -38,9 +38,16 @@ class BitAlignmentTests(unittest.TestCase):
         self.assertEqual([repeat[n] for n in NIBBLES], [0xff, 0xaa, 0x55, 0x00])
 
     def test_the_named_alternatives_lose_white_black_or_the_grey_scale(self):
-        self.assertEqual(NIBBLES[0] << 4, 0xf0)             # zero-filled: no white
-        self.assertEqual(NIBBLES[0], 0x0f)                  # right-aligned: nearly black
-        self.assertEqual((NIBBLES[3] << 4) | 0xf, 0x0f)     # one-filled: no black
+        """Each near miss breaks one of the three requirements, and by how much."""
+        alternatives = {"zero-filled": [value << 4 for value in range(16)],
+                        "right-aligned": list(range(16)),
+                        "one-filled": [(value << 4) | 0xf for value in range(16)]}
+        # White capped at 240/255, white capped at 15/255, black lifted to 15/255.
+        self.assertEqual([table[15] for table in alternatives.values()], [0xf0, 0x0f, 0xff])
+        self.assertEqual([table[0] for table in alternatives.values()], [0x00, 0x00, 0x0f])
+        for name, table in alternatives.items():
+            with self.subTest(alternative=name):
+                self.assertNotEqual((table[0], table[15]), (0x00, 0xff))
 
     def test_the_rtl_states_that_map_and_holds_the_dac_controls_at_their_values(self):
         """The fixture's board side is exactly the documented alignment and levels."""

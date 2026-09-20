@@ -24,6 +24,10 @@ def profile(channels, width, sync, *, atom="fiftyfivenm_ram_block"):
     the fitter packs one physical copy of that register into each pin: the
     original plus a duplicate for every further pin of the same bit. The width
     and the names are the board's; that rule and every check below are not.
+
+    The flat pin index stands in for the channel bit because both boards' channels
+    are an even number of pins wide, so `i % 2` and `bit % 2` agree. An odd width
+    would have to index the bit itself.
     """
     pins = [f"{name}[{bit}]" for name in channels for bit in range(width)]
     rgb = tuple(f"u_bridge|u_scan|gray_out[{i % 2}]" + (f"~_Duplicate_{i // 2}" if i // 2 else "")
