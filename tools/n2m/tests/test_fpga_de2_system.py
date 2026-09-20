@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.n2m import fpga, fpga_de2_system as system, fpga_rom_image, fpga_vga_dac
+from tools.n2m import fpga, fpga_controls, fpga_de2_system as system, fpga_rom_image, fpga_vga, fpga_vga_dac
 
 ROOT = Path(__file__).resolve().parents[3]
 PROOF = ROOT / "src/fpga/de2_115/de2_system_proof.sv"
@@ -255,6 +255,27 @@ class ChainTests(unittest.TestCase):
                 self.assertEqual(first.split("|")[0], second.split("|")[0])
         # The reset is not a chain here: the reset control owns its own.
         self.assertNotIn("board_reset_n", ports)
+
+    def test_the_blank_crossing_is_excepted_because_this_image_asserts_blank(self):
+        """The composition's PPU asserts blank; the standalone DAC fixture does not.
+
+        That assertion crosses from the pixel clock to the system clock, and it is
+        the one path in the image with no exception when the profile is left out:
+        a fit without it fails setup on `u_bridge|blank_active` to
+        `u_bridge|blank_seen_sys[0]` at every corner while every other path keeps
+        more than 5 ns of a 40 ns period.
+        """
+        text = system.constraints(fpga.tcl_word)
+        for register in ("blank_requested", "blank_active"):
+            self.assertIn(system.BRIDGE_PREFIX + register, text)
+        # The first stage is named as a pin, so the quoted word carries a suffix.
+        self.assertIn(fpga.tcl_word(system.BRIDGE_PREFIX + "blank_seen_sys[0]").strip('"'), text)
+        names = {name for name, _, _ in fpga_vga.chain_profile(True)}
+        self.assertEqual(names - {name for name, _, _ in fpga_vga.chain_profile(False)},
+                         {"blank_pix", "blank_seen_sys"})
+        self.assertEqual(sorted(system.required_reports()),
+                         sorted(fpga_vga.required_reports(lcd=True, outputs=fpga_vga_dac.DAC)
+                                + fpga_controls.required_reports(chains=system.CHAINS)))
 
     def test_the_composed_collections_name_this_image_s_hierarchy(self):
         """Every shared pixel-path string is rewritten one level down, and only there."""

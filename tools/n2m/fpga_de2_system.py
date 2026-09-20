@@ -90,18 +90,26 @@ def hierarchy(text):
 
 
 def constraints(quote):
-    """The composed pixel path's checked collections and the control chains'."""
-    return (hierarchy(fpga_vga.constraints(quote, outputs=fpga_vga_dac.DAC))
+    """The composed pixel path's checked collections and the control chains'.
+
+    `lcd` selects the blank-control profile. The standalone DAC fixture generates
+    its own pixels and asserts no blank, so it does not need it; this image is the
+    whole composition, whose PPU asserts blank, and that assertion crosses from
+    the pixel clock to the system clock. Without the profile that crossing is the
+    one path in the image with no exception, and the fit fails setup on it at
+    every corner while everything else keeps more than 5 ns.
+    """
+    return (hierarchy(fpga_vga.constraints(quote, lcd=True, outputs=fpga_vga_dac.DAC))
             + fpga_controls.constraints(quote, chains=CHAINS))
 
 
 def audit(quote):
-    return (hierarchy(fpga_vga.audit(quote, outputs=fpga_vga_dac.DAC))
+    return (hierarchy(fpga_vga.audit(quote, lcd=True, outputs=fpga_vga_dac.DAC))
             + fpga_controls.audit(quote, chains=CHAINS))
 
 
 def required_reports():
-    return (fpga_vga.required_reports(outputs=fpga_vga_dac.DAC)
+    return (fpga_vga.required_reports(lcd=True, outputs=fpga_vga_dac.DAC)
             + fpga_controls.required_reports(chains=CHAINS))
 
 
@@ -144,12 +152,12 @@ def verify(folder, *, system_clock, system_net):
     """The board side of this image: its picture path, its DAC and its chains."""
     folder = Path(folder)
     reports = {}
-    for name in fpga_vga.required_reports(outputs=fpga_vga_dac.DAC):
+    for name in fpga_vga.required_reports(lcd=True, outputs=fpga_vga_dac.DAC):
         path = folder / "output" / name
         if not path.is_file() or not path.stat().st_size:
             raise ValueError("missing composed VGA path evidence: " + name)
         reports[name] = path.read_text(encoding="utf-8")
-    evidence = {"vga_paths": fpga_vga.verify_paths(reports, system_clock=system_clock,
+    evidence = {"vga_paths": fpga_vga.verify_paths(reports, lcd=True, system_clock=system_clock,
                                                   bridge_prefix=BRIDGE_PREFIX,
                                                   outputs=fpga_vga_dac.DAC),
                 "dac": {"channel_bits": fpga_vga_dac.CHANNEL_BITS,
