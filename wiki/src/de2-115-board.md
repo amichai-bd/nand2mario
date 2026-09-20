@@ -235,6 +235,20 @@ The [fit](#targets) reports those banks accordingly: `I/O Bank Usage` gives bank
 2 at 3.3 V for `CLOCK_50`, bank 6 at 2.5 V for `KEY[0]` and bank 7 at 2.5 V for
 `LEDR[7:0]`, and its per-pin tables give `2.5 V` on all nine.
 
+The [seven-segment group](#seven-segment-displays) is the harder entry, and it is
+where declaring a voltage stops being bookkeeping. Of its 56 pins the vendor
+fixes only four — three at 2.5 V and one at 3.3 V — and leaves 52 to a jumper: 20
+to JP7, whose default supplies 2.5 V, and 32 to JP6, whose default supplies
+3.3 V. A design that uses all eight digits therefore declares two different
+standards inside one group, with the boundaries falling mid-digit, and for 52 of
+the 56 what it declares is a documented default position rather than a measured
+supply. The registry records `2.5 V` on the three fixed 2.5 V pins together with
+all 20 JP7 pins, and `3.3-V LVTTL` on the 32 JP6 pins together with the one fixed
+3.3 V pin, which is the same rule the [switches](#slide-switches) and `KEY` follow
+and the same caveat: **JP6 and JP7 must be read on the board before anything that
+drives these pins is programmed onto it.** The 11 switch and 2 extra push-button
+pins the same image places are all JP7, so they take `2.5 V` with the rest.
+
 **What that settles, and what it does not.** The project file now states the
 board's documented voltage instead of one the board does not supply. It remains a
 Cyclone IV E build-path result and not a board image. The 2.5 V on `KEY[0]` is
@@ -309,6 +323,158 @@ why the flow proof drives `LEDR[7:0]` and not the green bank.
 | `LEDR[3]` | `PIN_F21` | `LEDR[9]` | `PIN_G17` | `LEDR[15]` | `PIN_G15` |
 | `LEDR[4]` | `PIN_F18` | `LEDR[10]` | `PIN_J15` | `LEDR[16]` | `PIN_G16` |
 | `LEDR[5]` | `PIN_E18` | `LEDR[11]` | `PIN_H16` | `LEDR[17]` | `PIN_H15` |
+
+### Slide switches
+
+All eighteen, from [Table 4-1](#references) and the sources that agree with it.
+Every row carries five independent transcriptions (`C`, `E`, `F`, `G`, `T`) and
+none disagrees with the vendor table or with another source. The whole group's
+vendor I/O standard is `Depending on JP7`, uniformly: no switch has a fixed
+standard, and JP7's default position supplies 2.5 V.
+
+| Signal | Pin | Signal | Pin |
+|---|---|---|---|
+| `SW[0]` | `PIN_AB28` | `SW[9]` | `PIN_AB25` |
+| `SW[1]` | `PIN_AC28` | `SW[10]` | `PIN_AC24` |
+| `SW[2]` | `PIN_AC27` | `SW[11]` | `PIN_AB24` |
+| `SW[3]` | `PIN_AD27` | `SW[12]` | `PIN_AB23` |
+| `SW[4]` | `PIN_AB27` | `SW[13]` | `PIN_AA24` |
+| `SW[5]` | `PIN_AC26` | `SW[14]` | `PIN_AA23` |
+| `SW[6]` | `PIN_AD26` | `SW[15]` | `PIN_AA22` |
+| `SW[7]` | `PIN_AB26` | `SW[16]` | `PIN_Y24` |
+| `SW[8]` | `PIN_AC25` | `SW[17]` | `PIN_Y23` |
+
+The vendor states the sense and the debouncing, and both matter to anything that
+reads them: "When the switch is in the DOWN position (closest to the edge of the
+board), it provides a low logic level to the FPGA, and when the switch is in the
+UP position it provides a high logic level", and "These switches are not
+debounced". A switch away from the board edge reads 1, and the FPGA pin is the
+contact, so whatever reads a switch owns its bounce. The push-buttons are the
+other way on both counts: each "provides a high logic level when it is not
+pressed, and provides a low logic level when depressed", through an onboard
+Schmitt-trigger debouncing circuit.
+
+Three sources put their own design ports on these pins under other names —
+`switch[n]` (`B`, all eighteen positional), `SWITCH[n]` (`D`, the low ten
+positional) and `keys[n]` with a one-position offset (`I`) — and one puts a
+single port on `SW[17]` (`H`). They corroborate the pin set; none names a vendor
+signal, so none is counted above.
+
+### Seven-segment displays
+
+All 56 signals of the eight digits, from [Table 4-4](#references) and the sources
+that agree with it. `HEX0` through `HEX5` carry four independent transcriptions
+and `HEX6` and `HEX7` carry three, because `F` assigns only the first six digits.
+No source disagrees with the vendor table or with another source, and the seven
+`T` files agree with each other on all 56.
+
+**This group is the one place on this board where the vendor states four
+different I/O standards inside one group, and the boundaries fall mid-digit.**
+Three pins are fixed at 2.5 V, twenty depend on JP7, thirty two depend on JP6,
+and one — `HEX7[6]` — is fixed at 3.3 V among six JP6 siblings. `HEX0` splits 3/4
+between fixed 2.5 V and JP7, `HEX3` splits 2/5 between JP7 and JP6, and `HEX7`
+splits 6/1 between JP6 and fixed 3.3 V. Each row below carries the manual's own
+string, and nothing is reconciled with its neighbours.
+
+| Signal | Pin | Sources | Attesting groups | Vendor I/O standard |
+|---|---|---|---|---|
+| `HEX0[0]` | `PIN_G18` | 4 | `B`, `F`, `G`, `T` | 2.5V |
+| `HEX0[1]` | `PIN_F22` | 4 | `B`, `F`, `G`, `T` | 2.5V |
+| `HEX0[2]` | `PIN_E17` | 4 | `B`, `F`, `G`, `T` | 2.5V |
+| `HEX0[3]` | `PIN_L26` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX0[4]` | `PIN_L25` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX0[5]` | `PIN_J22` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX0[6]` | `PIN_H22` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX1[0]` | `PIN_M24` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX1[1]` | `PIN_Y22` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX1[2]` | `PIN_W21` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX1[3]` | `PIN_W22` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX1[4]` | `PIN_W25` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX1[5]` | `PIN_U23` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX1[6]` | `PIN_U24` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX2[0]` | `PIN_AA25` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX2[1]` | `PIN_AA26` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX2[2]` | `PIN_Y25` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX2[3]` | `PIN_W26` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX2[4]` | `PIN_Y26` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX2[5]` | `PIN_W27` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX2[6]` | `PIN_W28` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX3[0]` | `PIN_V21` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX3[1]` | `PIN_U21` | 4 | `B`, `F`, `G`, `T` | Depending on JP7 |
+| `HEX3[2]` | `PIN_AB20` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX3[3]` | `PIN_AA21` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX3[4]` | `PIN_AD24` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX3[5]` | `PIN_AF23` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX3[6]` | `PIN_Y19` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX4[0]` | `PIN_AB19` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX4[1]` | `PIN_AA19` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX4[2]` | `PIN_AG21` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX4[3]` | `PIN_AH21` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX4[4]` | `PIN_AE19` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX4[5]` | `PIN_AF19` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX4[6]` | `PIN_AE18` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX5[0]` | `PIN_AD18` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX5[1]` | `PIN_AC18` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX5[2]` | `PIN_AB18` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX5[3]` | `PIN_AH19` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX5[4]` | `PIN_AG19` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX5[5]` | `PIN_AF18` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX5[6]` | `PIN_AH18` | 4 | `B`, `F`, `G`, `T` | Depending on JP6 |
+| `HEX6[0]` | `PIN_AA17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX6[1]` | `PIN_AB16` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX6[2]` | `PIN_AA16` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX6[3]` | `PIN_AB17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX6[4]` | `PIN_AB15` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX6[5]` | `PIN_AA15` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX6[6]` | `PIN_AC17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX7[0]` | `PIN_AD17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX7[1]` | `PIN_AE17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX7[2]` | `PIN_AG17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX7[3]` | `PIN_AH17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX7[4]` | `PIN_AF17` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX7[5]` | `PIN_AG18` | 3 | `B`, `G`, `T` | Depending on JP6 |
+| `HEX7[6]` | `PIN_AA14` | 3 | `B`, `G`, `T` | 3.3V |
+
+`H` assigns a flat 56-bit bus onto exactly these 56 pins, grouped seven per
+digit, but with the bit order reversed inside each digit and no vendor signal
+named, so it corroborates the pin set and the grouping and attests no per-signal
+assignment; it is not counted above.
+
+**A segment lights on a low level.** Section 4.4 states it directly: "the seven
+segments (common anode) are connected to pins on Cyclone IV E FPGA. Applying a
+low logic level to a segment will light it up and applying a high logic level
+turns it off." That is the opposite of this board's LEDs, which section 4.3
+states as "driving its associated pin to a high logic level turns the LED on", so
+the inversion between the two is the vendor's and not an assumption.
+
+**Bit `n` of `HEXd` is segment `n` of the digit**, indexed 0 to 6: section 4.4
+says "Each segment in a display is identified by an index from 0 to 6, with the
+positions given in Figure 4-10", and that figure prints an index beside each
+segment. Read off it, 1 is upper right, 2 is lower right, 3 is the bottom bar, 4
+is lower left, 5 is upper left and 6 is the middle bar — the conventional
+clockwise `a` to `g` order. Index 0 is the top bar by elimination from the
+manual's own statements rather than by reading the figure: the numeral beside the
+top bar does not render legibly at any resolution extracted, and the top bar is
+the only position the other six indices leave. The decimal point is labelled in
+the same figure, carries no index, appears nowhere in Table 4-4 and is not
+wired — section 3.2: "the dots of the 7-SEGs are not enabled on DE2-115 board."
+
+**Which physical digit is `HEX0` and which is `HEX7` is not established.** The
+manual never says which end of the board either sits at. Section 4.4 gives the
+grouping only — "These displays are arranged into two pairs and a group of
+four" — Figure 4-10 shows one digit in isolation, and Figure 2-1's board photo
+labels the block without labelling a digit, with silkscreen below the embedded
+photo's resolution. The chapter 6 demo tables do put the more significant byte on
+the higher index, which is suggestive and is not a statement; it is recorded here
+as not evidence. So a design that spreads one number across the eight digits
+fixes which digit is most significant, and reading them in the right order across
+the board is a bring-up observation.
+
+**Polarity and the segment index rest on the vendor manual alone.** None of the
+twenty settings files says anything about either: a `.qsf` carries only `set_*`
+assignments and comments, and the only seven-segment comments in any of them are
+four bare section headers. That is weaker than the pin numbers, which carry three
+to five independent transcriptions as well as the manual.
 
 ### VGA
 
@@ -494,6 +660,55 @@ slowest grade states.
 analysis that supports them. No image has been programmed onto a DE2-115 and no
 monitor has been connected; that belongs to a bring-up record with its own
 authorization.
+
+## The on-board readout
+
+This board has no host link on this bench — [no UART cable and no HPS](board-bring-up.md),
+and its JTAG programs rather than talks — so the two things a host would be asked,
+which image is running and whether its ROM is the intended one, are answered on
+the board itself. The eight [seven-segment digits](#seven-segment-displays) carry
+32 bits of hexadecimal, and the [switches](#slide-switches) choose which 32 bits.
+
+`HEX7` carries the most significant nibble and `HEX0` the least. Which physical
+digit each of those is is [not established](#seven-segment-displays) from the
+vendor manual, so which end of the block to start reading from is a bring-up
+observation rather than a documented fact.
+
+`SW[10:8]` select the view. All eight selections are defined, so no switch
+position leaves the digits stating something undefined:
+
+| `SW[10:8]` | Digits show |
+|---|---|
+| `000` | build identity, bits 127 to 96 |
+| `001` | build identity, bits 95 to 64 |
+| `010` | build identity, bits 63 to 32 |
+| `011` | build identity, bits 31 to 0 |
+| `100` | CRC-32 of the ROM the build carried into the bitstream |
+| `101` | frames the pixel path has presented, low 32 bits |
+| `110` | core epoch |
+| `111` | `{fault, paused, input source, effective button mask}` |
+
+The build identity is the same 128-bit constant the DE10-Lite's composed images
+publish over UART, so the four identity views answer exactly what a host `ping`
+answers. Reading it takes four switch positions because eight digits hold a
+quarter of it at a time.
+
+The CRC view is the packager's own CRC-32 of the image it wrote, reaching the
+design as one compiled 32-bit constant, so the number on the digits and the number
+in the build record come from the same packaged bytes. It identifies the carried
+ROM; that the bitstream actually holds those bytes is a separate and stronger
+result, read out of the fitted memory blocks by the
+[builder](../tools/n2m/SPEC.md#carried-rom-image).
+
+The controls are this board's own. `KEY[0]` is the board reset. `SW[7:0]` hold the
+eight DMG buttons in the order the shared button mask uses — right, left, up,
+down, A, B, select, start — and `KEY[3]` and `KEY[2]` add momentary A and B,
+because a platformer's jump is a press rather than a position. Two slide switches
+can assert both of an opposing pair where a d-pad cannot, so both are dropped when
+they are, which is the rule the physical control producer already asserts. Every
+one of these thirteen inputs passes the shared button filter's two forced
+synchronizer stages and its 5 ms stable window before it reaches the composition,
+because the vendor states these switches are not debounced.
 
 ## Targets
 

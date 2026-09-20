@@ -37,7 +37,8 @@ INIT_PARAMETER = "INIT_FILE"
 CARRIED_PROFILE = DIRECT_PROFILE_NAME
 # ROM store instance path under each registered top, from the top down. A top
 # absent here cannot carry an image and refuses the declaration by name.
-ROM_INSTANCES = {"n2m_memory_stores": ("rom",)}
+ROM_INSTANCES = {"n2m_memory_stores": ("rom",),
+                 "de2_system_proof": ("u_system", "u_stores", "rom")}
 PACKAGE_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 # The ROM store's depth, which the packager's file addresses in full, and the
 # addresses one fitted M9K block of it holds.

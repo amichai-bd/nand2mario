@@ -48,6 +48,35 @@ generated DAC clock from the Cyclone V Altera PLL's output counter, which no
 Cyclone IV E netlist contains, so it must fail. Neither target has been
 programmed onto a board and no picture has been observed.
 
+`de2-system` composes the whole Game Boy onto this board through
+[`de2_system_proof.sv`](de2_system_proof.sv), under
+[`de2_system.sdc`](de2_system.sdc), with its program carried in the bitstream and
+no host connection of any kind. It instantiates `n2m_clocking` and
+`n2m_v05_system` unchanged, so every clocking, memory, CPU, pixel-path and
+endpoint check belongs to the module that owns it; what this top owns is the board
+side — the picture on the same DAC pins `de2-vga` drives, the controls on this
+board's `KEY` and `SW`, the readout on its eight seven-segment digits through
+[`de2_hex_digit.sv`](de2_hex_digit.sv), and the termination of the host UART and
+SDRAM this bench does not have. The readout and control scheme is on the
+[board specification](../../../wiki/src/de2-115-board.md#the-on-board-readout) and
+the [builder contract](../../../wiki/tools/n2m/SPEC.md#carried-rom-image) owns the
+carried image. `de2-system-invalid` shares every source and moves one readout pin
+— `HEX7[6]`, the one seven-segment pin the vendor fixes at a voltage its six
+siblings do not share — onto a package pin the board record does not name, so the
+builder refuses it by name before any tool runs. That is a builder check rather
+than a vendor diagnostic, which is what `de2-vga-invalid` has to settle for.
+
+**`de2-system` does not compile today, and the reason is not on this board.**
+`n2m_v05_system` instantiates `n2m_boot_copier`, which instantiates
+`n2m_flash_reader`, which outside Verilator instantiates `altera_onchip_flash`
+parameterized `DEVICE_FAMILY("MAX 10")` and `PART_NAME("10M50DAF484C7G")`. The
+composition therefore requires the DE10-Lite's own internal flash, which
+Cyclone IV E does not have, and `quartus_map` stops at
+`Error (12006): ... instantiates undefined entity "n2m_flash_reader"` when that
+source is left out and at an absent UFM when it is not. Composing this board needs
+a way to build the system without the flash library; that is a shared-RTL decision
+and is tracked outside this directory.
+
 This board reuses what the DE10-Nano had to replace: ALTPLL serves Cyclone IV E
 and `altsyncram` places M9K, so there is no `n2m_clocking_*` wrapper and no
 memory branch here.

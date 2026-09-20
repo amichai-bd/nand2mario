@@ -32,7 +32,7 @@ ATOM_MODEL = "eda/sim_lib/cycloneive_atoms.v"
 # This board's own proof tops, whose exact `u_clocking` hierarchy these checks
 # recognize. Both instantiate the DE10-Lite's ALTPLL wrapper in place, so the
 # hierarchy is that board's; the top names are this one's.
-SUPPORTED_TOPS = ("de2_clocking_proof", "de2_vga_proof")
+SUPPORTED_TOPS = ("de2_clocking_proof", "de2_vga_proof", "de2_system_proof")
 # ALTPLL's own facts, reused rather than restated: the report encoding, the reset
 # chain audit and its report inventory, and the fitted instance hierarchy each
 # check and constraint names. The hierarchy holds because this board fits the
