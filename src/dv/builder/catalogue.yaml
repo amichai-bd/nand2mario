@@ -90,7 +90,7 @@ units:
   audio-wave-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: 0.53}
   baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: 0.41}
   baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 0.41}
-  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 44.97}
+  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 50.70}
   builder-smoke-fail: {kind: sim, level: 2, labels: [builder-fault], duration_seconds: null}
   clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 6.58}
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
@@ -597,7 +597,7 @@ units:
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.08, inputs: []}
   src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.64, inputs: [src/dv/stackdrop/fixtures/title-frame.txt, src/dv/stackdrop/fixtures/title.json, src/sw/stackdrop/assets/tiles.json, src/sw/stackdrop/tables.asm]}
   src/dv/stackdrop/test_tail.py: {kind: unit, level: 2, labels: [needs-cocotb, stackdrop], duration_seconds: 0.17, inputs: []}
-  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 57.74}
+  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 59.33}
   tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: 0.56}
   timebase25: {kind: sim, level: 2, labels: [clocking], duration_seconds: 2.87}
   timebase25-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.49}
