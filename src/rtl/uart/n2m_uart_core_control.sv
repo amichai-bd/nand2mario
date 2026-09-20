@@ -20,8 +20,18 @@
 // clears host pause once the core reports itself initialized, which is the point
 // and the condition `boot_run` clears it under. `host_free_done` makes the reset
 // a one-shot, so a later core reset is the host's or the engine's as usual.
-// It is only meaningful with no host: while it is set, a HALT issued during
-// initialization would be released again when initialization completed.
+//
+// It is only meaningful with no host, and the reason is broader than a corner
+// case. The clear is the final statement of this always_comb, after `endcase`, so
+// while HOST_FREE_RUN is set and the core is initialized it erases every
+// `host_pause_next = 1` the case writes on that cycle: the HALT and RESET
+// commands, and all four pause writes of STEP_RUN and DOTS_RUN — both the
+// budget-exhausted `stop_step`/`stop_dots` paths and both `engine_stop` paths. So
+// with a host attached a HALT would never pause at any time, not only during
+// initialization, and a STEP or RUN_DOTS budget could never stop the core. A
+// program's own STOP is unaffected: that withholds ticks through `cpu_stopped`
+// rather than through this bit. A composition wanting both a carried image and a
+// host link needs a narrower clear than this one, and this is where it would go.
 module n2m_uart_core_control #(
     parameter bit HOST_FREE_RUN = 1'b0
 ) (

@@ -357,11 +357,24 @@ the same condition and the same point `boot_run` clears it under, so nothing is
 released during initialization.
 
 Default `1'b0` leaves every existing composition exactly as it was: no extra reset,
-and host pause released only the two ways it always was. The parameter is only
-meaningful with no host, because while it is set a `HALT` issued during
-initialization would be released again when initialization completed. The
-[composition](../system/MAS_system.md#host-free-composition) owns which boards set
-it, and the [host-free execution check](../../dv/integration/SPEC.md) is what proves
+and host pause released only the two ways it always was.
+
+**The clear is unconditional while the parameter is set, and that is why the
+parameter means "no host" rather than "no host yet".** It is the last statement of
+this owner's combinational block, after the command and run-state case, so while
+`HOST_FREE_RUN` is set and the core is initialized it erases every pause the case
+writes on that cycle: the `HALT` and `RESET` commands, and all four pause writes of
+`STEP_RUN` and `DOTS_RUN` — the budget-exhausted `stop_step` and `stop_dots` paths
+and both `engine_stop` paths. With a host attached a `HALT` would therefore never
+pause at any time, and a `STEP` or `RUN_DOTS` budget could never stop the core. A
+program's own `STOP` still works, because that withholds ticks through
+`cpu_stopped` and not through this bit. A composition wanting both a carried image
+and a host link — a board whose host arrives later, which this bench already has in
+the DE10-Nano's USB gadget — needs a narrower clear, and this owner is where it
+would go.
+
+The [composition](../system/MAS_system.md#host-free-composition) owns which boards
+set it, and the [host-free execution check](../../dv/integration/SPEC.md) is what proves
 a board with it set reaches its first fetch.
 
 ## Power-up profile and input source
