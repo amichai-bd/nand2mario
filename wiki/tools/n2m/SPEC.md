@@ -1489,24 +1489,73 @@ open, as in [v0.5](../../src/dv/v05/SPEC.md#revised-milestone-matrix).
 `check` runs the host suite ([host_suite.py](../../../tools/n2m/host_suite.py))
 as three `unittest discover` subprocesses over `tools/n2m/tests` at the same
 time, one per alphabetical module group (`test_[a-e]*.py`, `test_[f-l]*.py`,
-`test_[m-z]*.py`), each with its own 180-second budget. `unittest` runs modules
-one after another, so the groups balance measured module time recorded once in
-the source, not live timings; a new module joins the group its name falls in,
-and a module no group matches fails `check` by name. A group that fails or
-exceeds its budget fails `check` naming the group and its first failing test;
-a timeout is never a partial pass. `check.log` carries each group's status and
-wall before its output, and the record's `groups` and `wall_seconds` keep them.
-The CPU time is the suite's own; only the wall shrinks to the slowest group. No
-single test may cost tens of seconds: the real-clone reports of the
+`test_[m-z]*.py`), each inside a 180-second budget on the CPU time that group
+spends. `unittest` runs modules one after another, so the groups balance measured
+module time recorded once in the source, not live timings; a new module joins the
+group its name falls in, and a module no group matches fails `check` by name. A
+group that fails or exceeds its budget fails `check` naming the group and its
+first failing test; a stalled group is never a partial pass. `check.log` carries
+each group's status, wall, CPU and the host's one, five and fifteen minute load
+averages before its output, and the record's `groups`, `wall_seconds` and
+`cpu_seconds` keep them. Nothing decides anything from load; it is recorded so a
+reader can see what the machine was doing. All three averages, because the
+one-minute figure alone reads a lull as a quiet host: it has been seen at 1.86
+with the five-minute average at 4.27 and the load back at 5.68 immediately
+after. The CPU time is the suite's own; only the wall shrinks to the slowest
+group. No single test may cost tens of seconds: the real-clone reports of the
 [conservativeness proof](#conservativeness-proof) run under the opt-in
-`tests mutations --confirm` instead. Measured on the shared Linux WSL2
-development host (22 CPUs, 912 tests, load average 4 to 5.5 from other agents'
-host suites; a quiet host was not available): 62 s wall (groups 43, 55 and
-39 s; 112 s user and 13 s system CPU), and 59 s with one concurrent Verilator
-`regress pre-merge` (groups 42, 53 and 38 s). Before the split, the single
-subprocess took 170 s at that load and timed out at 180 s under load average
-5.8; its direct run cost 155 s user and 21 s system CPU. Do not raise the
-budget without a measured justification; move or rebalance the work instead.
+`tests mutations --confirm` instead.
+
+The budget measures user plus system CPU time for the group's subprocess and
+every descendant it waits for, read from `os.wait4` on that one pid as the
+process is reaped. `RUSAGE_CHILDREN` cannot serve: it sums every child this
+process reaped, and the groups run at the same time. The budget does not measure
+wall time. Up to four agents work this machine at once, so a group's wall is
+mostly how long it waited for a core, while the CPU it spends is its own work.
+The `test_[f-l]*.py` group over an unchanged tree measured 149.1 s of CPU in
+260.1 s of wall at load average 6.3, 151.3 s in 337.7 s beside its two sibling
+groups at load 7.0 to 9.7, and 144.3 s in 461.0 s under six added CPU burners at
+load 10.8: a 5% spread in CPU against a 77% spread in wall. Contention is not
+free in CPU either, because a contended process pays more system time and more
+cache misses; the same group spends about 112 s on a host at load 3, so heavy
+load inflates its CPU by about a third and then stops. It inflates the wall
+without limit. The strongest single comparison is between a healthy group and a
+grown one: the healthy group above passed at 151.3 s of CPU in 337.7 s of wall,
+and a group given 90 s of deliberate extra work failed at 201.7 s of CPU in
+230.5 s of wall. Ranked by wall the healthy group looks the worse of the two.
+
+180 remains the number, on the quantity the change under test owns. A group's CPU
+is never more than its wall, so no run that passed the wall budget fails the CPU
+budget. The margin that leaves is measured, not assumed: the largest group spends
+151 s of the 180 at the worst contention seen here. Rebalance the group ranges
+against a fresh measurement when growth reaches that margin.
+
+A CPU budget does not catch a group that grows slow by blocking instead of by
+computing. A test that sleeps, waits on a socket or waits for a lock spends wall
+and no CPU, and stays inside the budget however long it takes. The budget also
+does not charge a group for a descendant it abandons rather than waits for.
+`WALL_CEILING`, five times the CPU budget, guards only against a group that has
+stopped making progress: the worst contention measured here stretched a group's
+wall to 3.2 times its CPU, so a group spending the whole budget would take about
+574 s, and 900 s leaves margin above that. It is not a performance budget, and its
+failure names the CPU the group had spent. A host that reports no per-child CPU
+time, Windows among them, judges the wall against the same 180 seconds and says
+so in the failure.
+
+Measured on the 4-CPU Linux development host (913 tests, load average 7.0 to 9.7
+from two other agents, one of them compiling with Quartus; a quiet host was not
+available): PASS in 337.7 s wall, with groups spending 121.5, 151.3 and 93.2 s of
+CPU over 290.6, 337.7 and 240.3 s of wall; and at load 5.6 to 7.7, PASS in 227.9 s
+wall, with 107.7, 124.9 and 87.0 s of CPU over 202.6, 227.9 and 185.1 s of wall.
+Every group wall in both runs would have failed the 180-second wall budget, which
+on this host failed a passing suite whether the machine was busy or merely in
+use. Earlier, on the shared Linux WSL2 host
+(22 CPUs, 912 tests, load average 4 to 5.5 from other agents' host suites): 62 s
+wall (groups 43, 55 and 39 s; 112 s user and 13 s system CPU), and 59 s with one
+concurrent Verilator `regress pre-merge` (groups 42, 53 and 38 s). Before the
+split, the single subprocess took 170 s at that load and timed out at 180 s under
+load average 5.8; its direct run cost 155 s user and 21 s system CPU. Do not raise
+either number without a measured justification; move or rebalance the work instead.
 
 Elapsed time is captured before final evidence-file writes. OS scheduling,
 process launch and synchronous filesystem calls are not preemptible Python
