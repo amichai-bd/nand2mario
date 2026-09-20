@@ -630,9 +630,13 @@ so a recorded selection carries the same compile split a lone `sim test` does.
 
 ### Why nothing is refused for the state of the host
 
-A recording does not judge whether the host was busy, because no measurement
-available here separates a busy sitting from a quiet one. Each candidate was
-tried and fails on a different population:
+A recording does not judge whether the host was busy, because nothing in a run's
+own retained record separates a busy sitting from a quiet one across the
+populations the catalogue holds. Inside one population a run's own wall-to-CPU
+ratio does track contention, and the
+[host-play loop](../host-play/SPEC.md#what-each-budget-measures) is budgeted on
+exactly that. A recording covers every unit, and each candidate fails on a
+different one:
 
 - CPU is not invariant under contention. Four competing spinners moved a wall
   1.96 times and its CPU 1.30 times.
@@ -659,6 +663,17 @@ tried and fails on a different population:
   wall.
 - The load average is worse still, having read the idle 0.27 while six
   competitors were live.
+
+Instruments outside a run's own record do better. Sampling `/proc/stat` around a
+run, against four competing spinners, moved idle core-seconds inside the window
+20.8 to 0.00, other processes' CPU 41.4 to 214.4 seconds and involuntary context
+switches 4,541 to 17,384, while the run's own ratio moved only 1.10 to 2.26.
+Idle-in-window is population-independent: it does not care whether the run
+compiles in parallel, sleeps or computes, which is where the ratio fails. Reading
+one is not this command's business and would not change it, because a busy
+sitting does not by itself make a wall untrustworthy — the three `check` sittings
+recorded above include honest walls at a ratio of 3.99 under load average 12 to
+22.
 
 So the conditions are recorded for the reader and never used as a gate. Whether a
 sitting was quiet enough is the operator's judgement, and `at`, `wall_cpu` and

@@ -49,8 +49,13 @@ MINIMUM_DURATION = 0.01
 # outcome is a cache hit, which is never recorded. So a `sim` wall is a compile
 # wall, and `build` says how much of it.
 #
-# Nothing here judges whether the host was busy, because no measurement
-# available to this tool separates a busy sitting from a quiet one. Contention
+# Nothing here judges whether the host was busy, because nothing in a run's own
+# retained record separates a busy sitting from a quiet one across the populations
+# the catalogue holds. Instruments outside that record can, idle core-seconds
+# inside the window for one, and the SPEC names them; reading one would not change
+# this, because a busy sitting does not by itself make a wall untrustworthy.
+# Inside a single population the ratio does track contention, which is what the
+# host-play loop's CPU budget rests on. Across populations it does not. Contention
 # moves the wall far further than the CPU, so an honest wall can sit at any
 # ratio: this repository's own check groups reached ratios of 4.46, 3.99 and 3.01
 # beside another worktree's check, their walls up to 2.7 times and their CPU only
