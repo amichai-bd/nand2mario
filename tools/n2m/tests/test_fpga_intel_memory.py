@@ -1,6 +1,9 @@
 """Original report fragments exercise the physical RAM checker, not hardware."""
+from pathlib import Path
+import sys
 import unittest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.fpga_intel_memory import verify_netlist, SYS_CLOCK, PIX_CLOCK
 
 

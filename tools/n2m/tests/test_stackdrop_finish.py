@@ -5,9 +5,12 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import sys
 import tempfile
 import unittest
 
+# The command module loaded below imports ci and n2m, so tools/ goes on the path first.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 spec = importlib.util.spec_from_file_location('stackdrop_command', Path(__file__).resolve().parents[2]/'stackdrop_player.py')
 command = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(command)

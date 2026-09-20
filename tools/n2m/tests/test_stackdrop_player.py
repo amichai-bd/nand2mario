@@ -1,6 +1,9 @@
 """Independent visible geometry and legal path checks for the fixed player."""
+from pathlib import Path
+import sys
 import unittest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from stackdrop_support import Game, reference_cells, decode, image
 from n2m.stackdrop_player import cells, choose, evaluate, state
 
