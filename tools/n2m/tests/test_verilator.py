@@ -354,6 +354,20 @@ class PinnedInstallationTests(unittest.TestCase):
                 ValueError, "unrecorded file share/verilator/include/verilator_coverage_bin_dbg"):
             verilator_install.installed(self.root)
         (base / "share/verilator/include/verilator_coverage_bin_dbg").unlink()
+        # The record excludes itself by path too. Keyed on the basename, any file
+        # called installation.json deeper in the tree skipped the check by its name,
+        # one expression away from the exemption above -- the same defect class, and
+        # two adjacent exclusions keyed differently is how it arose.
+        planted = base / "share/verilator/include" / verilator_install.INSTALLATION
+        planted.write_text('{"smuggled": true}', encoding="utf-8")
+        with self.assertRaisesRegex(
+                ValueError, f"unrecorded file share/verilator/include/{verilator_install.INSTALLATION}"):
+            verilator_install.installed(self.root)
+        planted.unlink()
+        # The real record, at the prefix root, is still excluded and still read.
+        self.assertNotIn(verilator_install.INSTALLATION,
+                         {path.name for path in verilator_install.covered_files(base)})
+        self.assertEqual(verilator_install.installed(self.root), base / "bin")
         # A record that covers no tree proves nothing about what would run.
         self.write_tree(base, item)
         record = read_json(base / verilator_install.INSTALLATION)

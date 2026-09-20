@@ -2015,11 +2015,12 @@ about 0.4 seconds on the recorded host, which is one pass over those bytes:
 reading the file again, so the 21 MB `verilator_bin` is hashed once per discovery
 rather than twice.
 
-The exemption matches the relative path, never the basename. A basename match
-would also exempt the `share/verilator/bin` redirectors of the same two names,
-whose 236 MB justification does not apply to them, and would let a file planted
-anywhere in the tree skip the check by being named after one of them. An
-allow-list keyed on a filename is defeated by choosing that filename, which is
+Every exclusion matches the relative path, never the basename: the two exempt
+paths, and `installation.json` at the prefix root. A basename match would also
+exempt the `share/verilator/bin` redirectors of the same two names, whose 236 MB
+justification does not apply to them, and would let a file planted anywhere in the
+tree skip the check by being named after one of them or after the record itself.
+An allow-list keyed on a filename is defeated by choosing that filename, which is
 the opposite of what this check is for. The
 `verilator --version` banner is checked against the pinned release as well,
 because the banner is what says which compiler will run: a pinned tree that

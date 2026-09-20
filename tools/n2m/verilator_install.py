@@ -110,13 +110,17 @@ def pinned_release(root=None):
 def covered_files(base):
     """Every installed file a simulation can execute or compile against, in order.
 
-    Keyed on each file's path relative to the prefix, so `UNCOVERED` exempts the
-    two paths it names and nothing else that happens to share a basename.
+    Every exclusion is keyed on the path relative to the prefix, never a basename:
+    `UNCOVERED` exempts the two paths it names, and the record excludes itself at
+    the prefix root only. A basename key would let any file called
+    `installation.json` deeper in the tree skip the check by its name alone, which
+    is the same defect as exempting a planted `verilator_bin_dbg`. Two adjacent
+    exclusions keyed differently is how that hole got here, so both are paths.
     """
     base = Path(base)
+    excluded = (INSTALLATION, *UNCOVERED)
     return [path for path in sorted(base.rglob("*"))
-            if path.is_file() and path.name != INSTALLATION
-            and path.relative_to(base).as_posix() not in UNCOVERED]
+            if path.is_file() and path.relative_to(base).as_posix() not in excluded]
 
 
 def tree_digests(base):
