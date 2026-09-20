@@ -51,7 +51,7 @@ def run(client, image, binding, out, *, plan, write_png, budget=None, clock=time
     captures, observed = [],[]
     captured = set()
     limits = dict(frames=route.limit+3,actions=route.limit+2,retries=0,
-                  no_progress_frames=route.limit+2,wall_seconds=spec.CAPS[plan])
+                  no_progress_frames=route.limit+2,cpu_seconds=spec.CAPS[plan])
     limits.update(budget or {})
 
     def keep(index, observation, provenance):

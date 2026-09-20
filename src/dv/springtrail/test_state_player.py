@@ -20,7 +20,7 @@ import state_support as support  # noqa: E402
 from state_fake import Endpoint  # noqa: E402
 import springtrail_player as entrypoint  # noqa: E402
 
-BUDGET = {'wall_seconds': 240, 'frames': 1500, 'actions': 1500}
+BUDGET = {'cpu_seconds': 240, 'frames': 1500, 'actions': 1500}
 
 
 class EntrypointTests(unittest.TestCase):
@@ -129,7 +129,7 @@ class EntrypointTests(unittest.TestCase):
             out = Path(folder) / 'play'
             result = entrypoint.run(client, self.image, self.binding, out, mode='play',
                                     image_stride=5,
-                                    budget={'wall_seconds': 60, 'frames': 20, 'actions': 20})
+                                    budget={'cpu_seconds': 60, 'frames': 20, 'actions': 20})
             # A bounded budget stops the run; the failure is recorded, not hidden.
             self.assertEqual(result['status'], 'FAIL')
             self.assertIn('BUDGET', result['reason'])
