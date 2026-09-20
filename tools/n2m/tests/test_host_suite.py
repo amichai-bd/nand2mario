@@ -1,5 +1,6 @@
 """The `check` host suite runs its module groups concurrently, budgets each group's own CPU, and fails by group name."""
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -22,6 +23,11 @@ WAIT_SCRIPT = "import sys, time; time.sleep(float(sys.argv[1]))"
 BURN = 1.0
 # Interpreter startup and the write of the group's output are the group's CPU too.
 STARTUP = 0.6
+
+
+# Skipped, never degraded, where the OS reports no per-child CPU: a test that tolerates
+# `cpu_seconds` being None passes just as well when the reaping hook has stopped working.
+measures_cpu = unittest.skipUnless(hasattr(host_suite.os, "wait4"), "no per-child CPU time here")
 
 
 def scripted(scripts):
@@ -74,6 +80,7 @@ class GroupTests(unittest.TestCase):
         self.assertGreaterEqual(fields["wall_seconds"], SLEEP)
         self.assertLess(fields["wall_seconds"], 2 * SLEEP)
 
+    @measures_cpu
     def test_each_group_is_charged_only_the_cpu_it_spent(self):
         # The budget is only meaningful if concurrent groups do not pool their CPU. Two groups burn
         # BURN seconds of CPU each while a third only waits; the parent's RUSAGE_CHILDREN would
@@ -81,13 +88,10 @@ class GroupTests(unittest.TestCase):
         scripts = {"burn_a*": (BURN_SCRIPT, str(BURN)), "burn_b*": (BURN_SCRIPT, str(BURN)),
                    "wait_c*": (WAIT_SCRIPT, str(2 * BURN))}
         with workspace() as temp:
-            fields, problems, log = suite(Path(temp), scripts)
+            fields, problems, _ = suite(Path(temp), scripts)
         self.assertEqual(problems, [])
         spent = {g["pattern"]: g["cpu_seconds"] for g in fields["groups"]}
         walls = {g["pattern"]: g["elapsed_seconds"] for g in fields["groups"]}
-        if spent["wait_c*"] is None:  # a host without per-child CPU time falls back to the wall
-            self.assertEqual(set(spent.values()), {None})
-            return self.assertIn("no per-child CPU time", log)
         for pattern in ("burn_a*", "burn_b*"):
             self.assertLessEqual(BURN, spent[pattern], spent)
             self.assertLess(spent[pattern], BURN + STARTUP, spent)
@@ -96,19 +100,47 @@ class GroupTests(unittest.TestCase):
         self.assertLess(spent["wait_c*"], STARTUP, spent)
         self.assertEqual(fields["cpu_seconds"], sum(spent.values()))
 
+    @measures_cpu
     def test_a_group_that_waits_for_a_core_passes_while_one_that_grows_fails(self):
         # Same wall, opposite verdicts: the busy-machine group is charged the CPU it spent.
         scripts = {"wait_a*": (WAIT_SCRIPT, str(2 * BURN)), "burn_b*": (BURN_SCRIPT, str(2 * BURN))}
         with workspace() as temp:
             fields, problems, log = suite(Path(temp), scripts, cpu_budget=1, wall_ceiling=60)
         statuses = {g["pattern"]: g["status"] for g in fields["groups"]}
-        if fields["groups"][0]["cpu_seconds"] is None:
-            return self.assertEqual(statuses, {"wait_a*": "FAIL", "burn_b*": "FAIL"})
         self.assertEqual(statuses, {"wait_a*": "PASS", "burn_b*": "FAIL"})
         self.assertEqual(len(problems), 1)
         self.assertRegex(problems[0], r"^group burn_b\* used \d+ s of CPU, over its 1-second CPU budget \(wall \d+ s\)$")
         self.assertIn("== group wait_a*: PASS in ", log)
         self.assertIn(" s CPU, ", log)
+
+    def test_a_group_whose_cpu_time_cannot_be_read_is_judged_on_its_wall(self):
+        # The fail-safe path, exercised rather than argued: `Child` reduced to the `Popen` it
+        # extends is what a Windows host without `os.wait4` gets, and what a CPython release
+        # that renames the reaping hook would leave behind. Neither may pass silently.
+        scripts = {"wait_a*": (WAIT_SCRIPT, str(2 * BURN)), "quick_b*": (WAIT_SCRIPT, "0")}
+        with workspace() as temp, patch.object(host_suite, "Child", subprocess.Popen):
+            fields, problems, log = suite(Path(temp), scripts, cpu_budget=1, wall_ceiling=60)
+        self.assertEqual([g["cpu_seconds"] for g in fields["groups"]], [None, None])
+        self.assertIsNone(fields["cpu_seconds"])
+        # The same group the measured run passes fails here, on the wall, and says why.
+        self.assertEqual({g["pattern"]: g["status"] for g in fields["groups"]},
+                         {"wait_a*": "FAIL", "quick_b*": "PASS"})
+        self.assertEqual(problems, [f"group wait_a* ran {fields['groups'][0]['elapsed_seconds']:.0f} s, "
+                                    "over its 1-second budget; this host reports no per-child CPU "
+                                    "time, so a busy machine can fail it"])
+        self.assertIn("== group quick_b*: PASS in ", log)
+        self.assertIn("(this host reports no per-child CPU time)", log)
+
+    @measures_cpu
+    def test_the_reaping_hook_keeps_the_rusage_of_the_child_it_reaps(self):
+        # The one assertion the whole budget rests on, at its smallest: the hook runs, and the
+        # CPU it reports is the child's own work and not this process's.
+        child = host_suite.spawn(ROOT, [sys.executable, "-c", BURN_SCRIPT, str(BURN)])
+        self.assertIsInstance(child, host_suite.Child)
+        child.communicate(timeout=60)
+        self.assertIsNotNone(child.rusage, "Popen no longer reaps through _try_wait")
+        self.assertLessEqual(BURN, child.cpu_seconds)
+        self.assertLess(child.cpu_seconds, BURN + STARTUP)
 
     def test_a_group_that_stops_making_progress_fails_on_the_wall_ceiling(self):
         scripts = {"wait_a*": (WAIT_SCRIPT, "30"), "ok_b*": (WAIT_SCRIPT, "0")}
