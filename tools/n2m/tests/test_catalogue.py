@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import platform
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import catalogue as module
+from n2m import cpu_budget
 from n2m.cli import main
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -21,6 +23,20 @@ ROOT = Path(__file__).resolve().parents[3]
 TRACED_UNIT = "tools/n2m/tests/test_fpga_hold.py"
 
 ENTRY = {"kind": "sim", "level": 1, "labels": ["cpu"], "duration_seconds": None}
+# A host unit nothing has measured, so its budget is the default rather than a multiple.
+UNMEASURED = {"labels": [], "duration_seconds": None}
+# Spends its own CPU until it has spent that much, however fast or busy the host is.
+BURN = ("import time, unittest\n\nclass T(unittest.TestCase):\n"
+        "    def test_burn(self):\n"
+        "        deadline = time.process_time() + {0}\n"
+        "        while time.process_time() < deadline:\n            pass\n")
+# Spends wall and no CPU, the way a unit waiting for a core does.
+WAIT = ("import time, unittest\n\nclass T(unittest.TestCase):\n"
+        "    def test_wait(self):\n        time.sleep({0})\n")
+
+# Skipped, never degraded, where the OS reports no per-child CPU: a test that tolerates
+# `cpu_seconds` being None passes just as well when the reaping hook has stopped working.
+measures_cpu = unittest.skipUnless(hasattr(module.os, "wait4"), "no per-child CPU time here")
 # One sitting's conditions, in the form `tests record` writes them.
 MEASURED = {"at": "2026-09-20T14:29Z", "commit": "f70fb078b67b", "host": "Linux-x86_64",
             "wall_cpu": 1.03}
@@ -711,6 +727,73 @@ class UnitExecution(unittest.TestCase):
                    "    def test_import(self):\n        self.assertTrue(catalogue.LEVELS)\n")
         self.assertEqual(module.run_unit(self.root, "suite/test_one.py", {"labels": []})["status"],
                          "PASS")
+
+    def test_a_units_budget_is_the_default_or_a_multiple_of_its_own_measured_wall(self):
+        """One number for every unit is sized by the slowest and then bounds nothing else."""
+        default, factor = module.UNIT_CPU_BUDGET, module.UNIT_CPU_FACTOR
+        self.assertEqual(module.unit_cpu_budget({"duration_seconds": None}), default)
+        self.assertEqual(module.unit_cpu_budget({}), default)
+        self.assertEqual(module.unit_cpu_budget({"duration_seconds": default / factor / 2}), default)
+        # Only a unit that measured more than the default's own share of the factor gets more.
+        self.assertEqual(module.unit_cpu_budget({"duration_seconds": default}), factor * default)
+        # A drift report arrives before a budget failure, so growth is named before it blocks.
+        self.assertGreater(factor, module.DRIFT_FACTOR)
+
+    @measures_cpu
+    def test_a_unit_that_waits_for_a_core_passes_while_one_that_grows_fails(self):
+        """Same wall, opposite verdicts: the bound is the work the unit did, not its waiting."""
+        self.write(WAIT.format(2.0))
+        with patch.object(module, "UNIT_CPU_BUDGET", 1):
+            waited = module.run_unit(self.root, "suite/test_one.py", UNMEASURED)
+            self.write(BURN.format(2.0))
+            grown = module.run_unit(self.root, "suite/test_one.py", UNMEASURED)
+        self.assertEqual(waited["status"], "PASS", waited)
+        self.assertGreaterEqual(waited["elapsed_seconds"], 2.0)
+        self.assertLess(waited["cpu_seconds"], 1)
+        self.assertEqual(waited["cpu_budget_seconds"], 1)
+        self.assertEqual(grown["status"], "FAIL")
+        self.assertGreater(grown["cpu_seconds"], 1)
+        self.assertRegex(grown["error"], r"^unit used \d+ s of CPU, over its 1-second CPU budget "
+                                         r"\(wall \d+ s, [\d.]+x its CPU\)$")
+
+    @measures_cpu
+    def test_a_unit_measured_above_the_default_is_bounded_against_its_own_wall(self):
+        """The proportional bound has to raise the budget and still fail growth past it."""
+        entry = {"labels": [], "duration_seconds": 1.0}
+        self.write(BURN.format(1.5))
+        with patch.object(module, "UNIT_CPU_BUDGET", 1), patch.object(module, "UNIT_CPU_FACTOR", 2):
+            inside = module.run_unit(self.root, "suite/test_one.py", entry)
+            self.write(BURN.format(3.0))
+            outside = module.run_unit(self.root, "suite/test_one.py", entry)
+        # 1.5 s of CPU is over the 1-second default and inside this unit's own 2 seconds.
+        self.assertEqual((inside["status"], inside["cpu_budget_seconds"]), ("PASS", 2))
+        self.assertGreater(inside["cpu_seconds"], 1)
+        self.assertEqual(outside["status"], "FAIL")
+        self.assertIn("over its 2-second CPU budget", outside["error"])
+
+    def test_a_unit_that_stops_making_progress_fails_on_the_wall_ceiling(self):
+        self.write(WAIT.format(60))
+        with patch.object(module, "UNIT_CPU_BUDGET", 1), patch.object(module, "UNIT_WALL_STRETCH", 1):
+            outcome = module.run_unit(self.root, "suite/test_one.py", UNMEASURED)
+        self.assertEqual(outcome["status"], "FAIL")
+        self.assertIsNone(outcome["exit_code"])
+        self.assertRegex(outcome["error"], r"^unit made no progress: it ran \d+ s, past the 1-second "
+                                           r"wall ceiling, for (\d+ s of|an unmeasured amount of) CPU$")
+
+    def test_a_unit_whose_cpu_time_cannot_be_read_is_judged_on_its_wall(self):
+        """The fail-safe path, exercised rather than argued: a host without `os.wait4`, and a
+        CPython release that renamed the reaping hook, both land here. Neither may pass silently."""
+        self.write(WAIT.format(2.0))
+        with patch.object(module, "UNIT_CPU_BUDGET", 1):
+            measured = module.run_unit(self.root, "suite/test_one.py", UNMEASURED)
+            with patch.object(cpu_budget, "Child", subprocess.Popen):
+                unmeasured = module.run_unit(self.root, "suite/test_one.py", UNMEASURED)
+        # The same unit the measured run passes fails here, on the wall, and says why.
+        self.assertEqual(measured["status"], "PASS", measured)
+        self.assertNotIn("cpu_seconds", unmeasured)
+        self.assertEqual(unmeasured["status"], "FAIL")
+        self.assertRegex(unmeasured["error"], r"^unit ran \d+ s, over its 1-second budget; this host "
+                                              r"reports no per-child CPU time, so a busy machine can fail it$")
 
     def test_a_cocotb_unit_is_skipped_by_name_when_its_interpreter_is_absent(self):
         self.write("import unittest\n")

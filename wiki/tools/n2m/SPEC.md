@@ -450,7 +450,10 @@ Each unit declares exactly:
 - `duration_seconds`: the wall of one deliberate measurement, or `null` before
   the first. Running a test never writes it; only
   [`tests record`](#recording-a-measured-wall) does, and it is not edited by
-  hand. A measured wall is recorded with two decimals and never below 0.01
+  hand. For a host unit it also sizes that unit's
+  [CPU budget](#what-one-host-unit-may-spend) once it exceeds the default's own
+  share, so a stale wall on an expensive unit makes its bound tighter than the
+  work. A measured wall is recorded with two decimals and never below 0.01
   seconds, so `0.00` can only mean an entry nothing measured: `tests validate`
   and `check` fail on it by name.
 - `measured` (optional): the conditions the recorded wall was measured under, as
@@ -638,8 +641,9 @@ ratio does track contention, and the
 exactly that. A recording covers every unit, and each candidate fails on a
 different one:
 
-- CPU is not invariant under contention. Four competing spinners moved a wall
-  1.96 times and its CPU 1.30 times.
+- CPU is not invariant under contention. Four competing spinners moved the CPU of
+  every host unit costing over 5 s by 0.95 to 2.02 times, and their walls 1.5 to
+  3.4 times; the units that did not move were already saturating the host.
 - Contention moves the wall far further than the CPU, so an honest wall can sit
   at any ratio. This suite's own three groups, run beside a second worktree's
   `check` at load average 12 to 22, took 604.6, 637.8 and 383.4 seconds of wall
@@ -1679,11 +1683,45 @@ CPU in 337.7 s of wall while a group given 90 s of deliberate extra work failed 
 201.7 s of CPU in 230.5 s of wall, so ranked by wall the healthy group was the
 worse of the two.
 
-180 remains the number, on the quantity the change under test owns. A group's CPU
-is never more than its wall, so no run that passed the wall budget fails the CPU
-budget. The margin that leaves is measured, not assumed: the largest group spends
-151 s of the 180 at the worst contention seen here. Rebalance the group ranges
-against a fresh measurement when growth reaches that margin.
+240 is the budget, and it is derived from each group measured alone. `check` runs
+all three groups at once, so no group's CPU had been measured on its own until
+this derivation. One group at a time, nothing else deliberately running, on the
+four-CPU Linux host:
+
+| Group | modules | CPU alone, three sittings | wall/CPU | idle core-seconds in window |
+| --- | --- | --- | --- | --- |
+| `test_[a-e]*.py` | 13 | 68.7, 71.6 s | 1.12 | 197 to 208 of 308 to 320 |
+| `test_[f-l]*.py` | 38 | 77.3, 81.5, 89.2 s | 1.14 to 1.15 | 190 to 250 of 353 to 408 |
+| `test_[m-z]*.py` | 41 | 78.2, 89.1, 94.5 s | 0.86 to 0.90 | 127 to 167 of 281 to 340 |
+
+The worst group alone spends 94.5 s, and across sittings each group's own solo
+cost spans 1.04 to 1.21 times. The three are still balanced within 1.4 times of
+each other even though the order has changed and `test_[m-z]*.py` is now the
+heaviest. Note that the ratio does not say the host was quiet for the third group:
+that group runs parallel probes and sits below 1 by construction, exactly as the
+ratio fails [across populations](#why-nothing-is-refused-for-the-state-of-the-host).
+What says
+the host was quiet is the idle core-seconds inside each run's own window, which is
+population-independent, and which is why they are recorded above.
+
+Against four deliberate CPU burners, in one sitting, the same three content sets
+spent 116.9, 135.4 and 118.1 s of CPU — up to 1.75 times their own solo cost —
+while their walls went 2.0 to 3.0 times and idle-in-window fell to 0.00 for all
+three.
+
+So 240 is 2.5 times the worst group measured alone. It clears that solo cost times
+the measured 1.75 contention inflation and the measured 1.21 cross-sitting spread,
+whose product is 200, and it sits 1.5 times above the 160.0 s worst any group has
+been measured at.
+
+The 180 it replaces was not derived: it was the old wall budget carried across to
+the stricter quantity, which was safe because a group's CPU never exceeds its wall
+and so nothing that passed before could fail. Measuring the groups alone moved the
+answer in the opposite direction from the one expected. The solo cost is about 60%
+of the contended figures the 180 was validated against, so the margin over a busy
+host was smaller than it looked rather than larger, and 180 stood only 1.13 times
+above the worst group CPU ever recorded here. Rebalance the group ranges against a
+fresh measurement when growth reaches the new margin.
 
 A CPU budget does not catch a group that grows slow by blocking instead of by
 computing. A test that sleeps, waits on a socket or waits for a lock spends wall
@@ -1693,11 +1731,11 @@ does not charge a group for a descendant it abandons rather than waits for.
 at the level of the test, which is where a blocking check can name the test that
 blocks. `WALL_CEILING`, five times the CPU budget, guards only against a group
 that has stopped making progress: the worst contention measured here stretched a
-group's wall to 3.2 times its CPU, so a group spending the whole budget would
-take about 574 s, and 900 s leaves margin above that. It is not a performance
-budget, and its failure names the CPU the group had spent. A host that reports no
-per-child CPU time, Windows among them, judges the wall against the same
-180 seconds and says so in the failure. It reaches that verdict later than a wall
+group's wall to 4.5 times its CPU, so a group spending the whole budget would
+take about 1070 s, and five times the budget leaves margin above that. It is not
+a performance budget, and its failure names the CPU the group had spent. A host
+that reports no per-child CPU time, Windows among them, judges the wall against
+the same 240 seconds and says so in the failure. It reaches that verdict later than a wall
 budget did, because the group runs to completion, or to the ceiling, and is judged
 afterwards, where a `subprocess.run` timeout killed it at 180 s.
 
@@ -1716,6 +1754,117 @@ concurrent Verilator `regress pre-merge` (groups 42, 53 and 38 s). Before the
 split, the single subprocess took 170 s at that load and timed out at 180 s under
 load average 5.8; its direct run cost 155 s user and 21 s system CPU. Do not raise
 either number without a measured justification; move or rebalance the work instead.
+
+#### What one host unit may spend
+
+Every catalogue runner bounds one host unit at `max(240, 3 x duration_seconds)`
+seconds of its own CPU: the user plus system time of its interpreter and the
+descendants it waits for, read from `os.wait4` as the child is reaped
+([cpu_budget.py](../../../tools/n2m/cpu_budget.py)). That is the same quantity and
+the same reaping hook the check groups above use, defined once for both. Five
+times the budget is a liveness ceiling on the unit's wall. `tests run`,
+`tests mutations --confirm` and `tests closure-trace` all run a unit under it, and
+a run's record carries each unit's `cpu_seconds` beside the `cpu_budget_seconds`
+it was judged against.
+
+It replaced a 300-second bound on the unit's wall, which failed units that had not
+grown: `test_state_play.py` measured 239.4 s of wall alone and 1325.3 s beside
+eight competing processes, passing both times, and `test_state_player.py` 75.8 s
+and 670.6 s. The play loop's own inner wall guard had been aborting the expensive
+comparison before the outer bound could be reached, so the defect became visible
+only when that guard became a [CPU budget](../host-play/SPEC.md#what-each-budget-measures).
+
+**Why the bound is per unit rather than one number.** One sweep of all 180 host
+units in one sitting put 170 of the 178 that ran under 30 s of CPU, seven between
+33 and 88, and one at 162. A single bound has to clear the largest, and at the 543
+seconds that unit's own measurement earns it, a 30-second unit could grow
+eighteenfold before anything failed. The default clears the ordinary population; a
+unit that measured more than the default's own share of the factor is bounded
+against its own recorded wall instead, so its expense is stated in its catalogue
+entry rather than hidden inside a constant sized for it.
+
+**Where the numbers come from.** Each of the expensive units measured alone in four
+sittings, then against four deliberate CPU burners in one of them:
+
+| Unit | recorded wall | CPU alone, four sittings | spread | CPU, four burners | inflation | budget |
+| --- | --- | --- | --- | --- | --- | --- |
+| `test_state_play.py` | 181.13 | 161.0, 161.2, 184.0, 184.7 | 1.15x | 319.0 | 1.96x | 543 |
+| `test_endurance.py` | 32.44 | 77.1, 78.6, 85.9, 87.9 | 1.14x | 148.8 | 1.93x | 240 |
+| `test_state_player.py` | 70.31 | 63.9, 64.0, 67.1, 72.1 | 1.13x | 129.6 | 2.02x | 240 |
+| `test_endurance_current.py` | 26.41 | 62.0, 63.2, 64.8, 65.2 | 1.05x | 119.1 | 1.91x | 240 |
+| `test_acquisition_host.py` | 38.08 | 31.6, 33.4, 36.7, 40.7 | 1.29x | 63.6 | 2.00x | 240 |
+| `test_standalone_imports.py` | 20.94 | 29.0, 29.1, 34.9, 36.0 | 1.24x | 35.9 | 0.95x | 240 |
+
+240 covers the ordinary population: the worst unit outside `test_state_play.py`
+spent 87.9 s of CPU alone and 148.8 s against the burners, so 240 is 1.61 times
+that contended figure and 1.33 times it again with its own 1.14 cross-sitting
+spread applied on top. That is a thinner margin than the group budget's and it is
+stated rather than hidden: when growth reaches it, re-record that unit's wall and
+its bound follows the work. 240 is also below the 300 it replaces, so it tightens
+the bound for every unit but the one it cannot.
+
+3 is the factor, covering the worst measured CPU against a fresh recorded wall:
+319.0 s against 181.13 is 1.76 times, and 148.8 s against a freshly measured 80.28
+is 1.85. It is also above `DRIFT_FACTOR`, so a unit that grows is named by a drift
+report before its budget fails it.
+
+5 is the wall stretch, matching the group ceiling's own multiple. The worst honest
+wall measured for an ordinary unit is 670.6 s against this 240, 2.8 times.
+
+**The limits of the quantity, and of the factor.** CPU is the better instrument
+here, not an invariant one. On this host — two physical cores with symmetric
+multithreading, four logical processors — one full pass of every host unit against
+four competing burners, compared with the same pass on a quiet machine, inflated
+the CPU of the 25 units costing over 5 s by **0.95 to 2.02 times**. So a budget
+derived from a solo measurement alone would be about half of what the same work
+costs on a busy machine.
+
+The two ends of that range have one explanation, and it is measured rather than
+inferred. The only units whose CPU did not move are the ones already saturating the
+host: `test_standalone_imports.py` runs its probes in parallel and left 0.6 idle
+core-seconds in its own window with nothing else running, and it read 0.95; a
+serial unit alone has a logical processor and its frequency headroom to itself, and
+competition takes both away, which is the 1.9 to 2.0 end. Read the rows that way
+rather than as a spread with no cause.
+
+The same instrument narrows a second figure. A host unit's solo CPU across sittings
+spans only 1.05 to 1.29 times here, well under the 1.6 times recorded earlier for
+identical work with no deliberate competition — and where it does move, it tracks
+the background CPU inside the run's own window rather than the hour. Three units,
+nine samples, each monotone: `test_state_play.py` spent 184.7, 184.0 and 161.0 s of
+CPU against 221, 203 and 46 core-seconds of other processes' CPU in its window, and
+`test_state_player.py` 72.1, 67.1 and 66.2 against 57, 34 and 20.
+`test_endurance.py` behaves the same way. Every one of those runs reported a
+wall-to-CPU ratio of 1.01 to 1.03, so the run's own record called them all equally
+quiet while their CPU differed by 1.15 times. A frequency and thermal component is
+not excluded by this, but undetected background load accounts for the movement
+without it.
+
+The factor rests on the recorded wall, which is only as fresh as its last
+deliberate recording: this same derivation found `test_state_play.py` recorded at
+65.00 against 181.13 measured, 2.8 times, and `test_endurance.py` still carries
+32.44 against 78.6 to 87.9 s of CPU. A unit whose recorded wall exceeds the
+default's share of the factor therefore needs that wall re-recorded when it
+changes; below that share the default governs and staleness cannot tighten
+anything. A unit that runs its work in parallel spends more CPU than wall — the
+import probe, 36.0 s of CPU in 13.1 s of wall, a ratio of 0.36 — so the factor
+alone would be far too small for such a unit, and the default is what covers them.
+
+`test_state_play.py` is the one unit that does not fit the default, and not by
+accident: it drives several complete play loops, each separately budgeted at 240 s
+of its own CPU, so no outer bound below that can be honest for it. Its bound comes
+from its own measurement for that reason, and it is a level 1 unit rather than a
+level 0 one because it costs what it costs.
+
+The conditions beside each sample above were read from `/proc/stat` around each
+run: idle core-seconds inside the window, which went to 0.00 under the burners for
+every workload above, serial and parallel alike, and other processes' CPU in the
+same window. They are recorded here because they earned their place — they
+explained the cross-sitting spread that the runs' own records could not — and they
+are deliberately not read by any runner, for the reason
+[above](#why-nothing-is-refused-for-the-state-of-the-host): a busy sitting explains
+a large figure, it does not make that figure untrustworthy. Recording a condition
+is not a gate, and this derivation adds no gate.
 
 Elapsed time is captured before final evidence-file writes. OS scheduling,
 process launch and synchronous filesystem calls are not preemptible Python
@@ -4314,10 +4463,11 @@ its own run time plus about five seconds of catalogue validation. Each
 trace's log and record are kept under the tag. An unmodified checkout reports no
 miss: every declared unit's reads fall inside its closure, so a reported miss
 belongs to the change under test. The command's overall status carries no such
-guarantee. A unit whose 300-second wall a contended host stretches past, or one
-whose pinned environment a fresh worktree has not installed, fails the run while
-nothing in the tree reads outside its closure, so read the per-unit misses rather
-than the status.
+guarantee. A unit that overspends its [CPU budget](#what-one-host-unit-may-spend),
+or one whose pinned environment a fresh worktree has not installed, fails the run
+while nothing in the tree reads outside its closure, so read the per-unit misses
+rather than the status. Tracing adds an audit hook to every interpreter the unit
+starts, so a traced unit's CPU is its own plus that hook's.
 
 Limits: the proof covers the recorded rows, not every input; a detector is
 recorded as failing under that one mutation, not under every defect in the

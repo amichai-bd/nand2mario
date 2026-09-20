@@ -203,7 +203,7 @@ notice until the route itself grew 2.9x.
 The wall ceiling is derived rather than measured, because a ceiling is not a
 performance budget: eight times the CPU budget stays above the 4.8x stretch
 above. A unit's own
-[300-second wall budget](../n2m/SPEC.md#test-wall-budget) is far tighter than
+[CPU budget](../n2m/SPEC.md#what-one-host-unit-may-spend) is far tighter than
 this ceiling and is what actually bounds the host checks; on a board the
 entrypoint's own `--cap` supervisor bounds the whole process the same way. A
 board run spends almost no CPU, because its time goes on the wire rather than in

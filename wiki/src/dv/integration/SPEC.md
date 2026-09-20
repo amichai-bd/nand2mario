@@ -193,6 +193,12 @@ These targets have different coverage. A shorter selection
 must still meet its own stated criteria. Neither individual result measures a
 whole 300-second suite; add affected units to the reported total.
 
+Those 120 and 300 seconds are wall targets on a simulation and on an aggregate.
+One host unit is bounded on a different quantity: its own CPU time, because a
+shared host stretches a unit's wall without bound while moving its CPU by tens of
+percent. The value, the samples it was derived from and the limits of the quantity
+are in the [builder SPEC](../../../tools/n2m/SPEC.md#what-one-host-unit-may-spend).
+
 ### Transport and integration acceptance
 
 Run focused UART, protocol and loading tests when those behaviors change.
