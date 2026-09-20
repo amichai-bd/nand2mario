@@ -18,6 +18,7 @@ from tools.n2m.tests import vendor_support
 
 ROOT = Path(__file__).resolve().parents[3]
 TOP = "de2_clocking_proof"
+DAC_TOP = "de2_vga_proof"
 PIXEL_INSTANCE, SYSTEM_INSTANCE = ce.FIT_INSTANCES
 
 
@@ -88,9 +89,15 @@ class DispatchTests(unittest.TestCase):
         self.assertIn("cyclonev_pll", bad[0]["clock"])
         self.assertEqual(good[1:], bad[1:])
 
-    def test_an_unsupported_top_is_refused(self):
-        self.assertEqual(ce.SUPPORTED_TOPS, (TOP,))
-        for top in ("clocking_proof", "nano_clocking_proof", "de2_smoke"):
+    def test_only_this_boards_own_tops_are_accepted(self):
+        """Two tops generate a clock here; every other board's top is refused."""
+        self.assertEqual(ce.SUPPORTED_TOPS, (TOP, DAC_TOP))
+        for top in ce.SUPPORTED_TOPS:
+            with self.subTest(supported=top):
+                self.assertEqual(ce.lock_event_count({"top": top, "pll": ce.DEFINITION}), 2)
+        # The MAX 10 clocking and VGA tops, the Cyclone V clocking top, and this
+        # board's own top that has no PLL.
+        for top in ("clocking_proof", "vga_proof", "nano_clocking_proof", "de2_smoke"):
             with self.subTest(top=top):
                 with self.assertRaises(ValueError):
                     ce.lock_event_count({"top": top})
@@ -243,8 +250,11 @@ class LockEvidenceTests(unittest.TestCase):
         self.assertEqual(fpga_lock.verify_parallel(max10_text, max10_checks, "clocking_proof")["truth_cases"], 32)
 
     def test_a_primitive_this_family_has_not_declared_fails(self):
+        """The M9K atom is declared because `de2-vga` places it; nothing else is."""
         text, checks = self.fixture()
-        for atom in ("cycloneive_ram_block", "cyclonev_lcell_comb", "fiftyfivenm_adcblock"):
+        self.assertIn("cycloneive_ram_block", ce.OUTPUTS)
+        for atom in ("cycloneive_adcblock", "cycloneive_unvm", "cyclonev_lcell_comb",
+                     "fiftyfivenm_adcblock", "fiftyfivenm_ram_block"):
             with self.subTest(atom=atom), self.assertRaises(ValueError):
                 self.verify(text + f"\n{atom} \\extra (.portadataout(\\spare ));", checks)
 

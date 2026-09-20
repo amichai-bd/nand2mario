@@ -142,7 +142,10 @@ with inactive sync. The first valid output corresponds to raster coordinate zero
 | 3, black | `0` |
 
 All three channels have the same value. Borders, blanking and invalid display
-banks are black. This is presentation conversion after DMG palette selection;
+banks are black. A board whose DAC takes more bits per channel widens these four
+on its own side and does not change them here; the DE2-115 records
+[how, and why that alignment](../../de2-115-board.md#four-bits-of-shade-on-eight-dac-bits).
+This is presentation conversion after DMG palette selection;
 it does not change stored shades or the snapshot ABI. The
 [bezel design directions](BEZEL.md) publish mockups of what decoration in that
 black border would look like and what it would cost; none of it is implemented
