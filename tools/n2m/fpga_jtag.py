@@ -472,5 +472,9 @@ def enumerate_chain(root, folder, run, *, programmer="auto", quartus_bin=None, o
         return {**selected, "backend": backend, "tool": attempt["tool"],
                 "command": attempt["argv"], "chains": chains,
                 "probe_firmware": probe_firmware if backend == OPENFPGALOADER else None,
-                "rejected": reasons}
+                # `missing` is the programmers this host does not have, kept apart
+                # from `rejected` so a caller can name what was never read without
+                # parsing a sentence. A read-only check reports it; a write does
+                # not care, because the backend it used answered.
+                "missing": list(missing), "rejected": reasons}
     raise RuntimeError("no JTAG programmer reported the expected device; " + "; ".join(reasons))

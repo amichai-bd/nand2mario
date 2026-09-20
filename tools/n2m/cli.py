@@ -825,6 +825,10 @@ def main(argv=None, root=None):
                 print(f"{name}: {check['status']} {check.get('error', check.get('detail', ''))}")
                 if "notice" in check:
                     print(check["notice"])
+            # Named before readiness: a reader who stops at the status line must
+            # still see what the run could not read.
+            for item in report.get("unreadable", []):
+                print(f"Not read: {item}")
             print(f"Readiness: {report['readiness']}; untested: {', '.join(report['untested'])}")
     # SKIPPED shares WARNING's exit: the requested evidence is incomplete, not wrong.
     return {"PASS": 0, "FAIL": 1, "WARNING": 2, "SKIPPED": 2}[report["status"]]

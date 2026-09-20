@@ -245,6 +245,11 @@ def jtag(root, folder, args):
             "chain_position": chain["position"], "devices": chain["devices"],
             "command": chain["command"], "rejected": chain["rejected"],
             "probe_firmware": chain["probe_firmware"], "selected": chain, "chains": chain["chains"],
+            # One programmer answering is not the whole chain read. The absent
+            # one's cables were never enumerated, so it is named here rather
+            # than left implied by a PASS.
+            "unreadable": [f"{name}: not installed, so its cables were not read"
+                           for name in chain["missing"]],
             "scope": chain["scope"]}
 
 
@@ -291,6 +296,12 @@ def windows_ports(folder):
 # udev's stable serial naming and the sysfs USB attributes behind it. Both are
 # read; nothing is opened, and no device node is written.
 SERIAL_BY_ID = Path("/dev/serial/by-id")
+# udev creates the by-id directory with the first USB serial device it names, so
+# a host that has never had one has no directory at all. That is a different
+# fact from a host whose device is unplugged, and an empty port list states
+# neither. The message says which one this is.
+BY_ID_ABSENT = "{path}: absent, so udev has named no USB serial port on this host"
+UNSUPPORTED_UART_HOST = "serial port enumeration: this host is neither Windows nor Linux"
 TTY_CLASS = Path("/sys/class/tty")
 USB_ATTRIBUTES = ("idVendor", "idProduct", "serial", "manufacturer", "product")
 # How far up the sysfs device chain the owning USB device may sit: the tty, its
@@ -377,18 +388,42 @@ def linux_ports(folder):
                       "Serial": attributes.get("serial", ""),
                       "Manufacturer": attributes.get("manufacturer", ""),
                       "Product": attributes.get("product", "")})
-    (folder / "ports.log").write_text(json.dumps({"by_id": str(SERIAL_BY_ID), "ports": ports},
+    (folder / "ports.log").write_text(json.dumps({"by_id": str(SERIAL_BY_ID),
+                                                  "by_id_present": SERIAL_BY_ID.is_dir(), "ports": ports},
                                                  indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return ports
 
 
 def uart(folder, args):
-    """Enumerate serial ports on this host and apply the one selection rule."""
+    """Enumerate serial ports on this host and apply the one selection rule.
+
+    Each host's enumeration says what it could not read, so a probe that found
+    no inventory is never reported as a probe that proved nothing is attached.
+    """
     if os.name == "nt":
         return select_uart(windows_ports(folder), args)
     if sys.platform.startswith("linux"):
-        return select_uart(linux_ports(folder), args)
-    return {"status": "WARNING", "detail": "UART enumeration supported on Windows and Linux only"}
+        gaps = [] if SERIAL_BY_ID.is_dir() else [BY_ID_ABSENT.format(path=SERIAL_BY_ID)]
+        return {**select_uart(linux_ports(folder), args), "unreadable": gaps}
+    return {"status": "WARNING", "unreadable": [UNSUPPORTED_UART_HOST],
+            "detail": "UART enumeration supported on Windows and Linux only"}
+
+
+def unreadable_inputs(checks):
+    """Everything this run could not read, named per check.
+
+    A failed check states its own reason, and a check that answered while a
+    probe behind it never ran reports that probe under `unreadable`. Both end up
+    here, because an inspection that skipped a probe and still printed a result
+    would be worse than one that refused to run at all: the reader would take
+    silence for evidence. An empty list is the claim that nothing was skipped.
+    """
+    named = []
+    for name, record in checks.items():
+        if record.get("status") == "FAIL" and record.get("error"):
+            named.append(f"{name}: {record['error']}")
+        named += [f"{name}: {item}" for item in record.get("unreadable", ())]
+    return named
 
 
 def doctor(root, build, args, provenance):
@@ -421,6 +456,7 @@ def doctor(root, build, args, provenance):
     status = "FAIL" if "FAIL" in applicable else "WARNING" if "WARNING" in applicable else "PASS"
     return {"status": status, "checks": checks,
             "profile": args.profile, "simulator": backend,
+            "unreadable": unreadable_inputs(checks),
             "inputs": {p.relative_to(root).as_posix(): file_hash(p) for p in
                        [root / SMOKE, *(root / "tools/n2m").glob("*.py")]},
             "tools": checks[backend].get("tools", {}), "untested": untested,
