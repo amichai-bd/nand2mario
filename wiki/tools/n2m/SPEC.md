@@ -3562,9 +3562,21 @@ bounded build flow; different text under the same number fails:
 | Exact `TBBmalloc` `_msize` replacement notice | The installed allocator cannot replace that CRT allocation hook. It is not a failed compilation or timing check; retain the notice and require all execution/report evidence. The [allocator override](#quartus-allocator-override) keeps this condition from aborting a launch. |
 | 15064, exact system PLL `clk[0]` feeding `DRAM_CLK~output` via non-dedicated routing, `sdram-proof` only | The [SDRAM contract](../../src/rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) drives `DRAM_CLK` as the inverted system clock through the fabric to a pin that is not a dedicated PLL output. Exactly one line naming that PLL, that pin and the attempt's generated PLL file is accepted; the routed-clock jitter is inside the contract's 20 ns half-period I/O budget and the board memory test is the acceptance. |
 | `check_timing` no_output_delay = 1, `sdram-proof` only | `DRAM_CLK` is the target of the `sdram_clk` generated clock and has no data path, so it is the one output port without an output delay; giving it one makes TimeQuest time the clock network as a data path. The unconstrained-path summary must still show zero output ports and paths, and the clock inventory binds the port to `sdram_clk`. |
-| 10036, exactly the 20 vendor data-controller objects `fpga_flash.UNUSED_OBJECTS` in the staged `altera_onchip_flash_avmm_data_controller.v`, images that list the flash reader only | The read-only configuration of the pinned On-Chip Flash IP leaves its write and erase registers assigned but unread. The staged copy must carry the pinned hash and every line, name and line number must match once; any other 10036 fails. |
+| 10036, exactly the 20 vendor data-controller objects `fpga_flash.UNUSED_OBJECTS` in the staged `altera_onchip_flash_avmm_data_controller.v`, images that list the flash reader only | The read-only configuration of the pinned On-Chip Flash IP leaves its write and erase registers assigned but unread. The staged copy must carry the pinned hash and every line, name and line number must match once; any other 10036 naming that controller fails. A 10036 another owner explains, such as the ADC control's one unread next-state variable, is that owner's; see the scope rule below. |
 | 332060, exactly the IP's `flash_se_neg_reg` strobe under the registered reader instance, four lines in `compile.log` and one in `audit.log`, flash images only | The IP's sense-enable strobe register clocks one register inside the UFM atom (`ufm_block~XE_YE_TO_SE_FF`) without a clock assignment; the vendor's own generated project suppresses this message with `MESSAGE_DISABLE 332060`. Here it is classified by exact node and count and never suppressed. The same strobe is the one accepted `Unconstrained Clocks` row (setup and hold both 1) when `report_ucp` names it as the only unconstrained target, and it and the atom register are two accepted `no_clock` rows named exactly beside the PLL lock events. |
 | `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
+
+Each owner judges only the warnings its own sources produce. A classifier
+selects a line by the vendor source the message itself names: the flash IP by the
+staged `altera_onchip_flash_avmm_data_controller.v`, and the
+[ADC control](../../src/fpga-controls.md#acquisition-and-filtering) by the file
+its own 10036 reports and by its own instance's 14320 node path. An image that
+carries two classified IPs therefore keeps both inventories instead of counting
+one against the other; `v05-controls-board` is the one registered target that
+carries both. Scoping accepts nothing extra, because the scopes are not the gate:
+`fpga.diagnostics` refuses every warning, critical warning and error that no
+owner explained, so a line outside every scope still fails the build under its
+own text.
 
 The checked Quartus 25.1 `v05-board` 12125 set is
 `n2m_system_pll_altpll.v`, `n2m_pixel_pll_altpll.v`,

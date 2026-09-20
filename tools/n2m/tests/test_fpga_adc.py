@@ -1,4 +1,5 @@
 """Sensitivity of the exact explained vendor-warning boundary, and the ADC host facts."""
+from collections import Counter
 import hashlib
 import json
 from pathlib import Path
@@ -13,10 +14,26 @@ from tools.n2m.hdl import dependencies
 from tools.n2m.tests import vendor_support
 
 CONTROL = "ip/altera/altera_modular_adc/control/"
+FLASH_IP = "ip/altera/altera_onchip_flash/"
 ROOT = Path(__file__).resolve().parents[3]
 # The ADC backend itself: which designs compile it is the registry's statement,
 # and `fpga_adc.TOPS` must name the same ones.
 ADC_BACKEND = "src/rtl/input/n2m_adc_backend.sv"
+
+
+_TARGETS = None
+
+
+def registered_targets():
+    """Every registered target's name and resolved definition, resolved once."""
+    global _TARGETS
+    if _TARGETS is None:
+        resolved = []
+        for registry in fpga.REGISTRIES:
+            for name in json.loads((ROOT / registry).read_text(encoding="utf-8"))["targets"]:
+                resolved.append((name, fpga.target_definition(ROOT, name)))
+        _TARGETS = resolved
+    return _TARGETS
 
 
 class AdcDiagnosticsTests(unittest.TestCase):
@@ -43,7 +60,11 @@ class AdcDiagnosticsTests(unittest.TestCase):
 
     def test_missing_duplicate_extra_or_wrong_instance_rejected(self):
         lines = self.text.splitlines()
-        cases = ["\n".join(lines[1:]), self.text + lines[-1] + "\n",
+        # A second 10036 naming one of the classified sources is inside this
+        # classifier's own scope, so it refuses it by name; one naming any other
+        # source is another owner's, and `classify` fails at the builder's gate.
+        extra = lines[0].replace('(70)', '(71)').replace('sync_ctrl_state_nxt', 'sync_ctrl_state')
+        cases = ["\n".join(lines[1:]), self.text + lines[-1] + "\n", self.text + extra + "\n",
                  self.text + 'Warning (10036): unrelated unused register\n',
                  self.text.replace('ts_avrg_fifo', 'product_memory'),
                  self.text.replace('q_b[11]', 'q_b[12]')]
@@ -83,6 +104,177 @@ class AdcDiagnosticsTests(unittest.TestCase):
             fpga.diagnostics(self.text)
 
 
+class ComposedClassifierScopeTests(unittest.TestCase):
+    """One image carrying two classified IPs: each classifier judges only its own.
+
+    `v05-controls-board` places the Intel ADC control and the On-Chip Flash IP.
+    The ADC classifier used to select every 10036, 14284, 14285 and 14320 line in
+    the whole compile log and demand exactly fifteen, so the flash IP's twenty
+    accepted 10036 warnings made it refuse a log in which every warning was
+    already explained by one owner or the other, and no host could build the
+    target ([#908](https://github.com/amichai-bd/nand2mario/issues/908)).
+
+    The flash reader entered this image in #689 and nothing measured the break: a
+    MAX 10 fit of it costs minutes of CPU, it is in no workflow, and a
+    [regression subset](../../../wiki/tools/n2m/SPEC.md#regression-subsets) takes
+    catalogue simulation targets only, so no subset can hold an FPGA target at
+    all. The break was decidable from a captured log and these two modules, which
+    is what this unit reads. It finds the images with both IPs from the registry
+    rather than naming one, so a second such target is covered when it appears.
+    """
+
+    def setUp(self):
+        self.folder = Path.cwd() / "workdir/composed-classifier-fixture"
+        self.adc = (Path(__file__).parent / "data/adc-unused-features.txt").read_text()
+        self.digests = {name: hashlib.sha256(name.encode()).hexdigest()
+                        for name in (*fpga_adc.DIAGNOSTIC_CONTROL, *fpga_flash.SOURCES)}
+        self.adc_sources = {name: vendor_support.accepted("/vendor/" + name, self.digests[name], CONTROL + name)
+                            for name in fpga_adc.DIAGNOSTIC_CONTROL}
+        self.flash_sources = {name: vendor_support.accepted("/vendor/" + name, self.digests[name],
+                                                            FLASH_IP + folder + "/" + name)
+                              for name, folder in fpga_flash.SOURCES.items()}
+        for module in (fpga_adc, fpga_flash):
+            patcher = patch.object(module, "file_hash", side_effect=lambda p: self.digests[Path(p).name])
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def both(self):
+        """Registered targets that place the ADC backend and list the flash reader."""
+        return [(name, target) for name, target in registered_targets()
+                if target["top"] in fpga_adc.TOPS and fpga_flash.flash_target(target)]
+
+    def adc_only(self):
+        """Registered ADC targets without the flash IP: the ones that passed before."""
+        return [(name, target) for name, target in registered_targets()
+                if target["top"] in fpga_adc.TOPS and not fpga_flash.flash_target(target)]
+
+    def adc_lines(self, top):
+        """The captured ADC inventory, relocated to this top's hierarchy."""
+        text = self.adc.replace("{folder}", self.folder.as_posix())
+        if top == "v05_controls_proof":
+            text = text.replace("n2m_adc_backend:u_adc|",
+                                "n2m_controls_system:u_controls|n2m_adc_backend:u_adc|")
+        return text.splitlines()
+
+    def flash_lines(self, top):
+        """The IP's twenty read-only-mode objects and its four compile-log strobes."""
+        path = (self.folder / fpga_flash.CONTROLLER).resolve().as_posix()
+        return [f'Warning (10036): Verilog HDL or VHDL warning at {fpga_flash.CONTROLLER}({number}): '
+                f'object "{name}" assigned a value but never read File: {path} Line: {number}'
+                for number, name in fpga_flash.UNUSED_OBJECTS] + [
+            fpga_flash.STROBE_WARNING.format(node=fpga_flash.strobe_node(top))
+        ] * fpga_flash.STROBE_COUNTS["compile.log"]
+
+    def compile_log(self, top, extra=()):
+        """A compile log holding both inventories, in the order Quartus writes them."""
+        return "\n".join(["Info: Running Quartus Prime Analysis & Synthesis",
+                          *self.flash_lines(top)[:len(fpga_flash.UNUSED_OBJECTS)],
+                          *self.adc_lines(top), "Info: Running Quartus Prime Fitter",
+                          *self.flash_lines(top)[len(fpga_flash.UNUSED_OBJECTS):], *extra]) + "\n"
+
+    def classify(self, top, text):
+        """Both classifiers, then the builder's own gate over everything they explained."""
+        explained = fpga_adc.explained_diagnostics(text, self.folder, self.adc_sources, top)
+        explained += fpga_flash.explained_diagnostics(text, self.folder, self.flash_sources, top, "compile.log")
+        return explained, fpga.diagnostics(text, explained)
+
+    def test_an_image_with_both_ips_keeps_both_classified_inventories(self):
+        """The defect, as a check: the union of both accepted sets is classified."""
+        targets = self.both()
+        self.assertEqual([name for name, _ in targets], ["v05-controls-board"])
+        for name, target in targets:
+            top = target["top"]
+            with self.subTest(target=name):
+                explained, classified = self.classify(top, self.compile_log(top))
+                self.assertEqual(len(explained), 36)
+                self.assertEqual(Counter(item["code"] for item in classified),
+                                 Counter({"10036": 21, "332060": 4, "14320": 12, "14284": 1, "14285": 1}))
+                self.assertTrue(all(item["reason"] for item in classified))
+
+    def test_the_unscoped_selection_this_replaced_still_refuses_that_log(self):
+        """Proof the guard fails without the fix: the old predicate, restated."""
+        def unscoped(line, prefix):
+            return re.match(r'Warning \((10036|14284|14285|14320)\):', line) is not None
+        for name, target in self.both():
+            with self.subTest(target=name), patch.object(fpga_adc, "owned_diagnostic", unscoped):
+                with self.assertRaisesRegex(ValueError, "unexpected ADC unused-feature diagnostic"):
+                    self.classify(target["top"], self.compile_log(target["top"]))
+
+    def test_neither_classifier_selects_the_other_owner_s_lines(self):
+        """The scope itself: the ADC predicate claims no flash line, and vice versa."""
+        for name, target in self.both():
+            top = target["top"]
+            prefix = fpga_adc.node_prefix(top)
+            with self.subTest(target=name):
+                for line in self.flash_lines(top):
+                    self.assertFalse(fpga_adc.owned_diagnostic(line, prefix), line)
+                for line in self.adc_lines(top):
+                    self.assertFalse(re.match(r"Warning \((10036|332060)\):", line)
+                                     and fpga_flash.CONTROLLER in line, line)
+
+    def test_a_warning_outside_both_scopes_still_fails_the_build(self):
+        """Scoping accepts nothing: an unowned line of either shared code still fails.
+
+        These are the warnings a reviewer would try to slip past the narrower
+        predicate — our own unread register and our own node synthesized away,
+        under the same codes the ADC inventory uses. Neither classifier claims
+        them, and `fpga.diagnostics` refuses every line no classifier explained,
+        so each one fails the build by its own text.
+        """
+        design = (self.folder / "n2m_controls_system.sv").as_posix()
+        for extra in (f'Warning (10036): Verilog HDL or VHDL warning at n2m_controls_system.sv(42): '
+                      f'object "spare_state" assigned a value but never read File: {design} Line: 42',
+                      'Warning (14320): Synthesized away node "n2m_controls_system:u_controls|'
+                      f'n2m_input:u_input|held_mask[3]" File: {design} Line: 91',
+                      'Warning (10036): unrelated unused register'):
+            for name, target in self.both():
+                top = target["top"]
+                with self.subTest(target=name, extra=extra[:60]):
+                    text = self.compile_log(top, extra=[extra])
+                    # Both inventories are still exactly right; only the new line is not.
+                    explained = fpga_adc.explained_diagnostics(text, self.folder, self.adc_sources, top)
+                    explained += fpga_flash.explained_diagnostics(text, self.folder, self.flash_sources,
+                                                                 top, "compile.log")
+                    with self.assertRaisesRegex(ValueError, "unexplained Quartus diagnostic"):
+                        fpga.diagnostics(text, explained)
+
+    def test_a_warning_inside_a_scope_still_fails_its_own_classifier(self):
+        """In scope and unpredicted stays a named refusal by the owner that claims it."""
+        for name, target in self.both():
+            top = target["top"]
+            path = (self.folder / "altera_modular_adc_control_fsm.v").as_posix()
+            controller = (self.folder / fpga_flash.CONTROLLER).resolve().as_posix()
+            cases = {
+                "unexpected ADC unused-feature diagnostic":
+                    [f'Warning (10036): Verilog HDL or VHDL warning at altera_modular_adc_control_fsm.v(71): '
+                     f'object "sync_ctrl_state" assigned a value but never read File: {path} Line: 71'],
+                "unexpected On-Chip Flash IP diagnostic":
+                    [f'Warning (10036): Verilog HDL or VHDL warning at {fpga_flash.CONTROLLER}(999): '
+                     f'object "spare" assigned a value but never read File: {controller} Line: 999'],
+            }
+            for message, extra in cases.items():
+                with self.subTest(target=name, message=message):
+                    with self.assertRaisesRegex(ValueError, message):
+                        self.classify(top, self.compile_log(top, extra=extra))
+            for header in ('Warning (14284): Synthesized away the following LCELL buffer node(s):',
+                           'Warning (14285): Synthesized away the following node(s):'):
+                with self.subTest(target=name, header=header):
+                    with self.assertRaisesRegex(ValueError, "unexpected ADC unused-feature diagnostic"):
+                        self.classify(top, self.compile_log(top, extra=[header]))
+
+    def test_an_adc_image_without_the_flash_ip_is_unchanged(self):
+        """The two ADC targets that passed before keep the same fifteen, from the same log."""
+        self.assertEqual([name for name, _ in self.adc_only()], ["adc-early", "controls-board"])
+        for name, target in self.adc_only():
+            top = target["top"]
+            with self.subTest(target=name):
+                text = "\n".join(self.adc_lines(top)) + "\n"
+                explained = fpga_adc.explained_diagnostics(text, self.folder, self.adc_sources, top)
+                self.assertEqual(len(explained), 15)
+                self.assertEqual(Counter(item["code"] for item in fpga.diagnostics(text, explained)),
+                                 Counter({"14320": 12, "10036": 1, "14284": 1, "14285": 1}))
+
+
 def no_clock_report(rows):
     """A `check_timing.rpt` fragment reporting exactly these registers as unclocked."""
     return "".join(f"; {row} ; No clock feeds this register's clock port. ;\n" for row in rows)
@@ -105,17 +297,8 @@ class AdcNoClockInventoryTests(unittest.TestCase):
     them as inputs.
     """
 
-    definitions = None
-
     def targets(self):
-        """Every registered target's name and resolved definition, resolved once."""
-        if AdcNoClockInventoryTests.definitions is None:
-            resolved = []
-            for registry in fpga.REGISTRIES:
-                for name in json.loads((ROOT / registry).read_text(encoding="utf-8"))["targets"]:
-                    resolved.append((name, fpga.target_definition(ROOT, name)))
-            AdcNoClockInventoryTests.definitions = resolved
-        return AdcNoClockInventoryTests.definitions
+        return registered_targets()
 
     def adc_targets(self):
         """The registered targets that place the ADC backend."""

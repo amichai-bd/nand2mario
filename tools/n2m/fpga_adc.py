@@ -273,13 +273,52 @@ CONTROL = (
 # the classifier requires the record it produced.
 DIAGNOSTIC_CONTROL = ("altera_modular_adc_control.v", "altera_modular_adc_control_fsm.v",
                       "altera_modular_adc_control_avrg_fifo.v")
+# A 10036 this classifier owns: Quartus names the offending source in the
+# message's own `at <file>(<line>)` field, so a 10036 whose subject is any other
+# file belongs to another owner. The On-Chip Flash IP's twenty are the case that
+# exists today ([fpga_flash.UNUSED_OBJECTS](fpga_flash.py)).
+OWNED_UNUSED_OBJECT = re.compile(r'Warning \(10036\): Verilog HDL or VHDL warning at (?:'
+                                 + "|".join(re.escape(name) for name in DIAGNOSTIC_CONTROL) + r')\(\d+\):')
+
+
+def node_prefix(top="adc_proof"):
+    """The 14320 message prefix naming this image's own temperature FIFO nodes."""
+    if top not in TOPS:
+        raise ValueError("unsupported ADC proof top")
+    return ('Warning (14320): Synthesized away node "' +
+            ('n2m_controls_system:u_controls|' if top == 'v05_controls_proof' else '') + 'n2m_adc_backend:u_adc|'
+            'altera_modular_adc_control:u_control|altera_modular_adc_control_fsm:u_control_fsm|'
+            'altera_modular_adc_control_avrg_fifo:ts_avrg_fifo|scfifo:scfifo_component|')
+
+
+def owned_diagnostic(line, prefix):
+    """Whether this warning line is one the classified ADC sources produce.
+
+    Scoped the way [fpga_flash.explained_diagnostics](fpga_flash.py) scopes its
+    own selection, by the vendor source the message names: 10036 by the file the
+    message itself reports, and 14320 by this ADC instance's own node path. The
+    14284/14285 headers name no owner, so every line carrying those codes stays
+    in scope and only the two exact texts are accepted.
+
+    Out of scope is not accepted. `fpga.diagnostics` refuses any warning,
+    critical warning or error that no classifier explained, so a real diagnostic
+    this predicate leaves out still fails the build; it just fails there, by its
+    own name, instead of being counted against the ADC's inventory.
+    """
+    if line.startswith('Warning (10036):'):
+        return OWNED_UNUSED_OBJECT.match(line) is not None
+    if line.startswith('Warning (14320):'):
+        return line.startswith(prefix)
+    return line.startswith(('Warning (14284):', 'Warning (14285):'))
 
 
 def explained_diagnostics(text, folder, sources, top="adc_proof"):
     """Exact unused dual-ADC and temperature paths in the two-channel proof.
 
     This does not permit general unused logic/RAM warnings. Raw lines, source
-    identity and the complete 15-line inventory must all match.
+    identity and the complete 15-line inventory must all match, within the scope
+    `owned_diagnostic` gives: an image that also carries another classified IP,
+    as `v05-controls-board` carries the On-Chip Flash IP, keeps both inventories.
     """
     for name, digest in vendor_sources.require_accepted(sources, *DIAGNOSTIC_CONTROL).items():
         if file_hash(folder / name) != digest:
@@ -290,10 +329,7 @@ def explained_diagnostics(text, folder, sources, top="adc_proof"):
               + (folder / 'altera_modular_adc_control_fsm.v').as_posix() + ' Line: 70')
     required = [unused, 'Warning (14284): Synthesized away the following node(s):',
                 'Warning (14285): Synthesized away the following RAM node(s):']
-    prefix = ('Warning (14320): Synthesized away node "' +
-              ('n2m_controls_system:u_controls|' if top == 'v05_controls_proof' else '') + 'n2m_adc_backend:u_adc|'
-              'altera_modular_adc_control:u_control|altera_modular_adc_control_fsm:u_control_fsm|'
-              'altera_modular_adc_control_avrg_fifo:ts_avrg_fifo|scfifo:scfifo_component|')
+    prefix = node_prefix(top)
     for bit in range(12):
         pattern = (re.escape(prefix) + r'scfifo_\w+:auto_generated\|a_dpfifo_\w+:dpfifo\|'
                    + r'altsyncram_\w+:FIFOram\|q_b\[' + str(bit) + r'\]" File: '
@@ -306,7 +342,7 @@ def explained_diagnostics(text, folder, sources, top="adc_proof"):
     for line in required:
         if lines.count(line) != 1:
             raise ValueError("missing or duplicate ADC unused-feature diagnostic")
-    actual = [line for line in lines if re.match(r'Warning \((10036|14284|14285|14320)\):', line)]
+    actual = [line for line in lines if owned_diagnostic(line, prefix)]
     if len(actual) != 15 or set(actual) != set(required):
         raise ValueError("unexpected ADC unused-feature diagnostic")
     return [{"code": re.match(r'Warning \((\d+)\)', line)[1], "text": line,
