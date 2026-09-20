@@ -29,8 +29,10 @@ FAMILY = "Cyclone IV E"
 # The simulation atom model this family installs, against MAX 10's
 # `fiftyfivenm_atoms.v`. Its hash is part of the request fingerprint.
 ATOM_MODEL = "eda/sim_lib/cycloneive_atoms.v"
-# The bounded clocking proof is the only top on this board that generates a clock.
-SUPPORTED_TOPS = ("de2_clocking_proof",)
+# This board's own proof tops, whose exact `u_clocking` hierarchy these checks
+# recognize. Both instantiate the DE10-Lite's ALTPLL wrapper in place, so the
+# hierarchy is that board's; the top names are this one's.
+SUPPORTED_TOPS = ("de2_clocking_proof", "de2_vga_proof")
 # ALTPLL's own facts, reused rather than restated: the report encoding, the reset
 # chain audit and its report inventory, and the fitted instance hierarchy each
 # check and constraint names. The hierarchy holds because this board fits the
@@ -49,15 +51,16 @@ FIT_INSTANCES = fpga_pll.MERGE_PAIR
 # The netlist primitives this family's checked functional netlist may contain,
 # with their output ports, read from `cycloneive_atoms.v`. Every type and port
 # matches MAX 10's but for the name, minus the hardware this family does not
-# have: no ADC block and no internal flash. The M9K atom is absent because no
-# target on this board places memory yet; the first one that does adds it, and
-# until then the parser refuses it.
+# have: no ADC block and no internal flash. The M9K atom is here because
+# `de2-vga` places the frame bridge's three banks; `altsyncram` selects M9K on
+# this family exactly as it does on MAX 10, so only the atom's name differs.
 OUTPUTS = {
     "dffeas": {"q"},
     "cycloneive_lcell_comb": {"combout", "cout"},
     "cycloneive_clkctrl": {"outclk"},
     "cycloneive_io_ibuf": {"o"},
     "cycloneive_io_obuf": {"o", "obar"},
+    "cycloneive_ram_block": {"portadataout", "portbdataout"},
     "cycloneive_pll": {"locked", "clk", "fbout", "phasedone", "scandataout", "scandone",
                        "activeclock", "vcooverrange", "vcounderrange", "clkbad"},
 }
@@ -150,7 +153,7 @@ def verify_fit(folder, target):
     return fpga_pll.verify_fit(folder, target)
 
 
-def verify_lock_event(folder, checks, top="de2_clocking_proof", *, parallel=False, extra_rows=()):
+def verify_lock_event(folder, checks, top=SUPPORTED_TOPS[0], *, parallel=False, extra_rows=()):
     if top not in SUPPORTED_TOPS:
         raise ValueError("unsupported Cyclone IV E PLL proof top")
     if not parallel:

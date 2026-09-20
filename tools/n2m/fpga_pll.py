@@ -14,7 +14,7 @@ import os
 import math
 import re
 
-from . import fpga_clocking, fpga_lock, vendor_sources
+from . import fpga_clocking, fpga_lock, fpga_vga_dac, vendor_sources
 
 # The reset chain audit and its report inventory are family-neutral; the
 # clocking registry owns them and both families keep the same names.
@@ -208,6 +208,22 @@ def verify_fit(folder, target):
 SDRAM_CLOCK = "sdram_clk"
 
 
+def pin_clocks(target):
+    """Generated clocks this composition drives out to a pin, name -> port.
+
+    A pin clock is declared in the target's own SDC as its source clock inverted
+    at that port, so the clock inventory below both expects the row and binds it
+    to the port. Two exist: the SDRAM contract's inverted system clock, and the
+    DE2-115 video DAC's inverted pixel clock.
+    """
+    clocks = {}
+    if target.get("top") == "sdram_proof" or "DRAM_CLK" in target.get("pins", {}):
+        clocks[SDRAM_CLOCK] = ("DRAM_CLK", SYSTEM_CLOCK, 2)
+    if target.get("top") == fpga_vga_dac.TOP:
+        clocks[fpga_vga_dac.CLOCK_NAME] = (fpga_vga_dac.CLOCK_PORT, PIXEL_CLOCK, 125 / 63)
+    return clocks
+
+
 def clock_inventory(target, reference, adc_pll=None):
     """Every STA clock row a parallel-PLL target must show: name -> (kind, period, ratio, master)."""
     wanted = {"clk_reference": ("Base", reference, None, None),
@@ -216,10 +232,10 @@ def clock_inventory(target, reference, adc_pll=None):
     if adc_pll:
         wanted.update({"clk_adc_reference": ("Base", 100.0, None, None),
                        adc_pll + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
-    # The SDRAM image adds the contract's inverted pin clock: the system PLL
-    # output inverted at DRAM_CLK, same period, unit ratio, no duty column.
-    if target.get("top") == "sdram_proof" or "DRAM_CLK" in target.get("pins", {}):
-        wanted[SDRAM_CLOCK] = ("Generated", reference*2, ["", "1", "1"], SYSTEM_CLOCK)
+    # A pin clock keeps its source's period at unit ratio and prints no duty
+    # column, because the port inverts the clock rather than dividing it.
+    for name, (_, master, ratio) in pin_clocks(target).items():
+        wanted[name] = ("Generated", reference*ratio, ["", "1", "1"], master)
     return wanted
 
 
@@ -259,7 +275,7 @@ def verify_parallel_fit(folder, target):
               if re.match(r";[^;]+;\s*(?:Base|Generated)\s*;", line)]
     reference = float(target["timing"]["reference_ns"])
     wanted = clock_inventory(target, reference, adc_pll if adc_pll in expected else None)
-    sdram_clock = SDRAM_CLOCK if SDRAM_CLOCK in wanted else None
+    ports = {name: port for name, (port, _, _) in pin_clocks(target).items()}
     if len(clocks) != len(wanted) or {r[0] for r in clocks} != set(wanted):
         raise ValueError("parallel PLL clock inventory differs")
     for row in clocks:
@@ -268,8 +284,8 @@ def verify_parallel_fit(folder, target):
             raise ValueError("parallel PLL clock period differs")
         if ratio is not None and (row[6:9] != ratio or row[14] != master):
             raise ValueError("parallel PLL clock relationship differs")
-        if row[0] == sdram_clock and (row[13] != "true" or row[16] != "{ DRAM_CLK }"):
-            raise ValueError("SDRAM pin clock is not the inverted system clock at DRAM_CLK")
+        if row[0] in ports and (row[13] != "true" or row[16] != "{ " + ports[row[0]] + " }"):
+            raise ValueError("pin clock is not its source clock inverted at " + ports[row[0]])
     summary = (folder / "output/design.fit.summary").read_text()
     if re.findall(r"(?m)^Total PLLs : (\d+) /", summary) != [str(len(expected))]:
         raise ValueError("parallel PLL physical resource count differs")

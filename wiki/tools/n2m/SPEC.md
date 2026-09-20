@@ -2258,6 +2258,8 @@ python3 tools/build.py fpga build de2-smoke --quartus-bin <directory> --tag de2-
 python3 tools/build.py fpga build de2-invalid --quartus-bin <directory> --tag de2-invalid --json
 python3 tools/build.py fpga build de2-clocking --quartus-bin <directory> --tag de2-clocking --json
 python3 tools/build.py fpga build de2-clocking-invalid --quartus-bin <directory> --tag de2-clocking-invalid --json
+python3 tools/build.py fpga build de2-vga --quartus-bin <directory> --tag de2-vga --json
+python3 tools/build.py fpga build de2-vga-invalid --quartus-bin <directory> --tag de2-vga-invalid --json
 ```
 
 `--quartus-bin` names the directory holding `quartus_sh`, `quartus_map`,
@@ -2966,6 +2968,68 @@ existing final register edge and does not add a cycle.
 All additional reports enter immutable-result/cache completeness checks.
 The deliberate invalid target still requires the exact missing reset endpoint.
 
+### DE2-115 video DAC
+
+`de2-vga` places the existing pixel path on the DE2-115's ADV7123 video DAC,
+behind the same two ALTPLL clocks
+[`de2-clocking`](../../src/de2-115-board.md#targets) generates. The frame bridge,
+the scan and the clocking wrapper are unchanged and their instance hierarchy is
+the DE10-Lite's, so the
+[VGA proof profile](#vga-proof-profile) above owns every CDC exception, bundle
+bound, output bound, skew bound, RAM shape and corner report. The board page owns
+the [bit alignment and the DAC control values with their vendor
+sources](../../src/de2-115-board.md#driving-the-vga-dac).
+
+Three things follow the board rather than the profile, and
+[`fpga_vga_dac.py`](../../../tools/n2m/fpga_vga_dac.py) holds them:
+
+- **The output profile.** A board states its channel names, its channel width and
+  its two sync pins; `fpga_vga` derives the checked port list and the physical
+  register behind each pin from them. `n2m_vga_scan` builds every channel by
+  repeating the two-bit `gray_out` pair, so channel bit `k` carries
+  `gray_out[k % 2]` however wide the channel is, and the fitter packs the original
+  plus one duplicate per further pin of the same bit. The DE10-Lite's four-bit
+  ladder gives twelve RGB pins and six copies of each bit; this board's eight-bit
+  channels give twenty four and twelve. Both are checked as an exact
+  register-to-pin map in the fitter table and in the output and skew reports; a
+  missing, extra, shared or misnamed copy fails.
+- **The family's fitted RAM atom.** `cycloneive_ram_block` where MAX 10 fits
+  `fiftyfivenm_ram_block`, for the same M9K block. Only the atom's name follows
+  the family: the three bank owners, the parameter set, the clock and reset roles,
+  the shade bit each atom takes and the bit partition are the design's and are
+  stated once. The M9K and memory-bit totals are checked as the used count the
+  fitted design contains, 18 blocks and 138,240 bits; the capacity each row
+  divides by is the device's, which the fit summary's `Device :` line already
+  binds, so it is not part of what the check proves.
+- **The DAC's own pins.** Every DAC pin states an 8 mA drive strength, which is
+  all this family's 3.3-V LVTTL fitter asks for. `vga_clk` carries the pixel clock
+  inverted, declared to the Timing Analyzer as the generated clock `vga_dac_clk`
+  on that port, the same way the SDRAM image declares `sdram_clk` on `DRAM_CLK`;
+  the clock inventory requires the row, its source, unit ratio and `-invert`, and
+  binds it to that port. As with `DRAM_CLK`, the port carries a clock instead of
+  data, so `check_timing` reports exactly one `no_output_delay` endpoint naming
+  it; a target with no pin clock accepts none. The checked netlist must show the
+  clock pin's buffer taking the complement of the fitted pixel clock net, and each
+  control pin's buffer taking the constant the board specification records, so a
+  documented value that did not reach its pin fails.
+
+The DAC adds two fitter diagnostics the resistor ladder cannot produce, and both
+are classified rather than hidden. `Warning (13024)` with one `Warning (13410)`
+line per pin reports the two deliberately constant control pins: exactly that pin
+set, each with its documented level, each naming the source file the attempt's own
+project file registers for this top. `Warning (15064)` reports the pixel clock
+reaching the DAC's clock pin through the fabric rather than a dedicated PLL output
+pin: exactly one line, naming the fitted pixel PLL, `clk[0]`, `vga_clk~output` and
+one of the attempt's own generated PLL files. Another pin, another level, another
+PLL, another file or a second line stays unexplained and fails the build.
+
+`de2-vga-invalid` shares every source and pin and sources the generated DAC clock
+from the Cyclone V Altera PLL's output counter, which no Cyclone IV E netlist
+contains, so the pin clock has no source and the build fails naming it. A passing
+`de2-vga` fit is therefore evidence rather than an absent check. Neither target
+programs the board: the pair ends at a checked fit, and no picture has been
+observed.
+
 ## Source and workspace boundary
 
 - Root `tools/` contains checked-in project automation.
@@ -3377,11 +3441,15 @@ family changes. Four things do:
   definition, rules, wizard XML, primitive declaration and register model are
   shared;
 - the fitted netlist primitives, named `cycloneive_*` where MAX 10's are
-  `fiftyfivenm_*`, with the same types and output ports but for three the set
+  `fiftyfivenm_*`, with the same types and output ports but for two the set
   leaves out: the ADC block and the internal flash, which this family does not
-  have, and the memory atom, which no target on this board places yet. The lock
-  checker takes the family's set, so an undeclared primitive still fails rather
-  than hiding a sink, and the first memory target on this board adds its atom;
+  have. The M9K atom is present because [`de2-vga`](#de2-115-video-dac) places the
+  frame bridge's three banks, and `altsyncram` selects M9K on this family exactly
+  as on MAX 10. The lock checker takes the family's set, so an undeclared
+  primitive still fails rather than hiding a sink;
+- its own proof tops, `de2_clocking_proof` and `de2_vga_proof`, both of which fit
+  the DE10-Lite's `n2m_clocking` wrapper in place, so the recognized hierarchy is
+  that board's and only the top names are this one's;
 - one further fitter caution, below.
 
 Everything else is shared because it was measured identical: the wrapper and

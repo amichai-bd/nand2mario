@@ -1,4 +1,5 @@
 """Exact VGA proof hierarchy: checked CDC collections and retained path reports."""
+import collections
 import math
 import re
 
@@ -10,13 +11,38 @@ LAUNCHES = ("u_clocking|u_reset|pix_release[1]", "u_clocking|u_reset|sys_release
 BUNDLES = (("offer_bank", "captured_bank", 2),
            ("offer_sequence", "captured_sequence", 64),
            ("offer_epoch", "captured_epoch", 32))
-PORTS = [f"{color}[{bit}]" for color in ("red", "green", "blue") for bit in range(4)] + ["hsync_n", "vsync_n"]
-# Fitter packs six copies of each grayscale bit into the twelve RGB pins.
-RGB_REGISTERS = tuple(f"u_bridge|u_scan|gray_out[{i % 2}]" +
-                      (f"~_Duplicate_{i // 2}" if i // 2 else "") for i in range(12))
-OUTPUT_REGISTERS = (*RGB_REGISTERS, "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out")
+# One board's checked VGA outputs: its RGB and sync pins, the physical register
+# the fitter packs into each, and the fitted RAM atom its device family names.
+Profile = collections.namedtuple("Profile", "ports registers atom")
+
+
+def profile(channels, width, sync, *, atom="fiftyfivenm_ram_block"):
+    """A board's output profile from its channel names, channel width and sync pins.
+
+    `n2m_vga_scan` builds every channel by repeating the two-bit `gray_out` pair,
+    so channel bit k carries `gray_out[k % 2]` however wide the channel is, and
+    the fitter packs one physical copy of that register into each pin: the
+    original plus a duplicate for every further pin of the same bit. The width
+    and the names are the board's; that rule and every check below are not.
+    """
+    pins = [f"{name}[{bit}]" for name in channels for bit in range(width)]
+    rgb = tuple(f"u_bridge|u_scan|gray_out[{i % 2}]" + (f"~_Duplicate_{i // 2}" if i // 2 else "")
+                for i in range(len(pins)))
+    return Profile(pins + list(sync), rgb + tuple(f"u_bridge|u_scan|{name}" for name in ("hs_out", "vs_out")), atom)
+
+
+# The DE10-Lite's four-bit resistor ladder, and the default every MAX 10 target
+# keeps: twelve RGB pins, six physical copies of each grayscale bit.
+LADDER = profile(("red", "green", "blue"), 4, ("hsync_n", "vsync_n"))
+PORTS = LADDER.ports
+RGB_REGISTERS = LADDER.registers[:-2]
+OUTPUT_REGISTERS = LADDER.registers
 BLANK_CONTROLS = (("active", "u_bridge|blank_active"), ("request", "u_bridge|blank_pix[1]"))
 CORNERS = (("slow85", "slow", 85), ("slow0", "slow", 0), ("fast0", "fast", 0))
+# The fitted net the pixel clock reaches the fabric on, as the checked netlist
+# names it. The hierarchy is the shared clocking wrapper's, so both ALTPLL
+# families name it the same way.
+PIXEL_NET = r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk"
 
 
 def chain_profile(lcd=False, *, system_clock="clk_sys"):
@@ -44,7 +70,7 @@ def first_pin(name, quote):
             f'foreach_in_collection p $first_{name} {{puts "VGA_FIRST_PIN {name} [get_pin_info -name $p]"}}']
 
 
-def constraints(quote, *, lcd=False):
+def constraints(quote, *, lcd=False, outputs=LADDER):
     lines = []
     for name, launch, _ in chain_profile(lcd):
         lines += collection("registers", [launch], f"launch_{name}", quote)
@@ -55,18 +81,18 @@ def constraints(quote, *, lcd=False):
         lines += collection("registers", [f"u_bridge|{capture}[{i}]" for i in range(width)], capture, quote)
         lines.append(f"set_max_delay 20.000 -from ${source} -to ${capture}")
         lines.append(f"set_min_delay 0.000 -from ${source} -to ${capture}")
-    lines += collection("ports", PORTS, "vga_outputs", quote)
+    lines += collection("ports", outputs.ports, "vga_outputs", quote)
     lines += ["set_max_delay 10.000 -to $vga_outputs", "set_min_delay 0.000 -to $vga_outputs",
               "set_max_skew -to $vga_outputs 2.000"]
     return "\n".join(lines) + "\n"
 
 
-def required_reports(*, lcd=False):
+def required_reports(*, lcd=False, outputs=LADDER):
     names = ([f"{name}_{check}" for name, _, _ in chain_profile(lcd) for check in ("setup", "hold")]
              + [source for source, _, _ in BUNDLES] + ["outputs_max", "outputs_min", "skew"])
     if lcd:
         names += [f"blank_{name}_gray{bit}_{check}" for name, _ in BLANK_CONTROLS
-                  for bit in range(12) for check in ("setup", "hold")]
+                  for bit in range(len(outputs.registers) - 2) for check in ("setup", "hold")]
     return [f"vga_{corner}_{name}.rpt" for corner, _, _ in CORNERS for name in names] + ["vga_first_pins.rpt"]
 
 
@@ -81,7 +107,7 @@ def physical_register(bit, register, quote):
             "}"]
 
 
-def audit(quote, *, lcd=False):
+def audit(quote, *, lcd=False, outputs=LADDER):
     lines = ['set vga_first_report [open output/vga_first_pins.rpt w]']
     for name, _, _ in chain_profile(lcd):
         lines += first_pin(name, quote)
@@ -90,13 +116,13 @@ def audit(quote, *, lcd=False):
     for source, capture, width in BUNDLES:
         lines += collection("registers", [f"u_bridge|{source}[{i}]" for i in range(width)], source, quote)
         lines += collection("registers", [f"u_bridge|{capture}[{i}]" for i in range(width)], capture, quote)
-    lines += collection("ports", PORTS, "vga_outputs", quote)
+    lines += collection("ports", outputs.ports, "vga_outputs", quote)
     if lcd:
         for name, launch in BLANK_CONTROLS:
             lines += collection("registers", [launch], "vga_blank_" + name, quote)
         # -no_duplicates disables implicit replica expansion; each explicitly
         # named physical replica remains its own checked collection.
-        for bit, register in enumerate(RGB_REGISTERS):
+        for bit, register in enumerate(outputs.registers[:-2]):
             lines += physical_register(bit, register, quote)
     # -multi_corner does not provide all file-output corners for these commands.
     for corner, model, temperature in CORNERS:
@@ -111,19 +137,26 @@ def audit(quote, *, lcd=False):
             # Each captured bit needs a path, not only the easiest bus member.
             lines.append(f"report_path -from ${source} -to ${capture} -npaths {width} -nworst 1 -file output/vga_{corner}_{source}.rpt")
         for name, option in (("max", ""), ("min", "-min_path")):
-            lines.append(f"report_path -to $vga_outputs -npaths 14 -nworst 1 {option} -file output/vga_{corner}_outputs_{name}.rpt")
+            lines.append(f"report_path -to $vga_outputs -npaths {len(outputs.ports)} -nworst 1 {option} -file output/vga_{corner}_outputs_{name}.rpt")
         if lcd:
             for name, _ in BLANK_CONTROLS:
-                for bit in range(12):
+                for bit in range(len(outputs.registers) - 2):
                     for check in ("setup", "hold"):
                         lines.append(f"report_timing -from $vga_blank_{name} -to $vga_gray_{bit} -{check} -npaths 1 -detail full_path -file output/vga_{corner}_blank_{name}_gray{bit}_{check}.rpt")
-        lines.append(f"report_max_skew -npaths 14 -detail full_path -file output/vga_{corner}_skew.rpt")
+        lines.append(f"report_max_skew -npaths {len(outputs.ports)} -detail full_path -file output/vga_{corner}_skew.rpt")
     return "\n".join(lines) + "\n"
 
 
-def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_sys~inputclkctrl_outclk", bridge_prefix="u_bridge|", shade="u_ppu|source_shade"):
-    """Check the fitted MAX 10 atoms, including clocks and one-edge read shape."""
-    atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
+def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_sys~inputclkctrl_outclk", bridge_prefix="u_bridge|", shade="u_ppu|source_shade", atom=LADDER.atom):
+    """Check the fitted atoms, including clocks and one-edge read shape.
+
+    Only the atom's name follows the device family: MAX 10 fits
+    `fiftyfivenm_ram_block` and Cyclone IV E `cycloneive_ram_block` for the same
+    M9K block. Everything checked below -- the owners, the parameter set, the
+    clock and reset roles, the shade bit and the bit partition -- is the design's
+    and is stated once.
+    """
+    atoms = re.findall(re.escape(atom) + r"\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
     if controls or bridge_prefix != "u_bridge|":
         atoms = [(name, body) for name, body in atoms if name.startswith(bridge_prefix)]
     if len(atoms) != 18 or len({name for name, _ in atoms}) != 18:
@@ -153,8 +186,7 @@ def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_
             raise ValueError("VGA physical RAM parameters differ")
         if any(key.startswith(("mem_init", "init_file")) for key in params):
             raise ValueError("VGA physical RAM initialization unexpectedly present")
-        expected_ports = {"clk0": system_net,
-                          "clk1": r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk",
+        expected_ports = {"clk0": system_net, "clk1": PIXEL_NET,
                           "clr0": "gnd", "clr1": "gnd", "portare": "gnd", "portbwe": "gnd",
                           "portaaddrstall": "gnd", "portbaddrstall": "gnd",
                           "portabyteenamasks": "1'b1", "portbbyteenamasks": "1'b1"}
@@ -175,10 +207,28 @@ def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_
     return evidence
 
 
-def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk"):
+USED = re.compile(r"([\d,]+) / [\d,]+ \( *\d+ % \)")
+
+
+def used(table, label):
+    """The used count of one `used / capacity ( percent )` fit summary row.
+
+    The capacity and the percent it implies are facts about the device, which the
+    fit summary already binds through its `Device :` line, so the used count is
+    the whole subject here. That keeps the check on the fitted design and lets a
+    larger part with the same M9K block reuse it rather than restate a capacity.
+    """
+    values = [row[1] for row in table if len(row) == 2 and row[0] == label]
+    match = USED.fullmatch(values[0]) if len(values) == 1 else None
+    if match is None:
+        raise ValueError(f"missing or malformed fitted usage row: {label}")
+    return int(match[1].replace(",", ""))
+
+
+def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk", outputs=LADDER):
     output = folder / "output"
     reports = {}
-    for name in required_reports(lcd=lcd):
+    for name in required_reports(lcd=lcd, outputs=outputs):
         path = output / name
         if not path.is_file() or not path.stat().st_size:
             raise ValueError(f"missing VGA evidence: {name}")
@@ -190,10 +240,9 @@ def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_
         if line not in [f"{name} u_bridge|{name}[0]|{suffix}" for suffix in ("d", "asdata")]:
             raise ValueError("unsupported VGA first data pin")
     fit = (output / "design.fit.rpt").read_text(encoding=FIT_ENCODING)
-    if [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "M9Ks"] != (["27 / 182 ( 15 % )"] if controls else ["18 / 182 ( 10 % )"]):
+    if used(rows(fit), "M9Ks") != (27 if controls else 18):
         raise ValueError("unexpected total fitted M9K usage")
-    memory = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
-    if memory != (["181,744 / 1,677,312 ( 11 % )"] if controls else ["138,240 / 1,677,312 ( 8 % )"]):
+    if used(rows(fit), "Total block memory bits") != (181744 if controls else 138240):
         raise ValueError("unexpected total fitted memory bits")
     verify_memory_rows(fit)
     netlist = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
@@ -201,17 +250,17 @@ def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_
     if controls:
         from .fpga_controls import verify_uart_memory
         uart_ram = verify_uart_memory(netlist, fit, system_net=system_net)
-    physical_ram = verify_memory_netlist(netlist, lcd=lcd, controls=controls, system_net=system_net)
+    physical_ram = verify_memory_netlist(netlist, lcd=lcd, controls=controls, system_net=system_net, atom=outputs.atom)
     result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
     if uart_ram is not None:
         result['uart_memory'] = uart_ram
-    output_sources = dict(zip(PORTS, OUTPUT_REGISTERS))
+    output_sources = dict(zip(outputs.ports, outputs.registers))
     packed = [row for row in rows(fit) if len(row) > 6 and row[1:3] == ["Packed Register", "Register Packing"]
-              and node(row[0]) in OUTPUT_REGISTERS]
-    if len(packed) != 14 or {(node(row[0]), row[6]) for row in packed} != {
+              and node(row[0]) in outputs.registers]
+    if len(packed) != len(outputs.ports) or {(node(row[0]), row[6]) for row in packed} != {
             (register, port + "~output") for port, register in output_sources.items()}:
         raise ValueError("VGA packed output register mapping differs")
-    result["corners"] = verify_paths(reports, lcd=lcd, system_clock=system_clock)
+    result["corners"] = verify_paths(reports, lcd=lcd, system_clock=system_clock, outputs=outputs)
     return result
 
 
@@ -247,7 +296,7 @@ def path_rows(text, count):
     return paths
 
 
-def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u_bridge|"):
+def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u_bridge|", outputs=LADDER):
     """Check the same path contracts in the standalone and composed hierarchy."""
     def path_node(value):
         value = node(value)
@@ -258,7 +307,7 @@ def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u
     for (name, _, _), line in zip(chain_profile(lcd), pins):
         if line not in [f"{name} {bridge_prefix}{name}[0]|{suffix}" for suffix in ("d", "asdata")]:
             raise ValueError("unsupported VGA first data pin")
-    output_sources = dict(zip(PORTS, OUTPUT_REGISTERS))
+    output_sources = dict(zip(outputs.ports, outputs.registers))
     result = {}
     for corner, model, temperature in CORNERS:
         model_name = f"{model.title()} 1200mV {temperature}C Model"
@@ -278,8 +327,8 @@ def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u
             bundles[source] = delay
         output_delays = {}
         for direction in ("max", "min"):
-            paths = path_rows(reports[prefix + "outputs_" + direction + ".rpt"], len(PORTS))
-            if {row[2] for row in paths} != set(PORTS) or any(path_node(row[1]) != output_sources.get(row[2]) for row in paths):
+            paths = path_rows(reports[prefix + "outputs_" + direction + ".rpt"], len(outputs.ports))
+            if {row[2] for row in paths} != set(outputs.ports) or any(path_node(row[1]) != output_sources.get(row[2]) for row in paths):
                 raise ValueError("VGA output path inventory differs")
             delays = [number(row[0]) for row in paths]
             if any(value < 0 or value > 10 for value in delays):
@@ -291,23 +340,25 @@ def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u
         if lcd:
             pixel_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
             for name, launch in BLANK_CONTROLS:
-                for bit in range(12):
+                for bit in range(len(outputs.registers) - 2):
                     for check in ("setup", "hold"):
                         key = f"blank_{name}_gray{bit}_{check}"
                         text = reports[prefix + key + ".rpt"]
                         if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
                             raise ValueError("missing or violated VGA blank control path")
                         paths = [row for row in rows(summary(text)) if len(row) == 8 and row[0] != "Slack"]
-                        if len(paths) != 1 or [path_node(v) for v in paths[0][1:3]] != [launch, RGB_REGISTERS[bit]] or paths[0][3:5] != [pixel_clock, pixel_clock] or number(paths[0][0]) < 0:
+                        if len(paths) != 1 or [path_node(v) for v in paths[0][1:3]] != [launch, outputs.registers[bit]] or paths[0][3:5] != [pixel_clock, pixel_clock] or number(paths[0][0]) < 0:
                             raise ValueError("VGA blank control path differs")
                         blank_slacks[key] = number(paths[0][0])
         skews = rows(summary(reports[prefix + "skew.rpt"]))
         assignment = [row for row in skews if row[0] == "set_max_skew"]
-        port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in PORTS) + "}]"
+        port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in outputs.ports) + "}]"
         if len(assignment) != 1 or len(assignment[0]) != 9 or assignment[0][4] or assignment[0][5] != port_filter:
             raise ValueError("VGA skew constraint inventory differs")
         details = [row for row in skews if row[0] == "--"]
-        if len(details) != 28 or not re.search(r"Report Max Skew: Found 28 paths \(0 violated\)", reports[prefix + "skew.rpt"]):
+        # One latest and one earliest arrival contribution per checked output pin.
+        expected_paths = 2 * len(outputs.ports)
+        if len(details) != expected_paths or not re.search(r"Report Max Skew: Found " + str(expected_paths) + r" paths \(0 violated\)", reports[prefix + "skew.rpt"]):
             raise ValueError("missing or violated VGA skew paths")
         if not 0 <= number(assignment[0][3]) <= 2:
             raise ValueError("VGA aggregate skew exceeds required bound")
@@ -320,7 +371,7 @@ def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u
                     or abs(slack - (2 - actual)) > 0.0011):
                 raise ValueError("VGA skew exceeds required bound")
         for row in details:
-            if len(row) != 9 or row[5] not in PORTS or path_node(row[4]) != output_sources.get(row[5]) or row[6] != row[7] or row[6] != "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]":
+            if len(row) != 9 or row[5] not in outputs.ports or path_node(row[4]) != output_sources.get(row[5]) or row[6] != row[7] or row[6] != "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]":
                 raise ValueError("unexpected VGA skew path or clock")
         chain_slacks = {}
         for name, _, clock in chain_profile(lcd, system_clock=system_clock):
