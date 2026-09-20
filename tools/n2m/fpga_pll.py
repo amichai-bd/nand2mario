@@ -1,4 +1,14 @@
-"""Bounded ALTPLL generation; generated vendor HDL stays inside the attempt."""
+"""Bounded ALTPLL generation; generated vendor HDL stays inside the attempt.
+
+ALTPLL serves more than one device family, so the generation and the fit, lock,
+metastability, reset-chain and clock-transfer checks here are shared. What a
+family owns is small and stated at each site: the family name the generator is
+given and the generated HDL must state back, the installed simulation atom model,
+the netlist primitive table, its own supported proof tops, and any fitter
+diagnostic only its board produces. `FAMILY` and `ATOM_MODEL` are this module's,
+and a second family reuses these functions from its own module
+([fpga_pll_cycloneive.py](fpga_pll_cycloneive.py)) rather than copying them.
+"""
 from pathlib import Path
 import os
 import math
@@ -13,12 +23,23 @@ chain_audit = fpga_clocking.chain_audit
 required_reports = fpga_clocking.required_reports
 FIT_ENCODING = fpga_clocking.FIT_ENCODING
 TOOLS_KEY = "altpll"
+# This module's own family. ALTPLL serves more than one, and the family is the
+# one thing the generator, the generated HDL and the installed atom model each
+# have to state, so every entry point takes it and defaults to this.
 FAMILY = "MAX 10"
-# The proof tops whose exact u_clocking hierarchy these checks recognize.
+# The simulation atom model whose hash enters the request fingerprint. Each
+# family installs its own, so it travels with the family rather than with ALTPLL.
+ATOM_MODEL = "eda/sim_lib/fiftyfivenm_atoms.v"
+# The proof tops whose exact u_clocking hierarchy these checks recognize. The
+# list is this family's, not ALTPLL's: another family registers its own tops in
+# its own module, so a target cannot point one family's checks at another's top.
 SUPPORTED_TOPS = ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof",
                   "v05_proof", "v05_controls_proof", "sdram_proof", "flash_proof")
 SYSTEM_PLL = "u_clocking|u_system_pll|altpll_component|auto_generated|pll1"
 PIXEL_PLL = "u_clocking|u_pll|altpll_component|auto_generated|pll1"
+# The ADC support PLL. It stays here rather than moving to the shared ALTPLL
+# facts: the block it clocks is a MAX 10 device feature, and neither Cyclone IV E
+# nor Cyclone V has an ADC on the fabric.
 ADC_PLL = "u_adc|u_pll|altpll_component|auto_generated|pll1"
 SYSTEM_CLOCK = SYSTEM_PLL + "|clk[0]"
 PIXEL_CLOCK = PIXEL_PLL + "|clk[0]"
@@ -54,7 +75,14 @@ def timed_clocks(target):
 
 
 def corner_slacks(target, corner):
-    """No MAX 10 clock needs a corner entry beyond its timed clocks."""
+    """No ALTPLL clock needs a corner entry beyond its timed clocks.
+
+    ALTPLL publishes only its output clocks to the Timing Analyzer, so the
+    analysed inventory is exactly the timed clocks and there is nothing further
+    to require at a corner. The Altera PLL differs: it also publishes a VCO
+    clock, which is why that family states its own entries. Measured on both
+    ALTPLL families' clock inventories, which hold three clocks and no more.
+    """
     return []
 
 
@@ -64,9 +92,20 @@ def lock_event_count(target):
     return count + int(target.get("pll", {}).get("system_divide") == 2)
 
 
-def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, extra_rows=()):
-    checker = fpga_lock.verify_parallel if parallel else fpga_lock.verify
-    return checker((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top, extra_rows=extra_rows)
+def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, extra_rows=(),
+                      primitives=fpga_lock.MAX10):
+    """Classify the lock event in the checked netlist, in this family's primitives.
+
+    `primitives` names the family's fitted atom set; the default is MAX 10's.
+    Only the parallel checker takes one, because only the parallel composition is
+    shared with another family.
+    """
+    if not parallel and primitives is not fpga_lock.MAX10:
+        raise ValueError("the single-PLL lock checker recognizes MAX 10 primitives only")
+    text = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
+    if parallel:
+        return fpga_lock.verify_parallel(text, checks, top, extra_rows=extra_rows, primitives=primitives)
+    return fpga_lock.verify(text, checks, top, extra_rows=extra_rows)
 
 
 MERGE_PAIR = ("n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll1",
@@ -74,15 +113,17 @@ MERGE_PAIR = ("n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_compone
 MERGE_FILES = ("n2m_pixel_pll_altpll.v", "n2m_system_pll_altpll.v")
 
 
-def explained_diagnostics(text, folder, definition):
+def explained_diagnostics(text, folder, definition, family=FAMILY):
     """Explain the one 176127 merge refusal for the verified system/pixel pair.
 
     Quartus names the two PLLs in either order and cites whichever generated
-    file it visited second; the pair and the file set are matched as sets.
+    file it visited second; the pair and the file set are matched as sets. The
+    refusal is ALTPLL's, not one family's: two instances with different ratios
+    are never merged, whichever family they are generated for.
     """
     if definition.get("system_divide") != 2:
         return []
-    verify(folder, definition)
+    verify(folder, definition, family=family)
     pattern = re.compile(r"Warning \(176127\): The parameters of the PLL (\S+) and the PLL (\S+) "
                          r"do not have the same values - hence these PLLs cannot be merged File: (.+) Line: \d+")
     lines = [line for line in text.splitlines() if line.startswith("Warning (176127):")]
@@ -263,12 +304,17 @@ def generator(directory):
     return Path(directory) / ("qmegawiz.exe" if os.name == "nt" else "qmegawiz")
 
 
-def identity(directory):
+def identity(directory, atom_model=ATOM_MODEL):
+    """The explicit ALTPLL generation dependencies, with this family's atom model.
+
+    Every path but the atom model is ALTPLL's own or the generator's, so it is
+    shared; the atom model is per family and the caller states which one.
+    """
     directory = Path(directory).resolve()
     paths = {"generator": generator(directory),
              "definition": directory.parent / "libraries/megafunctions/xml_info/altpll_info.xml",
              "primitive": directory.parent / "libraries/megafunctions/altpll.tdf",
-             "atom_model": directory.parent / "eda/sim_lib/fiftyfivenm_atoms.v",
+             "atom_model": directory.parent / atom_model,
              "register_model": directory.parent / "eda/sim_lib/altera_primitives.v",
              "rules": directory.parent / "libraries/megafunctions/xml_info/altpll_rules.xml",
              "wizard": directory.parent / "libraries/megafunctions/xml_info/altpll_wiz_map.xml"}
@@ -277,9 +323,9 @@ def identity(directory):
     return vendor_sources.check(directory, paths)
 
 
-def _command(identity, module, input_ps, multiply, divide, bandwidth=None):
+def _command(identity, module, input_ps, multiply, divide, bandwidth=None, family=FAMILY):
     command = [identity["generator"]["path"], "-silent", "module=altpll",
-               "INTENDED_DEVICE_FAMILY=MAX 10", f"INCLK0_INPUT_FREQUENCY={input_ps}",
+               f"INTENDED_DEVICE_FAMILY={family}", f"INCLK0_INPUT_FREQUENCY={input_ps}",
                f"CLK0_MULTIPLY_BY={multiply}", f"CLK0_DIVIDE_BY={divide}",
                "CLK0_DUTY_CYCLE=50", "CLK0_PHASE_SHIFT=0", "COMPENSATE_CLOCK=CLK0",
                "OPERATION_MODE=NORMAL", "areset=used", "locked=used", "clk0=used",
@@ -289,37 +335,37 @@ def _command(identity, module, input_ps, multiply, divide, bandwidth=None):
     return command + [module + ".v"]
 
 
-def generation_command(identity, definition):
+def generation_command(identity, definition, family=FAMILY):
     validate(definition)
-    return _command(identity, "n2m_pixel_pll", 20000, 63, 125)
+    return _command(identity, "n2m_pixel_pll", 20000, 63, 125, family=family)
 
 
-def generate(folder, identity, definition, execute, timeout, record, build, *, device=None):
+def generate(folder, identity, definition, execute, timeout, record, build, *, device=None, family=FAMILY):
     """Generate both ALTPLL instances. The device is implied by the family here."""
-    execute(generation_command(identity, definition), folder,
+    execute(generation_command(identity, definition, family), folder,
             folder / "generate-pll.log", timeout, record, build)
     if definition.get("system_divide") == 2:
-        execute(_command(identity, "n2m_system_pll", 20000, 1, 2, "LOW"), folder,
+        execute(_command(identity, "n2m_system_pll", 20000, 1, 2, "LOW", family=family), folder,
                 folder / "generate-system-pll.log", timeout, record, build)
-    verify(folder, definition)
+    verify(folder, definition, family=family)
 
 
-def verify(folder, definition=None):
+def verify(folder, definition=None, family=FAMILY):
     if definition is None:
         definition = {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125}
     validate(definition)
-    _verify_module(folder, definition, None)
+    _verify_module(folder, definition, None, family)
     if definition.get("system_divide") == 2:
         _verify_module(folder, {"module": "n2m_system_pll", "input_ps": 20000,
-                               "multiply": 1, "divide": 2}, "LOW")
+                               "multiply": 1, "divide": 2}, "LOW", family)
 
 
-def _verify_module(folder, definition, bandwidth):
+def _verify_module(folder, definition, bandwidth, family=FAMILY):
     path = folder / (definition["module"] + ".v")
     text = path.read_text(encoding="utf-8")
     expected = {"clk0_divide_by": str(definition["divide"]), "clk0_multiply_by": str(definition["multiply"]), "clk0_duty_cycle": "50",
                 "clk0_phase_shift": '"0"', "inclk0_input_frequency": str(definition["input_ps"]),
-                "intended_device_family": '"MAX 10"', "operation_mode": '"NORMAL"',
+                "intended_device_family": '"' + family + '"', "operation_mode": '"NORMAL"',
                 "compensate_clock": '"CLK0"', "self_reset_on_loss_lock": '"OFF"',
                 "port_areset": '"PORT_USED"', "port_locked": '"PORT_USED"'}
     if bandwidth:

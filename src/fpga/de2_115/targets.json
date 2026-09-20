@@ -28,6 +28,132 @@
     "specification": "wiki/src/de2-115-board.md"
   },
   "targets": {
+    "de2-clocking": {
+      "device": "EP4CE115F29C7",
+      "top": "de2_clocking_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/fpga/de2_115/de2_clocking_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de2_115/de2_clocking.sdc"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125,
+        "system_divide": 2
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "count": 10,
+            "ports": [
+              "ready",
+              "paused",
+              "sys_count[*]"
+            ]
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "count": 8,
+            "ports": [
+              "pix_count[*]"
+            ]
+          }
+        ],
+        "reference_ns": "20.000"
+      },
+      "pins": {
+        "clk_reference": "PIN_Y2"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "sys_count[*]",
+        "pix_count[*]"
+      ]
+    },
+    "de2-clocking-invalid": {
+      "device": "EP4CE115F29C7",
+      "top": "de2_clocking_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/fpga/de2_115/de2_clocking_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de2_115/de2_clocking.sdc"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125,
+        "system_divide": 2
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "u_clocking|u_system_pll|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk",
+            "count": 10,
+            "ports": [
+              "ready",
+              "paused",
+              "sys_count[*]"
+            ]
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "count": 8,
+            "ports": [
+              "pix_count[*]"
+            ]
+          }
+        ],
+        "reference_ns": "20.000"
+      },
+      "pins": {
+        "clk_reference": "PIN_Y2"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "sys_count[*]",
+        "pix_count[*]"
+      ]
+    },
     "de2-invalid": {
       "device": "EP4CE115F29C7",
       "top": "de2_smoke",

@@ -13,11 +13,16 @@ import math
 import re
 
 # Every family with a clocking evidence implementation, and the module that owns it.
-IMPLEMENTATIONS = {"MAX 10": "fpga_pll", "Cyclone V": "fpga_pll_cyclonev"}
+# Two of them are ALTPLL families and share one implementation's checks through
+# their own modules; adding a family is still an explicit entry here, never a
+# lookup that falls back to another family's checks.
+IMPLEMENTATIONS = {"MAX 10": "fpga_pll", "Cyclone V": "fpga_pll_cyclonev",
+                   "Cyclone IV E": "fpga_pll_cycloneive"}
 CHAINS = ("board_release", "lock_samples", "sys_release", "pix_release")
-# Quartus writes design.fit.rpt in cp1252 on every host; a MAX 10 report carries
-# the degree sign (0xb0), which utf-8 refuses. The encoding belongs to Quartus,
-# not to the host, so every family reads the report through this one fact.
+# Quartus writes design.fit.rpt in cp1252 on every host; the MAX 10 and
+# Cyclone IV E reports both carry the degree sign (0xb0) in their junction
+# temperatures, which utf-8 refuses. The encoding belongs to Quartus, not to the
+# host, so every family reads the report through this one fact.
 FIT_ENCODING = "cp1252"
 
 

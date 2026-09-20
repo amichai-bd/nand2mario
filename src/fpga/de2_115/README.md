@@ -19,10 +19,24 @@ still has to confirm physically.
 `de2-invalid` deliberately uses a negative clock period and must fail, so a
 passing `de2-smoke` fit is evidence rather than an absent check.
 
+`de2-clocking` generates this board's 25 MHz system and 25.2 MHz pixel clocks and
+observes them through [`de2_clocking_proof.sv`](de2_clocking_proof.sv) on virtual
+ports, under [`de2_clocking.sdc`](de2_clocking.sdc). It has no wrapper of its own:
+ALTPLL serves Cyclone IV E, so it instantiates the DE10-Lite's
+[`n2m_clocking.sv`](../de10_lite/n2m_clocking.sv) behind the shared reset
+controller, and the generation and every clocking check come from that board's
+path. A copy here is not an option either way. Keeping the module name fails the
+[Questa compile gate](../../../wiki/tools/n2m/SPEC.md#questa-compile-gate): it
+compiles every registered source into one library in one `vlog`, warns
+`vlog-2275 Existing module 'n2m_clocking' ... will be overwritten`, and fails on
+any warning. Renaming forks the fitted instance hierarchy every clocking check
+and constraint names, which is what the Cyclone V wrapper costs. `de2-clocking-invalid` shares its sources and names the Cyclone V Altera
+PLL's system clock as a checked endpoint, which no Cyclone IV E netlist contains,
+so it must fail.
+
 This board reuses what the DE10-Nano had to replace: ALTPLL serves Cyclone IV E
 and `altsyncram` places M9K, so there is no `n2m_clocking_*` wrapper and no
-memory branch here. No target generates a clock yet; the flow proof runs from the
-50 MHz reference directly, as `nano-smoke` does.
+memory branch here.
 
 The DE10-Lite remains the qualified board; its physical verification is in
 [board bring-up](../../../wiki/src/board-bring-up.md).

@@ -2053,6 +2053,10 @@ dependency record pinned before. The 16 that were recorded but never compared ar
 - three Intel ADC definitions — `altera_modular_adc_control.sdc`,
   `altera_modular_adc_control_hw.tcl` and `top/altera_modular_adc_hw.tcl`.
 
+[Cyclone IV E ALTPLL](#cyclone-iv-e-altpll) reads one compared source of its own,
+`cycloneive_atoms.v`. It was never recorded or pinned before, so it enters the
+ledger the ordinary way on its first build and is compared from then on.
+
 Nothing that was compared stopped being compared. Comparing these 16 is why the
 rule above needs no further exception, and none of them carries a `--version`
 banner, so the ledger is the only thing that would notice a Quartus patch changing
@@ -2189,6 +2193,8 @@ python3 tools/build.py fpga build nano-uart --quartus-bin <directory> --tag nano
 python3 tools/build.py fpga build nano-uart-invalid --quartus-bin <directory> --tag nano-uart-invalid --json
 python3 tools/build.py fpga build de2-smoke --quartus-bin <directory> --tag de2-smoke --json
 python3 tools/build.py fpga build de2-invalid --quartus-bin <directory> --tag de2-invalid --json
+python3 tools/build.py fpga build de2-clocking --quartus-bin <directory> --tag de2-clocking --json
+python3 tools/build.py fpga build de2-clocking-invalid --quartus-bin <directory> --tag de2-clocking-invalid --json
 ```
 
 `--quartus-bin` names the directory holding `quartus_sh`, `quartus_map`,
@@ -2215,6 +2221,14 @@ a checked endpoint that no Cyclone V netlist contains.
 red LEDs, and it places a drive strength on each LED pin because Cyclone IV E
 reports an output pin without one as an incomplete I/O assignment. It has no
 PLL.
+`de2-clocking` and `de2-clocking-invalid` are that board's clocking pair: the
+[clocking proof](../../src/de2-115-board.md#targets) fits the DE10-Lite's own
+ALTPLL wrapper, with the shared reset controller and timebase on virtual ports,
+for `EP4CE115F29C7`. The invalid target names the Cyclone V Altera PLL system
+clock as the checked output-delay clock of the `ready`/`paused`/`sys_count` group;
+no Cyclone IV E netlist contains it, so `read_sdc` refuses the collection with
+`Error (332000): checked endpoint count mismatch: clock_0`, the Fitter exits
+nonzero and the build fails.
 Each invalid target must FAIL with exit 1, naming the missing or wrong endpoint;
 neither ever becomes a passing build. No command programs the board,
 opens UART, or proves physical operation. Design-specific PLL/frame/fit evidence
@@ -3238,9 +3252,14 @@ Generation and every clocking check are per device family, because the vendor IP
 its instance hierarchy, its fit-report shape and its netlist primitives all
 differ. [`fpga_clocking.py`](../../../tools/n2m/fpga_clocking.py) maps the board's
 declared `family` to the one module that owns them:
-[`fpga_pll.py`](../../../tools/n2m/fpga_pll.py) for MAX 10 ALTPLL and
+[`fpga_pll.py`](../../../tools/n2m/fpga_pll.py) for MAX 10 ALTPLL,
+[`fpga_pll_cycloneive.py`](../../../tools/n2m/fpga_pll_cycloneive.py) for
+Cyclone IV E ALTPLL and
 [`fpga_pll_cyclonev.py`](../../../tools/n2m/fpga_pll_cyclonev.py) for the
-Cyclone V Altera PLL. A target that declares generated clocks on a family with no
+Cyclone V Altera PLL. The map is one explicit entry per family, never a lookup
+that falls back to another family's checks; the two ALTPLL families share one
+implementation's code through their own modules rather than by matching loosely.
+A target that declares generated clocks on a family with no
 implementation is refused when its definition resolves, before any tool launches;
 there is no path that builds such a target with the clocking checks skipped. Each
 implementation also declares the proof tops whose hierarchy its checks recognize,
@@ -3278,6 +3297,69 @@ with its exit code and `retried: true`, and `generator_retries` lists each
 retried attempt. A reported failure, a different exit code, a timeout or a
 sixth silent exit fails the request. A later explicit build
 request creates a separate attempt.
+
+### Cyclone IV E ALTPLL
+
+ALTPLL serves this family, so
+[`fpga_pll_cycloneive.py`](../../../tools/n2m/fpga_pll_cycloneive.py) reuses the
+MAX 10 module's generation and every one of its checks and states only what the
+family changes. Four things do:
+
+- the generator's `INTENDED_DEVICE_FAMILY` and the `intended_device_family` the
+  generated HDL must state back, which are the family itself; each family's
+  checker refuses the other's string;
+- the installed simulation atom model whose hash enters the request fingerprint,
+  `cycloneive_atoms.v` against `fiftyfivenm_atoms.v`, each compared against
+  [its accepted digest](#accepted-vendor-sources); the generator, the ALTPLL
+  definition, rules, wizard XML, primitive declaration and register model are
+  shared;
+- the fitted netlist primitives, named `cycloneive_*` where MAX 10's are
+  `fiftyfivenm_*`, with the same types and output ports but for three the set
+  leaves out: the ADC block and the internal flash, which this family does not
+  have, and the memory atom, which no target on this board places yet. The lock
+  checker takes the family's set, so an undeclared primitive still fails rather
+  than hiding a sink, and the first memory target on this board adds its atom;
+- one further fitter caution, below.
+
+Everything else is shared because it was measured identical: the wrapper and
+instance hierarchy, the solved `M=104, N=8, C=26` and `M=63, N=5, C=25` counters
+with their 650 MHz and 630 MHz VCOs, both PLLs on `Dedicated Pin`, the analysed
+three-clock inventory at 20.000 ns, 40.000 ns and 39.683 ns, the 176127 merge
+refusal, the reset chain, and the whole parallel lock topology down to the LUT,
+clock-enable and register parameter sets. The definition is only the parallel one,
+so the single-PLL lock checker, which recognizes MAX 10 primitives only, is
+unreachable here. `corner_slacks` stays empty for both ALTPLL families because
+ALTPLL publishes no VCO clock to the Timing Analyzer.
+
+The family's EDA netlist carries delays, so it opens with one
+`initial $sdf_annotate("<name>.sdo")`. A system task call in an initial block
+declares no net and drives no port, so the parser recognizes exactly that
+statement and consumes it; a second one, another system task or another file
+extension fails. MAX 10 devices get the functional netlist only (Quartus 10905)
+and never emit it.
+
+The DE2-115 brings its 50 MHz reference to one dedicated clock input, and this
+composition has two PLLs, so the Fitter places one where the pin arrives over the
+remote dedicated path and reports
+`Critical Warning (176598): ... input clock inclk[0] is not fully compensated
+because it is fed by a remote clock pin`. Exactly one such line is explained, it
+must name one of the two fitted PLL instances, and the pin it names must be the
+one the attempt's own project file assigns to `clk_reference`; another pin, a
+third instance, another cause or a second line stays unexplained and fails the
+build. Both PLLs still take the pin over a dedicated path, which the fit check
+requires, and no timing path in this composition references the reference pin.
+Forcing the remote PLL to a location the pin does not reach that way replaces its
+dedicated clock path with a routed one instead of removing the fact; the caution
+is recorded with that reason rather than hidden.
+
+[`test_fpga_cycloneive.py`](../../../tools/n2m/tests/test_fpga_cycloneive.py)
+covers the dispatch, the definition, the generator command, the generated-HDL
+family string in both directions, the atom model in the fingerprint, the shared
+parallel fit check with its rejections, the lock topology in this family's atoms
+with the MAX 10 table still refusing it, the annotation bound and the
+compensation caution's bounds. The abstract lock fixture is
+[the parallel one](../../../tools/n2m/tests/test_fpga_parallel.py) parameterised
+by the family's atom set, so one topology serves both ALTPLL families.
 
 ### Cyclone V Altera PLL
 

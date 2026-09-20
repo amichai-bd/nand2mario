@@ -53,6 +53,14 @@ reference, with its own stated counters, its own
 [VCO range](de10-nano-board.md#pll-vco-range) and its own evidence path
 ([DE10-Nano](de10-nano-board.md#targets),
 [builder contract](../tools/n2m/SPEC.md#generated-clocking-inputs)).
+ALTPLL does serve Cyclone IV E, so a board on that family realizes the contract
+through the paragraph above unchanged: the same generator, the same counters, and
+the same fit, lock, metastability, reset-chain and clock-transfer evidence
+([DE2-115](de2-115-board.md#targets),
+[builder contract](../tools/n2m/SPEC.md#cyclone-iv-e-altpll)). The DE2-115 carries
+its reference on one dedicated clock pin, so the fitter can fully compensate only
+one of the two PLLs' input clocks; both still take the pin directly, and nothing
+in the clocking composition relates a timing path to that pin.
 
 The +/-100 ppm reference bound is a project acceptance requirement, not a
 claimed oscillator specification or measurement. It puts `gb_tick` within
