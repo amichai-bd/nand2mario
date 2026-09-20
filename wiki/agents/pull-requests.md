@@ -38,6 +38,13 @@ checkpoint and `Refs` lines without a closing reference, and only the
 independent review. Other PRs close their issues. It is the only check that
 runs automatically on a pull request.
 
+A `ready` verdict covers the SHA it names. Because the base branch must be
+up to date and `main` moves often, most deliveries rebase after their verdict.
+The [head-move disposition](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/agent-flow/references/review.md#when-the-head-moves-after-a-verdict)
+states when that verdict still stands, the per-file evidence an author produces
+for a rebase that carries no content change, and when the reviewer must see the
+new head. The merge pins that head with `--match-head-commit`.
+
 Main requires a passing up-to-date `PR policy` check, linear history, and resolved
 review conversations. Force pushes and branch deletion are blocked on main. Human
 approval is not required. Independent review and code/spec alignment are agent

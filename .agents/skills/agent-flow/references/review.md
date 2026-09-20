@@ -63,3 +63,46 @@ The reviewer posts its own report as a PR comment. Same-account agents use
 comments, not GitHub approval. The author fixes findings and obtains a fresh
 ready verdict before undrafting and merging. Reviewers do not edit, push, or
 merge the branch.
+
+## When the head moves after a verdict
+
+A verdict covers the SHA it names and nothing later. Three ordinary things move
+the head between a `ready` verdict and the merge: the author applies a reviewer
+finding, the author applies something root asked for, or `main` moves and the
+base branch requires an up-to-date branch, which makes that rebase mandatory
+rather than a choice. A merge handoff cannot authorize a change and a merge in
+one breath; the change needs its disposition first. Classify each move, state its
+disposition in the PR, and merge only at a head a verdict covers.
+
+**A content change goes back to the reviewer, who decides.** Any commit that
+alters content the reviewer read returns the PR to that reviewer, whatever its
+size: an applied finding, a wording correction, a re-measurement, a new file.
+The reviewer re-reviews the changed material and posts a verdict naming the new
+SHA. That pass may be scoped to what moved instead of a full pass, but the
+reviewer judges that, not the author. An author never rules its own edit too
+small to review.
+
+**A rebase that carries no content change keeps the verdict, and the author
+proves it.** The author decides this case, because the claim is mechanical: every
+path the PR changes holds at the new head the same content it held at the
+reviewed SHA. State that disposition in the PR with per-file evidence, not a
+patch summary:
+
+- each changed path's blob hash at the reviewed SHA and at the new head, from
+  `git rev-parse <sha>:<path>`, quoted as a matching pair;
+- the merge-base diff file list against current `origin/main`, showing that the
+  commits the rebase pulled in touch none of those paths.
+
+An empty `git diff <reviewed-sha> <new-head> -- <path>` supports the claim but
+does not replace it. The blob pair states the result per file and survives
+quoting into the PR body, which is where the next agent reads it. Once stated
+with that evidence, the disposition makes the new head the reviewed head, and
+that SHA is the one the merge pins.
+
+**A blob that moved is a content change on its path**, whichever commit moved
+it. When `main` edited a path this branch also edits, the rebase combined two
+edits there: name that path, show the branch's own contribution to it, and send
+that path to the reviewer. The paths whose blobs match keep their verdict.
+
+The [merge step](../../../../worktrees/README.md#merge) checks the delivered head
+against the verdict rather than assuming they agree.

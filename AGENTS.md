@@ -85,6 +85,10 @@ A fixed, closed set of user-authorized checkpoint PRs instead used matching
 and the `PR policy` check enforces it. No further checkpoint is authorized.
 The author owns delivery through independent review of the current PR SHA,
 satisfying required checks, resolved review conversations, and squash merge.
+A verdict covers only the SHA it names. When the head moves after it, including
+the mandatory rebase an up-to-date base branch forces, apply the
+[head-move disposition](.agents/skills/agent-flow/references/review.md#when-the-head-moves-after-a-verdict)
+and merge only at a head a verdict covers.
 Human review is not required. Root verifies merge, issue closure, main checks,
 deployment, and [cleanup](worktrees/README.md#clean-up-after-merge).
 After verified delivery, retain a concise validation summary in the PR and remove

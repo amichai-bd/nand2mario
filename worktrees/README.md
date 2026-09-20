@@ -32,7 +32,19 @@ Follow [agent-flow](../.agents/skills/agent-flow/SKILL.md) for review and babysi
 ## Merge
 
 Once [review readiness](../.agents/skills/agent-flow/references/review.md#verdict-and-pr-state)
-and the [delivery obligations](../AGENTS.md#work) are met, the author runs:
+and the [delivery obligations](../AGENTS.md#work) are met, the author first
+checks that the head it is about to merge is the head the verdict names:
+
+```powershell
+gh pr view <number> --json headRefOid
+```
+
+The reviewed SHA is the one the reviewer's posted verdict names, and it is the
+SHA `--match-head-commit` takes below. When the two differ, the head moved after
+the verdict: apply
+[its disposition](../.agents/skills/agent-flow/references/review.md#when-the-head-moves-after-a-verdict)
+and record it in the PR before merging. This check is a required step, not a
+courtesy audit afterwards. Then run:
 
 ```powershell
 gh pr merge <number> --squash --match-head-commit <full-40-character-reviewed-sha>
