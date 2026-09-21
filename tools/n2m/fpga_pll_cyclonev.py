@@ -531,7 +531,7 @@ def timed_clocks(target):
 
 
 def no_clock_rows(target):
-    """Cyclone V has no vendor lock latch, so no register may lack a clock."""
+    """Cyclone V has no vendor lock latch, so this family claims no row at all."""
     return []
 
 
@@ -539,8 +539,8 @@ def lock_event_count(target):
     return len(no_clock_rows(target))
 
 
-def verify_lock_event(folder, checks, top="nano_clocking_proof", *, parallel=False, extra_rows=()):
-    if not parallel or extra_rows or top not in SUPPORTED_TOPS:
+def verify_lock_event(folder, checks, top="nano_clocking_proof", *, parallel=False, rows=()):
+    if not parallel or rows or top not in SUPPORTED_TOPS:
         raise ValueError("unsupported Cyclone V clocking composition")
     return fpga_lock_cyclonev.verify((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
 

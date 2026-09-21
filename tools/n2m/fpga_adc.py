@@ -6,7 +6,7 @@ import re
 from .records import file_hash
 from . import fpga_pll, vendor_sources
 from .fpga_clocking import FIT_ENCODING
-from .fpga_lock import parse_netlist, OUTPUTS, ROW, SYSTEM_ROW
+from .fpga_lock import parse_netlist, require_no_clock_rows, OUTPUTS, REGISTER_REASON
 
 PLL = "u_adc|u_pll|altpll_component|auto_generated|"
 FSM = "u_adc|u_control|u_control_fsm|"
@@ -26,35 +26,44 @@ def lock_row(top="adc_proof"):
               "n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
 
 
-def lock_event_count(top):
-    """No-clock rows the ADC backend itself contributes: its one lock synchronizer.
+def no_clock_rows(top="adc_proof"):
+    """The no-clock rows the ADC backend itself contributes: its one lock synchronizer.
+
+    Named with the reason the fit's `No Clock` table gives it, so this owner
+    states the whole row. It names only its own: a target PLL's rows belong to
+    the family's clocking module even in the compositions that carry both.
 
     The ADC generates its own dedicated PLL, so a design that places the backend
     holds this row whether or not the target also generates a PLL. `adc-early`
-    generates none, and this row is then its whole no-clock inventory; the
-    audit in `fpga.expected_no_clock_count` therefore sums this separately from
-    the clocking module's own count instead of keying on the `pll` field.
+    generates none, and this row is then its whole no-clock inventory, which is
+    why `fpga.no_clock_inventory` adds this owner separately instead of keying on
+    the `pll` field.
     """
-    return 1 if top in TOPS else 0
+    return ((lock_row(top), REGISTER_REASON),) if top in TOPS else ()
 
 
-def no_clock_rows(top="adc_proof", *, parallel=False):
-    """Every no-clock row an ADC proof's fit reports: the ADC's and any target PLL's."""
-    rows = [ROW, lock_row(top)] if top in COMPOSED else [lock_row(top)]
-    return rows + [SYSTEM_ROW] if parallel else rows
+def lock_event_count(top):
+    """How many of them, so the count and the named rows cannot state different things."""
+    return len(no_clock_rows(top))
 
 
-def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=SYS):
+def verify_netlist(text, checks, top="adc_proof", *, rows=(), system_net=SYS):
+    """Classify the ADC lock event against the inventory the caller names.
+
+    `rows` is that inventory, resolved from every owner. This checker states
+    which row of it is the ADC backend's own and compares the report with the
+    whole list, so it neither restates another owner's row nor refuses one
+    another owner named.
+    """
     hierarchy_prefix = "u_controls|" if top == "v05_controls_proof" else ""
     pll_path, fsm_path = hierarchy_prefix + PLL, hierarchy_prefix + FSM
     if top not in TOPS:
         raise ValueError("unsupported ADC proof top")
     reset = hierarchy_prefix + "u_adc_reset|" if top in COMPOSED else "u_reset|"
     row = lock_row(top)
-    expected_rows = no_clock_rows(top, parallel=parallel)
-    actual_rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
-    if sorted(actual_rows) != sorted(expected_rows):
-        raise ValueError("unexpected ADC no-clock endpoint")
+    if (row, REGISTER_REASON) not in rows:
+        raise ValueError("the accepted no-clock inventory omits the ADC lock event: " + row)
+    require_no_clock_rows(checks, rows, "ADC lock event")
     _, cells, params, declarations, rhs, lhs = parse_netlist(text, top)
 
     def cell(name, kind):
@@ -240,9 +249,9 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
             "qualification_truth_cases": 2048}
 
 
-def verify(folder, top="adc_proof", *, parallel=False, system_net=SYS):
+def verify(folder, top="adc_proof", *, parallel=False, rows=(), system_net=SYS):
     result = verify_netlist((folder / "simulation/questa/design.vo").read_text(),
-                            (folder / "output/check_timing.rpt").read_text(), top, parallel=parallel, system_net=system_net)
+                            (folder / "output/check_timing.rpt").read_text(), top, rows=rows, system_net=system_net)
     fit = (folder / "output/design.fit.rpt").read_text(encoding=FIT_ENCODING)
     summary = (folder / "output/design.fit.summary").read_text()
     expected_resources = (("Total PLLs", 3 if parallel else 2), ("ADC blocks", 1)) if top in COMPOSED else (

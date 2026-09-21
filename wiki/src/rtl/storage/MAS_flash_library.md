@@ -444,8 +444,11 @@ at `5da9148` with Quartus Prime 25.1std.0 Build 1129 Lite on Windows:
   hold, recovery, removal and pulse-width slack positive at the three
   corners (worst hold 0.11 ns); the IP's sense-enable strobe is the one
   unconstrained clock and, with the atom register it clocks, one of two
-  extra `no_clock` rows, both classified by name in the
-  [builder record](../../../tools/n2m/SPEC.md#diagnostic-classification).
+  extra `no_clock` rows, each named by this IP's owner with the reason the
+  fit gives it — the strobe as a node feeding a clock port, the atom as the
+  unclocked register — and both part of the one
+  [accepted inventory](../../../tools/n2m/SPEC.md#max-10-lock-event-evidence)
+  the builder compares the table against.
   The IP cadence in simulation (read accepted at the third edge, four words
   sampled at edges 8-11 after it, idle again in the seventeenth clock, so 17
   clocks per line back to back) was simulated from the shipped data

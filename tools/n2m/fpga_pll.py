@@ -89,13 +89,16 @@ def corner_slacks(target, corner):
 def no_clock_rows(target):
     """The no-clock rows this target's own generated ALTPLL instances report.
 
-    One documented lock event latch per instance, named as `check_timing`
-    reports it. The ADC backend's latch is not named here even though the
-    controls compositions contain it: `fpga_adc` owns that row, because a target
-    can place the backend without generating a PLL of its own.
+    One documented lock event latch per instance, named as `check_timing` reports
+    it and with the reason that table gives it, so the owner states the whole row
+    rather than half of it. The ADC backend's latch is not named here even though
+    the controls compositions contain it: `fpga_adc` owns that row, because a
+    target can place the backend without generating a PLL of its own.
     """
-    rows = [fpga_lock.ROW]
-    return rows + [fpga_lock.SYSTEM_ROW] if target.get("pll", {}).get("system_divide") == 2 else rows
+    rows = [(fpga_lock.ROW, fpga_lock.REGISTER_REASON)]
+    if target.get("pll", {}).get("system_divide") == 2:
+        rows.append((fpga_lock.SYSTEM_ROW, fpga_lock.REGISTER_REASON))
+    return rows
 
 
 def lock_event_count(target):
@@ -103,9 +106,13 @@ def lock_event_count(target):
     return len(no_clock_rows(target))
 
 
-def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, extra_rows=(),
+def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, rows=(),
                       primitives=fpga_lock.MAX10):
     """Classify the lock event in the checked netlist, in this family's primitives.
+
+    `rows` is the accepted no-clock inventory the caller resolved from every
+    owner; this family's own rows are part of it and the checker refuses a list
+    that omits them.
 
     `primitives` names the family's fitted atom set; the default is MAX 10's.
     Only the parallel checker takes one, because only the parallel composition is
@@ -115,8 +122,8 @@ def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False, e
         raise ValueError("the single-PLL lock checker recognizes MAX 10 primitives only")
     text = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
     if parallel:
-        return fpga_lock.verify_parallel(text, checks, top, extra_rows=extra_rows, primitives=primitives)
-    return fpga_lock.verify(text, checks, top, extra_rows=extra_rows)
+        return fpga_lock.verify_parallel(text, checks, top, rows=rows, primitives=primitives)
+    return fpga_lock.verify(text, checks, top, rows=rows)
 
 
 MERGE_PAIR = ("n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll1",

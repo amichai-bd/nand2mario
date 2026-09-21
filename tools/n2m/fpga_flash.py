@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 import shutil
 
-from . import flash_library, vendor_sources
+from . import flash_library, fpga_lock, vendor_sources
 from .records import file_hash
 
 READER = "src/rtl/storage/n2m_flash_reader.sv"
@@ -175,11 +175,26 @@ def strobe_node(top):
     return f"{reader_node(top)}|{STROBE}"
 
 
+# The reason the fit gives the strobe in its `No Clock` table. The strobe is not
+# an unclocked register: it is a node found feeding a clock port with no clock
+# assignment, which is the same fact as the accepted `Unconstrained Clocks` row
+# and warning 332060. Only the atom register it clocks is an unclocked register,
+# so a checker comparing register rows sees one of these two while the audited
+# inventory holds both.
+STROBE_REASON = ("Node was determined to feed a clock port but was found without an "
+                 "associated clock assignment.")
+
+
 def no_clock_rows(top):
-    """check_timing no-clock rows the IP adds: the strobe register and the atom register it clocks."""
-    return (strobe_node(top),
-            f"{reader_node(top)}|altera_onchip_flash:u_flash|"
-            "altera_onchip_flash_block:altera_onchip_flash_block|ufm_block~XE_YE_TO_SE_FF")
+    """The two `No Clock` rows the IP adds, each with the reason the fit gives it.
+
+    The strobe register drives the clock port; the atom register inside the UFM
+    block is the register it clocks without a clock assignment.
+    """
+    return ((strobe_node(top), STROBE_REASON),
+            (f"{reader_node(top)}|altera_onchip_flash:u_flash|"
+             "altera_onchip_flash_block:altera_onchip_flash_block|ufm_block~XE_YE_TO_SE_FF",
+             fpga_lock.REGISTER_REASON))
 
 
 def explained_diagnostics(text, folder, sources, top, log_name):

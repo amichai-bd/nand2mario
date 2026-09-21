@@ -12,6 +12,13 @@ PLL = "u_clocking|u_pll|altpll_component|auto_generated|"
 RESET = "u_clocking|u_reset|"
 ROW = "n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll_lock_sync"
 SYSTEM_ROW = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
+# The reason the Fitter's `No Clock` table gives a register it found without a
+# clock. Every vendor lock synchronizer here carries it; a node that feeds a
+# clock port without a clock assignment carries a different one, which is the
+# On-Chip Flash IP's sense-enable strobe ([fpga_flash.STROBE_REASON](fpga_flash.py)).
+REGISTER_REASON = "No clock feeds this register's clock port."
+TABLE_TITLE = re.compile(r";\s*No Clock\s*;")
+TABLE_HEADING = re.compile(r";\s*Port or Register\s*;\s*Reason\s*;")
 # One back-annotation directive opens the EDA netlist of a family whose
 # simulation model carries delays, which Cyclone IV E's does and MAX 10's cannot
 # (Quartus 10905: a MAX 10 device gets the functional netlist only). A system
@@ -121,15 +128,70 @@ def parse_netlist(text, top, outputs=None):
     return text, cells, parameters, declarations, assignments, assigned_nets
 
 
-def verify(text, checks, top="clocking_proof", *, extra_rows=()):
+def reported_no_clock_rows(checks):
+    """Every row of the fit's `No Clock` table, as (node, reason) in report order.
+
+    Read from inside that one table rather than by matching a reason anywhere in
+    the report: a row whose reason nothing here recognizes still has to be seen,
+    so it can be refused by name instead of passing unread. A fit that reports no
+    such row writes no table, which is an empty inventory.
+    """
+    lines = [line.strip() for line in checks.splitlines()]
+    titles = [index for index, line in enumerate(lines) if TABLE_TITLE.fullmatch(line)]
+    if not titles:
+        return []
+    if len(titles) > 1:
+        raise ValueError("duplicate No Clock table in the timing check report")
+    heading = next((index for index in range(titles[0], len(lines)) if TABLE_HEADING.fullmatch(lines[index])), None)
+    if heading is None or heading + 2 > len(lines):
+        raise ValueError("No Clock table without its Port or Register heading")
+    rows = []
+    for line in lines[heading + 2:]:
+        if line.startswith("+"):
+            break
+        fields = [field.strip() for field in line.split(";")]
+        if len(fields) != 4 or fields[0] or fields[3] or not fields[1] or not fields[2]:
+            raise ValueError("unreadable No Clock table row: " + line[:80])
+        rows.append((fields[1], fields[2]))
+    if not rows:
+        raise ValueError("No Clock table without rows")
+    return rows
+
+
+def require_no_clock_rows(checks, rows, checker):
+    """Refuse the report unless its `No Clock` table holds exactly `rows`.
+
+    `rows` is the inventory its caller resolved from the modules that own the
+    vendor blocks producing the rows, as (node, reason) pairs. Every checker that
+    reads this table is handed that one list, so two of them cannot accept the
+    same number of different rows, which is what a count comparison could not
+    see. A row the inventory does not name is refused by its own name and reason;
+    a named row the fit does not report is refused by name too. Order is the
+    fitter's, so the comparison is by membership and multiplicity.
+    """
+    reported = reported_no_clock_rows(checks)
+    outstanding = list(rows)
+    for node, reason in reported:
+        if (node, reason) not in outstanding:
+            raise ValueError(f"{checker}: no owner claims no-clock row {node} ({reason})")
+        outstanding.remove((node, reason))
+    if outstanding:
+        raise ValueError(f"{checker}: the fit does not report accepted no-clock row {outstanding[0][0]}")
+    return reported
+
+
+def verify(text, checks, top="clocking_proof", *, rows=()):
+    """Classify the one ALTPLL lock event, against the inventory the caller names.
+
+    `rows` is that inventory; this checker states which row in it is its own and
+    compares the report with the whole list, so it neither restates another
+    owner's row nor accepts one nobody named.
+    """
     if top not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_controls_proof"):
         raise ValueError("unsupported PLL proof top")
-    rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
-    expected_rows = [ROW, *extra_rows]
-    if top in ("controls_proof", "v05_controls_proof"):
-        expected_rows.append(("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
-    if rows != expected_rows:
-        raise ValueError("unrecognized no-clock endpoint")
+    if (ROW, REGISTER_REASON) not in rows:
+        raise ValueError("the accepted no-clock inventory omits this ALTPLL lock event: " + ROW)
+    require_no_clock_rows(checks, rows, "ALTPLL lock event")
     text, cells, parameters, declarations, assignments, assigned_nets = parse_netlist(text, top)
 
     def cell(name, kind):
@@ -233,12 +295,13 @@ def verify(text, checks, top="clocking_proof", *, extra_rows=()):
             "topology": "constant-one D; PLL reset clears; raw lock loss propagates; only reset sampling fanout"}
 
 
-def verify_parallel(text, checks, top, *, extra_rows=(), primitives=MAX10):
+def verify_parallel(text, checks, top, *, rows=(), primitives=MAX10):
     """Prove both lock events only qualify reset, including either raw lock loss.
 
-    extra_rows names further no-clock registers the caller has already
-    accounted for (the flash IP's atom strobe register); they are not lock
-    events and get no further inspection here.
+    `rows` is the accepted no-clock inventory its caller resolved from every
+    owner. This checker states which two rows of it are its own and compares the
+    report with the whole list; rows another owner named are not lock events and
+    get no further inspection here.
 
     `primitives` is the family's fitted atom set, defaulting to MAX 10's. The
     topology below is ALTPLL's and is shared; only the atom names and their
@@ -249,12 +312,10 @@ def verify_parallel(text, checks, top, *, extra_rows=(), primitives=MAX10):
     from .fpga_pll import SYSTEM_NET
     system = "u_clocking|u_system_pll|altpll_component|auto_generated|"
     system_row = SYSTEM_ROW
-    expected_rows = [ROW, system_row, *extra_rows]
-    if top in ("controls_proof", "v05_controls_proof"):
-        expected_rows.append(("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
-    rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
-    if sorted(rows) != sorted(expected_rows):
-        raise ValueError("parallel lock event inventory differs")
+    for own in (ROW, system_row):
+        if (own, REGISTER_REASON) not in rows:
+            raise ValueError("the accepted no-clock inventory omits this ALTPLL lock event: " + own)
+    require_no_clock_rows(checks, rows, "parallel ALTPLL lock events")
     _, cells, params, declarations, rhs, lhs = parse_netlist(text, top, outputs=outputs)
     def cell(name, kind, modes=None):
         if cells.get(name, (None,))[0] != kind or modes is not None and params.get(name) != modes:
