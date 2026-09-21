@@ -146,12 +146,14 @@ the selected live target definition carries an identity macro. The identity-boun
 and `host keyboard` actions accept a manually reviewed build identity only when
 it is exactly 32 hexadecimal digits and nonzero. They also hide
 `--endpoint-restarted`. The doctor asks
-for scope first: simulation scope then
-offers either backend, while the full hardware environment fixes Questa and
-Windows because its JTAG discovery is Windows-owned. A simulation-scope Questa
-plan names the current host: its
+for scope first, and both scopes then offer either backend. The full hardware
+environment names no operating system: its Quartus, JTAG and UART reads follow
+the installed tools, the same way [`fpga program`](#programming-backends)
+resolves its own programmer, so the plan takes the selected backend's host. A
+Questa plan, in either scope, names the current host: its
 [runtime license](#questa-runtime-license), not an operating system, decides
-whether the run proceeds.
+whether the run proceeds. A Verilator plan names Linux in either scope, because
+the [pinned installation](#pinned-verilator-installation) is a source build.
 `--json` is intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
@@ -332,15 +334,23 @@ unverified. It is verified for reading, so the refusal became the
 still needs the owner's authorization for that run; no command programs a board
 on its own.
 
+`doctor --profile environment` carries no operating-system refusal either, and
+its Quartus, JTAG and UART checks each discover their own inputs. The inspection
+is the step that reads device and cable before a write, so pinning it to one host
+while the write it precedes follows the tools would leave the safer step the
+unreachable one. Each check names the tool or inventory it could not read rather
+than passing over it; see the [environment doctor](#environment-doctor).
+
 Every command header and simulation record carries `os` (`platform.system()`),
 and caches, fingerprints and compiled objects live under the running host's own
 `workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
 covers the Verilator refusal, the absence of a Questa one, the programming
-refusal, the permitted sides and the Linux fit with a mocked platform;
+refusal, the environment inspection reaching its checks on either host, the
+permitted sides and the Linux fit with a mocked platform;
 [`test_questa.py`](../../../tools/n2m/tests/test_questa.py) covers the license
 probe, its argv and the missing-tool failure, and
 [`test_doctor.py`](../../../tools/n2m/tests/test_doctor.py) the doctor's
-license naming;
+license naming and its tool-named hardware refusals;
 [`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers the gate on both
 hosts and its missing-tool failure, and
 [`test_fpga.py`](../../../tools/n2m/tests/test_fpga.py) the fit's.
@@ -2168,6 +2178,7 @@ target metadata and so invalidates that target's cache fingerprint.
 ```bash
 python3 tools/build.py doctor --json
 python3 tools/build.py doctor --verilator-bin <directory> --json
+python3 tools/build.py doctor --profile environment --sim verilator --quartus-bin <directory> --json
 ```
 
 ```powershell
@@ -2243,15 +2254,21 @@ adds the remaining tools:
   position and the reason every rejected attempt was rejected.
   `--jtag-cable <cable>` selects one cable, `--programmer` one backend,
   `--openfpgaloader-bin` and `--probe-firmware` its tool directory and cable
-  firmware. Nothing is written: both programmers only read. This is reported
+  firmware. A programmer discovery does not find, and a probe cable inside the
+  selected backend that reported no device, are both named under `unreadable`:
+  one programmer and one cable answering does not mean the others were read.
+  `not found on this host` is what discovery establishes: nothing at the given
+  directory and nothing on `PATH`. It is not evidence the tool is absent.
+  Nothing is written: both programmers only read. This is reported
   identity, not wiring, voltage, or programming proof.
 - UART: Windows and Linux enumerate serial ports into the same records, so one
   selection rule serves both hosts. Select with `--uart-port`, `--uart-vid`,
   `--uart-pid`, or exact `--uart-identity` (the OS identity, which may include a
   serial). Combined selectors must all match exactly one port. No selection is a
   warning; a missing, ambiguous, or unhealthy explicit selection fails. A healthy
-  port reports `Status=OK` and `ConfigManagerErrorCode=0`. Any other host reports
-  a warning and enumerates nothing. See
+  port reports `Status=OK` and `ConfigManagerErrorCode=0`. A host that is neither
+  Windows nor Linux reports a warning, enumerates nothing, and names serial
+  enumeration under `unreadable`. See
   [serial port enumeration](#serial-port-enumeration) for each host's inventory
   and health rule.
 
@@ -2282,24 +2299,47 @@ replug and renumbering. The record also keeps `ByIdPath`, `SysfsPath`, `Serial`,
 driver database: `ConfigManagerErrorCode` is 0 when the node is a character device
 this user can read and write, 1 when the node the link names is unavailable, 2
 when it is not a character device and 3 when it cannot be read and written, each
-with its own `Detail`. The enumerated records are retained as `ports.log`.
+with its own `Detail`. The enumerated records are retained as `ports.log`, with
+`by_id_present`. udev creates `/dev/serial/by-id` with the first name it puts there
+and removes it again with the last, so an absent directory establishes that udev's
+by-id naming produced no name, and not why: an unplugged device and a host whose
+rules never ran leave the same absence. That much is named under `unreadable`,
+because an empty port list does not establish even that.
 
 The doctor never opens UART, drives modem lines, sends bytes, programs FPGA memory,
 changes JTAG configuration, or proves physical operation. Those follow the
 [current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 and hardware workflow. No extra Python packages are required.
 
+Every profile also reports `unreadable`: one entry per failed check, naming its
+own reason, plus a closed set of named probes. Three are named across the
+supported hosts: a programmer discovery did not find, a probe cable inside the
+selected backend that reported no device, and, on Linux, an absent udev by-id
+directory. A fourth, serial enumeration itself, appears only on a host that is
+neither Windows nor Linux. Nothing else is named, so the list is those probes and
+not a full account of what a check did not read: a by-id link whose owning USB
+device has no readable identity is excluded by the
+[serial enumeration](#serial-port-enumeration) rule and reaches neither the ports
+nor this list. A check that
+fails keeps the gaps its probe found, because naming the expected UART is the only
+way the serial check reaches PASS, so the failing path is the one where its gap is
+needed. The human result prints them as `Not read:` lines before readiness. A
+`PASS` beside one of these entries is a check that answered from less than the
+whole host, and says so rather than letting the result stand for the part it did
+not read.
+
 `PASS`/exit 0 means all applicable checks in the selected profile passed;
 `NOT_APPLICABLE` entries are informational and excluded. `WARNING`/exit 2
 means requested evidence is incomplete. `FAIL`/exit 1 means a check failed and
 takes precedence over warnings. JSON includes `profile`, the selected
-`simulator`, `checks`, `tools`, `inputs`, `readiness`, and `untested`;
-simulation success is not full environment readiness. Only PASS updates
+`simulator`, `checks`, `tools`, `inputs`, `readiness`, `unreadable`, and
+`untested`; simulation success is not full environment readiness. Only PASS updates
 `workdir/latest.txt`. The simulation check is keyed by the selected backend.
 It records that backend's tool identities, release, positive run, fault
 detection and license status. [`test_doctor.py`](../../../tools/n2m/tests/test_doctor.py)
 proves elaboration, runtime, signature, undetected-fault, missing-tool, license
-failure and host-selection cases with controlled doubles. Actual readiness
+failure, tool-resolved hardware refusals, the named `unreadable` inputs and
+host-selection cases with controlled doubles. Actual readiness
 requires a native run on the selected host.
 
 Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).

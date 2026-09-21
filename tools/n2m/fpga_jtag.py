@@ -355,6 +355,31 @@ def complaint(output):
     return next((line for line in lines if TROUBLE.search(line)), lines[0] if lines else "")
 
 
+def unread_cables(backend, chains, reads, selected):
+    """Probe cables inside the selected backend that reported no device.
+
+    One cable answering is not the host read, and the selected chain says nothing
+    about the others. `openFPGALoader` runs one command per cable, so a cable it
+    could not open has its own output and its own complaint. `jtagconfig` prints
+    every cable in one command, so a cable it could not read is a chain header
+    with no device lines under it; that command's text is not attributed to one
+    cable, so such a chain is named without quoting a line rather than quoting a
+    line that may belong to another cable.
+
+    Only probe cables are named. A chain on other hardware is not a programming
+    cable of a supported board, and a chain that reported devices was read even
+    when its devices were not the wanted board.
+    """
+    quoted = {label: output for label, output in reads if label is not None}
+    named = []
+    for chain in chains:
+        if not chain.get("probe") or chain["index"] == selected["index"] or chain["devices"]:
+            continue
+        line = complaint(quoted[chain["index"]]) if chain["index"] in quoted else ""
+        named.append(f"{backend} {chain['index']}: " + (line or "reported no device"))
+    return named
+
+
 def _reason(backend, error, reads):
     """One line naming why a backend was not used, with each read's own complaint.
 
@@ -472,5 +497,13 @@ def enumerate_chain(root, folder, run, *, programmer="auto", quartus_bin=None, o
         return {**selected, "backend": backend, "tool": attempt["tool"],
                 "command": attempt["argv"], "chains": chains,
                 "probe_firmware": probe_firmware if backend == OPENFPGALOADER else None,
+                # `missing` is the programmers discovery did not find and
+                # `unread` the selected backend's own cables that reported no
+                # device, both kept apart from `rejected` so a caller can name
+                # what was never read without parsing a sentence. A read-only
+                # check reports them; a write does not care, because the backend
+                # and cable it used answered.
+                "missing": list(missing),
+                "unread": unread_cables(backend, chains, reads, selected),
                 "rejected": reasons}
     raise RuntimeError("no JTAG programmer reported the expected device; " + "; ".join(reasons))

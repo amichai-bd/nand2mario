@@ -200,22 +200,26 @@ def _sim_plan(menu, root):
 
 
 def _doctor_plan(menu, root):
+    """Readiness scope, then backend. Neither scope names an operating system.
+
+    The hardware scope reads Quartus, the JTAG chain and the serial ports
+    through whichever tools are installed, the same way `fpga program` resolves
+    its own programmer, so both scopes take their host from the selected
+    backend. The inspection is the step that checks device, cable and voltage
+    before anything is written; gating it to one host while the write it
+    precedes follows the tools left the safer step the unreachable one.
+    """
     steps = [
         ("profile", lambda _: menu.choose("Select readiness scope", [
             Choice("simulation", "Simulation", "Run the selected simulator smoke only"),
-            Choice("environment", "Full Windows environment", "Inspect Questa, Quartus, JTAG and UART without programming or transmission")])),
-        ("sim", lambda answers: menu.choose(
-            "Select simulator" if answers["profile"] == "simulation" else "Full environment simulator",
-            [Choice("verilator", "Verilator", "Runs natively on Linux; no license"),
-             Choice("questa", "Questa", "Follows the installed Questa; needs a vsim runtime license")]
-            if answers["profile"] == "simulation" else
-            [Choice("questa", "Questa", "The full hardware environment is Windows-owned")]))]
+            Choice("environment", "Full hardware environment",
+                   "Inspect the simulator, Quartus, JTAG and UART without programming or transmission")])),
+        ("sim", lambda answers: _backend(
+            menu, "Select simulator" if answers["profile"] == "simulation"
+            else "Full environment simulator"))]
     return _editable(menu, steps, lambda answers: _simulator_default(Plan(
                 ["doctor", "--profile", answers["profile"], "--sim", answers["sim"]],
-                ("doctor",),
-                # The environment profile reads the JTAG chain, which stays Windows-owned;
-                # the simulation profile follows its own backend.
-                "Windows PowerShell" if answers["profile"] == "environment" else _sim_host(answers["sim"]),
+                ("doctor",), _sim_host(answers["sim"]),
                 "Run simulator smoke" + (" and read-only device discovery" if answers["profile"] == "environment" else "")), root))
 
 
@@ -447,6 +451,16 @@ def _host_argv(action, answers):
 
 
 def _host_plan(menu, root):
+    """UART transmission plans. These stay Windows because of what they read, not
+    where the port is.
+
+    `host keyboard` reads key down and up events from a focused classic Windows
+    console through `ReadConsoleInput`, which has no equivalent here; see the
+    [keyboard behavior](../../wiki/tools/n2m/host/SPEC.md). The other actions
+    select their port through the menu's Windows `COM<n>` naming, so the menu
+    offers them on that host; the commands themselves open a port on either, as
+    the doctor's serial enumeration does.
+    """
     while True:
         action = menu.choose("UART action", _named(command_actions(("host",))))
         if action is BACK:
@@ -486,6 +500,10 @@ def _vendor_plan(menu, root):
 
 
 def _launcher_plan(menu, root):
+    """The game launcher's own plan stays Windows: it selects a `COM<n>` port and
+    the [launcher](../../wiki/tools/n2m/host/LAUNCHER.md) is a reviewed Windows
+    PowerShell command. This plan transmits; it is not the read-only inspection.
+    """
     return _editable(menu, [("build", lambda _: _launcher_build_id(menu, root)),
                             ("uart", lambda _: _uart(menu, root))], lambda answers: Plan(
         ["--expected-build-id", answers["build"], "--uart-port", answers["uart"]],

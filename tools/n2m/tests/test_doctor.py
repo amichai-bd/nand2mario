@@ -12,9 +12,9 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.doctor import (LICENSE_VARIABLES, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, doctor, execute,
-                        jtag, linux_ports, node_state, quartus, questa, select_uart, uart,
-                        verilator, warning)
+from n2m.doctor import (BY_ID_ABSENT, LICENSE_VARIABLES, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, doctor,
+                        execute, jtag, linux_ports, node_state, quartus, questa, select_uart, uart,
+                        unreadable_inputs, verilator, warning)
 from n2m import fpga_jtag
 from n2m.simulator import QUESTA_LICENSE, QUESTA_LICENSE_PROBE
 from n2m.fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
@@ -280,6 +280,108 @@ class DoctorTests(unittest.TestCase):
         self.assertTrue(any("quartus" in reason for reason in report["rejected"]),
                         "the rejected Quartus attempt is recorded")
         self.assertIn("no wiring, voltage, or programming proof", report["scope"])
+
+    def test_hardware_inspection_resolves_by_installed_tools_not_by_the_host(self):
+        """The environment profile names the tool it lacks, never an operating system.
+
+        `fpga program` decides by discovery, so the read-only inspection that
+        must precede it decides the same way: the same absent tools produce the
+        same named refusals whichever host runs them.
+        """
+        args = parser().parse_args(["doctor", "--profile", "environment", "--sim", "verilator"])
+        with patch("n2m.fpga_jtag.locate", return_value=None), \
+                patch("n2m.doctor.uart", return_value={"status": "WARNING"}), \
+                patch("n2m.doctor.verilator", return_value={}):
+            report = doctor(ROOT, self.folder, args, {})
+        self.assertEqual((report["status"], report["readiness"]), ("FAIL", "partial"))
+        gaps = "\n".join(report["unreadable"])
+        self.assertIn("quartus: missing quartus_sh", gaps)
+        self.assertIn("jtag: no JTAG programmer found: missing jtagconfig (Quartus) "
+                      "and openFPGALoader", gaps)
+        for absent in ("Windows", "PowerShell", "Linux", "operating system"):
+            self.assertNotIn(absent, gaps)
+
+    def test_a_passing_chain_names_the_programmer_and_the_cable_it_did_not_read(self):
+        """One programmer and one cable answering is not the host read.
+
+        This is the likely bench configuration: the board on `usb-blaster`, no
+        `--quartus-bin`, so `jtagconfig` is not found and the other cable has no
+        FX2 image. A PASS that said nothing about either would let the check
+        stand for cables that never reported.
+        """
+        detect = ("index 0:\n\tidcode 0x031050dd\n\tmanufacturer altera\n\tfamily MAX 10\n"
+                  "\tmodel  10M50DA\n\tirlength 10\n")
+        absent = "JTAG init failed with: FX2: fail to open device\nempty\n"
+        args = SimpleNamespace(quartus_bin=None, jtag_cable=None, programmer="auto",
+                               openfpgaloader_bin=None, probe_firmware=None)
+
+        def run(argv, cwd, log, timeout=60, env=None, expect_failure=False):
+            output = detect if argv[argv.index("-c") + 1] == "usb-blaster" else absent
+            (Path(cwd) / log).write_text(output)
+            return output
+
+        with patch("n2m.fpga_jtag.locate",
+                   side_effect=lambda d, name: name if name == "openFPGALoader" else None), \
+                patch("n2m.doctor.execute", side_effect=run):
+            report = jtag(ROOT, self.folder, args)
+        self.assertEqual((report["backend"], report["board"]), ("openfpgaloader", "DE10-Lite"))
+        # `not found on this host` is what `locate` establishes; absence is not.
+        self.assertEqual(report["unreadable"],
+                         ["jtagconfig (Quartus): not found on this host, so its cables were not read",
+                          "openfpgaloader usb-blasterII: JTAG init failed with: FX2: fail to open device"])
+        self.assertEqual(unreadable_inputs({"jtag": {"status": "PASS", **report}}),
+                         [f"jtag: {item}" for item in report["unreadable"]])
+
+    def test_a_jtagconfig_cable_that_read_no_chain_is_named_without_a_borrowed_line(self):
+        """One command covers every cable, so no line there belongs to one cable."""
+        chain = ("1) USB-Blaster [1-2]\n  031050DD 10M50DA\n"
+                 "2) DE-SoC [1-3.2]\n  Unable to read device chain - Hardware not attached\n")
+        args = SimpleNamespace(quartus_bin=None, jtag_cable=None, programmer="quartus",
+                               openfpgaloader_bin=None, probe_firmware=None)
+        with patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                patch("n2m.doctor.execute", return_value=chain):
+            report = jtag(ROOT, self.folder, args)
+        self.assertEqual((report["backend"], report["cable"]), ("quartus", "1"))
+        self.assertEqual(report["unreadable"], ["quartus 2: reported no device"])
+
+    def test_a_failing_serial_check_keeps_the_gap_its_probe_found(self):
+        """Naming the expected UART is the only way this check passes, so the
+        failing path is exactly where the absent by-id directory must survive."""
+        args = parser().parse_args(["doctor", "--profile", "environment", "--sim", "verilator",
+                                   "--uart-port", "/dev/ttyUSB0"])
+        missing = self.folder / "no-serial-by-id"
+        with patch("n2m.doctor.os.name", "posix"), patch("n2m.doctor.sys.platform", "linux"), \
+                patch("n2m.doctor.SERIAL_BY_ID", missing), \
+                patch("n2m.doctor.quartus", return_value={}), \
+                patch("n2m.fpga_jtag.locate", side_effect=lambda d, name: name), \
+                patch("n2m.doctor.execute", return_value=LITE_CHAIN), \
+                patch("n2m.doctor.verilator", return_value={}):
+            report = doctor(ROOT, self.folder, args, {})
+        self.assertEqual(report["checks"]["uart"]["status"], "FAIL")
+        self.assertEqual(report["checks"]["uart"]["unreadable"], [BY_ID_ABSENT.format(path=missing)])
+        gaps = report["unreadable"]
+        self.assertIn("uart: UART selection must match exactly one enumerated port", gaps)
+        self.assertIn(f"uart: {BY_ID_ABSENT.format(path=missing)}", gaps)
+        # The same failure without the gap still reports only its own reason.
+        with patch("n2m.doctor.os.name", "posix"), patch("n2m.doctor.sys.platform", "linux"), \
+                patch("n2m.doctor.SERIAL_BY_ID", missing):
+            with self.assertRaises(RuntimeError) as raised:
+                uart(self.folder, args)
+        self.assertEqual(raised.exception.unreadable, [BY_ID_ABSENT.format(path=missing)])
+
+    def test_absent_udev_serial_names_are_named_and_not_an_empty_inventory(self):
+        """A host udev has never named a serial device on is not a host with none attached."""
+        args = parser().parse_args(["doctor", "--profile", "environment"])
+        missing = self.folder / "no-serial-by-id"
+        with patch("n2m.doctor.os.name", "posix"), patch("n2m.doctor.sys.platform", "linux"), \
+                patch("n2m.doctor.SERIAL_BY_ID", missing):
+            report = uart(self.folder, args)
+        self.assertEqual((report["status"], report["ports"]), ("WARNING", []))
+        self.assertEqual(report["unreadable"], [BY_ID_ABSENT.format(path=missing)])
+        self.assertIs(json.loads((self.folder / "ports.log").read_text())["by_id_present"], False)
+        self.linux_inventory()
+        self.assertEqual(uart(self.folder, args)["unreadable"], [],
+                         "a readable inventory claims nothing was skipped")
 
     def test_uart_selection_is_read_only_and_exact(self):
         ports = [{"DeviceID": "COM5", "Name": "USB Serial Port (COM5)",

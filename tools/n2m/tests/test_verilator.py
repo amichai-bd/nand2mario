@@ -1162,6 +1162,29 @@ class HostOwnershipTests(unittest.TestCase):
         for absent in ("runs on Windows", "PowerShell", "operating system", "unverified"):
             self.assertNotIn(absent, report["error"])
 
+    def test_hardware_inspection_reaches_its_checks_on_either_host(self):
+        """The read-only inspection that precedes programming carries no OS refusal.
+
+        `fpga program` resolves its programmer by discovery, so the environment
+        check that must run before a write resolves the same way. Reaching the
+        check on both hosts is what proves the gate is gone; the doctor itself is
+        patched to raise on arrival, so no tool is discovered and nothing is read.
+        """
+        for system in ("Linux", "Windows"):
+            with self.subTest(system=system):
+                with patch("n2m.cli.platform.system", return_value=system), \
+                        patch("n2m.cli.doctor", side_effect=AssertionError("inspected")), \
+                        patch("n2m.cli.git_state", return_value={"commit": "test"}), \
+                        contextlib.redirect_stdout(io.StringIO()) as output:
+                    code = main(["doctor", "--profile", "environment", "--sim", "questa",
+                                 "--tag", "inspect-" + system.lower(), "--json"], self.root)
+                report = json.loads(output.getvalue())
+                self.assertEqual(code, 1)
+                self.assertEqual((report["status"], report["error"], report["os"]),
+                                 ("FAIL", "inspected", system))
+                for absent in ("runs on Windows", "PowerShell", "operating system", "Windows-owned"):
+                    self.assertNotIn(absent, report["error"])
+
     def test_linux_reaches_the_fpga_build_stage(self):
         """No refusal stands between Linux and Quartus: the stage itself runs."""
         code, report = self.run_cli("Linux", "fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "l1")

@@ -1,4 +1,9 @@
-"""Bounded, no-audio Windows DirectShow MJPEG frames for the live viewer."""
+"""Bounded, no-audio Windows DirectShow MJPEG frames for the live viewer.
+
+This capture drives `ffmpeg -f dshow`, and DirectShow is a Windows API, so the
+viewer's `--camera-source windows-directshow` is the only value there is: the
+gate is the capture interface itself, not a policy about hosts.
+"""
 import os
 import queue
 import re

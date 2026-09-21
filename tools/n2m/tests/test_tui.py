@@ -354,16 +354,39 @@ class TuiTests(unittest.TestCase):
         self.assertIn("UART port must be COM followed by a positive number",
                       "\n".join(terminal.frames[-1]))
 
-    def test_doctor_full_environment_is_questa_on_windows_only(self):
-        terminal = ScriptedTerminal(["DOWN", "ENTER", "ENTER"])
-        plan = tui._doctor_plan(tui.Menu(terminal), ROOT)
-        self.assertEqual(plan.argv, ["doctor", "--profile", "environment", "--sim", "questa"])
-        self.assertEqual(plan.host, "Windows PowerShell")
+    def test_hardware_inspection_resolves_its_host_the_way_programming_does(self):
+        """The full hardware scope follows its installed tools, not an operating system.
+
+        `fpga program` writes on the host that has a programmer, so the
+        read-only inspection that must precede it cannot be the step pinned to
+        Windows. Both scopes offer either backend and take the backend's host,
+        and the hardware scope's host is the one `fpga program` already uses.
+        """
+        program = tui.Plan(["fpga", "program", "--sof", "checked.sof"], ("fpga", "program"),
+                           "Current host", "PROGRAM the attached FPGA over JTAG")
+        terminal = ScriptedTerminal(["DOWN", "ENTER", "DOWN", "ENTER"])
+        questa = tui._doctor_plan(tui.Menu(terminal), ROOT)
+        self.assertEqual(questa.argv, ["doctor", "--profile", "environment", "--sim", "questa"])
+        self.assertEqual(questa.host, program.host)
         backend_frame = "\n".join(terminal.frames[-1])
         self.assertIn("Questa", backend_frame)
-        self.assertNotIn("Verilator", backend_frame)
-        self.assertTrue(tui.compatible_host(plan, "Windows"))
-        self.assertFalse(tui.compatible_host(plan, "Linux"))
+        self.assertIn("Verilator", backend_frame)
+        for system in ("Linux", "Windows"):
+            with self.subTest(system=system):
+                self.assertTrue(tui.compatible_host(questa, system))
+                self.assertTrue(tui.compatible_host(program, system))
+        # Windows keeps the PowerShell display and the runnable plan it had.
+        windows = tui.command_text(questa, ROOT, "Windows", executable=r"C:\Python\python.exe")
+        self.assertTrue(windows.startswith("& "), windows)
+        self.assertIn("doctor --profile environment --sim questa", windows)
+        verilator = tui._doctor_plan(tui.Menu(ScriptedTerminal(["DOWN", "ENTER", "ENTER"])), ROOT)
+        self.assertEqual(verilator.argv, ["doctor", "--profile", "environment", "--sim", "verilator"])
+        # The one host fact left is the pinned Verilator source build, which is
+        # the backend's own, and is what the simulation scope already reports.
+        self.assertEqual(verilator.host, tui._sim_host("verilator"))
+        shown = "\n".join(line for frame in terminal.frames for line in frame)
+        for absent in ("Windows-owned", "Full Windows environment"):
+            self.assertNotIn(absent, shown)
 
     def test_current_uart_candidates_reuse_read_only_discovery(self):
         with tempfile.TemporaryDirectory(prefix="tui uart ") as temporary:
