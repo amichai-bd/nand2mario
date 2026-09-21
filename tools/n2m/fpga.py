@@ -1,5 +1,6 @@
 """Explicit per-board builds with retained fit/timing evidence and checked reuse."""
 from collections import Counter
+from typing import NamedTuple
 from datetime import datetime, timezone
 import json
 import math
@@ -12,7 +13,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_clocking, fpga_pll, fpga_constraints, fpga_de2_system, fpga_vga, fpga_vga_dac, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, fpga_rom_image, flash_library, process_tree, vendor_sources
+from . import fpga_clocking, fpga_lock, fpga_pll, fpga_constraints, fpga_de2_system, fpga_vga, fpga_vga_dac, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_uart_cyclonev, fpga_v05, fpga_flash, fpga_hold, fpga_rom_image, flash_library, process_tree, vendor_sources
 
 # One registry per supported board. Each owns its device, family and analysed
 # timing corners; no device is named in the build path itself.
@@ -615,19 +616,50 @@ def tools(directory, folder, record, build, timeout):
     return identities
 
 
-def expected_no_clock_count(target):
-    """Every no-clock row this target's fit may report, summed from its owners.
+class NoClockRow(NamedTuple):
+    """One row the fit may report in its `No Clock` table, and the owner that names it."""
+    node: str
+    reason: str
+    owner: str
 
-    Each vendor block that latches a lock event states its own rows: the
-    target-generated PLLs through the family's clocking module, the ADC
-    backend's own generated PLL through `fpga_adc`, and the On-Chip Flash IP's
-    sense-enable strobe pair through `fpga_flash`. The ADC's row is summed
-    separately rather than keyed on the `pll` field, because `adc-early` places
-    the backend and generates no PLL of its own.
+
+def no_clock_inventory(target):
+    """Every row this target's fit may report in its `No Clock` table, with its owner.
+
+    One list, named row by row by the modules that own the vendor blocks that
+    produce the rows: the target-generated PLLs through the family's clocking
+    module, the ADC backend's own generated PLL through `fpga_adc`, and the
+    On-Chip Flash IP's sense-enable strobe and the atom register it clocks
+    through `fpga_flash`. The ADC's row is added separately rather than keyed on
+    the `pll` field, because `adc-early` places the backend and generates no PLL
+    of its own.
+
+    Every checker that reads that table is handed this one list, so two of them
+    cannot accept the same number of different rows. Each owner names only its
+    own rows, so no row is stated twice and a row no owner names has nowhere to
+    come from.
     """
-    count = fpga_clocking.implementation(target["family"]).lock_event_count(target) if "pll" in target else 0
-    count += fpga_adc.lock_event_count(target["top"])
-    return count + len(fpga_flash.no_clock_rows(target["top"]) if fpga_flash.flash_target(target) else ())
+    inventory = []
+    if "pll" in target:
+        owner = fpga_clocking.implementation(target["family"])
+        inventory += [NoClockRow(node, reason, "clocking") for node, reason in owner.no_clock_rows(target)]
+    inventory += [NoClockRow(node, reason, "adc") for node, reason in fpga_adc.no_clock_rows(target["top"])]
+    if fpga_flash.flash_target(target):
+        inventory += [NoClockRow(node, reason, "onchip_flash")
+                      for node, reason in fpga_flash.no_clock_rows(target["top"])]
+    if len({row.node for row in inventory}) != len(inventory):
+        raise ValueError("two owners claim the same no-clock row")
+    return inventory
+
+
+def accepted_no_clock_rows(target):
+    """That inventory as the (node, reason) pairs every checker compares against."""
+    return [(row.node, row.reason) for row in no_clock_inventory(target)]
+
+
+def expected_no_clock_count(target):
+    """How many, so the count and the named rows cannot state different things."""
+    return len(no_clock_inventory(target))
 
 
 def timing_evidence(folder, target, *, build_id=None):
@@ -688,20 +720,22 @@ def timing_evidence(folder, target, *, build_id=None):
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     lock_event = None
-    expected_lock_events = expected_no_clock_count(target)
-    # The flash IP's sense-enable strobe and the atom register it clocks are
-    # two more no-clock rows; both must be named exactly.
-    flash_rows = fpga_flash.no_clock_rows(target["top"]) if fpga_flash.flash_target(target) else ()
-    if any(row not in checks for row in flash_rows):
-        raise ValueError("On-Chip Flash IP strobe no-clock rows differ")
+    # One named inventory, resolved from the owners of the vendor blocks that
+    # produce the rows. The fit's own table is compared against it row by row, so
+    # a row no owner claims fails here by name, and the summary count is checked
+    # against the same list rather than against a separate sum.
+    inventory = no_clock_inventory(target)
+    accepted_rows = [(row.node, row.reason) for row in inventory]
+    fpga_lock.require_no_clock_rows(checks, accepted_rows, "fit")
+    if dict(rows).get("no_clock") != str(len(accepted_rows)):
+        raise ValueError(f"the no_clock summary count is not the {len(accepted_rows)} named no-clock rows")
     if "pll" in target:
-        if dict(rows).get("no_clock") != str(expected_lock_events):
-            raise ValueError("vendor lock event row missing or extra no-clock endpoints")
-        lock_event = clocking.verify_lock_event(folder, checks, target["top"], parallel=parallel, extra_rows=flash_rows[1:])
+        lock_event = clocking.verify_lock_event(folder, checks, target["top"], parallel=parallel, rows=accepted_rows)
         clocking.verify_fit(folder, target)
     adc_evidence = None
     if target["top"] in fpga_adc.TOPS:
-        adc_evidence = fpga_adc.verify(folder, target["top"], **({"parallel": True, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}))
+        adc_evidence = fpga_adc.verify(folder, target["top"], rows=accepted_rows,
+                                       **({"parallel": True, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}))
         if target["top"] == "adc_proof":
             lock_event = adc_evidence["lock_event"]
     vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof", **system_profile) if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
@@ -711,7 +745,8 @@ def timing_evidence(folder, target, *, build_id=None):
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder, init_files=fpga_rom_image.store_init_files(target))
     for name, count in rows:
-        if name == "no_clock" and int(count) == expected_lock_events and ("pll" in target or adc_evidence is not None):
+        # Checked above against the named inventory, not against this number.
+        if name == "no_clock":
             continue
         # The SDRAM image's DRAM_CLK port carries the generated pin clock and
         # has no data path, so it is the one output without an output delay;
@@ -722,6 +757,7 @@ def timing_evidence(folder, target, *, build_id=None):
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
     evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": unconstrained, "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
+            "no_clock_rows": [{"node": row.node, "reason": row.reason, "owner": row.owner} for row in inventory],
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
     if target["top"] in ("v05_proof", "v05_controls_proof"):
         evidence["vga_paths"] = fpga_v05.verify_paths(folder, system_clock=fpga_pll.SYSTEM_CLOCK, controls=fpga_v05.control_target(target))

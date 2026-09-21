@@ -1,6 +1,7 @@
 """On-Chip Flash IP staging, diagnostics and evidence contracts with fixture files; no Quartus needed."""
 from pathlib import Path
 import hashlib
+import re
 import sys
 import tempfile
 import unittest
@@ -8,6 +9,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import vendor_support
+from fit_reports import no_clock_table
 from n2m import fpga, fpga_flash, fpga_lock, flash_library, vendor_sources
 from n2m.records import read_json
 
@@ -215,24 +217,42 @@ class FlashIpTests(unittest.TestCase):
         self.assertEqual(fpga_flash.reader_path("v05_controls_proof"), "u_controls|u_system|u_copier|u_reader")
         self.assertEqual(fpga_flash.strobe_node("v05_proof"),
                          "n2m_v05_system:u_system|n2m_boot_copier:u_copier|n2m_flash_reader:u_reader|" + fpga_flash.STROBE)
-        self.assertTrue(fpga_flash.no_clock_rows("v05_proof")[1].startswith(
+        self.assertTrue(fpga_flash.no_clock_rows("v05_proof")[1][0].startswith(
             "n2m_v05_system:u_system|n2m_boot_copier:u_copier|n2m_flash_reader:u_reader|altera_onchip_flash:u_flash|"))
         with self.assertRaisesRegex(ValueError, "unsupported flash reader top"):
             fpga_flash.reader_path("sdram_proof")
 
-    def test_no_clock_rows_extend_the_parallel_lock_inventory(self):
+    def test_the_ip_names_one_register_row_and_one_clock_feed_row(self):
+        """Only the atom register is an unclocked register; the strobe feeds its clock.
+
+        The fit states that difference in the `Reason` column, which is why each
+        owner names the reason with the node: a checker comparing register rows
+        must see one of these two, and the audited inventory must hold both.
+        """
         rows = fpga_flash.no_clock_rows("flash_proof")
-        self.assertEqual(rows[0], STROBE)
-        self.assertTrue(rows[1].endswith("ufm_block~XE_YE_TO_SE_FF"))
-        checks = "".join(f"; {row} ; No clock feeds this register's clock port. ;\n" for row in
-                         (fpga_lock.ROW, "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|"
-                          "n2m_system_pll_altpll:auto_generated|pll_lock_sync", rows[1]))
-        with self.assertRaisesRegex(ValueError, "parallel lock event inventory differs"):
-            fpga_lock.verify_parallel("module flash_proof (a);\ninput a;\nendmodule\n", checks, "flash_proof")
-        # With the atom row accounted for, the inventory matches and the netlist checks proceed.
+        self.assertEqual(rows[0], (STROBE, fpga_flash.STROBE_REASON))
+        self.assertEqual(rows[1][1], fpga_lock.REGISTER_REASON)
+        self.assertTrue(rows[1][0].endswith("ufm_block~XE_YE_TO_SE_FF"))
+        self.assertNotEqual(fpga_flash.STROBE_REASON, fpga_lock.REGISTER_REASON)
+
+    def test_the_ip_rows_extend_the_parallel_lock_inventory(self):
+        """The clocking gate accepts the IP's rows only as part of the one inventory."""
+        rows = fpga_flash.no_clock_rows("flash_proof")
+        system_row = ("n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|"
+                      "n2m_system_pll_altpll:auto_generated|pll_lock_sync")
+        pll_rows = [(fpga_lock.ROW, fpga_lock.REGISTER_REASON), (system_row, fpga_lock.REGISTER_REASON)]
+        checks = no_clock_table(pll_rows + list(rows))
+        netlist = "module flash_proof (a);\ninput a;\nendmodule\n"
+        # Each of the IP's two rows is named on its own when the inventory drops it.
+        for dropped in rows:
+            kept = pll_rows + [row for row in rows if row != dropped]
+            with self.subTest(dropped=dropped[0][-40:]), self.assertRaisesRegex(
+                    ValueError, "no owner claims no-clock row " + re.escape(dropped[0])):
+                fpga_lock.verify_parallel(netlist, checks, "flash_proof", rows=kept)
+        # With the IP's rows in the inventory the table matches and the netlist checks proceed.
         with self.assertRaises(ValueError) as caught:
-            fpga_lock.verify_parallel("module flash_proof (a);\ninput a;\nendmodule\n", checks, "flash_proof", extra_rows=rows[1:])
-        self.assertNotIn("inventory", str(caught.exception))
+            fpga_lock.verify_parallel(netlist, checks, "flash_proof", rows=pll_rows + list(rows))
+        self.assertNotIn("no-clock row", str(caught.exception))
 
 
 import unittest.mock  # noqa: E402

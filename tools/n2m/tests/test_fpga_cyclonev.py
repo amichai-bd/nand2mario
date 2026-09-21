@@ -10,8 +10,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.n2m import (fpga, fpga_adc, fpga_clocking, fpga_lock, fpga_lock_cyclonev, fpga_pll,
+from tools.n2m import (fpga, fpga_adc, fpga_clocking, fpga_flash, fpga_lock, fpga_lock_cyclonev, fpga_pll,
                         fpga_pll_cyclonev as cv)
+from tools.n2m.tests.fit_reports import no_clock_table
 
 ROOT = Path(__file__).resolve().parents[3]
 LITE_DEFINITION = {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125, "system_divide": 2}
@@ -549,9 +550,13 @@ class LockEvidenceTests(unittest.TestCase):
         self.assertEqual(evidence["bootstrap_clock"], fpga_lock_cyclonev.REFERENCE_NET)
 
     def test_any_no_clock_row_is_refused(self):
-        checks = "; some|register ; No clock feeds this register's clock port. ;\n"
-        with self.assertRaises(ValueError):
-            fpga_lock_cyclonev.verify(netlist(), checks)
+        """This family names no row, so every reported row is refused by its name."""
+        for rows in (["some|register"], [("some|node", fpga_flash.STROBE_REASON)]):
+            with self.subTest(rows=rows), self.assertRaisesRegex(ValueError, "no owner claims no-clock row"):
+                fpga_lock_cyclonev.verify(netlist(), no_clock_table(rows))
+        # An inventory that claims a row for this family is refused before the report.
+        with self.assertRaisesRegex(ValueError, "Cyclone V names no lock event"):
+            fpga_lock_cyclonev.verify(netlist(), NO_LOCK_ROWS, rows=[(fpga_lock.ROW, fpga_lock.REGISTER_REASON)])
 
     def test_unsupported_top_is_refused(self):
         for top in ("clocking_proof", "nano_smoke", "other"):
@@ -714,9 +719,11 @@ class Max10ParityTests(unittest.TestCase):
         # two cannot state different things. The same two serve the composition
         # that also carries the ADC: `fpga_adc` states that third row.
         self.assertEqual(fpga_pll.no_clock_rows({"pll": LITE_DEFINITION}),
-                         [fpga_lock.ROW, fpga_lock.SYSTEM_ROW])
+                         [(fpga_lock.ROW, fpga_lock.REGISTER_REASON),
+                          (fpga_lock.SYSTEM_ROW, fpga_lock.REGISTER_REASON)])
         self.assertEqual(fpga_pll.no_clock_rows({"pll": {k: v for k, v in LITE_DEFINITION.items()
-                                                         if k != "system_divide"}}), [fpga_lock.ROW])
+                                                         if k != "system_divide"}}),
+                         [(fpga_lock.ROW, fpga_lock.REGISTER_REASON)])
         for top in ("clocking_proof", "controls_proof"):
             self.assertEqual(fpga_pll.lock_event_count({"top": top, "pll": LITE_DEFINITION}), 2)
         self.assertEqual(fpga_adc.lock_event_count("controls_proof"), 1)

@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 from tools.n2m import fpga_lock, fpga_constraints, fpga, fpga_clocking, fpga_pll
 from tools.n2m.records import file_hash
+from tools.n2m.tests.fit_reports import no_clock_table
 
 
 # The single-PLL definition the cache fixtures declare; the family selects the
@@ -44,7 +45,12 @@ def fixture():
     cell("fiftyfivenm_clkctrl", reset + "lock_reset~0clkctrl", ena="vcc", clkselect="2'b00", inclk="{vcc,vcc,vcc,\\lock_gate}", outclk="\\lock_buffer")
     for i in (0, 1):
         cell("dffeas", reset + f"lock_samples[{i}]", clrn="!\\lock_buffer", clk="\\system_clock")
-    return "\n".join(cells), "; " + fpga_lock.ROW + "; No clock feeds this register's clock port. ;"
+    return "\n".join(cells), no_clock_table([fpga_lock.ROW])
+
+
+# The accepted inventory a single-PLL target resolves: this one lock event and
+# nothing else. The checker is handed it rather than restating it.
+ROWS = [(fpga_lock.ROW, fpga_lock.REGISTER_REASON)]
 
 
 class ClockingEvidenceTests(unittest.TestCase):
@@ -75,17 +81,17 @@ class ClockingEvidenceTests(unittest.TestCase):
                         self.assertFalse(fpga.complete_cache(truncated, "request", root, build, {"family": "MAX 10", "pll": SINGLE_PLL, "timing": {}}))
     def test_only_documented_lock_event_is_classified(self):
         text, checks = fixture()
-        self.assertEqual(fpga_lock.verify(text, checks)["endpoint"], fpga_lock.ROW)
+        self.assertEqual(fpga_lock.verify(text, checks, rows=ROWS)["endpoint"], fpga_lock.ROW)
 
     def test_plain_primitive_parameter_owner_keeps_strict_grammar(self):
         text, checks = fixture()
         plain = '\ndffeas frame_read (.clk(gnd), .d(gnd), .q(frame_value));\ndefparam frame_read.is_wysiwyg = "true";'
-        self.assertEqual(fpga_lock.verify(text + plain, checks)["endpoint"], fpga_lock.ROW)
+        self.assertEqual(fpga_lock.verify(text + plain, checks, rows=ROWS)["endpoint"], fpga_lock.ROW)
         for bad in (plain + '\ndefparam frame_read.is_wysiwyg = "true";',
                     plain.replace('frame_read.is_wysiwyg', 'frame_read..is_wysiwyg'),
                     plain.replace('frame_read.is_wysiwyg', '9bad.is_wysiwyg')):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
-                fpga_lock.verify(text + bad, checks)
+                fpga_lock.verify(text + bad, checks, rows=ROWS)
 
     def test_topology_mutations_are_not_classified(self):
         text, checks = fixture()
@@ -106,13 +112,13 @@ class ClockingEvidenceTests(unittest.TestCase):
                      text + "\nassign bad = \\lock_buffer ;"]
         for mutated in mutations:
             with self.subTest(mutated=mutated[-80:]), self.assertRaises(ValueError):
-                fpga_lock.verify(mutated, checks)
+                fpga_lock.verify(mutated, checks, rows=ROWS)
 
     def test_extra_or_wrong_no_clock_row_fails(self):
         text, checks = fixture()
         for report in (checks + checks, checks.replace(fpga_lock.ROW, "functional_register"), ""):
             with self.assertRaises(ValueError):
-                fpga_lock.verify(text, report)
+                fpga_lock.verify(text, report, rows=ROWS)
 
     def test_primitive_modes_and_constant_drivers_are_closed(self):
         text, checks = fixture()
@@ -130,7 +136,7 @@ class ClockingEvidenceTests(unittest.TestCase):
                      text + '\ndefparam \\' + fpga_lock.PLL + 'pll_lock_sync .sclr_over_ena = "true";']
         for mutated in mutations:
             with self.subTest(mutated=mutated[-100:]), self.assertRaises(ValueError):
-                fpga_lock.verify(mutated, checks)
+                fpga_lock.verify(mutated, checks, rows=ROWS)
 
     def test_checked_constraints_reject_broad_or_executable_endpoints(self):
         for endpoint in ("*|clrn", "cell|q", "cell|clrn;source extra.sdc", "cell|clrn\nsource extra.sdc"):

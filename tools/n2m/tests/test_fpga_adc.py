@@ -9,8 +9,10 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from tools.n2m import fpga, fpga_adc, fpga_clocking, fpga_flash, fpga_lock, fpga_pll
+from tools.n2m import (fpga, fpga_adc, fpga_clocking, fpga_flash, fpga_lock, fpga_lock_cyclonev,
+                       fpga_pll)
 from tools.n2m.hdl import dependencies
+from tools.n2m.tests.fit_reports import no_clock_table
 from tools.n2m.tests import vendor_support
 
 CONTROL = "ip/altera/altera_modular_adc/control/"
@@ -284,26 +286,42 @@ class ComposedClassifierScopeTests(unittest.TestCase):
                                  Counter({"14320": 12, "10036": 1, "14284": 1, "14285": 1}))
 
 
-def no_clock_report(rows):
-    """A `check_timing.rpt` fragment reporting exactly these registers as unclocked."""
-    return "".join(f"; {row} ; No clock feeds this register's clock port. ;\n" for row in rows)
+# Which owner names each `No Clock` row of every registered target, recorded so a
+# target that gains, loses or reassigns a row fails here. Grouped by the owner
+# sequence because that, not the node text, is what this inventory decides; each
+# owner's node text is pinned by that owner's own unit.
+ACCEPTED_OWNERS = {
+    (): ["builder-invalid", "builder-smoke", "de2-invalid", "de2-smoke", "memory-stores",
+         "memory-stores-preloaded", "nano-clocking", "nano-clocking-invalid", "nano-invalid",
+         "nano-smoke", "nano-uart", "nano-uart-invalid", "snapshot", "uart-exchange-stores",
+         "uart-packet-stores", "uart-presence-store"],
+    ("adc",): ["adc-early"],
+    ("clocking", "clocking"): ["clocking-invalid", "clocking-nominal", "clocking-upper", "de2-clocking",
+                               "de2-clocking-invalid", "de2-system", "de2-system-invalid", "de2-vga",
+                               "de2-vga-invalid", "intel-memory", "ppu-invalid", "ppu-nominal",
+                               "ppu-upper", "sdram-proof", "vga-invalid", "vga-nominal", "vga-upper"],
+    ("clocking", "clocking", "adc"): ["controls-board"],
+    ("clocking", "clocking", "onchip_flash", "onchip_flash"): ["flash-proof", "v05", "v05-board"],
+    ("clocking", "clocking", "adc", "onchip_flash", "onchip_flash"): ["v05-controls-board"],
+}
 
 
-class AdcNoClockInventoryTests(unittest.TestCase):
-    """The audited no-clock count and the rows the netlist gates require are one sum.
+class NoClockInventoryTests(unittest.TestCase):
+    """What every checker accepts in the fit's `No Clock` table is one named list.
 
-    They were two statements and they disagreed. `fpga.timing_evidence` counted
-    the accepted rows from the target's own `pll` field, while
-    `fpga_adc.verify_netlist` required the ADC backend's lock synchronizer
-    whether or not the target generated a PLL. For the one registered target
-    with an ADC top and no `pll` field, `adc-early`, the two differed by exactly
-    that row, so no fit could satisfy both: one row failed the count and zero
-    rows failed the gate.
+    Two checkers read that table: the family's clocking gate and the ADC's. Each
+    used to resolve its own expected list and compare the whole table against it.
+    On `v05-controls-board` one accepted four register rows through an
+    `extra_rows` allowance and the other three, while the audited *count* stayed
+    right, so the count comparison that guarded this passed straight over the
+    disagreement. `fpga.no_clock_inventory` now resolves one list from the modules
+    that own the vendor blocks, and every checker is handed it, so these tests
+    compare names.
 
-    That was decidable from the registry and these modules alone, so the guard is
-    a host test over every registered target and needs no Quartus. It reads the
-    three registries and each target's sources, which is why this unit declares
-    them as inputs.
+    Deciding that needs the three registries and these modules, not Quartus. A fit
+    costs minutes and needs a tool no hosted runner has, so this is the check that
+    can run per change; it reads each target's sources, which is why this unit
+    declares them as inputs.
     """
 
     def targets(self):
@@ -314,47 +332,164 @@ class AdcNoClockInventoryTests(unittest.TestCase):
         return [(name, target) for name, target in self.targets() if target["top"] in fpga_adc.TOPS]
 
     def rows(self, target):
-        """Every no-clock row the audit accounts for, from the owners that name them."""
-        rows = []
+        """The (node, reason) pairs every checker of this target's table is handed."""
+        return fpga.accepted_no_clock_rows(target)
+
+    def report(self, rows):
+        """The `No Clock` table a fit reporting exactly `rows` writes."""
+        return no_clock_table(rows)
+
+    def check_table(self, target, checks, rows=None):
+        """Run every checker that reads this target's table, on the rows it names.
+
+        Each raises further on its netlist, which these fixtures do not carry; the
+        assertions are about the inventory comparison alone, so a message about
+        anything else is a pass for that checker.
+        """
+        rows = self.rows(target) if rows is None else rows
+        top, parallel = target["top"], target.get("pll", {}).get("system_divide") == 2
+        raised = []
         if "pll" in target:
-            rows += list(fpga_clocking.implementation(target["family"]).no_clock_rows(target))
-        if target["top"] in fpga_adc.TOPS:
-            rows.append(fpga_adc.lock_row(target["top"]))
-        if fpga_flash.flash_target(target):
-            rows += list(fpga_flash.no_clock_rows(target["top"]))
-        return rows
+            if target["family"] == fpga.CYCLONEV_FAMILY:
+                verify = fpga_lock_cyclonev.verify
+            else:
+                verify = fpga_lock.verify_parallel if parallel else fpga_lock.verify
+            with self.assertRaises(ValueError) as caught:
+                verify("", checks, top, rows=rows)
+            raised.append(("clocking", str(caught.exception)))
+        if top in fpga_adc.TOPS:
+            with self.assertRaises(ValueError) as caught:
+                fpga_adc.verify_netlist("", checks, top, rows=rows)
+            raised.append(("adc", str(caught.exception)))
+        self.assertTrue(raised, "no checker reads this target's table")
+        return raised
 
-    def agree(self, target):
-        """The one assertion: the audit counts exactly the rows its owners name."""
-        rows = self.rows(target)
-        self.assertEqual(len(set(rows)), len(rows))
-        self.assertEqual(fpga.expected_no_clock_count(target), len(rows))
-
-    def test_every_registered_target_audits_exactly_the_rows_its_owners_name(self):
-        """All 39, not only the ADC ones: the same arithmetic serves every target."""
+    def test_every_registered_target_names_an_owner_for_every_row(self):
+        """All 39: one owner per row, no row named twice, and the count is the length."""
         for name, target in self.targets():
             with self.subTest(target=name):
-                self.agree(target)
+                inventory = fpga.no_clock_inventory(target)
+                self.assertEqual(len({row.node for row in inventory}), len(inventory))
+                self.assertLessEqual({row.owner for row in inventory}, {"clocking", "adc", "onchip_flash"})
+                self.assertEqual(fpga.expected_no_clock_count(target), len(inventory))
+                self.assertEqual(self.rows(target), [(row.node, row.reason) for row in inventory])
         self.assertEqual(len(self.targets()), 39)
 
-    def test_the_adc_gate_requires_only_rows_the_audit_accounts_for(self):
-        """The rows the netlist gate demands are rows the count already allows.
+    def test_the_accepted_owner_inventory_is_the_recorded_one(self):
+        """Every target's accepted rows and their owners are the recorded inventory."""
+        actual = {}
+        for name, target in self.targets():
+            actual.setdefault(tuple(row.owner for row in fpga.no_clock_inventory(target)), []).append(name)
+        self.assertEqual({key: sorted(names) for key, names in actual.items()},
+                         {key: sorted(names) for key, names in ACCEPTED_OWNERS.items()})
 
-        `v05-controls-board` is why this is a subset and not an equality for every
-        target: its fit reports one further register row, the On-Chip Flash IP's
-        atom register, which `fpga_lock` accepts through `extra_rows` while the
-        ADC gate accounts for no row but its own
-        ([#914](https://github.com/amichai-bd/nand2mario/issues/914)). Where the
-        ADC gate is the only owner of register rows, the two are equal.
+    def test_the_composed_image_attributes_each_of_its_five_rows(self):
+        """`v05-controls-board`: both target PLLs, the ADC's, and the IP's two."""
+        target = dict(self.targets())["v05-controls-board"]
+        inventory = fpga.no_clock_inventory(target)
+        self.assertEqual([row.owner for row in inventory],
+                         ["clocking", "clocking", "adc", "onchip_flash", "onchip_flash"])
+        self.assertEqual([row.node for row in inventory][:3],
+                         [fpga_lock.ROW, fpga_lock.SYSTEM_ROW, fpga_adc.lock_row("v05_controls_proof")])
+        self.assertEqual([row.node for row in inventory][3:], [node for node, _ in fpga_flash.no_clock_rows("v05_controls_proof")])
+        # Four of the five are unclocked registers; the strobe feeds a clock port.
+        self.assertEqual([row.reason for row in inventory].count(fpga_lock.REGISTER_REASON), 4)
+        self.assertEqual([row.reason for row in inventory][3], fpga_flash.STROBE_REASON)
+
+    def test_one_reported_table_satisfies_every_checker_that_reads_it(self):
+        """The table the inventory predicts passes the inventory step of every checker.
+
+        Run for all 39 targets, including the flash images the count-based guard
+        had to skip: that skip is where the disagreement lived.
         """
-        for name, target in self.adc_targets():
-            top = target["top"]
-            gate = fpga_adc.no_clock_rows(top, parallel=target.get("pll", {}).get("system_divide") == 2)
+        for name, target in self.targets():
+            checks = self.report(self.rows(target))
+            if not ("pll" in target or target["top"] in fpga_adc.TOPS):
+                self.assertEqual(fpga_lock.reported_no_clock_rows(checks), list(self.rows(target)))
+                continue
+            for checker, message in self.check_table(target, checks):
+                with self.subTest(target=name, checker=checker):
+                    self.assertNotIn("inventory", message)
+                    # Stated as "nothing about this table", not as "not my own
+                    # wording": a checker that refuses the agreed rows for a
+                    # reason of its own has to fail here too.
+                    for phrase in ("no-clock", "no clock", "endpoint"):
+                        self.assertNotIn(phrase, message.lower())
+
+    def test_two_owners_naming_different_rows_of_the_same_number_fails(self):
+        """The case a count comparison cannot see, in both directions.
+
+        Each patch renames one owner's row without changing how many rows it
+        names, so the audited count is identical and the names are not. The
+        refusal has to name the row, because nothing else distinguishes it.
+        """
+        target = dict(self.targets())["v05-controls-board"]
+        truth = self.report(self.rows(target))
+        before = fpga.expected_no_clock_count(target)
+        drifts = {
+            "adc": patch.object(fpga_adc, "lock_row", return_value="n2m_drifted:u_controls|pll_lock_sync"),
+            "clocking": patch.object(fpga_pll, "no_clock_rows",
+                                     return_value=[("n2m_drifted:u_clocking|pixel_lock_sync", fpga_lock.REGISTER_REASON),
+                                                   (fpga_lock.SYSTEM_ROW, fpga_lock.REGISTER_REASON)]),
+            "onchip_flash": patch.object(fpga_flash, "no_clock_rows",
+                                         return_value=(("n2m_drifted:u_reader|flash_se_neg_reg", fpga_flash.STROBE_REASON),
+                                                       ("n2m_drifted:u_reader|ufm_block~XE_YE_TO_SE_FF", fpga_lock.REGISTER_REASON))),
+        }
+        # Every owner of a row on this target gets its turn.
+        self.assertEqual(set(drifts), {row.owner for row in fpga.no_clock_inventory(target)})
+        for owner, drift in drifts.items():
+            with self.subTest(owner=owner), drift:
+                drifted = self.rows(target)
+                # The count is all a count-based guard compares, and it did not move.
+                self.assertEqual(fpga.expected_no_clock_count(target), before)
+                self.assertEqual(len(drifted), before)
+                self.assertNotEqual(drifted, list(fpga_lock.reported_no_clock_rows(truth)))
+                with self.assertRaises(ValueError) as caught:
+                    fpga_lock.require_no_clock_rows(truth, drifted, "fit")
+                message = str(caught.exception)
+                self.assertIn("no owner claims no-clock row", message)
+                self.assertTrue(any(node in message for node, _ in fpga_lock.reported_no_clock_rows(truth)),
+                                "the refusal does not name the row it refused")
+                for checker, checker_message in self.check_table(target, truth, rows=drifted):
+                    self.assertTrue("no owner claims no-clock row" in checker_message
+                                    or "inventory omits" in checker_message,
+                                    f"{checker} accepted a table its inventory does not name")
+        self.assertEqual(self.rows(target), list(fpga_lock.reported_no_clock_rows(truth)))
+
+    def test_a_row_no_owner_claims_fails_with_its_name(self):
+        """An extra row in the table is refused by its own name, for every target."""
+        extra = ("n2m_unowned:u_thing|some_register", fpga_lock.REGISTER_REASON)
+        for name, target in self.targets():
+            rows = self.rows(target)
+            checks = self.report(list(rows) + [extra])
             with self.subTest(target=name):
-                self.assertIn(fpga_adc.lock_row(top), gate)
-                self.assertLessEqual(set(gate), set(self.rows(target)))
-                if not fpga_flash.flash_target(target):
-                    self.assertEqual(sorted(gate), sorted(self.rows(target)))
+                with self.assertRaises(ValueError) as caught:
+                    fpga_lock.require_no_clock_rows(checks, rows, "fit")
+                self.assertIn(extra[0], str(caught.exception))
+                if "pll" in target or target["top"] in fpga_adc.TOPS:
+                    for checker, message in self.check_table(target, checks):
+                        self.assertIn(extra[0], message, f"{checker} did not name the unowned row")
+
+    def test_a_dropped_row_still_fails_although_the_count_follows_it(self):
+        """The complementary case: the count moves with the row, the names do not.
+
+        Each owner's count is the length of its own named rows, so dropping a row
+        moves both sides of the audited sum together and no count comparison sees
+        it. What refuses it is the fit's own table, compared row by row.
+        """
+        target = dict(self.targets())["v05-controls-board"]
+        truth = self.report(self.rows(target))
+        for owner, drift in (("clocking", patch.object(fpga_pll, "no_clock_rows",
+                                                       return_value=[(fpga_lock.ROW, fpga_lock.REGISTER_REASON)])),
+                             ("adc", patch.object(fpga_adc, "no_clock_rows", return_value=())),
+                             ("onchip_flash", patch.object(fpga_flash, "no_clock_rows",
+                                                           return_value=(fpga_flash.no_clock_rows("v05_controls_proof")[0],)))):
+            with self.subTest(owner=owner), drift:
+                short = self.rows(target)
+                self.assertEqual(fpga.expected_no_clock_count(target), len(short))
+                self.assertEqual(len(short), 4)
+                with self.assertRaisesRegex(ValueError, "no owner claims no-clock row"):
+                    fpga_lock.require_no_clock_rows(truth, short, "fit")
 
     def test_the_adc_top_set_is_exactly_the_targets_that_compile_the_backend(self):
         """`TOPS` is a literal, so tie it to the source the registry actually places.
@@ -369,50 +504,26 @@ class AdcNoClockInventoryTests(unittest.TestCase):
         self.assertEqual(placed, ["adc-early", "controls-board", "v05-controls-board"])
 
     def test_the_adc_top_without_a_generated_pll_is_still_the_only_one(self):
-        """The scope the fix rests on, as a check: one such target, and it is counted."""
+        """The scope the ADC's separate row rests on: one such target, and it is counted."""
         alone = [name for name, target in self.adc_targets() if "pll" not in target]
         self.assertEqual(alone, ["adc-early"])
         target = dict(self.adc_targets())["adc-early"]
         self.assertEqual(fpga.expected_no_clock_count(target), 1)
-        self.assertEqual(self.rows(target), [fpga_adc.lock_row("adc_proof")])
+        self.assertEqual(self.rows(target), [(fpga_adc.lock_row("adc_proof"), fpga_lock.REGISTER_REASON)])
 
-    def test_one_reported_inventory_satisfies_both_gates(self):
-        """One report of the accounted rows passes the ADC gate and the clocking gate."""
-        for name, target in self.adc_targets():
-            if fpga_flash.flash_target(target):
+    def test_each_checker_refuses_an_inventory_that_omits_its_own_row(self):
+        """Every owner still states which row is its own, so a list missing it fails."""
+        for name, target in self.targets():
+            rows = self.rows(target)
+            if not rows:
                 continue
-            top, parallel = target["top"], target.get("pll", {}).get("system_divide") == 2
-            checks = no_clock_report(self.rows(target))
-            with self.subTest(target=name, gate="adc"):
-                with self.assertRaises(ValueError) as caught:
-                    fpga_adc.verify_netlist("", checks, top, parallel=parallel)
-                self.assertNotIn("unexpected ADC no-clock endpoint", str(caught.exception))
-            if top not in fpga_adc.COMPOSED:
-                continue
-            with self.subTest(target=name, gate="clocking"):
-                verify = fpga_lock.verify_parallel if parallel else fpga_lock.verify
-                with self.assertRaises(ValueError) as caught:
-                    verify("", checks, top)
-                self.assertNotIn("inventory differs", str(caught.exception))
-                self.assertNotIn("unrecognized no-clock endpoint", str(caught.exception))
-
-    def test_an_audit_that_drops_the_adc_row_fails_this_guard(self):
-        """Proof the guard fails: the pre-fix arithmetic, restated, still disagrees.
-
-        Keying the count on the `pll` field is the same as counting no ADC row at
-        all for a target that generates no PLL, so patching the ADC's own count
-        to zero reproduces the refusal exactly, and both directions of the
-        contradiction are shown: one row fails the count, zero fails the gate.
-        """
-        target = dict(self.adc_targets())["adc-early"]
-        rows = self.rows(target)
-        with patch.object(fpga_adc, "lock_event_count", return_value=0):
-            self.assertEqual(fpga.expected_no_clock_count(target), 0)
-            self.assertNotEqual(fpga.expected_no_clock_count(target), len(rows))
-            with self.assertRaises(AssertionError):
-                self.agree(target)
-        with self.assertRaisesRegex(ValueError, "unexpected ADC no-clock endpoint"):
-            fpga_adc.verify_netlist("", no_clock_report([]), "adc_proof")
+            for dropped in rows:
+                kept = [row for row in rows if row != dropped]
+                checks = self.report(kept)
+                with self.subTest(target=name, dropped=dropped[0][-40:]):
+                    for checker, message in self.check_table(target, checks, rows=kept):
+                        self.assertTrue("inventory omits" in message
+                                        or "no owner claims no-clock row" not in message)
 
 
 # A minimal MAX 10 fit report shaped like the one `adc-early` produces: the

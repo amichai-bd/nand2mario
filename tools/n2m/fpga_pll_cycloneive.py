@@ -157,13 +157,13 @@ def verify_fit(folder, target):
     return fpga_pll.verify_fit(folder, target)
 
 
-def verify_lock_event(folder, checks, top=SUPPORTED_TOPS[0], *, parallel=False, extra_rows=()):
+def verify_lock_event(folder, checks, top=SUPPORTED_TOPS[0], *, parallel=False, rows=()):
     if top not in SUPPORTED_TOPS:
         raise ValueError("unsupported Cyclone IV E PLL proof top")
     if not parallel:
         raise ValueError("Cyclone IV E clocking registers both PLLs; there is no single-PLL target")
     return fpga_pll.verify_lock_event(folder, checks, top, parallel=True,
-                                      extra_rows=extra_rows, primitives=PRIMITIVES)
+                                      rows=rows, primitives=PRIMITIVES)
 
 
 def explained_diagnostics(text, folder, definition):

@@ -2979,11 +2979,13 @@ targets of the three boards were built on the Linux development host at
 `9375432`, against Quartus Prime 25.1std.0 Build 1129 Lite with `--quartus-bin`
 naming that installation's `bin/` launcher directory, two builds at a time on its
 two physical cores except where noted below. `adc-early` refused in that sweep and
-was refitted alone once its cause was fixed, in 110 seconds of wall and 94 of CPU:
+was refitted alone once its cause was fixed, in 110 seconds of wall and 94 of CPU;
+`v05-controls-board` refused there too and now reaches a passing result, refitted
+in 369 seconds of wall and 479 of CPU:
 
 | Board | Targets | Reached its intended result | Did not |
 | --- | --- | --- | --- |
-| DE10-Lite | 25 | 23 | `controls-board`, `v05-controls-board` |
+| DE10-Lite | 25 | 24 | `controls-board` |
 | DE10-Nano | 6 | 6 | — |
 | DE2-115 | 8 | 8 | — |
 
@@ -2996,38 +2998,43 @@ at each corner its board declares. No installed vendor file entered the
 [ledger](#accepted-vendor-sources) that this installation had not already
 accepted, so every result rests on recorded bytes.
 
-Two DE10-Lite targets still refuse, and neither is a limit of this host or of
-Linux. Each cause is a mismatch between repository sources that every
-installation reads the same way — a constraint and a row inventory — and not a
-property of any installed toolchain, so no host builds them. `controls-board`
-fails on the SDRAM and KEY1 constraints its top declares no ports for
-([#904](https://github.com/amichai-bd/nand2mario/issues/904)), and
-`v05-controls-board` fails because the ADC netlist gate and the On-Chip Flash IP
-disagree about which no-clock rows its fit may report
-([#914](https://github.com/amichai-bd/nand2mario/issues/914)). That image's
-compilation itself is sound: measured at 640 seconds of wall and 663 of CPU
-beside another build, it maps, fits, assembles and times with a nonnegative slack
-at every corner, 13,400 logic elements, one UFM block, one ADC block and three
-PLLs, and every one of its 54 diagnostics is classified, including both the ADC
-control's and the flash IP's. It refused in the sweep for a second such mismatch,
-an unscoped warning-code match that counted the flash IP's accepted warnings
-against the ADC's own fifteen; each classifier now
+One DE10-Lite target still refuses, and that is not a limit of this host or of
+Linux. Its cause is a mismatch between repository sources that every installation
+reads the same way — a constraint — and not a property of any installed toolchain,
+so no host builds it: `controls-board` fails on the SDRAM and KEY1 constraints its
+top declares no ports for
+([#904](https://github.com/amichai-bd/nand2mario/issues/904)).
+
+`v05-controls-board` refused in that sweep for two mismatches of the same kind,
+both now fixed, and it passes: 13,404 of 49,760 logic elements, 5,560 registers,
+1,056,616 memory bits, three of four PLLs, one UFM block, one of two ADC blocks,
+worst setup slack 4.788 ns and worst hold 0.054 ns with zero total negative slack
+at every corner, `design.sof` and `design.pof` produced, and every one of its 54
+diagnostics classified, including both the ADC control's and the flash IP's. The
+first mismatch was an unscoped warning-code match that counted the flash IP's
+accepted warnings against the ADC's own fifteen; each classifier now
 [judges only the warnings its own sources produce](#diagnostic-classification),
 and a host unit composes the log both owners predict and requires both
-inventories, without a fit. Neither refusal is in a regression subset or a CI
-workflow, and a subset cannot hold an FPGA target at all, which is why each break
-went unmeasured. `adc-early` refused for a third such mismatch, an accepted
-no-clock count that omitted the ADC backend's own lock row; that count is now
-summed from the modules that name the rows and is compared with them for every
-registered target by a host unit, without a fit.
+inventories, without a fit. The second was two checkers of the same fit accepting
+the same *number* of different no-clock rows: the accepted rows are now
+[one named list](#max-10-lock-event-evidence) with an owner for each, and a host
+unit runs every checker on the table that list predicts. Neither refusal was in a
+regression subset or a CI workflow, and a subset cannot hold an FPGA target at
+all, which is why each break went unmeasured. `adc-early` refused for a third such mismatch, an accepted
+no-clock count that omitted the ADC backend's own lock row. The accepted rows are
+now [one named list](#max-10-lock-event-evidence) resolved from the modules that
+own them, every checker of the fit's `No Clock` table is handed it, and a host
+unit resolves it for every registered target and runs every checker on the table
+it predicts, without a fit.
 
 Per-target wall ran from 43 to 683 seconds, 6,487 seconds across the 39 results,
 so each one is an upper bound under that contention rather than a quiet cost.
 The contention is enough to matter: `v05-controls-board` exceeded the 600-second
 default per-tool timeout beside another fit, so the largest images want an
 explicit `--timeout` on a host this size. In that sweep it and `builder-smoke`
-were the only targets run alone. Its live cost is the 640 seconds measured above,
-at `--timeout 1800` and beside another build. A second build of the same target
+were the only targets run alone. Its live cost is 369 seconds of wall and 479 of
+CPU at `--timeout 1800` with no other fit running, against 640 and 663 measured
+beside another build, so the contention is most of the difference. A second build of the same target
 reports `CACHED` in seconds.
 
 ### Hold path audit
@@ -3574,7 +3581,7 @@ bounded build flow; different text under the same number fails:
 | 15064, exact system PLL `clk[0]` feeding `DRAM_CLK~output` via non-dedicated routing, `sdram-proof` only | The [SDRAM contract](../../src/rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) drives `DRAM_CLK` as the inverted system clock through the fabric to a pin that is not a dedicated PLL output. Exactly one line naming that PLL, that pin and the attempt's generated PLL file is accepted; the routed-clock jitter is inside the contract's 20 ns half-period I/O budget and the board memory test is the acceptance. |
 | `check_timing` no_output_delay = 1, `sdram-proof` only | `DRAM_CLK` is the target of the `sdram_clk` generated clock and has no data path, so it is the one output port without an output delay; giving it one makes TimeQuest time the clock network as a data path. The unconstrained-path summary must still show zero output ports and paths, and the clock inventory binds the port to `sdram_clk`. |
 | 10036, exactly the 20 vendor data-controller objects `fpga_flash.UNUSED_OBJECTS` in the staged `altera_onchip_flash_avmm_data_controller.v`, images that list the flash reader only | The read-only configuration of the pinned On-Chip Flash IP leaves its write and erase registers assigned but unread. The staged copy must carry the pinned hash and every line, name and line number must match once; any other 10036 naming that controller fails. A 10036 another owner explains, such as the ADC control's one unread next-state variable, is that owner's; see the scope rule below. |
-| 332060, exactly the IP's `flash_se_neg_reg` strobe under the registered reader instance, four lines in `compile.log` and one in `audit.log`, flash images only | The IP's sense-enable strobe register clocks one register inside the UFM atom (`ufm_block~XE_YE_TO_SE_FF`) without a clock assignment; the vendor's own generated project suppresses this message with `MESSAGE_DISABLE 332060`. Here it is classified by exact node and count and never suppressed. The same strobe is the one accepted `Unconstrained Clocks` row (setup and hold both 1) when `report_ucp` names it as the only unconstrained target, and it and the atom register are two accepted `no_clock` rows named exactly beside the PLL lock events. |
+| 332060, exactly the IP's `flash_se_neg_reg` strobe under the registered reader instance, four lines in `compile.log` and one in `audit.log`, flash images only | The IP's sense-enable strobe register clocks one register inside the UFM atom (`ufm_block~XE_YE_TO_SE_FF`) without a clock assignment; the vendor's own generated project suppresses this message with `MESSAGE_DISABLE 332060`. Here it is classified by exact node and count and never suppressed. The same strobe is the one accepted `Unconstrained Clocks` row (setup and hold both 1) when `report_ucp` names it as the only unconstrained target, and it and the atom register are two accepted `no_clock` rows named exactly beside the PLL lock events. The strobe's row states the same fact again in that table's `Reason` column, as a node found feeding a clock port without a clock assignment rather than as an unclocked register, so the atom register is the only one of the two an unclocked-register check counts. |
 | `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
 
 Each owner judges the warnings its own sources produce, selecting a line by the
@@ -4400,13 +4407,24 @@ and output logic still propagates raw lock loss. This is not a periodic datapath
 clock. A single-PLL proof has one such `no_clock` row; the parallel system/pixel
 wrapper has exactly two. The ADC composition adds its separately checked vendor
 row, and an ADC proof that generates no PLL of its own reports that row alone.
-The audited count is the sum of the rows each owner names: the family's clocking
-module for the instances the target generates, the ADC backend for its own
-dedicated PLL, the On-Chip Flash IP for its strobe pair. Each clocking family's
-count is the length of the rows it names, so the two cannot state different
-things. Because both statements come from the registry and those modules, a host
-check compares them for every registered target without a fit, and ties the ADC
-top set to the targets that compile the backend. The builder explains these rows
+
+Every row the fit may report in its `No Clock` table is named once, by the module
+that owns the vendor block producing it: the family's clocking module for the
+instances the target generates, the ADC backend for its own dedicated PLL, the
+On-Chip Flash IP for its strobe and the atom register that strobe clocks. Each
+owner states the node and the `Reason` the table gives it, so the one flash row
+that is not an unclocked register is not counted as one. `fpga.no_clock_inventory`
+is that single list with its owners, the audited count is its length, and every
+checker that reads the table is handed it: the report is compared row by row
+against the same names, so a row no owner claims fails naming that row and its
+reason, a named row the fit does not report fails by name, and two checkers cannot
+accept the same number of different rows. The record keeps the resolved list under
+`no_clock_rows` with each row's owner. Because the whole statement comes from the
+registry and those modules, a host check resolves it for every registered target
+and runs every checker on the table it predicts, without a fit; it also pins each
+target's accepted rows and owners, ties the ADC top set to the targets that
+compile the backend, and proves its own sensitivity by renaming one owner's row
+without changing how many it names. The builder explains these rows
 only after checking the generated functional netlist: latch input/reset/initial state, the lock gate
 truth table, and all downstream buffers/fanout through the two lock sampling reset
 pins. For parallel PLLs, all 32 combinations of raw locks, event latches and

@@ -61,12 +61,17 @@ LUT_INPUTS = ("dataa", "datab", "datac", "datad", "datae", "dataf")
 SUPPORTED_TOPS = ("nano_clocking_proof", "nano_uart_proof")
 
 
-def verify(text, checks, top="nano_clocking_proof"):
+def verify(text, checks, top="nano_clocking_proof", *, rows=()):
+    """`rows` is the accepted no-clock inventory; this family names none of its own.
+
+    Cyclone V has no vendor lock latch, so every row of the fit's `No Clock`
+    table is refused by name.
+    """
     if top not in SUPPORTED_TOPS:
         raise ValueError("unsupported Cyclone V PLL proof top")
-    rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
     if rows:
-        raise ValueError("unrecognized no-clock endpoint")
+        raise ValueError("Cyclone V names no lock event; the inventory claims one")
+    fpga_lock.require_no_clock_rows(checks, rows, "Cyclone V clocking")
     _, cells, params, _declarations, rhs, lhs = fpga_lock.parse_netlist(text, top, outputs=OUTPUTS)
 
     def cell(name, kind, modes=None):

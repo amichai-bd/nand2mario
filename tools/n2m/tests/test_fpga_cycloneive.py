@@ -229,7 +229,8 @@ class LockEvidenceTests(unittest.TestCase):
         return parallel_fixtures.fixture(primitives)
 
     def verify(self, text, checks, primitives=ce.PRIMITIVES):
-        return fpga_lock.verify_parallel(text, checks, TOP, primitives=primitives)
+        return fpga_lock.verify_parallel(text, checks, TOP, rows=parallel_fixtures.ROWS,
+                                         primitives=primitives)
 
     def test_this_familys_atoms_carry_the_same_lock_qualification(self):
         text, checks = self.fixture()
@@ -248,7 +249,8 @@ class LockEvidenceTests(unittest.TestCase):
         max10_text, max10_checks = self.fixture(fpga_lock.MAX10)
         with self.assertRaises(ValueError):
             self.verify(max10_text, max10_checks)
-        self.assertEqual(fpga_lock.verify_parallel(max10_text, max10_checks, "clocking_proof")["truth_cases"], 32)
+        self.assertEqual(fpga_lock.verify_parallel(max10_text, max10_checks, "clocking_proof",
+                                                   rows=parallel_fixtures.ROWS)["truth_cases"], 32)
 
     def test_a_primitive_this_family_has_not_declared_fails(self):
         """The M9K atom is declared because `de2-vga` places it; nothing else is."""

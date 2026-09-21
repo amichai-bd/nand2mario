@@ -5,6 +5,7 @@ serves every ALTPLL family and no family gets a copied fixture.
 """
 import unittest
 from tools.n2m import fpga_lock, fpga_pll
+from tools.n2m.tests.fit_reports import no_clock_table
 
 
 def fixture(primitives=fpga_lock.MAX10):
@@ -41,14 +42,18 @@ def fixture(primitives=fpga_lock.MAX10):
     for i in (0,1):
         cell(primitives.register,reset+f"lock_samples[{i}]",q="\\"+reset+f"lock_samples[{i}]",d="vcc" if i==0 else "\\"+reset+"lock_samples[0]",asdata="vcc",clk=fpga_pll.SYSTEM_NET,clrn="!"+lock_buffer,prn="vcc",ena="vcc",aload="gnd",sclr="gnd",sload="gnd",devclrn="devclrn",devpor="devpor")
     system_row="n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
-    checks="\n".join("; "+row+"; No clock feeds this register's clock port. ;" for row in (fpga_lock.ROW,system_row))
-    return "\n".join(lines),checks
+    return "\n".join(lines),no_clock_table((fpga_lock.ROW,system_row))
+
+
+# The accepted inventory a two-PLL target resolves: both lock events and nothing
+# else. The checker is handed it rather than restating it.
+ROWS=[(fpga_lock.ROW,fpga_lock.REGISTER_REASON),(fpga_lock.SYSTEM_ROW,fpga_lock.REGISTER_REASON)]
 
 
 class ParallelClockTests(unittest.TestCase):
     def test_either_lock_loss_asserts_reset(self):
         text,checks=fixture()
-        self.assertEqual(fpga_lock.verify_parallel(text,checks,"clocking_proof")["truth_cases"],32)
+        self.assertEqual(fpga_lock.verify_parallel(text,checks,"clocking_proof",rows=ROWS)["truth_cases"],32)
 
     def test_synchronous_load_keeps_the_same_pipeline(self):
         text,checks=fixture()
@@ -58,7 +63,7 @@ class ParallelClockTests(unittest.TestCase):
                 lines[i]=line.replace(r".d(\u_clocking|u_reset|lock_samples[0]),.asdata(vcc)",
                                       r".d(gnd),.asdata(\u_clocking|u_reset|lock_samples[0])").replace(".sload(gnd)",".sload(vcc)")
                 self.assertNotEqual(lines[i],line)
-        self.assertEqual(fpga_lock.verify_parallel("\n".join(lines),checks,"clocking_proof")["truth_cases"],32)
+        self.assertEqual(fpga_lock.verify_parallel("\n".join(lines),checks,"clocking_proof",rows=ROWS)["truth_cases"],32)
 
     def test_unsafe_topologies_fail_closed(self):
         text,checks=fixture()
@@ -77,9 +82,9 @@ class ParallelClockTests(unittest.TestCase):
         }
         for name,mutated in mutations.items():
             with self.subTest(name=name),self.assertRaises(ValueError):
-                fpga_lock.verify_parallel(mutated,checks,"clocking_proof")
+                fpga_lock.verify_parallel(mutated,checks,"clocking_proof",rows=ROWS)
         with self.assertRaises(ValueError):
-            fpga_lock.verify_parallel(text,checks+checks,"clocking_proof")
+            fpga_lock.verify_parallel(text,checks+checks,"clocking_proof",rows=ROWS)
 
 
 class MergeDiagnosticTests(unittest.TestCase):
