@@ -47,6 +47,9 @@ CORNERS = (("slow85", "slow", 85), ("slow0", "slow", 0), ("fast0", "fast", 0))
 # names it. The hierarchy is the shared clocking wrapper's, so both ALTPLL
 # families name it the same way.
 PIXEL_NET = r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk"
+# The frame bridge's fitted memory: three 23040x2 banks, six M9K blocks each
+# (../../wiki/src/rtl/vga/MAS_vga.md). The atom check below reads the same shapes.
+BANKS, BANK_BLOCKS, BANK_BITS = 3, 6, 46080
 
 
 def chain_profile(lcd=False, *, system_clock="clk_sys"):
@@ -229,6 +232,30 @@ def used(table, label):
     return int(match[1].replace(",", ""))
 
 
+def memory_totals(controls=False):
+    """The fitted M9K blocks and stored bits this image must report: (blocks, bits).
+
+    The three frame-bridge banks, plus the six UART stores in the combined
+    diagnostic. Each part's own checker owns its shapes, so the total is summed
+    from them rather than restated: a store that changes size moves this with it,
+    instead of leaving a figure here that no fit has agreed with since.
+    """
+    blocks, bits = BANKS * BANK_BLOCKS, BANKS * BANK_BITS
+    if controls:
+        from .fpga_controls import store_totals
+        store_blocks, store_bits = store_totals()
+        blocks, bits = blocks + store_blocks, bits + store_bits
+    return blocks, bits
+
+
+def check_memory_totals(table, controls=False):
+    blocks, bits = memory_totals(controls)
+    if used(table, "M9Ks") != blocks:
+        raise ValueError("unexpected total fitted M9K usage")
+    if used(table, "Total block memory bits") != bits:
+        raise ValueError("unexpected total fitted memory bits")
+
+
 def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk", outputs=LADDER):
     output = folder / "output"
     reports = {}
@@ -244,10 +271,7 @@ def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_
         if line not in [f"{name} u_bridge|{name}[0]|{suffix}" for suffix in ("d", "asdata")]:
             raise ValueError("unsupported VGA first data pin")
     fit = (output / "design.fit.rpt").read_text(encoding=FIT_ENCODING)
-    if used(rows(fit), "M9Ks") != (27 if controls else 18):
-        raise ValueError("unexpected total fitted M9K usage")
-    if used(rows(fit), "Total block memory bits") != (181744 if controls else 138240):
-        raise ValueError("unexpected total fitted memory bits")
+    check_memory_totals(rows(fit), controls)
     verify_memory_rows(fit)
     netlist = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
     uart_ram = None
@@ -255,7 +279,8 @@ def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_
         from .fpga_controls import verify_uart_memory
         uart_ram = verify_uart_memory(netlist, fit, system_net=system_net)
     physical_ram = verify_memory_netlist(netlist, lcd=lcd, controls=controls, system_net=system_net, atom=outputs.atom)
-    result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
+    result = {"physical_ram": physical_ram, "ram_banks": BANKS, "memory_bits": BANKS * BANK_BITS,
+              "m9k_blocks": BANKS * BANK_BLOCKS, "first_pins": pins, "corners": {}}
     if uart_ram is not None:
         result['uart_memory'] = uart_ram
     output_sources = dict(zip(outputs.ports, outputs.registers))

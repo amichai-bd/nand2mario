@@ -48,7 +48,7 @@ clock, reset and CDC evidence is checked against the
 [loader profile](../../../wiki/src/rtl/cartridge/MAS_loader_profile.md): the
 [SDRAM controller](../../rtl/storage/n2m_sdram_ctrl.sv) on the DE10-Lite DRAM
 pins with the `sdram_clk` generated clock and I/O delays of `sdram-proof`
-appended to `v05.sdc` and `controls.sdc`, and KEY1/A7 as the return-to-menu
+appended to `v05.sdc` and `v05_controls.sdc`, and KEY1/A7 as the return-to-menu
 button with its checked two-flop synchronizer. The builder applies the
 `sdram-proof` DRAM drive strength, pin clock exception and routed-clock
 diagnostic to every image pinned to `DRAM_CLK`. The same three images place

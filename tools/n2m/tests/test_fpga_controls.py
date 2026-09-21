@@ -5,7 +5,8 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.fpga_controls import verify_identity
+from n2m import fpga_vga
+from n2m.fpga_controls import store_totals, verify_identity
 
 
 class IdentityTests(unittest.TestCase):
@@ -84,3 +85,36 @@ class UnaryChainTests(unittest.TestCase):
             unary_chain(cells, params, source, carry)
         with self.assertRaisesRegex(ValueError, 'one unary LUT'):
             unary_chain(cells, params, source, '\\undriven')
+
+
+class CombinedMemoryTotalTests(unittest.TestCase):
+    """The combined diagnostic's fitted memory total, and what each part contributes.
+
+    The total was a literal recorded when `controls-board` last fitted. The
+    presence store then grew from 32,768 bits in four M9K blocks to 65,536 in
+    eight, and nothing moved the literal, because no unit reads it and a MAX 10
+    fit of that target ran in no workflow. It now follows the two inventories that
+    own the shapes, and these are the values those inventories state: a store that
+    changes size fails here and asks for a fit, rather than passing and failing in
+    one.
+    """
+
+    def table(self, blocks, bits):
+        """The two fit summary rows the checker reads, as `rows` yields them."""
+        return [["M9Ks", f"{blocks} / 182 ( 17 % )"],
+                ["Total block memory bits", f"{bits:,} / 1,677,312 ( 13 % )"]]
+
+    def test_each_part_states_its_own_contribution(self):
+        # Six stores, of which the presence store alone is 65,536 bits in 8 blocks.
+        self.assertEqual(store_totals(), (13, 76272))
+        self.assertEqual(fpga_vga.memory_totals(), (18, 138240))
+        self.assertEqual(fpga_vga.memory_totals(controls=True), (31, 214512))
+
+    def test_the_total_is_checked_and_the_superseded_pair_refused(self):
+        for controls, expected in ((False, (18, 138240)), (True, (31, 214512))):
+            with self.subTest(controls=controls):
+                fpga_vga.check_memory_totals(self.table(*expected), controls)
+                # The literal this replaced, and the other image's total.
+                for blocks, bits in ((27, 181744), *[v for v in ((18, 138240), (31, 214512)) if v != expected]):
+                    with self.assertRaisesRegex(ValueError, "unexpected total fitted"):
+                        fpga_vga.check_memory_totals(self.table(blocks, bits), controls)

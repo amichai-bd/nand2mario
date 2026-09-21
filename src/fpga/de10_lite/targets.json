@@ -2052,7 +2052,7 @@
         "src/fpga/de10_lite/v05_controls_proof.sv"
       ],
       "constraints": [
-        "src/fpga/de10_lite/controls.sdc"
+        "src/fpga/de10_lite/v05_controls.sdc"
       ],
       "pins": {
         "red[0]": "PIN_AA1",

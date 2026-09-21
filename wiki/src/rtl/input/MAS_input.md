@@ -110,8 +110,8 @@ That fit ties the physical producer off, so it is the cost without a producer.
 `v05-controls-board` routes the record, supplies a live producer and builds, and
 its register effect is not measured
 ([#944](https://github.com/amichai-bd/nand2mario/issues/944)). `controls-board`
-does not build
-([#904](https://github.com/amichai-bd/nand2mario/issues/904)).
+has its own JOYP and a live producer and builds as well; its register effect is
+not measured either.
 
 Fitted cost on `v05-board` (Quartus Prime Lite 25.1std, `10M50DAF484C7G`, one
 pinned build identity across both revisions): dedicated logic registers 5,259 to

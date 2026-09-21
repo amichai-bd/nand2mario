@@ -27,15 +27,25 @@ def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID", instance
     return build_id
 
 
+# The six UART stores of the combined diagnostic: owner -> (depth, width, blocks).
+# One inventory, because the image's fitted memory total is the three VGA banks
+# plus these, and a store that changes shape must move both.
+STORES = {'u_uart|u_packet_rx|stores|encoded': (270, 8, 1),
+          'u_uart|u_packet_rx|stores|decoded': (268, 8, 1),
+          'u_uart|u_commands|u_load|u_presence|u_presence': (65536, 1, 8),
+          **{f'u_uart|u_exchange|stores|banks[{i}].memory': (268, 8, 1) for i in range(3)}}
+
+
+def store_totals():
+    """The fitted M9K blocks and stored bits these six stores add to an image."""
+    return sum(count for _, _, count in STORES.values()), sum(d * w for d, w, _ in STORES.values())
+
+
 def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk", prefix="", top="controls_proof"):
     """Account for the six existing UART stores alongside the three VGA banks."""
     from .fpga_lock import parse_netlist
     _, cells, params, *_ = parse_netlist(text, top)
-    shapes = {'u_uart|u_packet_rx|stores|encoded': (270, 8, 1),
-              'u_uart|u_packet_rx|stores|decoded': (268, 8, 1),
-              'u_uart|u_commands|u_load|u_presence|u_presence': (65536, 1, 8)}
-    shapes.update({f'u_uart|u_exchange|stores|banks[{i}].memory': (268, 8, 1) for i in range(3)})
-    shapes = {prefix + owner: shape for owner, shape in shapes.items()}
+    shapes = {prefix + owner: shape for owner, shape in STORES.items()}
     suffix = '|ram|auto_generated|'
     expected = {owner + suffix + f'ram_block1a{i}': (depth, width)
                 for owner, (depth, width, count) in shapes.items() for i in range(count)}
