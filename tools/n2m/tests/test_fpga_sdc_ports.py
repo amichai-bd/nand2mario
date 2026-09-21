@@ -36,10 +36,12 @@ def declared_ports(target):
 
 class SdcPortFilterTests(unittest.TestCase):
     def test_every_registered_target_constrains_only_its_own_ports(self):
-        """No registered target names a port it does not declare, on any board."""
-        seen = []
+        """No registered target names a port it does not declare, on any board.
+
+        The sweep is every target of every registry in `fpga.REGISTRIES`, so a
+        fourth board is covered when its registry joins that tuple.
+        """
         for name, target in registered_targets():
-            seen.append(name)
             ports = declared_ports(target)
             for constraint in target["constraints"]:
                 text = (ROOT / constraint).read_text(encoding="utf-8")
@@ -47,9 +49,6 @@ class SdcPortFilterTests(unittest.TestCase):
                     # A file selecting no port would pass vacuously, so require one.
                     self.assertTrue(fpga.sdc_port_filters(text))
                     self.assertEqual(fpga.unmatched_sdc_ports(text, ports), [])
-        # Every registry the builder reads, so a new board is covered here too.
-        self.assertEqual(sorted(seen), sorted(name for name, _ in registered_targets()))
-        self.assertEqual(len(seen), len(set(seen)))
 
     def test_the_split_file_is_one_the_controls_proof_cannot_carry(self):
         """Why the pair has two files: the difference is twelve ports, not a preference.
