@@ -66,8 +66,19 @@ unit test under the [input test plan](../../src/dv/input/README.md#adc-doubles).
 The two-channel proof explains only the pinned Intel control core's unused
 dual-ADC next-state variable and twelve outputs of its unused channel17
 temperature-averaging FIFO. Its diagnostic checker requires the complete
-15-message inventory and exact vendor source hashes; all other diagnostics
-retain the shared builder's strict treatment. The raw messages remain evidence.
+15-message inventory and exact vendor source hashes. Thirteen of the fifteen it
+selects by the source the message names: a 10036 whose own message names one of
+the three classified control files, and a 14320 naming a node inside this image's
+ADC instance. A warning outside that scope is not counted against this inventory;
+it retains the shared builder's strict treatment and fails under
+[diagnostic classification](../tools/n2m/SPEC.md#diagnostic-classification). That
+is what lets `v05-controls-board` keep this inventory beside the
+[On-Chip Flash IP's](rtl/storage/MAS_flash_library.md) own.
+
+The other two are the 14284 and 14285 synthesis headers, which name no source.
+The checker claims every line carrying those codes and accepts only these two
+exact texts, so a header from another owner fails here rather than at the shared
+gate. The raw messages remain evidence.
 
 The producer requests X then Y, holds each command until accepted, and
 publishes only complete ordered pairs. Start a pair every1 ms when the prior
