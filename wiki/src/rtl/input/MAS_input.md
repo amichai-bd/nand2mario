@@ -93,16 +93,25 @@ the record.
 
 The consumer decides whether the record survives, not the tie-off.
 [`sdram_proof`](../../../../src/fpga/de10_lite/sdram_proof.sv) ties the same two
-inputs off and carries the same host endpoint, and there the record is removed:
-that top leaves `effective_update` unconnected and instantiates no JOYP, so the
-register drives nothing. Every DE10-Lite target that routes `effective_update`
-into an actual JOYP keeps it. `v05` and `v05-board` do so through
-[the composed system](../system/MAS_system.md), and `v05-controls-board` and
-`controls-board` through their own wrappers. `v05-board` is the named DE10-Lite
-evidence for this register because it is the one that both routes it and fits;
-`controls-board` does not build
-([#904](https://github.com/amichai-bd/nand2mario/issues/904)). Measure a change
-to the update comparison on `v05-board`, not on a target that drops the register.
+inputs off and carries the same host endpoint, and there the record cannot
+survive: that top leaves `effective_update` unconnected and instantiates no
+JOYP, so the register drives nothing. Four DE10-Lite targets route
+`effective_update` into an actual JOYP instead. `v05`, `v05-board` and
+`v05-controls-board` all reach the one in
+[the composed system](../system/MAS_system.md), the last of them through
+[`n2m_controls_system`](../../../../src/fpga/de10_lite/n2m_controls_system.sv),
+which adds a live physical producer but no JOYP of its own; `controls-board`
+instantiates its own. Routing is what makes the record survivable, and that it
+survives is measured on `v05-board` and taken from the structure for the rest.
+
+`v05-board` is the target this register's effect is measured on, so measure a
+change to the update comparison there rather than on one that drops the register.
+That fit ties the physical producer off, so it is the cost without a producer.
+`v05-controls-board` routes the record, supplies a live producer and builds, and
+its register effect is not measured
+([#944](https://github.com/amichai-bd/nand2mario/issues/944)). `controls-board`
+does not build
+([#904](https://github.com/amichai-bd/nand2mario/issues/904)).
 
 Fitted cost on `v05-board` (Quartus Prime Lite 25.1std, `10M50DAF484C7G`, one
 pinned build identity across both revisions): dedicated logic registers 5,259 to
