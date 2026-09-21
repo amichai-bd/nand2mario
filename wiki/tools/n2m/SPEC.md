@@ -3024,10 +3024,11 @@ registered target by a host unit, without a fit.
 Per-target wall ran from 43 to 683 seconds, 6,487 seconds across the 39 results,
 so each one is an upper bound under that contention rather than a quiet cost.
 The contention is enough to matter: `v05-controls-board` exceeded the 600-second
-default per-tool timeout beside another fit, and reached its own refusal in 488
-seconds alone at `--timeout 1800`, so the largest images want an explicit
-`--timeout` on a host this size. Only that run and `builder-smoke` ran alone.
-A second build of the same target reports `CACHED` in seconds.
+default per-tool timeout beside another fit, so the largest images want an
+explicit `--timeout` on a host this size. In that sweep it and `builder-smoke`
+were the only targets run alone. Its live cost is the 640 seconds measured above,
+at `--timeout 1800` and beside another build. A second build of the same target
+reports `CACHED` in seconds.
 
 ### Hold path audit
 
