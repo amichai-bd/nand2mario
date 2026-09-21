@@ -2312,9 +2312,15 @@ changes JTAG configuration, or proves physical operation. Those follow the
 and hardware workflow. No extra Python packages are required.
 
 Every profile also reports `unreadable`: one entry per failed check, naming its
-own reason, plus each probe a check answered or failed without reading. Three are
-named: a programmer discovery did not find, a probe cable inside the selected
-backend that reported no device, and an absent udev by-id directory. A check that
+own reason, plus a closed set of named probes. Three are named across the
+supported hosts: a programmer discovery did not find, a probe cable inside the
+selected backend that reported no device, and, on Linux, an absent udev by-id
+directory. A fourth, serial enumeration itself, appears only on a host that is
+neither Windows nor Linux. Nothing else is named, so the list is those probes and
+not a full account of what a check did not read: a by-id link whose owning USB
+device has no readable identity is excluded by the
+[serial enumeration](#serial-port-enumeration) rule and reaches neither the ports
+nor this list. A check that
 fails keeps the gaps its probe found, because naming the expected UART is the only
 way the serial check reaches PASS, so the failing path is the one where its gap is
 needed. The human result prints them as `Not read:` lines before readiness. A
