@@ -79,6 +79,61 @@ Pause, CPU HALT and STOP do not block an accepted input transaction. Input does
 not manufacture a Game Boy dot. Selected activity and request events use the
 existing JOYP/IF boundary; oscillator restart remains the approved CPU contract.
 
+## DE10-Lite synthesis
+
+Tying the physical producer off does not remove the published record. The
+[`v05_proof`](../../../../src/fpga/de10_lite/v05_proof.sv) wrapper drives
+`physical_commit` and `physical_buttons` with constants, and the `v05-board` fit
+of it still holds all eight `published_q` bits as dedicated registers at
+`u_system|u_uart|u_input|published_q`. The owner's fitted register count there is
+17: eight for the host shadow, one for the source bit, eight for the record. The
+physical shadow is what the tie-off removes, because a constant commit leaves it
+at zero forever; no `physical_q` register survives in that image with or without
+the record.
+
+The consumer decides whether the record survives, not the tie-off.
+[`sdram_proof`](../../../../src/fpga/de10_lite/sdram_proof.sv) ties the same two
+inputs off and carries the same host endpoint, and there the record cannot
+survive: that top leaves `effective_update` unconnected and instantiates no
+JOYP, so the register drives nothing. Four DE10-Lite targets route
+`effective_update` into an actual JOYP instead. `v05`, `v05-board` and
+`v05-controls-board` all reach the one in
+[the composed system](../system/MAS_system.md), the last of them through
+[`n2m_controls_system`](../../../../src/fpga/de10_lite/n2m_controls_system.sv),
+which adds a live physical producer but no JOYP of its own; `controls-board`
+instantiates its own. Routing is what makes the record survivable, and that it
+survives is measured on `v05-board` and taken from the structure for the rest.
+
+`v05-board` is the target this register's effect is measured on, so measure a
+change to the update comparison there rather than on one that drops the register.
+That fit ties the physical producer off, so it is the cost without a producer.
+`v05-controls-board` routes the record, supplies a live producer and builds, and
+its register effect is not measured
+([#944](https://github.com/amichai-bd/nand2mario/issues/944)). `controls-board`
+does not build
+([#904](https://github.com/amichai-bd/nand2mario/issues/904)).
+
+Fitted cost on `v05-board` (Quartus Prime Lite 25.1std, `10M50DAF484C7G`, one
+pinned build identity across both revisions): dedicated logic registers 5,259 to
+5,267, combinational functions 11,606 to 11,598, logic elements 12,866 to 12,888,
+and a changed netlist. Pins, virtual pins, memory bits, PLLs, UFM and ADC blocks
+are unchanged, and the image fits at 26% of logic. No slack entry is negative
+before or after and the design's worst slack is the same 0.055 ns `Fast 1200mV
+0C` hold on the system PLL clock, but 44 of the 54 entries do move, by up to
+1.115 ns; the largest loss leaves 3.473 ns of setup margin on that clock.
+
+Those three resource totals do not sum, and the fitter's own partition is why.
+Logic elements count LUT-only, register-only and LUT-and-register cells, which
+are disjoint; combinational functions counts the first and third and dedicated
+registers counts the second and third, so the shared class is counted twice
+across those two totals. Measured: LUT-only 7,607 to 7,621, register-only 1,260
+to 1,290, LUT-and-register 3,999 to 3,977, each triple summing to its element
+total. The +22 elements are therefore 22 cells that stopped holding a function
+and a register together, not added logic. The owner's own footprint falls, 26
+logic cells to 25, so that repacking is in the rest of the design rather than
+here. Why the fitter repacked is not established; it is what the moved slack
+entries above accompany, and it costs no negative slack and the same worst path.
+
 ## Verification
 
 The [input verification](../../../../src/dv/input/README.md) covers generated address/value rejection before
