@@ -114,6 +114,61 @@ def self_contained_sdc(text):
             raise ValueError("unsupported dynamic or nested SDC expression")
 
 
+# One `[get_ports ...]` filter: any options, then a bare name or a braced list of
+# names. The grammar `self_contained_sdc` enforces leaves nothing else to read.
+PORT_FILTER = re.compile(r'\[\s*get_ports\s+((?:-\S+\s+)*)(\{[^{}]*\}|[^\[\]{}\s]+)\s*\]')
+
+
+def sdc_port_filters(text):
+    """Every port name a declared SDC selects with `get_ports`, first use first.
+
+    An option is refused rather than collected, which is what `-nowarn` meets:
+    Quartus ignores a filter matching nothing, so silencing the warning would
+    leave a constraint that never applies and says so nowhere. The names are
+    checked against the target's ports instead.
+    """
+    names = []
+    for line in re.sub(r'\\\r?\n', ' ', text).splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        filters = PORT_FILTER.findall(line)
+        if len(filters) != len(re.findall(r'\bget_ports\b', line)):
+            raise ValueError("unsupported get_ports filter syntax")
+        for options, body in filters:
+            if options:
+                raise ValueError("unsupported get_ports option: " + options.split()[0])
+            for word in (body[1:-1].split() if body.startswith('{') else [body]):
+                if word not in names:
+                    names.append(word)
+    return names
+
+
+def unmatched_sdc_ports(text, ports):
+    """Which of this SDC's port filters no declared port satisfies.
+
+    A filter no declared port matches is the one the fitter reports as
+    `Warning (332174): Ignored filter ... could not be matched with a port`, so
+    the constraint never applies. Deciding that needs the registry and the file,
+    not a fit.
+
+    Both sides carry wildcards, in different roles: a filter's `*` stands for any
+    characters, while a declared port's `[*]` stands for every index of that bus.
+    A filter is satisfied when it selects a declared name, or when a declared bus
+    covers the index it names. Where both wildcard, this reads as satisfied, so a
+    port the design does declare is never refused here; the fit stays the backstop
+    for what only a netlist decides.
+    """
+    unmatched = []
+    for name in sdc_port_filters(text):
+        selects = re.compile('.*'.join(re.escape(part) for part in name.split('*')))
+        if not any(selects.fullmatch(port.replace('[*]', '[0]'))
+                   or re.fullmatch(re.escape(port).replace(r'\[\*\]', r'\[\d+\]'), name)
+                   for port in ports):
+            unmatched.append(name)
+    return unmatched
+
+
 def board_registries(root):
     """Every board registry, keyed by target name: (registry path, board, raw target).
 
@@ -216,6 +271,16 @@ def target_definition(root, name):
     for port in [*target["pins"], *target["virtual_pins"]]:
         if not isinstance(port, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[(?:\d+|\*)\])?", port):
             raise ValueError("invalid FPGA port")
+    # A constraint whose filter matches no port of this target never applies, and
+    # a shared SDC is how that happens: one top declares the ports and the other
+    # does not. The fitter only warns, minutes in, so the mismatch is refused here
+    # against the ports this target declares, before any tool runs.
+    declared = [*target["pins"], *target["virtual_pins"]]
+    for name in target["constraints"]:
+        unmatched = unmatched_sdc_ports((root / name).read_text(encoding="utf-8"), declared)
+        if unmatched:
+            raise ValueError(f"FPGA constraints name ports {target['top']} does not declare: "
+                             + f"{name} selects " + ", ".join(unmatched))
     if any(not isinstance(pin, str) or not re.fullmatch(PIN_NAME, pin) for pin in target["pins"].values()):
         raise ValueError("invalid FPGA pin")
     if len(set(target["pins"].values())) != len(target["pins"]):
