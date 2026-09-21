@@ -2922,6 +2922,18 @@ commands are unsupported. Comments and line continuations are allowed. Generated
 IP, broader Tcl syntax and additional file types need an explicit dependency
 extension before use.
 
+Every `get_ports` filter must select a port the target declares. Quartus ignores a
+filter matching no port and only warns (332174), so the constraint silently never
+applies; the builder resolves each filter against that target's `pins` and
+`virtual_pins` instead, and fails naming the top and every unselected name before
+any tool runs. A filter's `*` stands for any characters and a declared bus's `[*]`
+for each of its indices, so a wildcard on either side still selects; where both
+wildcard the filter counts as selecting, because the netlist decides that case and
+the fit still reports it. A `get_ports` option is refused, which is what `-nowarn`
+meets: it would hide the warning and leave the dead constraint. Two tops share a
+constraint file only when both declare every port it filters, which is why
+`controls_proof` and `v05_controls_proof` have one each.
+
 `--quartus-bin` is required and resolves `quartus_sh`, `quartus_map`,
 `quartus_fit`, `quartus_asm`, and `quartus_sta` from that one directory. All must
 report the same version. Record their versions, executable hashes and paths;
@@ -2978,32 +2990,44 @@ targets a host can build is a measurement and not a rule. All 39 registered
 targets of the three boards were built on the Linux development host at
 `9375432`, against Quartus Prime 25.1std.0 Build 1129 Lite with `--quartus-bin`
 naming that installation's `bin/` launcher directory, two builds at a time on its
-two physical cores except where noted below. `adc-early` refused in that sweep and
-was refitted alone once its cause was fixed, in 110 seconds of wall and 94 of CPU;
-`v05-controls-board` refused there too and now reaches a passing result, refitted
-in 369 seconds of wall and 479 of CPU:
+two physical cores except where noted below. Three targets refused in that sweep
+and each now reaches a passing result, refitted alone once its cause was fixed:
+`adc-early` in 110 seconds of wall and 94 of CPU, `v05-controls-board` in 369 and
+479, and `controls-board` in 137 and 176. Each cause is named below:
 
 | Board | Targets | Reached its intended result | Did not |
 | --- | --- | --- | --- |
-| DE10-Lite | 25 | 24 | `controls-board` |
+| DE10-Lite | 25 | 25 | — |
 | DE10-Nano | 6 | 6 | — |
 | DE2-115 | 8 | 8 | — |
 
 An `*-invalid` target's intended result is its refusal, and each of the eleven
 reached the one it names: an invalid clock period for `builder-invalid`,
-`nano-invalid` and `de2-invalid`, a filter matching no port for
-`de2-vga-invalid`, and a checked endpoint count mismatch for the rest. Every
+`nano-invalid` and `de2-invalid`, a generated clock whose source pin no netlist of
+that family contains for `de2-vga-invalid`, and a checked endpoint count mismatch
+for the rest. Every
 passing fit kept its `design.sof`, its fit summary and a finite nonnegative slack
 at each corner its board declares. No installed vendor file entered the
 [ledger](#accepted-vendor-sources) that this installation had not already
 accepted, so every result rests on recorded bytes.
 
-One DE10-Lite target still refuses, and that is not a limit of this host or of
-Linux. Its cause is a mismatch between repository sources that every installation
-reads the same way — a constraint — and not a property of any installed toolchain,
-so no host builds it: `controls-board` fails on the SDRAM and KEY1 constraints its
-top declares no ports for
-([#904](https://github.com/amichai-bd/nand2mario/issues/904)).
+`controls-board` refused in that sweep and now reaches a passing result, refitted
+alone in 137 seconds of wall and 176 of CPU: 4,412 of 49,760 logic elements, 2,169
+registers, 33 pins, 306 virtual pins, 214,512 memory bits in 31 M9K blocks, three
+of four PLLs, no UFM block, one of two ADC blocks, worst setup slack 5.209 ns and
+worst hold 0.062 ns with zero total negative slack across all 51 entries,
+`design.sof` produced, `No constraints were ignored.` and every one of its 19
+diagnostics classified. It refused for two mismatches between repository sources
+that every installation reads the same way, so no host built it and neither cause
+was a property of any toolchain. The first was a constraint file shared with
+`v05-controls-board`, whose top declares the KEY1 input and the eleven SDRAM ports
+that `controls_proof` does not: the fitter ignored twelve filters and printed 28
+`Warning (332174)` lines. Each top now has its own file, and the builder
+[resolves every filter against the ports its target declares](#fpga-build) before
+running a tool. The second was a fitted memory total recorded when this target last
+fitted, since outgrown by the presence store; the total is now summed from the parts
+that own the shapes. Both were decidable from repository sources, and host units
+decide them for every registered target without a fit.
 
 `v05-controls-board` refused in that sweep for two mismatches of the same kind,
 both now fixed, and it passes: 13,404 of 49,760 logic elements, 5,560 registers,
@@ -3724,9 +3748,12 @@ Three things follow the board rather than the profile, and
   the family: the three bank owners, the parameter set, the clock and reset roles,
   the shade bit each atom takes and the bit partition are the design's and are
   stated once. The M9K and memory-bit totals are checked as the used count the
-  fitted design contains, 18 blocks and 138,240 bits; the capacity each row
-  divides by is the device's, which the fit summary's `Device :` line already
-  binds, so it is not part of what the check proves.
+  fitted design contains, summed from the parts that own the shapes rather than
+  restated: three banks of six blocks and 46,080 bits, so 18 and 138,240, plus the
+  six UART stores of the combined diagnostic, 13 blocks and 76,272 bits, for 31 and
+  214,512 there. A store that changes size moves the total with it. The capacity
+  each row divides by is the device's, which the fit summary's `Device :` line
+  already binds, so it is not part of what the check proves.
 - **The DAC's own pins.** Every DAC pin states an 8 mA drive strength, which is
   all this family's 3.3-V LVTTL fitter asks for. `vga_clk` carries the pixel clock
   inverted, declared to the Timing Analyzer as the generated clock `vga_dac_clk`

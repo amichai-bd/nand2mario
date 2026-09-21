@@ -648,6 +648,7 @@ units:
   tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.15, inputs: []}
   tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.95, inputs: [src/fpga/de10_lite/targets.json, src/fpga/de10_nano/targets.json, src/fpga/de2_115/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_rom_image.py: {kind: unit, level: 0, labels: [builder, fpga, memory], duration_seconds: 3.16, inputs: [cfg/interfaces.json, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw, tools/sw/opcodes.json]}
+  tools/n2m/tests/test_fpga_sdc_ports.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.75, inputs: [src/dv/builder/fpga_smoke.sv, src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, src/sw/targets.json, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_uart_cyclonev.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.11, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.13, inputs: [tools/sw/opcodes.json]}
   tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.32, inputs: [src/fpga/de10_lite, src/fpga/de10_nano, src/fpga/de2_115, src/rtl, tools/sw/opcodes.json]}
