@@ -3017,9 +3017,11 @@ registers, 33 pins, 306 virtual pins, 214,512 memory bits in 31 M9K blocks, thre
 of four PLLs, no UFM block, one of two ADC blocks, worst setup slack 5.209 ns and
 worst hold 0.062 ns with zero total negative slack across all 51 entries,
 `design.sof` produced, `No constraints were ignored.` and every one of its 19
-diagnostics classified. It refused for two mismatches between repository sources
-that every installation reads the same way, so no host built it and neither cause
-was a property of any toolchain. The first was a constraint file shared with
+diagnostics classified.
+
+It refused for two mismatches between repository sources that every installation
+reads the same way, so no host built it and neither cause was a property of any
+toolchain. The first was a constraint file shared with
 `v05-controls-board`, whose top declares the KEY1 input and the eleven SDRAM ports
 that `controls_proof` does not: the fitter ignored twelve filters and printed 28
 `Warning (332174)` lines. Each top now has its own file, and the builder
