@@ -3576,14 +3576,24 @@ bounded build flow; different text under the same number fails:
 | 332060, exactly the IP's `flash_se_neg_reg` strobe under the registered reader instance, four lines in `compile.log` and one in `audit.log`, flash images only | The IP's sense-enable strobe register clocks one register inside the UFM atom (`ufm_block~XE_YE_TO_SE_FF`) without a clock assignment; the vendor's own generated project suppresses this message with `MESSAGE_DISABLE 332060`. Here it is classified by exact node and count and never suppressed. The same strobe is the one accepted `Unconstrained Clocks` row (setup and hold both 1) when `report_ucp` names it as the only unconstrained target, and it and the atom register are two accepted `no_clock` rows named exactly beside the PLL lock events. |
 | `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
 
-Each owner judges only the warnings its own sources produce. A classifier
-selects a line by the vendor source the message itself names: the flash IP by the
-staged `altera_onchip_flash_avmm_data_controller.v`, and the
+Each owner judges the warnings its own sources produce, selecting a line by the
+vendor source the message names: the flash IP by the staged
+`altera_onchip_flash_avmm_data_controller.v`, and the
 [ADC control](../../src/fpga-controls.md#acquisition-and-filtering) by the file
 its own 10036 reports and by its own instance's 14320 node path. An image that
 carries two classified IPs therefore keeps both inventories instead of counting
 one against the other; `v05-controls-board` is the one registered target that
-carries both. Scoping accepts nothing extra, because the scopes are not the gate:
+carries both.
+
+The 14284 and 14285 synthesis headers are the exception, because they name no
+source at all. The ADC control claims every line carrying those two codes and
+accepts only its own two exact texts, so a 14284 or 14285 from a second owner
+fails as an unexpected ADC diagnostic rather than at the gate below. On MAX 10 no
+other classifier claims them today. A second image whose other IP emits its own
+header pair has to settle that ownership first; until then this is the one
+diagnostic pair an owner holds by code rather than by source.
+
+Scoping accepts nothing extra, because the scopes are not the gate:
 `fpga.diagnostics` refuses every warning, critical warning and error that no
 owner explained, so a line outside every scope still fails the build under its
 own text.
